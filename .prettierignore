@@ -1,0 +1,8 @@
+node_modules/
+.vite/
+.next/
+out/
+dist/
+pnpm-lock.yaml
+package-lock.json
+CHANGELOG.md
