@@ -49,8 +49,7 @@ auto-update, printing, notifications. See the Phase 1 spec for the roadmap.
 - pnpm v10 blocks dependency build scripts by default; `pnpm-workspace.yaml` sets
   `onlyBuiltDependencies: [electron]` so Electron's postinstall (binary download) runs.
   If the Electron binary is missing after an install, run: `node node_modules/electron/install.js`.
-- `pnpm make` (Squirrel.Windows) may fail with "The system cannot find the file specified"
-  from Squirrel.exe: electron-winstaller's `vendor/` ships `7z-x64.exe` but Squirrel spawns
-  `7z.exe`. Workaround until the upstream fix: copy `node_modules/electron-winstaller/vendor/7z-x64.exe`
-  to `7z.exe` (and the `.dll` alike) in that same folder. This lives in `node_modules` and must be
-  reapplied after a fresh install.
+- `pnpm make` (Squirrel.Windows) requires `7z.exe` next to Squirrel.exe, but
+  electron-winstaller's `vendor/` ships only `7z-x64.exe`. The `make` script runs
+  `apps/desktop/scripts/fix-squirrel-7z.mjs` first, which copies the binaries into
+  place automatically (idempotent; safe after fresh installs).
