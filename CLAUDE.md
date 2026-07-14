@@ -360,6 +360,8 @@ apps/
             styles/
             types/
 
+        scripts/
+
 packages/
 
     shared/

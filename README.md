@@ -29,8 +29,9 @@ pnpm workspace:
 | `pnpm typecheck`    | TypeScript strict checks across the workspace       |
 | `pnpm lint`         | ESLint across the workspace                         |
 | `pnpm format:check` | Prettier check                                      |
+| `pnpm test`         | Run unit tests (Vitest)                             |
 
 ## Architecture
 
-See `docs/architecture.md` and the Phase 1 spec in
-`docs/superpowers/specs/2026-07-14-phase1-foundation-design.md`.
+See `docs/architecture.md`, `docs/conventions.md` for coding/IPC conventions,
+and the Phase 1 spec in `docs/superpowers/specs/2026-07-14-phase1-foundation-design.md`.

@@ -12,7 +12,10 @@
 
 ## IPC
 
-All IPC is typed by `@nemis-desktop/types`:
+All IPC is typed by `@nemis-desktop/types`: both the main-process registrar and
+the preload bridge are keyed off the `IpcContract` map (`packages/types/src/ipc.ts`),
+the single source of truth for every endpoint's args/result types. See
+`docs/conventions.md` for the add-an-endpoint recipe.
 
 Renderer → `window.nemis.system.getVersion()` → preload `ipcRenderer.invoke('system:get-version')`
 → main registrar (validates args, maps errors) → service → `IpcResult<T>` envelope back.
@@ -27,6 +30,12 @@ Handlers never throw across the wire: failures return
 - `setWindowOpenHandler` denies all popups; `will-navigate` restricted to app origins
 - CSP applied to every production `app://` response
 - IPC input validated in main; renderer input is never trusted
+- Deny-all `setPermissionRequestHandler`: every permission request (camera, mic,
+  geolocation, notifications, etc.) is rejected
+- Process-level crash nets: `uncaughtException` logs, shows an error dialog, and
+  exits; `unhandledRejection` logs without exiting
+- Single-instance lock: a second launch focuses the existing window instead of
+  starting a new process
 
 ## Error taxonomy (`@nemis-desktop/shared`)
 
