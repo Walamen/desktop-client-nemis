@@ -33,6 +33,16 @@ importers:
         specifier: ^8.20.0
         version: 8.64.0(eslint@9.39.5)(typescript@5.9.3)
 
+  packages/shared:
+    dependencies:
+      '@nemis-desktop/types':
+        specifier: workspace:*
+        version: link:../types
+
+  packages/types: {}
+
+  packages/ui: {}
+
 packages:
 
   '@eslint-community/eslint-utils@4.9.1':
