@@ -6,6 +6,7 @@ import { logger } from '@app/services/logger';
 import { resolveRendererPath } from '@app/main/rendererPath';
 
 export const APP_SCHEME = 'app';
+export const RENDERER_HOST = 'renderer';
 
 /** Must be called before app.whenReady(). */
 export function registerAppProtocolScheme(): void {
@@ -26,7 +27,18 @@ export function registerAppProtocolHandler(): void {
   const rendererRoot = path.join(process.resourcesPath, 'out');
 
   protocol.handle(APP_SCHEME, async (request) => {
-    const filePath = resolveRendererPath(rendererRoot, new URL(request.url).pathname);
+    const url = new URL(request.url);
+
+    if (url.host !== RENDERER_HOST) {
+      logger.warn(`Blocked app:// request for unknown host: ${request.url}`);
+      return withCsp(new Response('Forbidden', { status: 403 }));
+    }
+    if (request.method !== 'GET' && request.method !== 'HEAD') {
+      logger.warn(`Blocked app:// ${request.method} request: ${request.url}`);
+      return withCsp(new Response('Method Not Allowed', { status: 405 }));
+    }
+
+    const filePath = resolveRendererPath(rendererRoot, url.pathname);
     if (filePath === null) {
       logger.warn(`Blocked app:// request outside renderer root: ${request.url}`);
       return withCsp(new Response('Forbidden', { status: 403 }));

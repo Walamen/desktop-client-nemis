@@ -10,6 +10,10 @@ export const PRODUCTION_CSP = [
   "img-src 'self' data:",
   "font-src 'self' data:",
   "connect-src 'self'",
+  "base-uri 'none'",
+  "object-src 'none'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
 ].join('; ');
 
 export function withCsp(response: Response): Response {
