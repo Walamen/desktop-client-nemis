@@ -34,7 +34,7 @@ export function registerAppProtocolHandler(): void {
     const filePath = path.normalize(path.join(rendererRoot, relativePath));
     if (filePath !== rendererRoot && !filePath.startsWith(rendererRoot + path.sep)) {
       logger.warn(`Blocked app:// request outside renderer root: ${request.url}`);
-      return new Response('Forbidden', { status: 403 });
+      return withCsp(new Response('Forbidden', { status: 403 }));
     }
 
     try {
@@ -42,7 +42,7 @@ export function registerAppProtocolHandler(): void {
       return withCsp(response);
     } catch (error) {
       logger.warn(`app:// asset not found: ${request.url}`, error);
-      return new Response('Not Found', { status: 404 });
+      return withCsp(new Response('Not Found', { status: 404 }));
     }
   });
 }

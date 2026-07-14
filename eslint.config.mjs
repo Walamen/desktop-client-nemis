@@ -13,6 +13,7 @@ export default tseslint.config(
       '**/out/**',
       '**/dist/**',
       '**/next-env.d.ts',
+      '.superpowers/**',
     ],
   },
   js.configs.recommended,
