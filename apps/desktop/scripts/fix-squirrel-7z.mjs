@@ -7,11 +7,18 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 
-try {
-  const vendorDir = path.join(
-    path.dirname(require.resolve('electron-winstaller/package.json')),
-    'vendor',
-  );
+function resolveVendorDir() {
+  try {
+    return path.join(path.dirname(require.resolve('electron-winstaller/package.json')), 'vendor');
+  } catch {
+    // electron-winstaller not installed (e.g. non-Windows build) — nothing to fix.
+    return null;
+  }
+}
+
+const vendorDir = resolveVendorDir();
+if (vendorDir !== null) {
+  // Copy failures (permissions, disk) propagate and fail the make script loudly.
   for (const [source, target] of [
     ['7z-x64.exe', '7z.exe'],
     ['7z-x64.dll', '7z.dll'],
@@ -22,6 +29,4 @@ try {
       copyFileSync(sourcePath, targetPath);
     }
   }
-} catch {
-  // electron-winstaller not installed (e.g. non-Windows build) — nothing to fix.
 }

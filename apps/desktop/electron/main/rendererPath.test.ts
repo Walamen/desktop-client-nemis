@@ -36,4 +36,19 @@ describe('resolveRendererPath', () => {
   it('returns the root itself for an empty pathname', () => {
     expect(resolveRendererPath(ROOT, '')).toBe(ROOT);
   });
+
+  it('returns null for malformed percent-encoding instead of throwing', () => {
+    expect(resolveRendererPath(ROOT, '/%zz')).toBeNull();
+  });
+
+  it('blocks encoded backslash traversal', () => {
+    const result = resolveRendererPath(ROOT, '/%5c..%5c..%5csecret.txt');
+    if (path.sep === '\\') {
+      // Windows: backslashes are separators; the escape must be rejected.
+      expect(result).toBeNull();
+    } else {
+      // POSIX: backslash is a filename character; the path must stay inside ROOT.
+      expect(result === null || result.startsWith(ROOT + path.sep)).toBe(true);
+    }
+  });
 });

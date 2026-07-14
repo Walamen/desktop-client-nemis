@@ -6,7 +6,14 @@ import path from 'node:path';
  * trailingSlash exports mean every route directory maps to index.html.
  */
 export function resolveRendererPath(rendererRoot: string, pathname: string): string | null {
-  let relativePath = decodeURIComponent(pathname);
+  let relativePath: string;
+  try {
+    relativePath = decodeURIComponent(pathname);
+  } catch {
+    // Malformed percent-encoding (e.g. /%zz) — reject instead of throwing
+    // out of the protocol handler.
+    return null;
+  }
   if (relativePath.endsWith('/')) {
     relativePath += 'index.html';
   }
