@@ -10,39 +10,43 @@ import { registerAppProtocolScheme, registerAppProtocolHandler } from '@app/main
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
   app.quit();
+} else {
+  bootstrap();
 }
 
-const config = loadConfig();
-
-if (!config.isDev) {
-  registerAppProtocolScheme();
-}
-
-app.whenReady().then(() => {
-  initLogger({ isDev: config.isDev, level: config.logLevel });
-  logger.info(`NEMIS Desktop starting (dev=${config.isDev})`);
+function bootstrap(): void {
+  const config = loadConfig();
 
   if (!config.isDev) {
-    registerAppProtocolHandler();
+    registerAppProtocolScheme();
   }
 
-  registerIpcHandlers();
+  void app.whenReady().then(() => {
+    initLogger({ isDev: config.isDev, level: config.logLevel });
+    logger.info(`NEMIS Desktop starting (dev=${config.isDev})`);
 
-  const allowedUrlPrefixes = config.isDev ? [config.rendererDevUrl] : [RENDERER_ORIGIN];
+    if (!config.isDev) {
+      registerAppProtocolHandler();
+    }
 
-  const mainWindow = createMainWindow(config);
-  hardenWebContents(mainWindow.webContents, allowedUrlPrefixes);
+    registerIpcHandlers();
 
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      const window = createMainWindow(config);
-      hardenWebContents(window.webContents, allowedUrlPrefixes);
+    const allowedOrigins = config.isDev ? [config.rendererDevUrl] : [RENDERER_ORIGIN];
+
+    const mainWindow = createMainWindow(config);
+    hardenWebContents(mainWindow.webContents, allowedOrigins);
+
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) {
+        const window = createMainWindow(config);
+        hardenWebContents(window.webContents, allowedOrigins);
+      }
+    });
+  });
+
+  app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') {
+      app.quit();
     }
   });
-});
-
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
-});
+}

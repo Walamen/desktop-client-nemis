@@ -3,8 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "engines": {
-    "node": ">=22"
+    "node": ">=22",
+    "pnpm": ">=10"
   },
+  "packageManager": "pnpm@10.30.3",
   "scripts": {
     "dev": "pnpm --filter @nemis-desktop/app dev",
     "build": "pnpm --filter @nemis-desktop/app package",
