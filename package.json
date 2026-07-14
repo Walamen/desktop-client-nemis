@@ -1,43 +1,27 @@
 {
-  "name": "nemis-desktop",
-  "productName": "nemis-desktop",
+  "name": "nemis-desktop-workspace",
   "version": "1.0.0",
-  "description": "My Electron application description",
-  "main": ".vite/build/main.js",
   "private": true,
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
-    "start": "electron-forge start",
-    "package": "electron-forge package",
-    "make": "electron-forge make",
-    "publish": "electron-forge publish",
-    "lint": "eslint --ext .ts,.tsx ."
+    "dev": "pnpm --filter @nemis-desktop/app dev",
+    "build": "pnpm --filter @nemis-desktop/app package",
+    "make": "pnpm --filter @nemis-desktop/app make",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
-  "keywords": [],
-  "author": {
-    "name": "walamen412",
-    "email": "alvin@walamen.com"
-  },
-  "license": "MIT",
   "devDependencies": {
-    "@electron-forge/cli": "^7.11.2",
-    "@electron-forge/maker-deb": "^7.11.2",
-    "@electron-forge/maker-rpm": "^7.11.2",
-    "@electron-forge/maker-squirrel": "^7.11.2",
-    "@electron-forge/maker-zip": "^7.11.2",
-    "@electron-forge/plugin-auto-unpack-natives": "^7.11.2",
-    "@electron-forge/plugin-fuses": "^7.11.2",
-    "@electron-forge/plugin-vite": "^7.11.2",
-    "@electron/fuses": "^1.8.0",
-    "@types/electron-squirrel-startup": "^1.0.2",
-    "@typescript-eslint/eslint-plugin": "^5.62.0",
-    "@typescript-eslint/parser": "^5.62.0",
-    "electron": "43.1.0",
-    "eslint": "^8.57.1",
-    "eslint-plugin-import": "^2.32.0",
-    "typescript": "~4.5.4",
-    "vite": "^5.4.21"
-  },
-  "dependencies": {
-    "electron-squirrel-startup": "^1.0.1"
+    "@eslint/js": "^9.18.0",
+    "eslint": "^9.18.0",
+    "eslint-config-prettier": "^10.0.1",
+    "eslint-plugin-react": "^7.37.4",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.20.0"
   }
 }

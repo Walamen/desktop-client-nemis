@@ -22,6 +22,7 @@
 - Package versions: electron `43.1.0` (exact), `@electron-forge/*` `^7.11.2`, vite `^5.4.21`, next `^15.1.3`, react/react-dom `^19.0.0`, tailwindcss `^3.4.17`, typescript `^5.7.3`, eslint `^9.18.0`, typescript-eslint `^8.20.0`, prettier `^3.4.2`, electron-log `^5.2.4`, lucide-react `^0.563.0`, dotenv `^16.4.7`, concurrently `^9.1.2`, wait-on `^8.0.2`.
 
 **Documented deviations from the spec tree (agreed during planning):**
+
 1. `next.config.ts`, `tailwind.config.ts`, `postcss.config.mjs`, and `renderer/tsconfig.json` live **inside `apps/desktop/renderer/`** (Next.js requires its config in the project root it serves; we run `next dev renderer`).
 2. Electron path alias is **`@app/*` → `apps/desktop/electron/*`** instead of `@main/*`/`@preload/*` — the spec's `@electron/*`-style alias would shadow the npm package scope `@electron/` (e.g. `@electron/fuses`), and `ipc/`, `security/`, `config/` sit beside `main/`, not under it.
 
@@ -30,11 +31,13 @@
 ### Task 1: Baseline commit and repo hygiene
 
 **Files:**
+
 - Commit: all existing untracked scaffold files (as-is baseline)
 - Create: `.editorconfig`, `.prettierrc`, `.prettierignore`, `.npmrc`
 - Overwrite: `.gitignore`
 
 **Interfaces:**
+
 - Consumes: nothing.
 - Produces: a git baseline so the restructure is a reviewable diff; `.npmrc` with `node-linker=hoisted` (required for Electron Forge packaging under pnpm).
 
@@ -136,11 +139,13 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 2: pnpm workspace root
 
 **Files:**
+
 - Overwrite: `package.json` (root — replaces the scaffold's app package.json)
 - Create: `pnpm-workspace.yaml`, `tsconfig.base.json`, `eslint.config.mjs`
 - Delete: `package-lock.json`, `.eslintrc.json` (replaced by flat config)
 
 **Interfaces:**
+
 - Consumes: Task 1's `.npmrc`.
 - Produces: workspace root scripts (`dev`, `make`, `typecheck`, `lint`, `format`, `format:check`); `tsconfig.base.json` that every package extends; root ESLint flat config covering all packages.
 
@@ -284,11 +289,13 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 3: Workspace packages — types, shared, ui
 
 **Files:**
+
 - Create: `packages/types/package.json`, `packages/types/tsconfig.json`, `packages/types/src/index.ts`, `packages/types/src/ipc.ts`, `packages/types/src/api.ts`
 - Create: `packages/shared/package.json`, `packages/shared/tsconfig.json`, `packages/shared/src/index.ts`, `packages/shared/src/errors.ts`, `packages/shared/src/constants.ts`
 - Create: `packages/ui/package.json`, `packages/ui/tsconfig.json`, `packages/ui/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: `tsconfig.base.json` from Task 2.
 - Produces (used by every later task):
   - `@nemis-desktop/types`: `IpcChannels.SYSTEM_GET_VERSION` (= `'system:get-version'`), `type IpcChannel`, `interface IpcErrorPayload { code: string; message: string }`, `type IpcResult<T> = { ok: true; data: T } | { ok: false; error: IpcErrorPayload }`, `interface SystemApi { getVersion(): Promise<string> }`, `interface NemisApi { system: SystemApi }`.
@@ -511,6 +518,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 4: Next.js renderer shell (`apps/desktop/renderer`)
 
 **Files:**
+
 - Create: `apps/desktop/package.json` (renderer deps only; Electron deps arrive in Task 5)
 - Create: `apps/desktop/renderer/next.config.ts`, `apps/desktop/renderer/postcss.config.mjs`, `apps/desktop/renderer/tailwind.config.ts`, `apps/desktop/renderer/tsconfig.json`
 - Create: `apps/desktop/renderer/styles/globals.css`, `apps/desktop/renderer/app/layout.tsx`, `apps/desktop/renderer/app/page.tsx`
@@ -520,6 +528,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 - Delete: old scaffold files `src/`, `index.html`, `forge.config.ts`, `forge.env.d.ts`, `vite.main.config.ts`, `vite.preload.config.ts`, `vite.renderer.config.ts`, `tsconfig.json` (root)
 
 **Interfaces:**
+
 - Consumes: `@nemis-desktop/types` (`NemisApi` for `window.nemis` typing).
 - Produces: `next dev renderer -p 3010` serves the shell; `next build renderer` emits static export at `apps/desktop/renderer/out/`; the page displays the value of `window.nemis.system.getVersion()` (or a graceful "bridge unavailable" message outside Electron). Scripts `dev:renderer` and `build:renderer` used by Tasks 5 and 8.
 
@@ -844,8 +853,7 @@ export default function HomePage() {
     <section className="max-w-xl rounded-card border border-slate-200 bg-white p-8">
       <h2 className="text-xl font-semibold text-primary">Welcome to NEMIS Desktop</h2>
       <p className="mt-2 text-sm text-slate-600">
-        Offline-first desktop client for the Republic of Liberia&apos;s national education
-        platform.
+        Offline-first desktop client for the Republic of Liberia&apos;s national education platform.
       </p>
       <dl className="mt-6 text-sm">
         <dt className="font-medium text-slate-500">Application version</dt>
@@ -914,12 +922,14 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 5: Electron main + preload + config + logging (dev mode)
 
 **Files:**
+
 - Modify: `apps/desktop/package.json` (add Electron deps + scripts)
 - Create: `apps/desktop/forge.config.ts`, `apps/desktop/vite.main.config.ts`, `apps/desktop/vite.preload.config.ts`, `apps/desktop/tsconfig.json`
 - Create: `apps/desktop/electron/config/env.ts`, `apps/desktop/electron/services/logger.ts`, `apps/desktop/electron/windows/mainWindow.ts`, `apps/desktop/electron/main/main.ts`, `apps/desktop/electron/preload/preload.ts` (stub)
 - Create: `apps/desktop/.env.example`
 
 **Interfaces:**
+
 - Consumes: Task 4's `dev:renderer` script and port 3010; `ConfigurationError` from `@nemis-desktop/shared`.
 - Produces:
   - `loadConfig(): AppConfig` where `interface AppConfig { readonly isDev: boolean; readonly rendererDevUrl: string; readonly logLevel: LogLevel }` and `type LogLevel = 'debug' | 'info' | 'warn' | 'error'` (from `electron/config/env.ts`).
@@ -1071,7 +1081,12 @@ export default defineConfig({
       "@app/*": ["electron/*"]
     }
   },
-  "include": ["electron/**/*.ts", "forge.config.ts", "vite.main.config.ts", "vite.preload.config.ts"]
+  "include": [
+    "electron/**/*.ts",
+    "forge.config.ts",
+    "vite.main.config.ts",
+    "vite.preload.config.ts"
+  ]
 }
 ```
 
@@ -1266,11 +1281,13 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 6: IPC vertical slice — `window.nemis.system.getVersion()`
 
 **Files:**
+
 - Create: `apps/desktop/electron/services/systemService.ts`, `apps/desktop/electron/security/validateIpc.ts`, `apps/desktop/electron/ipc/registrar.ts`
 - Overwrite: `apps/desktop/electron/preload/preload.ts` (full bridge)
 - Modify: `apps/desktop/electron/main/main.ts` (register handlers)
 
 **Interfaces:**
+
 - Consumes: `IpcChannels`, `IpcChannel`, `IpcResult`, `NemisApi` from `@nemis-desktop/types`; `IPCError`, `toIpcErrorPayload` from `@nemis-desktop/shared`; `logger` from `@app/services/logger`.
 - Produces:
   - `getAppVersion(): string` from `electron/services/systemService.ts`.
@@ -1370,7 +1387,7 @@ import { registerIpcHandlers } from '@app/ipc/registrar';
 Inside `app.whenReady().then(() => { ... })`, after `logger.info(...)`:
 
 ```ts
-  registerIpcHandlers();
+registerIpcHandlers();
 ```
 
 - [ ] **Step 6: Typecheck and lint**
@@ -1404,10 +1421,12 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 7: Security hardening — navigation guards and Node-isolation verification
 
 **Files:**
+
 - Create: `apps/desktop/electron/security/hardenWindow.ts`
 - Modify: `apps/desktop/electron/main/main.ts`
 
 **Interfaces:**
+
 - Consumes: `logger` from `@app/services/logger`; `RENDERER_ORIGIN` from `@app/windows/mainWindow`; `AppConfig`.
 - Produces: `hardenWebContents(contents: WebContents, allowedUrlPrefixes: readonly string[]): void` — denies all `window.open`, blocks navigation outside allowed prefixes.
 
@@ -1453,17 +1472,17 @@ import { createMainWindow, RENDERER_ORIGIN } from '@app/windows/mainWindow';
 (Replace the existing `createMainWindow` import line.) Then change window creation inside `whenReady` and the `activate` handler to:
 
 ```ts
-  const allowedUrlPrefixes = config.isDev ? [config.rendererDevUrl] : [RENDERER_ORIGIN];
+const allowedUrlPrefixes = config.isDev ? [config.rendererDevUrl] : [RENDERER_ORIGIN];
 
-  const mainWindow = createMainWindow(config);
-  hardenWebContents(mainWindow.webContents, allowedUrlPrefixes);
+const mainWindow = createMainWindow(config);
+hardenWebContents(mainWindow.webContents, allowedUrlPrefixes);
 
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      const window = createMainWindow(config);
-      hardenWebContents(window.webContents, allowedUrlPrefixes);
-    }
-  });
+app.on('activate', () => {
+  if (BrowserWindow.getAllWindows().length === 0) {
+    const window = createMainWindow(config);
+    hardenWebContents(window.webContents, allowedUrlPrefixes);
+  }
+});
 ```
 
 - [ ] **Step 3: Typecheck and lint**
@@ -1484,7 +1503,12 @@ pnpm dev
 In the detached DevTools console of the Electron window, run:
 
 ```js
-({ req: typeof window.require, proc: typeof window.process, nemis: typeof window.nemis, opened: window.open('https://example.com') })
+({
+  req: typeof window.require,
+  proc: typeof window.process,
+  nemis: typeof window.nemis,
+  opened: window.open('https://example.com'),
+});
 ```
 
 Expected: `req: 'undefined'`, `proc: 'undefined'`, `nemis: 'object'`, `opened: null`, and the main-process log shows `Blocked attempt to open a new window: https://example.com/`. Stop the process.
@@ -1503,10 +1527,12 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 8: Production serving (`app://` protocol) and packaged build
 
 **Files:**
+
 - Create: `apps/desktop/electron/security/csp.ts`, `apps/desktop/electron/main/appProtocol.ts`
 - Modify: `apps/desktop/electron/main/main.ts`
 
 **Interfaces:**
+
 - Consumes: `RENDERER_ORIGIN` (= `'app://renderer/'`) from `@app/windows/mainWindow`; `logger`.
 - Produces:
   - `PRODUCTION_CSP: string` and `withCsp(response: Response): Response` from `electron/security/csp.ts`.
@@ -1612,9 +1638,9 @@ if (!config.isDev) {
 Inside `whenReady`, before `registerIpcHandlers();`:
 
 ```ts
-  if (!config.isDev) {
-    registerAppProtocolHandler();
-  }
+if (!config.isDev) {
+  registerAppProtocolHandler();
+}
 ```
 
 - [ ] **Step 4: Typecheck and lint**
@@ -1662,17 +1688,20 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 9: Docs, CLAUDE.md alignment, and final acceptance sweep
 
 **Files:**
+
 - Modify: `CLAUDE.md` (primary color `#000e21` → `#020833`; replace the outdated `src/` Code Organization section with the actual workspace tree)
 - Overwrite: `README.md` (real dev/build instructions)
 - Create: `docs/architecture.md`
 
 **Interfaces:**
+
 - Consumes: everything built in Tasks 1-8.
 - Produces: accurate onboarding docs; all acceptance criteria verified in one sweep.
 
 - [ ] **Step 1: Update `CLAUDE.md`**
 
 Edit two places only (surgical changes):
+
 1. Replace `#000e21` with `#020833` (Primary Color).
 2. Replace the `# Code Organization` section's `src/...` tree with:
 
@@ -1737,15 +1766,15 @@ pnpm workspace:
 
 ## Commands
 
-| Command             | Description                                            |
-| ------------------- | ------------------------------------------------------ |
-| `pnpm install`      | Install all workspace dependencies                     |
-| `pnpm dev`          | Start Next.js dev server (port 3010) + Electron        |
-| `pnpm build`        | Static-export the renderer and package the app         |
-| `pnpm make`         | Build platform distributables (Squirrel on Windows)    |
-| `pnpm typecheck`    | TypeScript strict checks across the workspace          |
-| `pnpm lint`         | ESLint across the workspace                            |
-| `pnpm format:check` | Prettier check                                         |
+| Command             | Description                                         |
+| ------------------- | --------------------------------------------------- |
+| `pnpm install`      | Install all workspace dependencies                  |
+| `pnpm dev`          | Start Next.js dev server (port 3010) + Electron     |
+| `pnpm build`        | Static-export the renderer and package the app      |
+| `pnpm make`         | Build platform distributables (Squirrel on Windows) |
+| `pnpm typecheck`    | TypeScript strict checks across the workspace       |
+| `pnpm lint`         | ESLint across the workspace                         |
+| `pnpm format:check` | Prettier check                                      |
 
 ## Architecture
 

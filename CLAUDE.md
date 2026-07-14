@@ -507,14 +507,14 @@ Lucide
 
 Border Radius
 
- card: "16px",
+card: "16px",
 button: "9999px",
 
 Spacing
 
 8-point grid
 
-Avoid  shadows.
+Avoid shadows.
 
 Favor consistency over decoration.
 

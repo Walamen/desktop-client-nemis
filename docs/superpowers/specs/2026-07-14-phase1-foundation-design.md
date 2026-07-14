@@ -10,16 +10,16 @@ Establish a production-ready Electron application foundation that every future p
 
 ## Decisions Made
 
-| Decision | Choice | Rationale |
-|---|---|---|
-| Renderer framework | **Next.js 15 static export** (App Router) | Matches portal-web (Next 15.1 / React 19), keeping later phases' porting of portal-web pages/components cheap. SSR/API routes/middleware are unavailable inside Electron, so `output: 'export'` is used. |
-| Workspace tooling | **pnpm workspaces** | Matches the Nemis monorepo conventions; better native-dep handling for Electron. |
-| Renderer serving (prod) | **Custom `app://` protocol** via `protocol.handle` | Bare `file://` breaks Next static-export client routing and asset paths; a custom protocol behaves like a real origin (routing, deep links, CSP). |
-| Renderer serving (dev) | Electron loads `next dev` URL on a fixed port | Full HMR during development. |
-| TypeScript | **5.x strict** across all packages | Scaffold's TS ~4.5 is incompatible with Next 15. |
-| Tailwind | **3.4.x** | Matches portal-web exactly. |
-| Primary color | **#020833** | Phase 1 spec value; CLAUDE.md's `#000e21` will be updated to match so they don't drift. |
-| ESLint | **v9 flat config** | Matches Nemis monorepo style. |
+| Decision                | Choice                                             | Rationale                                                                                                                                                                                                |
+| ----------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Renderer framework      | **Next.js 15 static export** (App Router)          | Matches portal-web (Next 15.1 / React 19), keeping later phases' porting of portal-web pages/components cheap. SSR/API routes/middleware are unavailable inside Electron, so `output: 'export'` is used. |
+| Workspace tooling       | **pnpm workspaces**                                | Matches the Nemis monorepo conventions; better native-dep handling for Electron.                                                                                                                         |
+| Renderer serving (prod) | **Custom `app://` protocol** via `protocol.handle` | Bare `file://` breaks Next static-export client routing and asset paths; a custom protocol behaves like a real origin (routing, deep links, CSP).                                                        |
+| Renderer serving (dev)  | Electron loads `next dev` URL on a fixed port      | Full HMR during development.                                                                                                                                                                             |
+| TypeScript              | **5.x strict** across all packages                 | Scaffold's TS ~4.5 is incompatible with Next 15.                                                                                                                                                         |
+| Tailwind                | **3.4.x**                                          | Matches portal-web exactly.                                                                                                                                                                              |
+| Primary color           | **#020833**                                        | Phase 1 spec value; CLAUDE.md's `#000e21` will be updated to match so they don't drift.                                                                                                                  |
+| ESLint                  | **v9 flat config**                                 | Matches Nemis monorepo style.                                                                                                                                                                            |
 
 ## Workspace Structure
 
@@ -68,7 +68,7 @@ The existing flat Forge scaffold (src/main.ts, src/preload.ts, src/renderer.ts, 
 
 Two coordinated builds inside `apps/desktop`:
 
-1. **Electron Forge + Vite plugin** builds `electron/main` and `electron/preload` (the Vite *renderer* entry is removed from forge.config.ts).
+1. **Electron Forge + Vite plugin** builds `electron/main` and `electron/preload` (the Vite _renderer_ entry is removed from forge.config.ts).
 2. **Next.js** builds the renderer:
    - **Dev:** `next dev` on a fixed port (3010). Electron waits for the port, then `loadURL`.
    - **Prod:** `next build` with `output: 'export'` → static files packaged into the app and served via `app://` protocol; `loadURL('app://-/index.html')` equivalent.
