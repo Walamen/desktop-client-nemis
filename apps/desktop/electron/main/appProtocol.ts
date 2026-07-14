@@ -3,6 +3,7 @@ import { pathToFileURL } from 'node:url';
 import { net, protocol } from 'electron';
 import { withCsp } from '@app/security/csp';
 import { logger } from '@app/services/logger';
+import { resolveRendererPath } from '@app/main/rendererPath';
 
 export const APP_SCHEME = 'app';
 
@@ -25,14 +26,8 @@ export function registerAppProtocolHandler(): void {
   const rendererRoot = path.join(process.resourcesPath, 'out');
 
   protocol.handle(APP_SCHEME, async (request) => {
-    const { pathname } = new URL(request.url);
-    let relativePath = decodeURIComponent(pathname);
-    if (relativePath.endsWith('/')) {
-      relativePath += 'index.html';
-    }
-
-    const filePath = path.normalize(path.join(rendererRoot, relativePath));
-    if (filePath !== rendererRoot && !filePath.startsWith(rendererRoot + path.sep)) {
+    const filePath = resolveRendererPath(rendererRoot, new URL(request.url).pathname);
+    if (filePath === null) {
       logger.warn(`Blocked app:// request outside renderer root: ${request.url}`);
       return withCsp(new Response('Forbidden', { status: 403 }));
     }
