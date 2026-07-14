@@ -1,9 +1,14 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import { IpcChannels } from '@nemis-desktop/types';
-import type { IpcChannel, IpcResult, NemisApi } from '@nemis-desktop/types';
+import type { IpcChannel, IpcContract, IpcResult, NemisApi } from '@nemis-desktop/types';
 
-async function invoke<T>(channel: IpcChannel): Promise<T> {
-  const result = (await ipcRenderer.invoke(channel)) as IpcResult<T>;
+async function invoke<C extends IpcChannel>(
+  channel: C,
+  ...args: IpcContract[C]['args']
+): Promise<IpcContract[C]['result']> {
+  const result = (await ipcRenderer.invoke(channel, ...args)) as IpcResult<
+    IpcContract[C]['result']
+  >;
   if (!result.ok) {
     throw new Error(`[${result.error.code}] ${result.error.message}`);
   }
@@ -12,7 +17,7 @@ async function invoke<T>(channel: IpcChannel): Promise<T> {
 
 const nemisApi: NemisApi = {
   system: {
-    getVersion: () => invoke<string>(IpcChannels.SYSTEM_GET_VERSION),
+    getVersion: () => invoke(IpcChannels.SYSTEM_GET_VERSION),
   },
 };
 
