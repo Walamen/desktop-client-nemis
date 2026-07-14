@@ -5,6 +5,7 @@ import { registerIpcHandlers } from '@app/ipc/registrar';
 import { initLogger, logger } from '@app/services/logger';
 import { hardenWebContents } from '@app/security/hardenWindow';
 import { createMainWindow, RENDERER_ORIGIN } from '@app/windows/mainWindow';
+import { registerAppProtocolScheme, registerAppProtocolHandler } from '@app/main/appProtocol';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -13,9 +14,17 @@ if (started) {
 
 const config = loadConfig();
 
+if (!config.isDev) {
+  registerAppProtocolScheme();
+}
+
 app.whenReady().then(() => {
   initLogger({ isDev: config.isDev, level: config.logLevel });
   logger.info(`NEMIS Desktop starting (dev=${config.isDev})`);
+
+  if (!config.isDev) {
+    registerAppProtocolHandler();
+  }
 
   registerIpcHandlers();
 
