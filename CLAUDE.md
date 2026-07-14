@@ -334,35 +334,39 @@ The renderer must never access Node.js APIs directly.
 
 # Code Organization
 
-src/
+apps/
 
-main/
+    desktop/
 
-- ipc/
-- database/
-- services/
-- sync/
-- windows/
-- security/
+        electron/
 
-preload/
+            main/
+            preload/
+            ipc/
+            security/
+            windows/
+            services/
+            config/
 
-renderer/
+        renderer/
 
-- app/
-- components/
-- pages/
-- hooks/
-- features/
-- services/
-- store/
-- styles/
+            app/
+            components/
+            layouts/
+            hooks/
+            store/
+            lib/
+            services/
+            styles/
+            types/
 
-shared/
+packages/
 
-- types/
-- constants/
-- utils/
+    shared/
+    types/
+    ui/
+
+docs/
 
 ---
 
@@ -482,7 +486,7 @@ Avoid playful interfaces.
 
 Primary Color
 
-#000e21
+#020833
 
 Secondary Color
 #0367A0
