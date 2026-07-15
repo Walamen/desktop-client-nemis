@@ -3,6 +3,7 @@ import { app, BrowserWindow, dialog } from 'electron';
 import started from 'electron-squirrel-startup';
 import { loadConfig } from '@app/config/env';
 import { DatabaseManager } from '@app/database/DatabaseManager';
+import { DatabaseError } from '@app/database/errors/errors';
 import { registerIpcHandlers } from '@app/ipc/registrar';
 import { initLogger, logger } from '@app/services/logger';
 import { hardenWebContents } from '@app/security/hardenWindow';
@@ -95,11 +96,13 @@ function bootstrap(): void {
     })
     .catch((error: unknown) => {
       logger.error('Fatal startup failure:', error);
-      dialog.showErrorBox(
-        'NEMIS Desktop',
-        'The application could not start because the local database failed to open. ' +
-          'Please contact support and provide the application logs.',
-      );
+      const message =
+        error instanceof DatabaseError
+          ? 'The application could not start because the local database failed to open. ' +
+            'Please contact support and provide the application logs.'
+          : 'The application could not start due to an unexpected error. ' +
+            'Please contact support and provide the application logs.';
+      dialog.showErrorBox('NEMIS Desktop', message);
       app.quit();
     });
 
