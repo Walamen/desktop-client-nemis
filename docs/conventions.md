@@ -36,16 +36,17 @@
 
 ## Folder responsibilities
 
-| Path                              | Responsibility                                     |
-| --------------------------------- | -------------------------------------------------- |
-| `apps/desktop/electron/main/`     | App lifecycle, protocol serving, crash nets        |
-| `apps/desktop/electron/preload/`  | The only bridge between worlds (`window.nemis`)    |
-| `apps/desktop/electron/ipc/`      | Channel registration; `handlers/` per domain       |
-| `apps/desktop/electron/security/` | Navigation guard, CSP, permissions, IPC validation |
-| `apps/desktop/electron/windows/`  | Window factories                                   |
-| `apps/desktop/electron/services/` | Main-process services (logger, system)             |
-| `apps/desktop/electron/config/`   | Env loading + pure config validation               |
-| `apps/desktop/renderer/`          | Next.js UI (app router, layouts, hooks, services)  |
-| `packages/types/`                 | IPC contract + shared API types                    |
-| `packages/shared/`                | Error taxonomy shared across processes             |
-| `packages/ui/`                    | Shared UI components (placeholder until Phase 2+)  |
+| Path                              | Responsibility                                                               |
+| --------------------------------- | ---------------------------------------------------------------------------- |
+| `apps/desktop/electron/main/`     | App lifecycle, protocol serving, crash nets                                  |
+| `apps/desktop/electron/preload/`  | The only bridge between worlds (`window.nemis`)                              |
+| `apps/desktop/electron/ipc/`      | Channel registration; `handlers/` per domain                                 |
+| `apps/desktop/electron/security/` | Navigation guard, CSP, permissions, IPC validation                           |
+| `apps/desktop/electron/windows/`  | Window factories                                                             |
+| `apps/desktop/electron/services/` | Main-process services (logger, system)                                       |
+| `apps/desktop/electron/database/` | Local SQLite platform (lifecycle, migrations, backup) — see docs/database.md |
+| `apps/desktop/electron/config/`   | Env loading + pure config validation                                         |
+| `apps/desktop/renderer/`          | Next.js UI (app router, layouts, hooks, services)                            |
+| `packages/types/`                 | IPC contract + shared API types                                              |
+| `packages/shared/`                | Error taxonomy shared across processes                                       |
+| `packages/ui/`                    | Shared UI components (placeholder until Phase 2+)                            |
