@@ -24,7 +24,10 @@ const config: ForgeConfig = {
     asar: true,
     extraResource: ['./renderer/out'],
   },
-  rebuildConfig: {},
+  // Skip Forge's native rebuild: this machine has no C++ toolchain, and the
+  // correct Electron-ABI prebuilt binary is installed by `pnpm rebuild:electron`
+  // (run it before `pnpm make`) and packaged as-is by the hook below.
+  rebuildConfig: { onlyModules: [] },
   hooks: {
     packageAfterCopy: async (_forgeConfig, buildPath) => {
       const rootNodeModules = path.resolve(__dirname, '..', '..', 'node_modules');
