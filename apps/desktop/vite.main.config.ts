@@ -7,4 +7,10 @@ export default defineConfig({
       '@app': path.resolve(__dirname, 'electron'),
     },
   },
+  build: {
+    rollupOptions: {
+      // Native module: must stay a runtime require, never bundled.
+      external: ['better-sqlite3'],
+    },
+  },
 });
