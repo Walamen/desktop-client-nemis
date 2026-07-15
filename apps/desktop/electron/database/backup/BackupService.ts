@@ -45,6 +45,9 @@ export class BackupService {
   async createBackup(label?: string): Promise<BackupResult> {
     fs.mkdirSync(this.#backupsDirectory, { recursive: true });
     const filePath = path.join(this.#backupsDirectory, buildBackupFileName(new Date(), label));
+    if (fs.existsSync(filePath)) {
+      throw new BackupError(`Backup target already exists: ${filePath}`);
+    }
     try {
       await this.#db.backup(filePath);
     } catch (error) {
