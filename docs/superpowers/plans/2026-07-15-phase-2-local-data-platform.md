@@ -64,12 +64,14 @@ docs/database.md                    # architecture, lifecycle, pragmas, migratio
 The architecture review (docs/architecture-review-2026-07-14.md) gates Phase 2 on: deny-all `setPermissionCheckHandler`, a `will-redirect` navigation guard, and `electron-winstaller` as an explicit devDependency.
 
 **Files:**
+
 - Modify: `apps/desktop/electron/security/permissions.ts`
 - Modify: `apps/desktop/electron/security/hardenWindow.ts`
 - Modify: `apps/desktop/electron/main/main.ts`
 - Modify: `apps/desktop/package.json` (via pnpm add)
 
 **Interfaces:**
+
 - Produces: `denyPermissionChecks(): void` (called from main.ts beside existing `denyPermissionRequests()`).
 
 - [ ] **Step 1: Create the Phase 2 branch**
@@ -101,12 +103,12 @@ export function denyPermissionChecks(): void {
 In `apps/desktop/electron/security/hardenWindow.ts`, append inside `hardenWebContents` after the existing `will-navigate` block:
 
 ```ts
-  contents.on('will-redirect', (event, url) => {
-    if (!isAllowedNavigation(url, allowedOrigins)) {
-      logger.warn(`Blocked redirect to: ${url}`);
-      event.preventDefault();
-    }
-  });
+contents.on('will-redirect', (event, url) => {
+  if (!isAllowedNavigation(url, allowedOrigins)) {
+    logger.warn(`Blocked redirect to: ${url}`);
+    event.preventDefault();
+  }
+});
 ```
 
 - [ ] **Step 4: Call the new handler in main.ts**
@@ -120,7 +122,7 @@ import { denyPermissionRequests, denyPermissionChecks } from '@app/security/perm
 and inside `.then(() => { ... })`, directly after `denyPermissionRequests();`:
 
 ```ts
-      denyPermissionChecks();
+denyPermissionChecks();
 ```
 
 - [ ] **Step 5: Add electron-winstaller as explicit devDependency**
@@ -146,12 +148,14 @@ git commit -m "feat(security): deny-all permission checks + will-redirect guard;
 ### Task 2: better-sqlite3 dependency + native build wiring
 
 **Files:**
+
 - Modify: `apps/desktop/package.json` (via pnpm add)
 - Modify: `pnpm-workspace.yaml`
 - Modify: `apps/desktop/vite.main.config.ts`
 - Modify: `package.json` (root — rebuild script)
 
 **Interfaces:**
+
 - Produces: importable `better-sqlite3` in main-process code; `pnpm rebuild:node` root script.
 
 - [ ] **Step 1: Allow the build script and install**
@@ -226,11 +230,13 @@ git commit -m "build(db): add better-sqlite3 with pnpm build allowance, vite ext
 Pure module — **no** better-sqlite3 import, so these tests run regardless of native ABI state.
 
 **Files:**
+
 - Create: `apps/desktop/electron/database/errors/errors.ts`
 - Create: `apps/desktop/electron/database/errors/wrapSqliteError.ts`
 - Test: `apps/desktop/electron/database/errors/wrapSqliteError.test.ts`
 
 **Interfaces:**
+
 - Produces:
   - `class DatabaseError extends Error { readonly code: DatabaseErrorCode }` and subclasses `ConnectionError`, `MigrationError`, `TransactionError`, `ConstraintError`, `IntegrityError`, `BackupError` — all with `(message: string, options?: { cause?: unknown })` constructors.
   - `wrapSqliteError(error: unknown, context: string): DatabaseError` — passes through existing `DatabaseError`s, maps SQLite codes, never leaks the raw SQLite message into `.message` (keeps it on `.cause`).
@@ -318,7 +324,11 @@ export interface DatabaseErrorOptions {
 export class DatabaseError extends Error {
   readonly code: DatabaseErrorCode;
 
-  constructor(message: string, code: DatabaseErrorCode = 'DB_UNKNOWN', options?: DatabaseErrorOptions) {
+  constructor(
+    message: string,
+    code: DatabaseErrorCode = 'DB_UNKNOWN',
+    options?: DatabaseErrorOptions,
+  ) {
     super(message, options);
     this.name = new.target.name;
     this.code = code;
@@ -365,12 +375,7 @@ export class BackupError extends DatabaseError {
 - [ ] **Step 4: Implement wrapSqliteError.ts**
 
 ```ts
-import {
-  ConnectionError,
-  ConstraintError,
-  DatabaseError,
-  IntegrityError,
-} from './errors';
+import { ConnectionError, ConstraintError, DatabaseError, IntegrityError } from './errors';
 
 interface CodedError extends Error {
   code: string;
@@ -430,6 +435,7 @@ git commit -m "feat(db): database error taxonomy with sqlite code mapping"
 ### Task 4: Helpers and constants (ids, time, paths, pragmas, table names, version)
 
 **Files:**
+
 - Create: `apps/desktop/electron/database/helpers/ids.ts`
 - Create: `apps/desktop/electron/database/helpers/time.ts`
 - Create: `apps/desktop/electron/database/constants/paths.ts`
@@ -439,6 +445,7 @@ git commit -m "feat(db): database error taxonomy with sqlite code mapping"
 - Test: `apps/desktop/electron/database/constants/paths.test.ts`
 
 **Interfaces:**
+
 - Produces:
   - `newId(): string` — UUID v4.
   - `nowIso(): string` — ISO-8601 UTC timestamp.
@@ -598,11 +605,13 @@ git commit -m "feat(db): ids/time helpers, path resolution, documented pragma se
 ### Task 5: Database connection wrapper + test factory
 
 **Files:**
+
 - Create: `apps/desktop/electron/database/Database.ts`
 - Create: `apps/desktop/electron/database/testing/createTestDatabase.ts`
 - Test: `apps/desktop/electron/database/Database.test.ts`
 
 **Interfaces:**
+
 - Consumes: `PRAGMAS`, `wrapSqliteError`, `ConnectionError`, `IntegrityError`.
 - Produces:
   - `interface DatabaseOptions { filePath: string; readonly?: boolean }`
@@ -854,11 +863,13 @@ git commit -m "feat(db): connection wrapper with validated open, documented prag
 Tested against inline fake migrations; the real migration arrives in Task 7.
 
 **Files:**
+
 - Create: `apps/desktop/electron/database/migrations/types.ts`
 - Create: `apps/desktop/electron/database/services/MigrationService.ts`
 - Test: `apps/desktop/electron/database/services/MigrationService.test.ts`
 
 **Interfaces:**
+
 - Consumes: `Database`/`SqliteDatabase`, `MigrationError`, `TableNames.schemaMigrations`, `nowIso`.
 - Produces:
   - `interface Migration { readonly version: number; readonly name: string; up(db: SqliteDatabase): void; down?(db: SqliteDatabase): void }`
@@ -1173,11 +1184,13 @@ git commit -m "feat(db): transactional migration service with history, drift det
 ### Task 7: Migration 001 — platform tables + registry
 
 **Files:**
+
 - Create: `apps/desktop/electron/database/migrations/001-create-platform-tables.ts`
 - Create: `apps/desktop/electron/database/migrations/registry.ts`
 - Test: `apps/desktop/electron/database/migrations/001-create-platform-tables.test.ts`
 
 **Interfaces:**
+
 - Consumes: `Migration`, `MigrationService`, `TableNames`.
 - Produces:
   - `createPlatformTables: Migration` (version 1).
@@ -1446,10 +1459,12 @@ git commit -m "feat(db): migration 001 — platform tables, constraints, documen
 ### Task 8: TransactionManager
 
 **Files:**
+
 - Create: `apps/desktop/electron/database/transaction/TransactionManager.ts`
 - Test: `apps/desktop/electron/database/transaction/TransactionManager.test.ts`
 
 **Interfaces:**
+
 - Consumes: `SqliteDatabase`, `TransactionError`, `wrapSqliteError`.
 - Produces: `class TransactionManager { constructor(db: SqliteDatabase); run<T>(work: () => T): T; runImmediate<T>(work: () => T): T; runExclusive<T>(work: () => T): T }`.
 - Design decision (document in code + docs): explicit `begin()/commit()/rollback()` handles are intentionally **not** exposed — a callback API makes a leaked open transaction unrepresentable, which is how the "no connection leaks" guarantee extends to transactions. Nested `run` calls become SAVEPOINTs automatically (better-sqlite3 semantics). Errors thrown by `work` propagate unchanged after rollback so callers keep their own error types; only transaction-machinery failures surface as `TransactionError`/taxonomy errors.
@@ -1628,10 +1643,12 @@ git commit -m "feat(db): callback-scoped transaction manager with savepoint nest
 ### Task 9: Metadata seed (device row, sync_metadata singleton, default settings)
 
 **Files:**
+
 - Create: `apps/desktop/electron/database/seed/initializeMetadata.ts`
 - Test: `apps/desktop/electron/database/seed/initializeMetadata.test.ts`
 
 **Interfaces:**
+
 - Consumes: migrated database (Task 7), `newId`, `nowIso`, `DATABASE_VERSION`, `TableNames`.
 - Produces:
   - `interface DeviceInfo { deviceName: string; platform: string; osVersion: string; appVersion: string }`
@@ -1777,9 +1794,7 @@ export function initializeMetadata(
     const now = nowIso();
 
     const existing = db
-      .prepare(
-        `SELECT id, deviceName, osVersion, appVersion FROM ${TableNames.devices} LIMIT 1`,
-      )
+      .prepare(`SELECT id, deviceName, osVersion, appVersion FROM ${TableNames.devices} LIMIT 1`)
       .get() as DeviceRow | undefined;
 
     let deviceId: string;
@@ -1791,7 +1806,15 @@ export function initializeMetadata(
         `INSERT INTO ${TableNames.devices}
          (id, deviceName, platform, osVersion, appVersion, createdAt, updatedAt)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      ).run(deviceId, device.deviceName, device.platform, device.osVersion, device.appVersion, now, now);
+      ).run(
+        deviceId,
+        device.deviceName,
+        device.platform,
+        device.osVersion,
+        device.appVersion,
+        now,
+        now,
+      );
     } else {
       deviceId = existing.id;
       const changed =
@@ -1848,10 +1871,12 @@ git commit -m "feat(db): idempotent metadata seed — device identity, sync sing
 ### Task 10: DatabaseManager (lifecycle orchestrator)
 
 **Files:**
+
 - Create: `apps/desktop/electron/database/DatabaseManager.ts`
 - Test: `apps/desktop/electron/database/DatabaseManager.test.ts`
 
 **Interfaces:**
+
 - Consumes: everything above.
 - Produces:
   - `interface DatabaseLogger { info(message: string): void; warn(message: string): void; error(message: string, error?: unknown): void }`
@@ -2129,6 +2154,7 @@ git commit -m "feat(db): DatabaseManager lifecycle orchestrator with audit trail
 ### Task 11: BackupService + restore
 
 **Files:**
+
 - Create: `apps/desktop/electron/database/backup/BackupService.ts`
 - Create: `apps/desktop/electron/database/backup/backupFileName.ts`
 - Test: `apps/desktop/electron/database/backup/BackupService.test.ts`
@@ -2137,6 +2163,7 @@ git commit -m "feat(db): DatabaseManager lifecycle orchestrator with audit trail
 (Backup gets its own `backup/` folder per the phase spec's suggested structure.)
 
 **Interfaces:**
+
 - Consumes: `SqliteDatabase`, `BackupError`, `nowIso`.
 - Produces:
   - `buildBackupFileName(date: Date, label?: string): string` — `nemis-YYYY-MM-DDTHH-mm-ss[-label].db`, label sanitized to `[a-z0-9-]`.
@@ -2186,7 +2213,7 @@ describe('BackupService', () => {
 
   beforeEach(() => {
     test = createTestDatabase();
-    test.db.raw.exec("CREATE TABLE notes (id TEXT PRIMARY KEY, body TEXT)");
+    test.db.raw.exec('CREATE TABLE notes (id TEXT PRIMARY KEY, body TEXT)');
     test.db.raw.prepare("INSERT INTO notes VALUES ('1', 'hello')").run();
     backupsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nemis-backups-'));
     service = new BackupService(test.db.raw, backupsDir);
@@ -2388,10 +2415,12 @@ git commit -m "feat(db): online backup with validation, newest-first listing, sa
 ### Task 12: DatabaseHealthService
 
 **Files:**
+
 - Create: `apps/desktop/electron/database/services/DatabaseHealthService.ts`
 - Test: `apps/desktop/electron/database/services/DatabaseHealthService.test.ts`
 
 **Interfaces:**
+
 - Consumes: `SqliteDatabase`.
 - Produces:
   - `interface HealthReport { ok: boolean; quickCheck: string; foreignKeyViolations: number; pageCount: number; pageSize: number; databaseSizeBytes: number; walSizeBytes: number; schemaVersion: number; checkedAt: string }`
@@ -2545,9 +2574,11 @@ git commit -m "feat(db): health service — quick check, fk violations, size sta
 ### Task 13: Wire the platform into main.ts
 
 **Files:**
+
 - Modify: `apps/desktop/electron/main/main.ts`
 
 **Interfaces:**
+
 - Consumes: `DatabaseManager`, `DeviceInfo`, existing `logger`/`loadConfig`.
 - Produces: database initialized after `initLogger` and before any window; clean shutdown on `will-quit`; fatal DB failure → error dialog + quit. No IPC exposure (no repositories this phase).
 
@@ -2568,27 +2599,27 @@ import { DatabaseManager } from '@app/database/DatabaseManager';
 Inside `bootstrap()`, next to `let mainWindow`:
 
 ```ts
-  let databaseManager: DatabaseManager | null = null;
+let databaseManager: DatabaseManager | null = null;
 ```
 
 Inside `.then(() => { ... })`, immediately after `logger.info(...)`:
 
 ```ts
-      databaseManager = new DatabaseManager({
-        userDataDir: app.getPath('userData'),
-        device: {
-          deviceName: os.hostname(),
-          platform: process.platform,
-          osVersion: os.release(),
-          appVersion: app.getVersion(),
-        },
-        log: {
-          info: (message) => logger.info(message),
-          warn: (message) => logger.warn(message),
-          error: (message, error) => logger.error(message, error),
-        },
-      });
-      databaseManager.initialize();
+databaseManager = new DatabaseManager({
+  userDataDir: app.getPath('userData'),
+  device: {
+    deviceName: os.hostname(),
+    platform: process.platform,
+    osVersion: os.release(),
+    appVersion: app.getVersion(),
+  },
+  log: {
+    info: (message) => logger.info(message),
+    warn: (message) => logger.warn(message),
+    error: (message, error) => logger.error(message, error),
+  },
+});
+databaseManager.initialize();
 ```
 
 Extend the existing `.catch` to surface database failures to the user before quitting:
@@ -2608,13 +2639,13 @@ Extend the existing `.catch` to surface database failures to the user before qui
 Add the shutdown hook beside `window-all-closed`:
 
 ```ts
-  app.on('will-quit', () => {
-    try {
-      databaseManager?.shutdown();
-    } catch (error) {
-      logger.error('Database shutdown failed:', error);
-    }
-  });
+app.on('will-quit', () => {
+  try {
+    databaseManager?.shutdown();
+  } catch (error) {
+    logger.error('Database shutdown failed:', error);
+  }
+});
 ```
 
 - [ ] **Step 2: Verify gate**
@@ -2640,6 +2671,7 @@ git commit -m "feat(app): initialize database platform on startup, close cleanly
 ### Task 14: Documentation
 
 **Files:**
+
 - Create: `docs/database.md`
 - Modify: `docs/conventions.md` (folder-responsibilities table: add the database row)
 
@@ -2682,20 +2714,20 @@ at shutdown time.
 ## File locations
 
 - Database: `<userData>/database/nemis.db` (+ `-wal`, `-shm` siblings)
-- Backups:  `<userData>/database/backups/nemis-<UTC-timestamp>[-label].db`
+- Backups: `<userData>/database/backups/nemis-<UTC-timestamp>[-label].db`
 
 ## PRAGMAs (see constants/pragmas.ts for full rationale)
 
-| PRAGMA | Value | Why |
-| --- | --- | --- |
-| journal_mode | WAL | non-blocking reads, crash safety, online backup |
-| synchronous | NORMAL | safe with WAL; FULL doubles fsync for no integrity gain |
-| foreign_keys | ON | per-connection; enforced and verified at open |
-| busy_timeout | 5000 ms | wait, don't fail, on rare cross-process contention |
-| cache_size | -64000 (64 MiB) | desktop RAM is cheap; largest query-speed lever |
-| temp_store | MEMORY | temp b-trees in RAM |
-| wal_autocheckpoint | 1000 pages | default, made explicit |
-| journal_size_limit | 64 MiB | caps WAL growth after large transactions |
+| PRAGMA             | Value           | Why                                                     |
+| ------------------ | --------------- | ------------------------------------------------------- |
+| journal_mode       | WAL             | non-blocking reads, crash safety, online backup         |
+| synchronous        | NORMAL          | safe with WAL; FULL doubles fsync for no integrity gain |
+| foreign_keys       | ON              | per-connection; enforced and verified at open           |
+| busy_timeout       | 5000 ms         | wait, don't fail, on rare cross-process contention      |
+| cache_size         | -64000 (64 MiB) | desktop RAM is cheap; largest query-speed lever         |
+| temp_store         | MEMORY          | temp b-trees in RAM                                     |
+| wal_autocheckpoint | 1000 pages      | default, made explicit                                  |
+| journal_size_limit | 64 MiB          | caps WAL growth after large transactions                |
 
 ## Migrations
 
@@ -2792,6 +2824,7 @@ git commit -m "docs(db): local data platform architecture, pragmas, migration/ba
 ### Task 15: Full verification gate + packaged-app proof + phase report
 
 **Files:**
+
 - Create: `docs/phase-2-report-2026-07-15.md`
 
 - [ ] **Step 1: Run the complete gate**
@@ -2810,6 +2843,7 @@ pnpm make
 ```
 
 Expected: build succeeds (script self-heals the Squirrel 7z gap). Then launch the packaged exe from `apps/desktop/out/nemis-desktop-win32-x64/nemis-desktop.exe`, let the window appear, and quit. Verify:
+
 - `%APPDATA%\nemis-desktop\database\nemis.db` exists.
 - electron-log file (`%APPDATA%\nemis-desktop\logs\main.log`) contains `Database ready` and `Closing database`.
 - Confirm `better_sqlite3.node` was auto-unpacked: `apps/desktop/out/nemis-desktop-win32-x64/resources/app.asar.unpacked/node_modules/better-sqlite3/` exists.
@@ -2831,17 +2865,17 @@ git commit -m "docs: Phase 2 report — deliverables, debt register, Phase 3 rec
 
 ## Acceptance-criteria coverage map
 
-| Criterion | Where proven |
-| --- | --- |
-| Database opens successfully | Task 5 tests; Task 13/15 smoke |
-| Foreign keys enabled | Task 5 test (`foreign_keys = 1`, verified at open) |
-| WAL mode enabled | Task 5 test (`journal_mode = wal`) |
-| Migration system works | Task 6 tests |
-| Migration history recorded | Task 6 (`schema_migrations` + history assertions) |
-| Database closes cleanly | Task 5 idempotent close; Task 10 shutdown; Task 15 log proof |
-| Transactions work | Task 8 tests |
-| Native module works packaged | Task 15 (`pnpm make` + unpacked `.node` + log proof) |
-| No connection leaks | Task 10 failure-path test; callback-scoped transactions |
-| TypeScript passes | every task gate; Task 15 |
-| ESLint passes | every task gate; Task 15 |
-| Production build succeeds | Task 15 (`pnpm make`) |
+| Criterion                    | Where proven                                                 |
+| ---------------------------- | ------------------------------------------------------------ |
+| Database opens successfully  | Task 5 tests; Task 13/15 smoke                               |
+| Foreign keys enabled         | Task 5 test (`foreign_keys = 1`, verified at open)           |
+| WAL mode enabled             | Task 5 test (`journal_mode = wal`)                           |
+| Migration system works       | Task 6 tests                                                 |
+| Migration history recorded   | Task 6 (`schema_migrations` + history assertions)            |
+| Database closes cleanly      | Task 5 idempotent close; Task 10 shutdown; Task 15 log proof |
+| Transactions work            | Task 8 tests                                                 |
+| Native module works packaged | Task 15 (`pnpm make` + unpacked `.node` + log proof)         |
+| No connection leaks          | Task 10 failure-path test; callback-scoped transactions      |
+| TypeScript passes            | every task gate; Task 15                                     |
+| ESLint passes                | every task gate; Task 15                                     |
+| Production build succeeds    | Task 15 (`pnpm make`)                                        |

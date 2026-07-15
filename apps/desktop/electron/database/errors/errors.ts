@@ -18,7 +18,11 @@ export interface DatabaseErrorOptions {
 export class DatabaseError extends Error {
   readonly code: DatabaseErrorCode;
 
-  constructor(message: string, code: DatabaseErrorCode = 'DB_UNKNOWN', options?: DatabaseErrorOptions) {
+  constructor(
+    message: string,
+    code: DatabaseErrorCode = 'DB_UNKNOWN',
+    options?: DatabaseErrorOptions,
+  ) {
     super(message, options);
     this.name = new.target.name;
     this.code = code;

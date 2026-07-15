@@ -44,9 +44,7 @@ export function initializeMetadata(
     const now = nowIso();
 
     const existing = db
-      .prepare(
-        `SELECT id, deviceName, osVersion, appVersion FROM ${TableNames.devices} LIMIT 1`,
-      )
+      .prepare(`SELECT id, deviceName, osVersion, appVersion FROM ${TableNames.devices} LIMIT 1`)
       .get() as DeviceRow | undefined;
 
     let deviceId: string;
@@ -58,7 +56,15 @@ export function initializeMetadata(
         `INSERT INTO ${TableNames.devices}
          (id, deviceName, platform, osVersion, appVersion, createdAt, updatedAt)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      ).run(deviceId, device.deviceName, device.platform, device.osVersion, device.appVersion, now, now);
+      ).run(
+        deviceId,
+        device.deviceName,
+        device.platform,
+        device.osVersion,
+        device.appVersion,
+        now,
+        now,
+      );
     } else {
       deviceId = existing.id;
       const changed =

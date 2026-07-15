@@ -14,7 +14,7 @@ describe('BackupService', () => {
 
   beforeEach(() => {
     test = createTestDatabase();
-    test.db.raw.exec("CREATE TABLE notes (id TEXT PRIMARY KEY, body TEXT)");
+    test.db.raw.exec('CREATE TABLE notes (id TEXT PRIMARY KEY, body TEXT)');
     test.db.raw.prepare("INSERT INTO notes VALUES ('1', 'hello')").run();
     backupsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nemis-backups-'));
     service = new BackupService(test.db.raw, backupsDir);

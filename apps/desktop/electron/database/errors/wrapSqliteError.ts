@@ -1,9 +1,4 @@
-import {
-  ConnectionError,
-  ConstraintError,
-  DatabaseError,
-  IntegrityError,
-} from './errors';
+import { ConnectionError, ConstraintError, DatabaseError, IntegrityError } from './errors';
 
 interface CodedError extends Error {
   code: string;
