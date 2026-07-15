@@ -84,7 +84,11 @@ export class DatabaseManager {
     } catch (error) {
       this.#state = 'failed';
       this.#log.error('Database initialization failed', error);
-      this.#db?.close();
+      try {
+        this.#db?.close();
+      } catch (closeError) {
+        this.#log.warn(`Cleanup close failed after init failure: ${String(closeError)}`);
+      }
       this.#db = null;
       this.#transactions = null;
       throw error;
