@@ -117,6 +117,9 @@ importers:
       electron:
         specifier: 43.1.0
         version: 43.1.0
+      electron-winstaller:
+        specifier: ^5.4.4
+        version: 5.4.4
       postcss:
         specifier: ^8.4.49
         version: 8.5.19
@@ -5556,7 +5559,6 @@ snapshots:
       '@electron/windows-sign': 1.2.2
     transitivePeerDependencies:
       - supports-color
-    optional: true
 
   electron@43.1.0:
     dependencies:
@@ -5991,7 +5993,6 @@ snapshots:
       graceful-fs: 4.2.11
       jsonfile: 4.0.0
       universalify: 0.1.2
-    optional: true
 
   fs-extra@8.1.0:
     dependencies:
@@ -6660,7 +6661,6 @@ snapshots:
   mkdirp@0.5.6:
     dependencies:
       minimist: 1.2.8
-    optional: true
 
   mkdirp@1.0.4: {}
 
@@ -7106,7 +7106,6 @@ snapshots:
   rimraf@2.6.3:
     dependencies:
       glob: 7.2.3
-    optional: true
 
   rimraf@3.0.2:
     dependencies:
@@ -7525,7 +7524,6 @@ snapshots:
     dependencies:
       mkdirp: 0.5.6
       rimraf: 2.6.3
-    optional: true
 
   terser@5.49.0:
     dependencies:

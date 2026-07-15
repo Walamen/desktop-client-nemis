@@ -11,3 +11,14 @@ export function denyPermissionRequests(): void {
     callback(false);
   });
 }
+
+/**
+ * Synchronous twin of the request handler: some APIs consult
+ * checkPermission without firing a request event. Deny those too.
+ */
+export function denyPermissionChecks(): void {
+  session.defaultSession.setPermissionCheckHandler((_webContents, permission) => {
+    logger.warn(`Denied permission check: ${permission}`);
+    return false;
+  });
+}

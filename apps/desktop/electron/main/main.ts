@@ -4,7 +4,7 @@ import { loadConfig } from '@app/config/env';
 import { registerIpcHandlers } from '@app/ipc/registrar';
 import { initLogger, logger } from '@app/services/logger';
 import { hardenWebContents } from '@app/security/hardenWindow';
-import { denyPermissionRequests } from '@app/security/permissions';
+import { denyPermissionRequests, denyPermissionChecks } from '@app/security/permissions';
 import { installProcessSafetyNets } from '@app/main/safetyNets';
 import { createMainWindow, RENDERER_ORIGIN } from '@app/windows/mainWindow';
 import { registerAppProtocolScheme, registerAppProtocolHandler } from '@app/main/appProtocol';
@@ -58,6 +58,7 @@ function bootstrap(): void {
       logger.info(`NEMIS Desktop starting (dev=${config.isDev})`);
 
       denyPermissionRequests();
+      denyPermissionChecks();
 
       if (!config.isDev) {
         registerAppProtocolHandler();

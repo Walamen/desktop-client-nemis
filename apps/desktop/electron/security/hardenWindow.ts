@@ -19,4 +19,11 @@ export function hardenWebContents(contents: WebContents, allowedOrigins: readonl
       event.preventDefault();
     }
   });
+
+  contents.on('will-redirect', (event, url) => {
+    if (!isAllowedNavigation(url, allowedOrigins)) {
+      logger.warn(`Blocked redirect to: ${url}`);
+      event.preventDefault();
+    }
+  });
 }
