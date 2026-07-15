@@ -16,7 +16,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "rebuild:node": "pnpm rebuild better-sqlite3",
+    "rebuild:node": "cd node_modules/better-sqlite3 && npx prebuild-install --verbose",
     "rebuild:electron": "cd node_modules/better-sqlite3 && npx prebuild-install --runtime=electron --target=42.7.0 --verbose"
   },
   "devDependencies": {
