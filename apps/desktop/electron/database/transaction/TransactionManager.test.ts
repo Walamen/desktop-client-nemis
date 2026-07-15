@@ -62,4 +62,27 @@ describe('TransactionManager', () => {
     });
     expect(count()).toBe(1);
   });
+
+  it('propagates native SQLite errors thrown by work unchanged after rollback', () => {
+    test.db.raw.prepare("INSERT INTO items VALUES ('dup', 'a')").run();
+    let caught: unknown;
+    try {
+      tx.run(() => {
+        test.db.raw.prepare("INSERT INTO items VALUES ('x', 'b')").run();
+        test.db.raw.prepare("INSERT INTO items VALUES ('dup', 'c')").run();
+      });
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(Error);
+    expect((caught as { code?: string }).code).toContain('SQLITE_CONSTRAINT');
+    expect(count()).toBe(1);
+  });
+
+  it('runExclusive acquires a write transaction and commits', () => {
+    tx.runExclusive(() => {
+      test.db.raw.prepare("INSERT INTO items VALUES ('1', 'a')").run();
+    });
+    expect(count()).toBe(1);
+  });
 });

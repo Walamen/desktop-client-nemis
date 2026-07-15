@@ -38,13 +38,15 @@ export class TransactionManager {
   }
 
   #exec<T>(work: () => T, mode: TransactionMode): T {
-    let inWork = false;
+    let workThrew = false;
+    let workError: unknown;
     const marked = (): T => {
-      inWork = true;
       try {
         return work();
-      } finally {
-        inWork = false;
+      } catch (error) {
+        workThrew = true;
+        workError = error;
+        throw error;
       }
     };
     try {
@@ -58,8 +60,11 @@ export class TransactionManager {
           return transaction.exclusive();
       }
     } catch (error) {
-      if (inWork || error instanceof DatabaseError) {
-        throw error; // work's own error (already rolled back) or already wrapped
+      if (workThrew && error === workError) {
+        throw error; // work's own error — already rolled back, propagate unchanged
+      }
+      if (error instanceof DatabaseError) {
+        throw error;
       }
       if (error instanceof Error && 'code' in error) {
         throw wrapSqliteError(error, `transaction (${mode})`);
