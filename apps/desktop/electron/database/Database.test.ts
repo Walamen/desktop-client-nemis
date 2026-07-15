@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { Database } from './Database';
-import { IntegrityError } from './errors/errors';
+import { ConnectionError, IntegrityError } from './errors/errors';
 import { createTestDatabase } from './testing/createTestDatabase';
 
 describe('Database', () => {
@@ -41,6 +41,31 @@ describe('Database', () => {
     db.close();
     fs.writeFileSync(filePath, 'this is not a database');
     expect(() => Database.open({ filePath })).toThrow(IntegrityError);
+    cleanup();
+  });
+
+  it('raw getter throws ConnectionError after close', () => {
+    const { db, cleanup } = createTestDatabase();
+    db.close();
+    expect(() => db.raw).toThrow(ConnectionError);
+    cleanup();
+  });
+
+  it('opens an existing database readonly: reads work, writes fail, close is clean', () => {
+    const { db, filePath, cleanup } = createTestDatabase();
+    db.raw.exec('CREATE TABLE t (id TEXT PRIMARY KEY)');
+    db.raw.prepare("INSERT INTO t VALUES ('1')").run();
+    db.close();
+
+    const ro = Database.open({ filePath, readonly: true });
+    try {
+      const row = ro.raw.prepare('SELECT id FROM t').get() as { id: string };
+      expect(row.id).toBe('1');
+      expect(() => ro.raw.prepare("INSERT INTO t VALUES ('2')").run()).toThrow();
+    } finally {
+      ro.close();
+    }
+    expect(ro.isOpen).toBe(false);
     cleanup();
   });
 });
