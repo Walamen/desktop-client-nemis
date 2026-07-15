@@ -55,7 +55,7 @@ apps/desktop/forge.config.ts          # packageAfterCopy hook for the native mod
 docs/database.md                      # architecture reference (this report summarizes it)
 ```
 
-83 tests across 15 files land under `database/` (out of 77 total in the workspace — the other 62 pre-date Phase 2).
+49 tests across 11 files land under `database/` (out of 77 total in the workspace — the other 28 pre-date Phase 2).
 
 ## 2. Architecture
 
