@@ -41,6 +41,9 @@ export class SelectBuilder {
   }
 
   columns(...columns: string[]): this {
+    if (columns.length === 0) {
+      throw new QueryError('columns() requires at least one column');
+    }
     this.#columns = columns.map(assertIdentifier);
     return this;
   }
@@ -109,11 +112,11 @@ export class InsertBuilder {
     if (this.#row === null || Object.keys(this.#row).length === 0) {
       throw new QueryError('INSERT requires at least one column');
     }
-    const row = this.#row;
-    const columns = Object.keys(row).map(assertIdentifier);
+    const entries = Object.entries(this.#row);
+    const columns = entries.map(([column]) => assertIdentifier(column));
     return {
       sql: `INSERT INTO ${this.#table} (${columns.join(', ')}) VALUES (${columns.map(() => '?').join(', ')})`,
-      params: columns.map((column) => row[column]),
+      params: entries.map(([, value]) => value),
     };
   }
 }
@@ -144,9 +147,9 @@ export class UpdateBuilder {
     if (this.#predicates.length === 0) {
       throw new QueryError('UPDATE requires a WHERE clause — full-table updates are not allowed');
     }
-    const changes = this.#changes;
-    const columns = Object.keys(changes).map(assertIdentifier);
-    const params: SqlValue[] = columns.map((column) => changes[column]);
+    const entries = Object.entries(this.#changes);
+    const columns = entries.map(([column]) => assertIdentifier(column));
+    const params: SqlValue[] = entries.map(([, value]) => value);
     let sql = `UPDATE ${this.#table} SET ${columns.map((column) => `${column} = ?`).join(', ')}`;
     sql += renderWhere(this.#predicates, params);
     return { sql, params };

@@ -47,6 +47,10 @@ describe('select', () => {
     expect(() => select('devices').columns('id; DROP TABLE x')).toThrow(QueryError);
     expect(() => select('devices').orderBy('a b')).toThrow(QueryError);
   });
+
+  it('rejects columns() called with no arguments', () => {
+    expect(() => select('devices').columns()).toThrow(QueryError);
+  });
 });
 
 describe('insertInto', () => {
