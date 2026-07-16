@@ -39,13 +39,19 @@ describe('translateDatabaseError', () => {
   });
 
   it('maps unique violations to DuplicateEntityError', () => {
-    const result = translateDatabaseError(sqliteError('SQLITE_CONSTRAINT_UNIQUE'), 'AppSetting.setByKey');
+    const result = translateDatabaseError(
+      sqliteError('SQLITE_CONSTRAINT_UNIQUE'),
+      'AppSetting.setByKey',
+    );
     expect(result).toBeInstanceOf(DuplicateEntityError);
     expect(result.code).toBe('REPO_DUPLICATE');
   });
 
   it('maps primary-key violations to DuplicateEntityError', () => {
-    const result = translateDatabaseError(sqliteError('SQLITE_CONSTRAINT_PRIMARYKEY'), 'Device.create');
+    const result = translateDatabaseError(
+      sqliteError('SQLITE_CONSTRAINT_PRIMARYKEY'),
+      'Device.create',
+    );
     expect(result).toBeInstanceOf(DuplicateEntityError);
   });
 
@@ -57,9 +63,12 @@ describe('translateDatabaseError', () => {
   });
 
   it('detects unique violation on the cause chain of an already-wrapped ConstraintError', () => {
-    const wrapped = new ConstraintError('ctx: database operation failed (SQLITE_CONSTRAINT_UNIQUE)', {
-      cause: sqliteError('SQLITE_CONSTRAINT_UNIQUE'),
-    });
+    const wrapped = new ConstraintError(
+      'ctx: database operation failed (SQLITE_CONSTRAINT_UNIQUE)',
+      {
+        cause: sqliteError('SQLITE_CONSTRAINT_UNIQUE'),
+      },
+    );
     expect(translateDatabaseError(wrapped, 'ctx')).toBeInstanceOf(DuplicateEntityError);
   });
 

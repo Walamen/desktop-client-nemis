@@ -53,7 +53,9 @@ describe('SqliteAuditLogRepository', () => {
   it('findInRange bounds by createdAt inclusively', () => {
     const entry = repo.append({ category: 'application', event: 'app.started' });
     expect(repo.findInRange(entry.createdAt, entry.createdAt)).toHaveLength(1);
-    expect(repo.findInRange('2000-01-01T00:00:00.000Z', '2000-12-31T00:00:00.000Z')).toHaveLength(0);
+    expect(repo.findInRange('2000-01-01T00:00:00.000Z', '2000-12-31T00:00:00.000Z')).toHaveLength(
+      0,
+    );
   });
 
   it('findPage returns a page with total', () => {

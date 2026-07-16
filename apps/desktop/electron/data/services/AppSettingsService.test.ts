@@ -27,7 +27,13 @@ function makeMocks() {
   const auditRepo: IAuditLogRepository = {
     append: (input) => {
       audits.push(input);
-      return { id: 'a1', category: input.category, event: input.event, details: null, createdAt: 't0' } satisfies AuditLogEntry;
+      return {
+        id: 'a1',
+        category: input.category,
+        event: input.event,
+        details: null,
+        createdAt: 't0',
+      } satisfies AuditLogEntry;
     },
     findByCategory: () => [],
     findInRange: () => [],
@@ -45,7 +51,11 @@ function makeMocks() {
 describe('AppSettingsService', () => {
   it('get returns the stored value or null', async () => {
     const { settingsRepo, auditRepo, transactions } = makeMocks();
-    const service = new AppSettingsService({ appSettings: settingsRepo, auditLog: auditRepo, transactions });
+    const service = new AppSettingsService({
+      appSettings: settingsRepo,
+      auditLog: auditRepo,
+      transactions,
+    });
     await expect(service.get('missing')).resolves.toBeNull();
     settingsRepo.setByKey('theme', 'dark');
     await expect(service.get('theme')).resolves.toBe('dark');
@@ -53,7 +63,11 @@ describe('AppSettingsService', () => {
 
   it('set writes the setting and an audit entry together', async () => {
     const { settingsRepo, auditRepo, transactions, audits } = makeMocks();
-    const service = new AppSettingsService({ appSettings: settingsRepo, auditLog: auditRepo, transactions });
+    const service = new AppSettingsService({
+      appSettings: settingsRepo,
+      auditLog: auditRepo,
+      transactions,
+    });
     const setting = await service.set('theme', 'dark');
     expect(setting.value).toBe('dark');
     expect(audits).toHaveLength(1);
@@ -63,7 +77,11 @@ describe('AppSettingsService', () => {
 
   it('remove reports whether a setting existed', async () => {
     const { settingsRepo, auditRepo, transactions } = makeMocks();
-    const service = new AppSettingsService({ appSettings: settingsRepo, auditLog: auditRepo, transactions });
+    const service = new AppSettingsService({
+      appSettings: settingsRepo,
+      auditLog: auditRepo,
+      transactions,
+    });
     settingsRepo.setByKey('theme', 'dark');
     await expect(service.remove('theme')).resolves.toBe(true);
     await expect(service.remove('theme')).resolves.toBe(false);

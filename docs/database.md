@@ -3,6 +3,10 @@
 SQLite is the local working database only. PostgreSQL remains the national
 authoritative database; nothing here is a source of truth.
 
+> Phase 3 added the Data Access Layer on top of this platform — see
+> `docs/data-access.md`. Application code must go through repositories;
+> only the data layer touches `DatabaseManager.connection` directly.
+
 ## Architecture
 
     main.ts

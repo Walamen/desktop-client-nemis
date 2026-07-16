@@ -1,12 +1,11 @@
 import { DatabaseError } from '../../database/errors/errors';
 import { wrapSqliteError } from '../../database/errors/wrapSqliteError';
-import {
-  DuplicateEntityError,
-  RepositoryError,
-  TransactionFailureError,
-} from './repositoryErrors';
+import { DuplicateEntityError, RepositoryError, TransactionFailureError } from './repositoryErrors';
 
-const UNIQUE_VIOLATION_CODES = new Set(['SQLITE_CONSTRAINT_UNIQUE', 'SQLITE_CONSTRAINT_PRIMARYKEY']);
+const UNIQUE_VIOLATION_CODES = new Set([
+  'SQLITE_CONSTRAINT_UNIQUE',
+  'SQLITE_CONSTRAINT_PRIMARYKEY',
+]);
 
 function hasUniqueViolationInChain(error: unknown): boolean {
   const seen = new Set<unknown>();

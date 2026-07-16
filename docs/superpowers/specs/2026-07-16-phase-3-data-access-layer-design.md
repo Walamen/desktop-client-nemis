@@ -54,9 +54,9 @@ SQLite
 The DAL lives in `apps/desktop/electron/data/`, a sibling of the Phase 2
 `database/` directory:
 
-- `database/` (unchanged) — the *platform*: connection lifecycle, pragmas,
+- `database/` (unchanged) — the _platform_: connection lifecycle, pragmas,
   migrations, TransactionManager, backup.
-- `data/` (new) — the *gateway*: repositories, services, mappers, queries,
+- `data/` (new) — the _gateway_: repositories, services, mappers, queries,
   validators. Consumes only `DatabaseManager.connection` + `.transactions`;
   never constructs a `Database` or opens a connection (frozen Phase 2 convention).
 
@@ -89,13 +89,13 @@ implementation, mapper, validator. **Interfaces declare only the operations that
 make sense for that entity** — the interface is the contract; BaseRepository is
 shared machinery behind it.
 
-| Repository | Surface |
-|---|---|
-| `DeviceRepository` | `findById`, `findAll`, `create`, `update`, `exists`, `count` |
-| `AppSettingsRepository` | `getByKey`, `setByKey` (upsert), `getAll`, `deleteByKey` |
-| `SyncMetadataRepository` | `get()`, `update()` only — singleton row, seeded by the platform; no create/delete |
-| `SyncQueueRepository` | `enqueue`, `nextBatch(limit)` (oldest pending first, uses `idx_sync_queue_status_createdAt`), `markInFlight`, `markCompleted`, `markFailed` (increments `retryCount`), `countByStatus`, `purgeCompleted(olderThan)`; **also owns `sync_errors`**: `recordError`, `errorsForOperation` |
-| `AuditLogRepository` | `append`, `findByCategory`, `findInRange`, `count`, `prune(olderThan)` — append-only; no update/delete exposed |
+| Repository               | Surface                                                                                                                                                                                                                                                                               |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DeviceRepository`       | `findById`, `findAll`, `create`, `update`, `exists`, `count`                                                                                                                                                                                                                          |
+| `AppSettingsRepository`  | `getByKey`, `setByKey` (upsert), `getAll`, `deleteByKey`                                                                                                                                                                                                                              |
+| `SyncMetadataRepository` | `get()`, `update()` only — singleton row, seeded by the platform; no create/delete                                                                                                                                                                                                    |
+| `SyncQueueRepository`    | `enqueue`, `nextBatch(limit)` (oldest pending first, uses `idx_sync_queue_status_createdAt`), `markInFlight`, `markCompleted`, `markFailed` (increments `retryCount`), `countByStatus`, `purgeCompleted(olderThan)`; **also owns `sync_errors`**: `recordError`, `errorsForOperation` |
+| `AuditLogRepository`     | `append`, `findByCategory`, `findInRange`, `count`, `prune(olderThan)` — append-only; no update/delete exposed                                                                                                                                                                        |
 
 `sync_errors` belongs to the queue aggregate (errors only exist in the context of
 a queue operation); a dedicated repository can be split out in the sync phase if

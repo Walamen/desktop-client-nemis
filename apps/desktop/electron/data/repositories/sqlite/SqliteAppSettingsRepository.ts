@@ -43,7 +43,13 @@ export class SqliteAppSettingsRepository
       if (existing) {
         return this.updateById(existing.id, { value: serialized, updatedAt: now });
       }
-      return this.insertRow({ id: newId(), key, value: serialized, createdAt: now, updatedAt: now });
+      return this.insertRow({
+        id: newId(),
+        key,
+        value: serialized,
+        createdAt: now,
+        updatedAt: now,
+      });
     });
   }
 

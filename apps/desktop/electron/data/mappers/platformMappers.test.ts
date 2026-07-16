@@ -1,12 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { RepositoryError } from '../errors/repositoryErrors';
 import { parseJsonColumn, serializeJsonColumn } from './json';
-import {
-  appSettingMapper,
-  auditLogMapper,
-  deviceMapper,
-  syncQueueMapper,
-} from './platformMappers';
+import { appSettingMapper, auditLogMapper, deviceMapper, syncQueueMapper } from './platformMappers';
 
 describe('json column helpers', () => {
   it('parses stored JSON and passes NULL through', () => {

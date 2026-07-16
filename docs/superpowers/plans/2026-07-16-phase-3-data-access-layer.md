@@ -29,11 +29,13 @@
 ### Task 1: Repository error taxonomy + error translation
 
 **Files:**
+
 - Create: `apps/desktop/electron/data/errors/repositoryErrors.ts`
 - Create: `apps/desktop/electron/data/errors/translateError.ts`
 - Test: `apps/desktop/electron/data/errors/translateError.test.ts`
 
 **Interfaces:**
+
 - Consumes: `DatabaseError` (`electron/database/errors/errors.ts`), `wrapSqliteError` (`electron/database/errors/wrapSqliteError.ts`).
 - Produces: `RepositoryError` (base, `code: RepositoryErrorCode`, default `'REPO_UNKNOWN'`), `EntityNotFoundError` (`REPO_NOT_FOUND`), `DuplicateEntityError` (`REPO_DUPLICATE`), `TransactionFailureError` (`REPO_TRANSACTION`), `QueryError` (`REPO_QUERY`), `ValidationError` (`REPO_VALIDATION`, carries `issues: readonly ValidationIssue[]`), `ValidationIssue { field: string; message: string }`, `translateDatabaseError(error: unknown, context: string): RepositoryError`. All subclass constructors are `(message: string, options?: { cause?: unknown })` except `ValidationError(message, issues, options?)`.
 
@@ -83,13 +85,19 @@ describe('translateDatabaseError', () => {
   });
 
   it('maps unique violations to DuplicateEntityError', () => {
-    const result = translateDatabaseError(sqliteError('SQLITE_CONSTRAINT_UNIQUE'), 'AppSetting.setByKey');
+    const result = translateDatabaseError(
+      sqliteError('SQLITE_CONSTRAINT_UNIQUE'),
+      'AppSetting.setByKey',
+    );
     expect(result).toBeInstanceOf(DuplicateEntityError);
     expect(result.code).toBe('REPO_DUPLICATE');
   });
 
   it('maps primary-key violations to DuplicateEntityError', () => {
-    const result = translateDatabaseError(sqliteError('SQLITE_CONSTRAINT_PRIMARYKEY'), 'Device.create');
+    const result = translateDatabaseError(
+      sqliteError('SQLITE_CONSTRAINT_PRIMARYKEY'),
+      'Device.create',
+    );
     expect(result).toBeInstanceOf(DuplicateEntityError);
   });
 
@@ -101,9 +109,12 @@ describe('translateDatabaseError', () => {
   });
 
   it('detects unique violation on the cause chain of an already-wrapped ConstraintError', () => {
-    const wrapped = new ConstraintError('ctx: database operation failed (SQLITE_CONSTRAINT_UNIQUE)', {
-      cause: sqliteError('SQLITE_CONSTRAINT_UNIQUE'),
-    });
+    const wrapped = new ConstraintError(
+      'ctx: database operation failed (SQLITE_CONSTRAINT_UNIQUE)',
+      {
+        cause: sqliteError('SQLITE_CONSTRAINT_UNIQUE'),
+      },
+    );
     expect(translateDatabaseError(wrapped, 'ctx')).toBeInstanceOf(DuplicateEntityError);
   });
 
@@ -221,13 +232,12 @@ Create `apps/desktop/electron/data/errors/translateError.ts`:
 ```ts
 import { DatabaseError } from '../../database/errors/errors';
 import { wrapSqliteError } from '../../database/errors/wrapSqliteError';
-import {
-  DuplicateEntityError,
-  RepositoryError,
-  TransactionFailureError,
-} from './repositoryErrors';
+import { DuplicateEntityError, RepositoryError, TransactionFailureError } from './repositoryErrors';
 
-const UNIQUE_VIOLATION_CODES = new Set(['SQLITE_CONSTRAINT_UNIQUE', 'SQLITE_CONSTRAINT_PRIMARYKEY']);
+const UNIQUE_VIOLATION_CODES = new Set([
+  'SQLITE_CONSTRAINT_UNIQUE',
+  'SQLITE_CONSTRAINT_PRIMARYKEY',
+]);
 
 function hasUniqueViolationInChain(error: unknown): boolean {
   const seen = new Set<unknown>();
@@ -283,10 +293,12 @@ git commit -m "feat(data): repository error taxonomy and database-error translat
 ### Task 2: Validation core
 
 **Files:**
+
 - Create: `apps/desktop/electron/data/validators/core.ts`
 - Test: `apps/desktop/electron/data/validators/core.test.ts`
 
 **Interfaces:**
+
 - Consumes: `ValidationError`, `ValidationIssue` from `../errors/repositoryErrors` (Task 1).
 - Produces: `ValidationRule = (value: unknown, field: string) => ValidationIssue | null`; rule factories `required()`, `isString()`, `minLength(n)`, `maxLength(n)`, `oneOf(allowed: readonly string[])`, `isIsoDate()`, `isNonNegativeInt()`, `isJsonSerializable()`; `ValidationSchema<T> = { readonly [K in keyof T]-?: readonly ValidationRule[] }`; `createValidator<T extends object>(entityName: string, schema: ValidationSchema<T>): (input: T) => void` (throws `ValidationError`).
 - Convention: every rule except `required()` passes `null`/`undefined` — optional fields are only checked when present.
@@ -541,11 +553,13 @@ git commit -m "feat(data): composable persistence validation core" -m "Co-Author
 ### Task 3: Query builder — identifiers and predicates
 
 **Files:**
+
 - Create: `apps/desktop/electron/data/queries/identifiers.ts`
 - Create: `apps/desktop/electron/data/queries/predicates.ts`
 - Test: `apps/desktop/electron/data/queries/predicates.test.ts`
 
 **Interfaces:**
+
 - Consumes: `QueryError` from `../errors/repositoryErrors` (Task 1).
 - Produces: `assertIdentifier(name: string): string`; `SqlValue = string | number | null`; `Predicate` (discriminated union); predicate factories `eq/neq/gt/gte/lt/lte(column, value)`, `like(column, pattern)`, `inList(column, values)`, `isNull(column)`, `isNotNull(column)`, `and(...predicates)`, `or(...predicates)`; `SqlFragment { sql: string; params: SqlValue[] }`; `renderPredicate(predicate: Predicate): SqlFragment`.
 
@@ -624,7 +638,10 @@ describe('renderPredicate', () => {
   });
 
   it('renders IS NULL / IS NOT NULL without params', () => {
-    expect(renderPredicate(isNull('lastSyncAt'))).toEqual({ sql: 'lastSyncAt IS NULL', params: [] });
+    expect(renderPredicate(isNull('lastSyncAt'))).toEqual({
+      sql: 'lastSyncAt IS NULL',
+      params: [],
+    });
     expect(renderPredicate(isNotNull('payload'))).toEqual({
       sql: 'payload IS NOT NULL',
       params: [],
@@ -689,11 +706,20 @@ export type SqlValue = string | number | null;
 type CompareOp = '=' | '!=' | '>' | '>=' | '<' | '<=';
 
 export type Predicate =
-  | { readonly kind: 'compare'; readonly column: string; readonly op: CompareOp; readonly value: SqlValue }
+  | {
+      readonly kind: 'compare';
+      readonly column: string;
+      readonly op: CompareOp;
+      readonly value: SqlValue;
+    }
   | { readonly kind: 'like'; readonly column: string; readonly pattern: string }
   | { readonly kind: 'in'; readonly column: string; readonly values: readonly SqlValue[] }
   | { readonly kind: 'null'; readonly column: string; readonly negated: boolean }
-  | { readonly kind: 'group'; readonly join: 'AND' | 'OR'; readonly predicates: readonly Predicate[] };
+  | {
+      readonly kind: 'group';
+      readonly join: 'AND' | 'OR';
+      readonly predicates: readonly Predicate[];
+    };
 
 function compare(column: string, op: CompareOp, value: SqlValue): Predicate {
   return { kind: 'compare', column, op, value };
@@ -808,10 +834,12 @@ git commit -m "feat(data): query predicates with identifier validation and param
 ### Task 4: Query builder — statement builders
 
 **Files:**
+
 - Create: `apps/desktop/electron/data/queries/builders.ts`
 - Test: `apps/desktop/electron/data/queries/builders.test.ts`
 
 **Interfaces:**
+
 - Consumes: `assertIdentifier` (Task 3), `renderPredicate`, `Predicate`, `SqlValue` (Task 3), `QueryError` (Task 1), `TableName` from `../../database/schema/tableNames`.
 - Produces: `BuiltQuery { sql: string; params: SqlValue[] }`; `SortDirection = 'asc' | 'desc'`; factories `select(table: TableName): SelectBuilder`, `insertInto(table): InsertBuilder`, `updateTable(table): UpdateBuilder`, `deleteFrom(table): DeleteBuilder`, `countFrom(table): CountBuilder`. SelectBuilder: `.columns(...cols)`, `.where(p)` (multiple calls AND), `.orderBy(column, direction = 'asc')` (chainable, multi), `.limit(n)`, `.offset(n)`, `.build()`. InsertBuilder: `.values(row: Record<string, SqlValue>)`, `.build()`. UpdateBuilder: `.set(changes)`, `.where(p)`, `.build()` (throws QueryError without WHERE or empty SET). DeleteBuilder: `.where(p)`, `.build()` (throws without WHERE). CountBuilder: `.where(p)`, `.build()` → `SELECT COUNT(*) AS count …`. LIMIT/OFFSET are parameterized (`LIMIT ?` / `OFFSET ?`; OFFSET without LIMIT emits literal `LIMIT -1`) so SQL text stays stable for statement caching.
 
@@ -1178,6 +1206,7 @@ git commit -m "feat(data): fluent SELECT/INSERT/UPDATE/DELETE/COUNT builders" -m
 ### Task 5: Models, DTOs, JSON helpers, and mappers
 
 **Files:**
+
 - Create: `apps/desktop/electron/data/models/platform.ts`
 - Create: `apps/desktop/electron/data/dto/platform.ts`
 - Create: `apps/desktop/electron/data/dto/query.ts`
@@ -1187,6 +1216,7 @@ git commit -m "feat(data): fluent SELECT/INSERT/UPDATE/DELETE/COUNT builders" -m
 - Test: `apps/desktop/electron/data/mappers/platformMappers.test.ts`
 
 **Interfaces:**
+
 - Consumes: `RepositoryError` (Task 1), `SortDirection` (Task 4).
 - Produces:
   - Models (`models/platform.ts`): `Device`, `AppSetting`, `SyncMetadata`, `SyncQueueItem`, `SyncError`, `AuditLogEntry`; const arrays + literal types `SYNC_STATUSES`/`SyncStatus`, `SYNC_OPERATION_TYPES`/`SyncOperationType`, `SYNC_QUEUE_STATUSES`/`SyncQueueStatus`, `AUDIT_CATEGORIES`/`AuditCategory`. All timestamps are ISO-8601 `string`s.
@@ -1203,12 +1233,7 @@ Create `apps/desktop/electron/data/mappers/platformMappers.test.ts`:
 import { describe, expect, it } from 'vitest';
 import { RepositoryError } from '../errors/repositoryErrors';
 import { parseJsonColumn, serializeJsonColumn } from './json';
-import {
-  appSettingMapper,
-  auditLogMapper,
-  deviceMapper,
-  syncQueueMapper,
-} from './platformMappers';
+import { appSettingMapper, auditLogMapper, deviceMapper, syncQueueMapper } from './platformMappers';
 
 describe('json column helpers', () => {
   it('parses stored JSON and passes NULL through', () => {
@@ -1665,6 +1690,7 @@ git commit -m "feat(data): domain models, DTOs, and row mappers for platform tab
 ### Task 6: RepositoryContext, StatementCache, BaseRepository, test harness
 
 **Files:**
+
 - Create: `apps/desktop/electron/data/repositories/base/RepositoryContext.ts`
 - Create: `apps/desktop/electron/data/repositories/base/StatementCache.ts`
 - Create: `apps/desktop/electron/data/repositories/base/BaseRepository.ts`
@@ -1672,6 +1698,7 @@ git commit -m "feat(data): domain models, DTOs, and row mappers for platform tab
 - Test: `apps/desktop/electron/data/repositories/base/BaseRepository.test.ts`
 
 **Interfaces:**
+
 - Consumes: `DatabaseManager`, `DatabaseLogger` (`../../../database/DatabaseManager`), `TransactionManager` (`../../../database/transaction/TransactionManager`), `TableName`, query builders (Task 4), predicates (Task 3), mappers (Task 5), errors (Task 1), `createTestDatabase` + `MigrationService` + `migrations` registry (database layer, for the test harness).
 - Produces:
   - `RepositoryContext { readonly connection: SqliteDatabase; readonly transactions: TransactionManager; readonly log: DatabaseLogger }`; `createRepositoryContext(manager: DatabaseManager, log: DatabaseLogger): RepositoryContext` (live getters over the manager).
@@ -1988,11 +2015,7 @@ Create `apps/desktop/electron/data/repositories/base/BaseRepository.ts`:
 ```ts
 import type { TableName } from '../../../database/schema/tableNames';
 import type { Page, PageOptions, QueryOptions, SortSpec } from '../../dto/query';
-import {
-  EntityNotFoundError,
-  QueryError,
-  ValidationError,
-} from '../../errors/repositoryErrors';
+import { EntityNotFoundError, QueryError, ValidationError } from '../../errors/repositoryErrors';
 import { translateDatabaseError } from '../../errors/translateError';
 import type { RowMapper } from '../../mappers/RowMapper';
 import {
@@ -2114,10 +2137,7 @@ export abstract class BaseRepository<TRow extends SqlRow, TModel> {
     try {
       return fn();
     } catch (error) {
-      const translated = translateDatabaseError(
-        error,
-        `${this.#config.entityName}.${operation}`,
-      );
+      const translated = translateDatabaseError(error, `${this.#config.entityName}.${operation}`);
       if (translated !== error) {
         this.context.log.error(`${this.#config.entityName}.${operation} failed`, translated);
       }
@@ -2151,9 +2171,7 @@ export abstract class BaseRepository<TRow extends SqlRow, TModel> {
     }
     try {
       // IMMEDIATE: a known write batch takes the write lock up front.
-      return this.context.transactions.runImmediate(() =>
-        rows.map((row) => this.insertRow(row)),
-      );
+      return this.context.transactions.runImmediate(() => rows.map((row) => this.insertRow(row)));
     } catch (error) {
       throw translateDatabaseError(error, `${this.#config.entityName}.createMany`);
     }
@@ -2228,12 +2246,14 @@ git commit -m "feat(data): BaseRepository with statement cache, repository conte
 ### Task 7: Device repository
 
 **Files:**
+
 - Create: `apps/desktop/electron/data/validators/platform.ts`
 - Create: `apps/desktop/electron/data/repositories/interfaces/IDeviceRepository.ts`
 - Create: `apps/desktop/electron/data/repositories/sqlite/SqliteDeviceRepository.ts`
 - Test: `apps/desktop/electron/data/repositories/sqlite/SqliteDeviceRepository.test.ts`
 
 **Interfaces:**
+
 - Consumes: `BaseRepository`, `RepositoryContext` (Task 6), `deviceMapper`/`DeviceRow` (Task 5), `CreateDeviceInput`/`UpdateDeviceInput` (Task 5), validation core (Task 2), `newId`/`nowIso` (`../../../database/helpers/`), `TableNames`.
 - Produces: `IDeviceRepository { findById(id): Device | null; findByIdOrThrow(id): Device; findAll(options?): Device[]; create(input: CreateDeviceInput): Device; update(id: string, input: UpdateDeviceInput): Device; exists(id): boolean; count(): number }`; `SqliteDeviceRepository extends BaseRepository<DeviceRow, Device> implements IDeviceRepository` with `constructor(context: RepositoryContext)`; validators `validateCreateDevice`, `validateUpdateDevice` in `validators/platform.ts` (this task creates the file; later tasks append to it). Note: no `delete` — the device row is this installation's identity.
 
@@ -2431,12 +2451,14 @@ git commit -m "feat(data): device repository with interface and persistence vali
 ### Task 8: AppSettings repository
 
 **Files:**
+
 - Create: `apps/desktop/electron/data/repositories/interfaces/IAppSettingsRepository.ts`
 - Create: `apps/desktop/electron/data/repositories/sqlite/SqliteAppSettingsRepository.ts`
 - Modify: `apps/desktop/electron/data/validators/platform.ts` (append settings validator)
 - Test: `apps/desktop/electron/data/repositories/sqlite/SqliteAppSettingsRepository.test.ts`
 
 **Interfaces:**
+
 - Consumes: Tasks 1–6 modules; `SetSettingInput` (Task 5); `isJsonSerializable` (Task 2); `serializeJsonColumn` (Task 5); `select`/`deleteFrom` builders; `eq` predicate.
 - Produces: `IAppSettingsRepository { getByKey(key: string): AppSetting | null; setByKey(key: string, value: unknown): AppSetting; getAll(): AppSetting[]; deleteByKey(key: string): boolean }`; `SqliteAppSettingsRepository` implementing it; `validateSetSetting` appended to `validators/platform.ts`.
 - `setByKey` is an upsert implemented as a transactional read-then-write (the query builder deliberately has no UPSERT support).
@@ -2595,7 +2617,13 @@ export class SqliteAppSettingsRepository
       if (existing) {
         return this.updateById(existing.id, { value: serialized, updatedAt: now });
       }
-      return this.insertRow({ id: newId(), key, value: serialized, createdAt: now, updatedAt: now });
+      return this.insertRow({
+        id: newId(),
+        key,
+        value: serialized,
+        createdAt: now,
+        updatedAt: now,
+      });
     });
   }
 
@@ -2634,12 +2662,14 @@ git commit -m "feat(data): app-settings repository with upsert-by-key semantics"
 ### Task 9: SyncMetadata repository
 
 **Files:**
+
 - Create: `apps/desktop/electron/data/repositories/interfaces/ISyncMetadataRepository.ts`
 - Create: `apps/desktop/electron/data/repositories/sqlite/SqliteSyncMetadataRepository.ts`
 - Modify: `apps/desktop/electron/data/validators/platform.ts` (append metadata validator)
 - Test: `apps/desktop/electron/data/repositories/sqlite/SqliteSyncMetadataRepository.test.ts`
 
 **Interfaces:**
+
 - Consumes: Tasks 1–6 modules; `UpdateSyncMetadataInput` (Task 5); `SYNC_STATUSES` (Task 5); `initializeMetadata` from `../../../database/seed/initializeMetadata` (test seeding only).
 - Produces: `ISyncMetadataRepository { get(): SyncMetadata; update(input: UpdateSyncMetadataInput): SyncMetadata }` — singleton row seeded by the platform; no create/delete. `SqliteSyncMetadataRepository`, `validateUpdateSyncMetadata`.
 
@@ -2739,15 +2769,12 @@ import {
 ```
 
 ```ts
-export const validateUpdateSyncMetadata = createValidator<UpdateSyncMetadataInput>(
-  'SyncMetadata',
-  {
-    lastSyncAt: [isIsoDate()],
-    syncStatus: [isString(), oneOf(SYNC_STATUSES)],
-    schemaVersion: [isNonNegativeInt()],
-    databaseVersion: [isNonNegativeInt()],
-  },
-);
+export const validateUpdateSyncMetadata = createValidator<UpdateSyncMetadataInput>('SyncMetadata', {
+  lastSyncAt: [isIsoDate()],
+  syncStatus: [isString(), oneOf(SYNC_STATUSES)],
+  schemaVersion: [isNonNegativeInt()],
+  databaseVersion: [isNonNegativeInt()],
+});
 ```
 
 Create `apps/desktop/electron/data/repositories/interfaces/ISyncMetadataRepository.ts`:
@@ -2839,12 +2866,14 @@ git commit -m "feat(data): sync-metadata singleton repository" -m "Co-Authored-B
 ### Task 10: SyncQueue repository (owns sync_errors)
 
 **Files:**
+
 - Create: `apps/desktop/electron/data/repositories/interfaces/ISyncQueueRepository.ts`
 - Create: `apps/desktop/electron/data/repositories/sqlite/SqliteSyncQueueRepository.ts`
 - Modify: `apps/desktop/electron/data/validators/platform.ts` (append queue + error validators)
 - Test: `apps/desktop/electron/data/repositories/sqlite/SqliteSyncQueueRepository.test.ts`
 
 **Interfaces:**
+
 - Consumes: Tasks 1–6 modules; `EnqueueSyncOperationInput`, `RecordSyncErrorInput` (Task 5); `SYNC_OPERATION_TYPES`, `SYNC_QUEUE_STATUSES` (Task 5); `and`, `eq`, `lt`, `inList` predicates; `insertInto`, `select`, `deleteFrom` builders; `serializeJsonColumn`, `syncErrorMapper`, `SyncErrorRow`.
 - Produces: `ISyncQueueRepository { enqueue(input): SyncQueueItem; enqueueMany(inputs): SyncQueueItem[]; findById(id): SyncQueueItem | null; nextBatch(limit: number): SyncQueueItem[]; markInFlight(ids: string[]): number; markCompleted(ids: string[]): number; markFailed(id: string): SyncQueueItem; countByStatus(status: SyncQueueStatus): number; purgeCompleted(olderThan: string): number; recordError(input: RecordSyncErrorInput): SyncError; errorsForOperation(operationId: string): SyncError[] }`; `SqliteSyncQueueRepository`; validators `validateEnqueue`, `validateRecordSyncError`, `validatePurge`.
 - `sync_errors` belongs to this repository (queue aggregate) — a dedicated repository can be split out in the sync phase.
@@ -3051,11 +3080,7 @@ import {
 import type { SyncError, SyncQueueItem, SyncQueueStatus } from '../../models/platform';
 import { deleteFrom, insertInto, select, updateTable } from '../../queries/builders';
 import { and, eq, inList, lt } from '../../queries/predicates';
-import {
-  validateEnqueue,
-  validatePurge,
-  validateRecordSyncError,
-} from '../../validators/platform';
+import { validateEnqueue, validatePurge, validateRecordSyncError } from '../../validators/platform';
 import { BaseRepository } from '../base/BaseRepository';
 import type { RepositoryContext } from '../base/RepositoryContext';
 import type { ISyncQueueRepository } from '../interfaces/ISyncQueueRepository';
@@ -3220,12 +3245,14 @@ git commit -m "feat(data): sync-queue repository with batch status transitions a
 ### Task 11: AuditLog repository
 
 **Files:**
+
 - Create: `apps/desktop/electron/data/repositories/interfaces/IAuditLogRepository.ts`
 - Create: `apps/desktop/electron/data/repositories/sqlite/SqliteAuditLogRepository.ts`
 - Modify: `apps/desktop/electron/data/validators/platform.ts` (append audit validator)
 - Test: `apps/desktop/electron/data/repositories/sqlite/SqliteAuditLogRepository.test.ts`
 
 **Interfaces:**
+
 - Consumes: Tasks 1–6 modules; `AppendAuditEntryInput`, `AUDIT_CATEGORIES` (Task 5); `and`, `eq`, `gte`, `lte`, `lt` predicates.
 - Produces: `IAuditLogRepository { append(input: AppendAuditEntryInput): AuditLogEntry; findByCategory(category: AuditCategory, options?: QueryOptions): AuditLogEntry[]; findInRange(fromIso: string, toIso: string, options?: QueryOptions): AuditLogEntry[]; findPage(options: PageOptions): Page<AuditLogEntry>; count(): number; prune(olderThan: string): number }` — append-only: the interface exposes no update/delete. `SqliteAuditLogRepository`, `validateAppendAudit`, `validateAuditPrune`.
 - Note: `audit_log` has no `updatedAt` column; the base default ordering (`createdAt, id`) still applies.
@@ -3290,7 +3317,9 @@ describe('SqliteAuditLogRepository', () => {
   it('findInRange bounds by createdAt inclusively', () => {
     const entry = repo.append({ category: 'application', event: 'app.started' });
     expect(repo.findInRange(entry.createdAt, entry.createdAt)).toHaveLength(1);
-    expect(repo.findInRange('2000-01-01T00:00:00.000Z', '2000-12-31T00:00:00.000Z')).toHaveLength(0);
+    expect(repo.findInRange('2000-01-01T00:00:00.000Z', '2000-12-31T00:00:00.000Z')).toHaveLength(
+      0,
+    );
   });
 
   it('findPage returns a page with total', () => {
@@ -3438,6 +3467,7 @@ git commit -m "feat(data): append-only audit-log repository with range queries a
 ### Task 12: Application services
 
 **Files:**
+
 - Create: `apps/desktop/electron/data/services/TransactionRunner.ts`
 - Create: `apps/desktop/electron/data/services/DeviceService.ts`
 - Create: `apps/desktop/electron/data/services/AppSettingsService.ts`
@@ -3448,6 +3478,7 @@ git commit -m "feat(data): append-only audit-log repository with range queries a
 - Test: `apps/desktop/electron/data/services/SyncQueueService.test.ts`
 
 **Interfaces:**
+
 - Consumes: repository interfaces (Tasks 7–11), models/DTOs (Task 5).
 - Produces:
   - `TransactionRunner { run<T>(work: () => T): T; runImmediate<T>(work: () => T): T }` — the minimal transaction surface services need; `TransactionManager` satisfies it structurally.
@@ -3492,7 +3523,13 @@ function makeMocks() {
   const auditRepo: IAuditLogRepository = {
     append: (input) => {
       audits.push(input);
-      return { id: 'a1', category: input.category, event: input.event, details: null, createdAt: 't0' } satisfies AuditLogEntry;
+      return {
+        id: 'a1',
+        category: input.category,
+        event: input.event,
+        details: null,
+        createdAt: 't0',
+      } satisfies AuditLogEntry;
     },
     findByCategory: () => [],
     findInRange: () => [],
@@ -3510,7 +3547,11 @@ function makeMocks() {
 describe('AppSettingsService', () => {
   it('get returns the stored value or null', async () => {
     const { settingsRepo, auditRepo, transactions } = makeMocks();
-    const service = new AppSettingsService({ appSettings: settingsRepo, auditLog: auditRepo, transactions });
+    const service = new AppSettingsService({
+      appSettings: settingsRepo,
+      auditLog: auditRepo,
+      transactions,
+    });
     await expect(service.get('missing')).resolves.toBeNull();
     settingsRepo.setByKey('theme', 'dark');
     await expect(service.get('theme')).resolves.toBe('dark');
@@ -3518,7 +3559,11 @@ describe('AppSettingsService', () => {
 
   it('set writes the setting and an audit entry together', async () => {
     const { settingsRepo, auditRepo, transactions, audits } = makeMocks();
-    const service = new AppSettingsService({ appSettings: settingsRepo, auditLog: auditRepo, transactions });
+    const service = new AppSettingsService({
+      appSettings: settingsRepo,
+      auditLog: auditRepo,
+      transactions,
+    });
     const setting = await service.set('theme', 'dark');
     expect(setting.value).toBe('dark');
     expect(audits).toHaveLength(1);
@@ -3528,7 +3573,11 @@ describe('AppSettingsService', () => {
 
   it('remove reports whether a setting existed', async () => {
     const { settingsRepo, auditRepo, transactions } = makeMocks();
-    const service = new AppSettingsService({ appSettings: settingsRepo, auditLog: auditRepo, transactions });
+    const service = new AppSettingsService({
+      appSettings: settingsRepo,
+      auditLog: auditRepo,
+      transactions,
+    });
     settingsRepo.setByKey('theme', 'dark');
     await expect(service.remove('theme')).resolves.toBe(true);
     await expect(service.remove('theme')).resolves.toBe(false);
@@ -3843,10 +3892,12 @@ git commit -m "feat(data): async application services over the sync repositories
 ### Task 13: Data layer factory
 
 **Files:**
+
 - Create: `apps/desktop/electron/data/factories/createDataLayer.ts`
 - Test: `apps/desktop/electron/data/factories/createDataLayer.test.ts`
 
 **Interfaces:**
+
 - Consumes: `DatabaseManager`/`DatabaseLogger`, `createRepositoryContext` (Task 6), all SQLite repositories (Tasks 7–11), all services (Task 12).
 - Produces:
 
@@ -4029,6 +4080,7 @@ git commit -m "feat(data): createDataLayer composition root wiring repositories 
 ### Task 14: Phase 2 debt — wrap remaining raw driver errors in the taxonomy
 
 **Files:**
+
 - Modify: `apps/desktop/electron/database/services/MigrationService.ts`
 - Modify: `apps/desktop/electron/database/seed/initializeMetadata.ts`
 - Test: `apps/desktop/electron/database/services/MigrationService.test.ts` (append)
@@ -4037,6 +4089,7 @@ git commit -m "feat(data): createDataLayer composition root wiring repositories 
 **Why:** the Phase 2 report (§10) flagged that `MigrationService`'s history-table creation / `currentVersion()` / `appliedMigrations()` and all of `initializeMetadata`'s prepares run outside the `DatabaseError` taxonomy — a raw driver error there would be misclassified by `main.ts`'s `instanceof DatabaseError` check. Close it before Phase 3 exposes DB data over IPC.
 
 **Interfaces:**
+
 - Consumes: existing `wrapSqliteError(error, context)` and `MigrationError` from the database layer.
 - Produces: no signature changes — same public API, failures now typed.
 
@@ -4045,18 +4098,18 @@ git commit -m "feat(data): createDataLayer composition root wiring repositories 
 Append to `apps/desktop/electron/database/services/MigrationService.test.ts` (inside the existing top-level `describe`, using the existing test helpers/imports of that file; add `DatabaseError` to the imports from `../errors/errors`):
 
 ```ts
-  it('wraps raw driver failures from history access in the DatabaseError taxonomy', () => {
-    const test = createTestDatabase();
-    const service = new MigrationService(test.db.raw, migrations);
-    test.db.close();
-    try {
-      expect(() => service.migrateToLatest()).toThrow(DatabaseError);
-      expect(() => service.currentVersion()).toThrow(DatabaseError);
-      expect(() => service.appliedMigrations()).toThrow(DatabaseError);
-    } finally {
-      fs.rmSync(path.dirname(test.filePath), { recursive: true, force: true });
-    }
-  });
+it('wraps raw driver failures from history access in the DatabaseError taxonomy', () => {
+  const test = createTestDatabase();
+  const service = new MigrationService(test.db.raw, migrations);
+  test.db.close();
+  try {
+    expect(() => service.migrateToLatest()).toThrow(DatabaseError);
+    expect(() => service.currentVersion()).toThrow(DatabaseError);
+    expect(() => service.appliedMigrations()).toThrow(DatabaseError);
+  } finally {
+    fs.rmSync(path.dirname(test.filePath), { recursive: true, force: true });
+  }
+});
 ```
 
 (If the existing file's helpers differ — e.g. it already has a `createTestDatabase()` + cleanup pattern — follow that file's local idiom; the assertion that a closed database throws `DatabaseError` (not a raw `TypeError`) is what matters.)
@@ -4064,14 +4117,12 @@ Append to `apps/desktop/electron/database/services/MigrationService.test.ts` (in
 Append to `apps/desktop/electron/database/seed/initializeMetadata.test.ts` (same rule — follow the file's local setup idiom; add `DatabaseError` import):
 
 ```ts
-  it('wraps raw driver failures in the DatabaseError taxonomy', () => {
-    const test = createTestDatabase();
-    new MigrationService(test.db.raw, migrations).migrateToLatest();
-    test.db.close();
-    expect(() =>
-      initializeMetadata(test.db.raw, TEST_DEVICE, 1),
-    ).toThrow(DatabaseError);
-  });
+it('wraps raw driver failures in the DatabaseError taxonomy', () => {
+  const test = createTestDatabase();
+  new MigrationService(test.db.raw, migrations).migrateToLatest();
+  test.db.close();
+  expect(() => initializeMetadata(test.db.raw, TEST_DEVICE, 1)).toThrow(DatabaseError);
+});
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
@@ -4087,7 +4138,7 @@ In `apps/desktop/electron/database/services/MigrationService.ts`:
 2. In `migrateToLatest()`, replace the line `this.#db.exec(CREATE_HISTORY_TABLE);` with:
 
 ```ts
-    this.#ensureHistoryTable();
+this.#ensureHistoryTable();
 ```
 
 3. In `rollbackLast()`, replace its `this.#db.exec(CREATE_HISTORY_TABLE);` line the same way.
@@ -4137,13 +4188,13 @@ In `apps/desktop/electron/database/seed/initializeMetadata.ts`:
 2. Wrap the function body's transaction invocation. The existing body is `return db.transaction((): MetadataInitResult => { ... })();` — change it to:
 
 ```ts
-  try {
-    return db.transaction((): MetadataInitResult => {
-      // ... existing body unchanged ...
-    })();
-  } catch (error) {
-    throw wrapSqliteError(error, 'metadata initialization');
-  }
+try {
+  return db.transaction((): MetadataInitResult => {
+    // ... existing body unchanged ...
+  })();
+} catch (error) {
+  throw wrapSqliteError(error, 'metadata initialization');
+}
 ```
 
 - [ ] **Step 4: Run the full database suite to verify**
@@ -4163,6 +4214,7 @@ git commit -m "fix(db): wrap migration-history and metadata-seed driver errors i
 ### Task 15: Proof-of-path IPC endpoint — settings:get
 
 **Files:**
+
 - Modify: `packages/types/src/ipc.ts`
 - Modify: `packages/types/src/api.ts`
 - Modify: `apps/desktop/electron/security/validateIpc.ts`
@@ -4173,6 +4225,7 @@ git commit -m "fix(db): wrap migration-history and metadata-seed driver errors i
 - Modify: `apps/desktop/electron/main/main.ts`
 
 **Interfaces:**
+
 - Consumes: `IpcContract`/`IpcChannels` pattern, `IpcHandle` (registrar), `IPCError` (`@nemis-desktop/shared`), `AppSettingsService.get(key)` (Task 12), `createDataLayer`/`DataLayer` (Task 13).
 - Produces: channel `'settings:get': { args: [key: string]; result: unknown }`; `IpcChannels.SETTINGS_GET`; compile-time channel-exhaustiveness assertion; `assertSettingKeyArg(args: readonly unknown[]): void`; `registerSettingsHandlers(handle: IpcHandle, settings: AppSettingsService): void`; `registerIpcHandlers(services: DataLayer['services'])` (signature change); `window.nemis.settings.get(key)` in the preload; `main.ts` builds the data layer after `databaseManager.initialize()`.
 - This is the Phase 1.5 first-parameterized-endpoint checklist: shape-validating validator ✓, arity comment at the registrar cast ✓, IpcChannels exhaustiveness assertion ✓.
@@ -4285,7 +4338,9 @@ export function assertSettingKeyArg(args: readonly unknown[]): void {
   }
   const [key] = args;
   if (typeof key !== 'string' || key.length === 0 || key.length > MAX_SETTING_KEY_LENGTH) {
-    throw new IPCError(`Expected a non-empty string key (max ${MAX_SETTING_KEY_LENGTH} characters).`);
+    throw new IPCError(
+      `Expected a non-empty string key (max ${MAX_SETTING_KEY_LENGTH} characters).`,
+    );
   }
 }
 ```
@@ -4325,8 +4380,8 @@ export function registerIpcHandlers(services: DataLayer['services']): void {
 3. In `handle()`, add the arity comment directly above the cast line (`return { ok: true, data: await handler(...(args as IpcContract[C]['args'])) };`):
 
 ```ts
-      // arity: the cast below is safe only because `validate` has already
-      // enforced this channel's exact argument count and shapes.
+// arity: the cast below is safe only because `validate` has already
+// enforced this channel's exact argument count and shapes.
 ```
 
 Modify `apps/desktop/electron/preload/preload.ts` — replace the `nemisApi` object:
@@ -4353,49 +4408,49 @@ import { createDataLayer } from '@app/data/factories/createDataLayer';
 2. In the `whenReady().then(() => { ... })` block, the `log` object currently passed inline to `new DatabaseManager({...})` must be extracted so the data layer shares it. Replace:
 
 ```ts
-      databaseManager = new DatabaseManager({
-        userDataDir: app.getPath('userData'),
-        device: {
-          deviceName: os.hostname(),
-          platform: process.platform,
-          osVersion: os.release(),
-          appVersion: app.getVersion(),
-        },
-        log: {
-          info: (message) => logger.info(message),
-          warn: (message) => logger.warn(message),
-          error: (message, error) => logger.error(message, error),
-        },
-      });
-      databaseManager.initialize();
+databaseManager = new DatabaseManager({
+  userDataDir: app.getPath('userData'),
+  device: {
+    deviceName: os.hostname(),
+    platform: process.platform,
+    osVersion: os.release(),
+    appVersion: app.getVersion(),
+  },
+  log: {
+    info: (message) => logger.info(message),
+    warn: (message) => logger.warn(message),
+    error: (message, error) => logger.error(message, error),
+  },
+});
+databaseManager.initialize();
 ```
 
 with:
 
 ```ts
-      const databaseLog = {
-        info: (message: string) => logger.info(message),
-        warn: (message: string) => logger.warn(message),
-        error: (message: string, error?: unknown) => logger.error(message, error),
-      };
-      databaseManager = new DatabaseManager({
-        userDataDir: app.getPath('userData'),
-        device: {
-          deviceName: os.hostname(),
-          platform: process.platform,
-          osVersion: os.release(),
-          appVersion: app.getVersion(),
-        },
-        log: databaseLog,
-      });
-      databaseManager.initialize();
-      const dataLayer = createDataLayer(databaseManager, databaseLog);
+const databaseLog = {
+  info: (message: string) => logger.info(message),
+  warn: (message: string) => logger.warn(message),
+  error: (message: string, error?: unknown) => logger.error(message, error),
+};
+databaseManager = new DatabaseManager({
+  userDataDir: app.getPath('userData'),
+  device: {
+    deviceName: os.hostname(),
+    platform: process.platform,
+    osVersion: os.release(),
+    appVersion: app.getVersion(),
+  },
+  log: databaseLog,
+});
+databaseManager.initialize();
+const dataLayer = createDataLayer(databaseManager, databaseLog);
 ```
 
 3. Replace `registerIpcHandlers();` with:
 
 ```ts
-      registerIpcHandlers(dataLayer.services);
+registerIpcHandlers(dataLayer.services);
 ```
 
 - [ ] **Step 4: Run the tests and the type gate**
@@ -4418,10 +4473,12 @@ git commit -m "feat(ipc): settings:get proof-of-path endpoint through the data l
 ### Task 16: Documentation + full acceptance gate
 
 **Files:**
+
 - Create: `docs/data-access.md`
 - Modify: `docs/database.md` (one-line pointer)
 
 **Interfaces:**
+
 - Consumes: everything above.
 - Produces: the phase's documentation and a fully green gate.
 
@@ -4463,20 +4520,20 @@ async boundary exactly where the process boundary is (IPC, sync worker).
 
 ## Folder map (apps/desktop/electron/data/)
 
-| Folder | Responsibility |
-|---|---|
+| Folder                    | Responsibility                                                                               |
+| ------------------------- | -------------------------------------------------------------------------------------------- |
 | `repositories/interfaces` | Pure contracts (`IDeviceRepository`, …) — declare only operations that make sense per entity |
-| `repositories/base` | `BaseRepository` (shared machinery), `StatementCache`, `RepositoryContext` |
-| `repositories/sqlite` | Concrete implementations, one per entity |
-| `services` | Async facades; own cross-repository transactions |
-| `queries` | Query builders — the only place SQL text is produced |
-| `mappers` | Row → model conversion; JSON columns parsed here and only here |
-| `models` | Domain models (ISO-string timestamps, IPC-serializable) |
-| `dto` | Input shapes + `QueryOptions`/`Page<T>` |
-| `validators` | Persistence validation (core rules + per-entity schemas) |
-| `factories` | `createDataLayer` — the composition root, called once from main.ts |
-| `errors` | `RepositoryError` taxonomy + `translateDatabaseError` |
-| `testing` | `createTestContext` — real temp-file DB with migrations applied |
+| `repositories/base`       | `BaseRepository` (shared machinery), `StatementCache`, `RepositoryContext`                   |
+| `repositories/sqlite`     | Concrete implementations, one per entity                                                     |
+| `services`                | Async facades; own cross-repository transactions                                             |
+| `queries`                 | Query builders — the only place SQL text is produced                                         |
+| `mappers`                 | Row → model conversion; JSON columns parsed here and only here                               |
+| `models`                  | Domain models (ISO-string timestamps, IPC-serializable)                                      |
+| `dto`                     | Input shapes + `QueryOptions`/`Page<T>`                                                      |
+| `validators`              | Persistence validation (core rules + per-entity schemas)                                     |
+| `factories`               | `createDataLayer` — the composition root, called once from main.ts                           |
+| `errors`                  | `RepositoryError` taxonomy + `translateDatabaseError`                                        |
+| `testing`                 | `createTestContext` — real temp-file DB with migrations applied                              |
 
 ## Strategies
 
@@ -4566,7 +4623,7 @@ git commit -m "docs: data access layer architecture, strategies, and extension g
 ## Acceptance criteria (from the spec)
 
 - Renderer never accesses SQLite directly; repositories are the only gateway. ✓ by construction (Tasks 6–13, 15)
-- BaseRepository reusable (Task 6); QueryBuilder (Tasks 3–4); mappers (Task 5); validators (Tasks 2, 7–11). 
+- BaseRepository reusable (Task 6); QueryBuilder (Tasks 3–4); mappers (Task 5); validators (Tasks 2, 7–11).
 - Transactions: single, nested SAVEPOINT, automatic rollback, batch (Tasks 6, 10, 12 tests).
 - All tests pass; TypeScript strict passes; ESLint passes; production build succeeds (Task 16).
 
@@ -4580,6 +4637,3 @@ git commit -m "docs: data access layer architecture, strategies, and extension g
 - If any test fails against expectations, STOP and debug rather than
   adjusting the assertion — the expected values in this plan were derived
   from the real Phase 2 schema and code.
-
-
-

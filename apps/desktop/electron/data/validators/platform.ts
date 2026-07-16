@@ -39,15 +39,12 @@ export const validateSetSetting = createValidator<SetSettingInput>('AppSetting',
   value: [isJsonSerializable()],
 });
 
-export const validateUpdateSyncMetadata = createValidator<UpdateSyncMetadataInput>(
-  'SyncMetadata',
-  {
-    lastSyncAt: [isIsoDate()],
-    syncStatus: [isString(), oneOf(SYNC_STATUSES)],
-    schemaVersion: [isNonNegativeInt()],
-    databaseVersion: [isNonNegativeInt()],
-  },
-);
+export const validateUpdateSyncMetadata = createValidator<UpdateSyncMetadataInput>('SyncMetadata', {
+  lastSyncAt: [isIsoDate()],
+  syncStatus: [isString(), oneOf(SYNC_STATUSES)],
+  schemaVersion: [isNonNegativeInt()],
+  databaseVersion: [isNonNegativeInt()],
+});
 
 export const validateEnqueue = createValidator<EnqueueSyncOperationInput>('SyncQueueItem', {
   entityType: [required(), isString(), maxLength(100)],

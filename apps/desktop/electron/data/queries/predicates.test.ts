@@ -68,7 +68,10 @@ describe('renderPredicate', () => {
   });
 
   it('renders IS NULL / IS NOT NULL without params', () => {
-    expect(renderPredicate(isNull('lastSyncAt'))).toEqual({ sql: 'lastSyncAt IS NULL', params: [] });
+    expect(renderPredicate(isNull('lastSyncAt'))).toEqual({
+      sql: 'lastSyncAt IS NULL',
+      params: [],
+    });
     expect(renderPredicate(isNotNull('payload'))).toEqual({
       sql: 'payload IS NOT NULL',
       params: [],

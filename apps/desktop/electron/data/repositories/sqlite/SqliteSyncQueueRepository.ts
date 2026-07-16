@@ -12,11 +12,7 @@ import {
 import type { SyncError, SyncQueueItem, SyncQueueStatus } from '../../models/platform';
 import { deleteFrom, insertInto, select, updateTable } from '../../queries/builders';
 import { and, eq, inList, lt } from '../../queries/predicates';
-import {
-  validateEnqueue,
-  validatePurge,
-  validateRecordSyncError,
-} from '../../validators/platform';
+import { validateEnqueue, validatePurge, validateRecordSyncError } from '../../validators/platform';
 import { BaseRepository } from '../base/BaseRepository';
 import type { RepositoryContext } from '../base/RepositoryContext';
 import type { ISyncQueueRepository } from '../interfaces/ISyncQueueRepository';

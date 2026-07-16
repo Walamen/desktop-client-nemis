@@ -7,11 +7,20 @@ export type SqlValue = string | number | null;
 type CompareOp = '=' | '!=' | '>' | '>=' | '<' | '<=';
 
 export type Predicate =
-  | { readonly kind: 'compare'; readonly column: string; readonly op: CompareOp; readonly value: SqlValue }
+  | {
+      readonly kind: 'compare';
+      readonly column: string;
+      readonly op: CompareOp;
+      readonly value: SqlValue;
+    }
   | { readonly kind: 'like'; readonly column: string; readonly pattern: string }
   | { readonly kind: 'in'; readonly column: string; readonly values: readonly SqlValue[] }
   | { readonly kind: 'null'; readonly column: string; readonly negated: boolean }
-  | { readonly kind: 'group'; readonly join: 'AND' | 'OR'; readonly predicates: readonly Predicate[] };
+  | {
+      readonly kind: 'group';
+      readonly join: 'AND' | 'OR';
+      readonly predicates: readonly Predicate[];
+    };
 
 function compare(column: string, op: CompareOp, value: SqlValue): Predicate {
   return { kind: 'compare', column, op, value };
