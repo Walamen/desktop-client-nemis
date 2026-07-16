@@ -80,15 +80,13 @@ export function renderPredicate(predicate: Predicate): SqlFragment {
     case 'like':
       return { sql: `${assertIdentifier(predicate.column)} LIKE ?`, params: [predicate.pattern] };
     case 'in': {
+      const column = assertIdentifier(predicate.column);
       if (predicate.values.length === 0) {
         // Empty IN () is a SQL syntax error; match nothing, deterministically.
         return { sql: '1 = 0', params: [] };
       }
       const placeholders = predicate.values.map(() => '?').join(', ');
-      return {
-        sql: `${assertIdentifier(predicate.column)} IN (${placeholders})`,
-        params: [...predicate.values],
-      };
+      return { sql: `${column} IN (${placeholders})`, params: [...predicate.values] };
     }
     case 'null':
       return {

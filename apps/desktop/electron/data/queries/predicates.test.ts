@@ -90,6 +90,7 @@ describe('renderPredicate', () => {
   it('rejects malicious column names in every predicate kind', () => {
     expect(() => renderPredicate(eq('id; DROP TABLE x', 1))).toThrow(QueryError);
     expect(() => renderPredicate(inList('a b', [1]))).toThrow(QueryError);
+    expect(() => renderPredicate(inList('a b', []))).toThrow(QueryError);
     expect(() => renderPredicate(isNull('a"b'))).toThrow(QueryError);
   });
 });
