@@ -1,5 +1,20 @@
-import type { CreateDeviceInput, SetSettingInput, UpdateDeviceInput } from '../dto/platform';
-import { createValidator, isJsonSerializable, isString, maxLength, required } from './core';
+import type {
+  CreateDeviceInput,
+  SetSettingInput,
+  UpdateDeviceInput,
+  UpdateSyncMetadataInput,
+} from '../dto/platform';
+import { SYNC_STATUSES } from '../models/platform';
+import {
+  createValidator,
+  isIsoDate,
+  isJsonSerializable,
+  isNonNegativeInt,
+  isString,
+  maxLength,
+  oneOf,
+  required,
+} from './core';
 
 /** Persistence validators for the platform entities — one per repository input DTO. */
 
@@ -20,3 +35,13 @@ export const validateSetSetting = createValidator<SetSettingInput>('AppSetting',
   key: [required(), isString(), maxLength(128)],
   value: [isJsonSerializable()],
 });
+
+export const validateUpdateSyncMetadata = createValidator<UpdateSyncMetadataInput>(
+  'SyncMetadata',
+  {
+    lastSyncAt: [isIsoDate()],
+    syncStatus: [isString(), oneOf(SYNC_STATUSES)],
+    schemaVersion: [isNonNegativeInt()],
+    databaseVersion: [isNonNegativeInt()],
+  },
+);
