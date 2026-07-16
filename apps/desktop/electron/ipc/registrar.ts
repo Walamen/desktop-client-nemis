@@ -3,11 +3,14 @@ import type { IpcChannel, IpcContract, IpcResult } from '@nemis-desktop/types';
 import { toIpcErrorPayload } from '@nemis-desktop/shared';
 import { logger } from '@app/services/logger';
 import { registerSystemHandlers } from '@app/ipc/handlers/system';
+import type { DataLayer } from '@app/data/factories/createDataLayer';
+import { registerSettingsHandlers } from '@app/ipc/handlers/settings';
 
 export type IpcValidator = (args: readonly unknown[]) => void;
 
-export function registerIpcHandlers(): void {
+export function registerIpcHandlers(services: DataLayer['services']): void {
   registerSystemHandlers(handle);
+  registerSettingsHandlers(handle, services.appSettings);
 }
 
 /**
@@ -25,6 +28,8 @@ function handle<C extends IpcChannel>(
   ipcMain.handle(channel, async (_event, ...args): Promise<IpcResult<IpcContract[C]['result']>> => {
     try {
       validate(args);
+      // arity: the cast below is safe only because `validate` has already
+      // enforced this channel's exact argument count and shapes.
       return { ok: true, data: await handler(...(args as IpcContract[C]['args'])) };
     } catch (error) {
       logger.error(`IPC handler failed for channel "${channel}"`, error);

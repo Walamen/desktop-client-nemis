@@ -4,6 +4,7 @@ import started from 'electron-squirrel-startup';
 import { loadConfig } from '@app/config/env';
 import { DatabaseManager } from '@app/database/DatabaseManager';
 import { DatabaseError } from '@app/database/errors/errors';
+import { createDataLayer } from '@app/data/factories/createDataLayer';
 import { registerIpcHandlers } from '@app/ipc/registrar';
 import { initLogger, logger } from '@app/services/logger';
 import { hardenWebContents } from '@app/security/hardenWindow';
@@ -61,6 +62,11 @@ function bootstrap(): void {
       initLogger({ isDev: config.isDev, level: config.logLevel });
       logger.info(`NEMIS Desktop starting (dev=${config.isDev})`);
 
+      const databaseLog = {
+        info: (message: string) => logger.info(message),
+        warn: (message: string) => logger.warn(message),
+        error: (message: string, error?: unknown) => logger.error(message, error),
+      };
       databaseManager = new DatabaseManager({
         userDataDir: app.getPath('userData'),
         device: {
@@ -69,13 +75,10 @@ function bootstrap(): void {
           osVersion: os.release(),
           appVersion: app.getVersion(),
         },
-        log: {
-          info: (message) => logger.info(message),
-          warn: (message) => logger.warn(message),
-          error: (message, error) => logger.error(message, error),
-        },
+        log: databaseLog,
       });
       databaseManager.initialize();
+      const dataLayer = createDataLayer(databaseManager, databaseLog);
 
       denyPermissionRequests();
       denyPermissionChecks();
@@ -84,7 +87,7 @@ function bootstrap(): void {
         registerAppProtocolHandler();
       }
 
-      registerIpcHandlers();
+      registerIpcHandlers(dataLayer.services);
 
       mainWindow = createHardenedWindow();
 

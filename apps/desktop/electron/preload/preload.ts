@@ -19,6 +19,9 @@ const nemisApi: NemisApi = {
   system: {
     getVersion: () => invoke(IpcChannels.SYSTEM_GET_VERSION),
   },
+  settings: {
+    get: (key: string) => invoke(IpcChannels.SETTINGS_GET, key),
+  },
 };
 
 contextBridge.exposeInMainWorld('nemis', nemisApi);

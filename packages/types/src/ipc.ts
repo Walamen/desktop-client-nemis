@@ -6,13 +6,22 @@
  */
 export interface IpcContract {
   'system:get-version': { args: []; result: string };
+  'settings:get': { args: [key: string]; result: unknown };
 }
 
 export type IpcChannel = keyof IpcContract;
 
 export const IpcChannels = {
   SYSTEM_GET_VERSION: 'system:get-version',
+  SETTINGS_GET: 'settings:get',
 } as const satisfies Record<string, IpcChannel>;
+
+// Compile-time exhaustiveness: adding a channel to IpcContract without
+// listing it in IpcChannels makes this constant a type error.
+type RegisteredChannel = (typeof IpcChannels)[keyof typeof IpcChannels];
+export const IPC_CHANNELS_EXHAUSTIVE: Exclude<IpcChannel, RegisteredChannel> extends never
+  ? true
+  : never = true;
 
 export interface IpcErrorPayload {
   code: string;
