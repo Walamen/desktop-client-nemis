@@ -1,10 +1,12 @@
 import type {
   CreateDeviceInput,
+  EnqueueSyncOperationInput,
+  RecordSyncErrorInput,
   SetSettingInput,
   UpdateDeviceInput,
   UpdateSyncMetadataInput,
 } from '../dto/platform';
-import { SYNC_STATUSES } from '../models/platform';
+import { SYNC_OPERATION_TYPES, SYNC_STATUSES } from '../models/platform';
 import {
   createValidator,
   isIsoDate,
@@ -45,3 +47,21 @@ export const validateUpdateSyncMetadata = createValidator<UpdateSyncMetadataInpu
     databaseVersion: [isNonNegativeInt()],
   },
 );
+
+export const validateEnqueue = createValidator<EnqueueSyncOperationInput>('SyncQueueItem', {
+  entityType: [required(), isString(), maxLength(100)],
+  entityId: [required(), isString(), maxLength(128)],
+  operationType: [required(), isString(), oneOf(SYNC_OPERATION_TYPES)],
+  payload: [isJsonSerializable()],
+});
+
+export const validateRecordSyncError = createValidator<RecordSyncErrorInput>('SyncError', {
+  operationId: [isString(), maxLength(128)],
+  message: [required(), isString(), maxLength(2000)],
+  stack: [isString(), maxLength(10000)],
+  retryCount: [isNonNegativeInt()],
+});
+
+export const validatePurge = createValidator<{ olderThan: string }>('SyncQueue.purge', {
+  olderThan: [required(), isIsoDate()],
+});
