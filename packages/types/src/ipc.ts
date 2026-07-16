@@ -23,9 +23,30 @@ export const IPC_CHANNELS_EXHAUSTIVE: Exclude<IpcChannel, RegisteredChannel> ext
   ? true
   : never = true;
 
-export interface IpcErrorPayload {
-  code: string;
+/** Closed contract of renderer-visible error codes — the mapper in the main
+ * process (electron/ipc/errorMapping.ts) is the single producer. */
+export type IpcErrorCode =
+  | 'VALIDATION_FAILED'
+  | 'DUPLICATE'
+  | 'NOT_FOUND'
+  | 'CONFLICT'
+  | 'UNAUTHORIZED'
+  | 'FORBIDDEN'
+  | 'DATABASE_UNAVAILABLE'
+  | 'MIGRATION_REQUIRED'
+  | 'IPC_ERROR'
+  | 'UNEXPECTED_ERROR';
+
+export interface IpcValidationIssue {
+  field: string;
   message: string;
+}
+
+export interface IpcErrorPayload {
+  code: IpcErrorCode;
+  message: string;
+  /** Present only for VALIDATION_FAILED — our own validator strings, safe to render. */
+  issues?: IpcValidationIssue[];
 }
 
 export type IpcResult<T> = { ok: true; data: T } | { ok: false; error: IpcErrorPayload };

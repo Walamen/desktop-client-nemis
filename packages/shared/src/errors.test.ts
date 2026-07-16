@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { ApplicationError, ConfigurationError, IPCError, toIpcErrorPayload } from './index';
+import {
+  ApplicationError,
+  ConfigurationError,
+  ForbiddenError,
+  IPCError,
+  toIpcErrorPayload,
+} from './index';
 
 describe('error taxonomy', () => {
   it('ApplicationError carries code, name, and message', () => {
@@ -30,10 +36,17 @@ describe('error taxonomy', () => {
 });
 
 describe('toIpcErrorPayload', () => {
-  it('passes through ApplicationError code and message', () => {
+  it('passes through ApplicationError codes that are part of the closed IpcErrorCode contract', () => {
+    expect(toIpcErrorPayload(new IPCError('bad channel'))).toEqual({
+      code: 'IPC_ERROR',
+      message: 'bad channel',
+    });
+  });
+
+  it('masks ApplicationError codes outside the closed IpcErrorCode contract', () => {
     expect(toIpcErrorPayload(new ConfigurationError('invalid'))).toEqual({
-      code: 'CONFIGURATION_ERROR',
-      message: 'invalid',
+      code: 'UNEXPECTED_ERROR',
+      message: 'An unexpected error occurred.',
     });
   });
 
@@ -49,5 +62,13 @@ describe('toIpcErrorPayload', () => {
       code: 'UNEXPECTED_ERROR',
       message: 'An unexpected error occurred.',
     });
+  });
+});
+
+describe('ForbiddenError', () => {
+  it('carries the FORBIDDEN code', () => {
+    const error = new ForbiddenError('Setting "secret" is not renderer-readable.');
+    expect(error.code).toBe('FORBIDDEN');
+    expect(error.name).toBe('ForbiddenError');
   });
 });

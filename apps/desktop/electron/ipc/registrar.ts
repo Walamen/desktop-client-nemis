@@ -1,10 +1,10 @@
 import { ipcMain } from 'electron';
 import type { IpcChannel, IpcContract, IpcResult } from '@nemis-desktop/types';
-import { toIpcErrorPayload } from '@nemis-desktop/shared';
 import { logger } from '@app/services/logger';
 import { registerSystemHandlers } from '@app/ipc/handlers/system';
 import type { DataLayer } from '@app/data/factories/createDataLayer';
 import { registerSettingsHandlers } from '@app/ipc/handlers/settings';
+import { toIpcError } from './errorMapping';
 
 export type IpcValidator = (args: readonly unknown[]) => void;
 
@@ -33,7 +33,7 @@ function handle<C extends IpcChannel>(
       return { ok: true, data: await handler(...(args as IpcContract[C]['args'])) };
     } catch (error) {
       logger.error(`IPC handler failed for channel "${channel}"`, error);
-      return { ok: false, error: toIpcErrorPayload(error) };
+      return { ok: false, error: toIpcError(error) };
     }
   });
 }
