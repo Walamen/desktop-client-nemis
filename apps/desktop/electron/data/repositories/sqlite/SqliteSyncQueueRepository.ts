@@ -10,8 +10,8 @@ import {
   type SyncQueueRow,
 } from '../../mappers/platformMappers';
 import type { SyncError, SyncQueueItem, SyncQueueStatus } from '../../models/platform';
-import { deleteFrom, insertInto, select, updateTable } from '../../queries/builders';
-import { and, eq, inList, lt } from '../../queries/predicates';
+import { deleteFrom, insertInto, select } from '../../queries/builders';
+import { and, eq, lt } from '../../queries/predicates';
 import { validateEnqueue, validatePurge, validateRecordSyncError } from '../../validators/platform';
 import { BaseRepository } from '../base/BaseRepository';
 import type { RepositoryContext } from '../base/RepositoryContext';
@@ -146,15 +146,6 @@ export class SqliteSyncQueueRepository
   }
 
   #setStatus(ids: readonly string[], status: SyncQueueStatus, operation: string): number {
-    if (ids.length === 0) {
-      return 0;
-    }
-    return this.query(operation, () => {
-      const built = updateTable(TableNames.syncQueue)
-        .set({ status, updatedAt: nowIso() })
-        .where(inList('id', ids))
-        .build();
-      return this.statements.get(built.sql).run(...built.params).changes;
-    });
+    return this.query(operation, () => this.updateByIds(ids, { status, updatedAt: nowIso() }));
   }
 }

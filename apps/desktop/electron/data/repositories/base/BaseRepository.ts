@@ -11,7 +11,8 @@ import {
   updateTable,
   type BuiltQuery,
 } from '../../queries/builders';
-import { eq, type Predicate, type SqlValue } from '../../queries/predicates';
+import { chunkArray, DEFAULT_PARAMETER_CHUNK_SIZE } from '../../queries/chunk';
+import { eq, inList, type Predicate, type SqlValue } from '../../queries/predicates';
 import type { RepositoryContext } from './RepositoryContext';
 import { StatementCache } from './StatementCache';
 
@@ -201,6 +202,46 @@ export abstract class BaseRepository<TRow extends SqlRow, TModel> {
       }
       return this.findByIdOrThrow(id);
     });
+  }
+
+  /**
+   * Bulk UPDATE ... WHERE id IN (...) with automatic chunking below SQLite's
+   * parameter ceiling. All chunks run inside ONE IMMEDIATE transaction — a
+   * failing chunk rolls back every chunk. Returns the summed changed-row count.
+   */
+  protected updateByIds(
+    ids: readonly string[],
+    changes: Partial<TRow>,
+    chunkSize: number = DEFAULT_PARAMETER_CHUNK_SIZE,
+  ): number {
+    if (ids.length === 0) {
+      return 0;
+    }
+    const defined: SqlRow = {};
+    for (const [key, value] of Object.entries(changes)) {
+      if (value !== undefined) {
+        defined[key] = value as SqlValue;
+      }
+    }
+    if (Object.keys(defined).length === 0) {
+      throw new QueryError(`${this.#config.entityName}.updateByIds: no fields to update`);
+    }
+    try {
+      // IMMEDIATE: a known write batch takes the write lock up front.
+      return this.context.transactions.runImmediate(() => {
+        let total = 0;
+        for (const chunk of chunkArray(ids, chunkSize)) {
+          const built = updateTable(this.#config.table)
+            .set(defined)
+            .where(inList('id', chunk))
+            .build();
+          total += this.statements.get(built.sql).run(...built.params).changes;
+        }
+        return total;
+      });
+    } catch (error) {
+      throw translateDatabaseError(error, `${this.#config.entityName}.updateByIds`);
+    }
   }
 
   /** Entity-specific finder support: WHERE + the shared ordering/paging rules. */

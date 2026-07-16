@@ -44,6 +44,10 @@ class DeviceTestRepository extends BaseRepository<DeviceRow, Device> {
   updateRaw(id: string, changes: Partial<DeviceRow>): Device {
     return this.updateById(id, changes);
   }
+
+  updateManyRaw(ids: string[], changes: Partial<DeviceRow>, chunkSize?: number): number {
+    return this.updateByIds(ids, changes, chunkSize);
+  }
 }
 
 function deviceRow(id: string, createdAt: string): DeviceRow {
@@ -185,5 +189,21 @@ describe('BaseRepository', () => {
     });
     expect(repo.exists('outer')).toBe(true);
     expect(repo.exists('inner')).toBe(false);
+  });
+
+  it('updateByIds updates across multiple chunks and sums changes', () => {
+    const ids = ['a', 'b', 'c', 'd', 'e'];
+    for (const [index, id] of ids.entries()) {
+      repo.createRaw(deviceRow(id, `2026-01-0${index + 1}T00:00:00.000Z`));
+    }
+    const changed = repo.updateManyRaw(ids, { deviceName: 'renamed' }, 2); // 3 chunks
+    expect(changed).toBe(5);
+    expect(repo.findAll().every((device) => device.deviceName === 'renamed')).toBe(true);
+  });
+
+  it('updateByIds returns 0 for empty ids and rejects empty changes', () => {
+    expect(repo.updateManyRaw([], { deviceName: 'x' })).toBe(0);
+    repo.createRaw(deviceRow('a', '2026-01-01T00:00:00.000Z'));
+    expect(() => repo.updateManyRaw(['a'], {})).toThrow(QueryError);
   });
 });
