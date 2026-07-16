@@ -1,4 +1,5 @@
 import type {
+  AppendAuditEntryInput,
   CreateDeviceInput,
   EnqueueSyncOperationInput,
   RecordSyncErrorInput,
@@ -6,7 +7,7 @@ import type {
   UpdateDeviceInput,
   UpdateSyncMetadataInput,
 } from '../dto/platform';
-import { SYNC_OPERATION_TYPES, SYNC_STATUSES } from '../models/platform';
+import { AUDIT_CATEGORIES, SYNC_OPERATION_TYPES, SYNC_STATUSES } from '../models/platform';
 import {
   createValidator,
   isIsoDate,
@@ -63,5 +64,15 @@ export const validateRecordSyncError = createValidator<RecordSyncErrorInput>('Sy
 });
 
 export const validatePurge = createValidator<{ olderThan: string }>('SyncQueue.purge', {
+  olderThan: [required(), isIsoDate()],
+});
+
+export const validateAppendAudit = createValidator<AppendAuditEntryInput>('AuditLogEntry', {
+  category: [required(), isString(), oneOf(AUDIT_CATEGORIES)],
+  event: [required(), isString(), maxLength(200)],
+  details: [isJsonSerializable()],
+});
+
+export const validateAuditPrune = createValidator<{ olderThan: string }>('AuditLog.prune', {
   olderThan: [required(), isIsoDate()],
 });
