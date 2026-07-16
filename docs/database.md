@@ -10,9 +10,14 @@ authoritative database; nothing here is a source of truth.
             ├── Database             one better-sqlite3 connection: open/validate/pragmas/close
             ├── MigrationService     versioned, transactional migrations + history
             ├── initializeMetadata   idempotent seed: device row, sync singleton, defaults
-            ├── TransactionManager   callback-scoped transactions (savepoint nesting)
-            ├── BackupService        online backup / validate / restore (infrastructure only)
-            └── DatabaseHealthService quick_check, fk violations, sizes, integrity_check
+            └── TransactionManager   callback-scoped transactions (savepoint nesting)
+
+    BackupService and DatabaseHealthService are standalone infrastructure —
+    built, tested, and constructor-injectable, but not yet composed into
+    DatabaseManager (nothing in this phase calls them). Phase 3, when backup
+    scheduling or a health-check surface is wired up, is expected to either
+    add them as DatabaseManager members or keep them separately instantiated
+    call sites; this repo does not yet decide which.
 
 Everything under `apps/desktop/electron/database/` is main-process only and
 never crosses the IPC bridge in this phase. Services receive the raw
@@ -84,8 +89,7 @@ design: explicit begin/commit/rollback handles are not exposed, so a leaked
 open transaction is unrepresentable. Nested calls become SAVEPOINTs
 automatically. Errors thrown by `work` propagate unchanged after rollback
 (including native SQLite errors); only transaction-machinery failures are
-wrapped as `DatabaseError` taxonomy. Driver failures surface as the
-DatabaseError taxonomy.
+wrapped as `DatabaseError` taxonomy.
 
 ## Errors
 
@@ -104,6 +108,15 @@ Restore contract: close the connection first —
 `initialize()`; restore copies then renames, and removes stale `-wal`/`-shm`.
 Scheduling, retention, and UI are future phases.
 
+**Trust gap:** nothing in this phase triggers a backup or restore — the
+whole surface is unit-tested against temp-file databases only, never
+exercised in the packaged app. The restore path in particular renames over
+a live file and removes journal siblings, which is exactly the kind of
+Windows-file-locking-sensitive operation Task 15 showed this codebase can
+get wrong silently (the packaged native-module gap wasn't caught by any
+unit test). Give backup/restore an integration or packaged-app smoke test
+before treating it as field-ready.
+
 ## Testing
 
 - `pnpm test` (Vitest, colocated `*.test.ts`, relative imports inside the
@@ -116,6 +129,10 @@ Scheduling, retention, and UI are future phases.
   run `pnpm rebuild:electron` before `pnpm start`/`pnpm make`, and
   `pnpm rebuild:node` before `pnpm test` (the test factory detects the ABI
   mismatch and prints this instruction).
+  **The Electron version is duplicated** in `apps/desktop/package.json`
+  (`electron` dependency) and root `package.json` (`rebuild:electron`'s
+  `--target=`) — package.json has no comments, so bumping one without the
+  other is a silent drift trap; grep both when changing the pin.
 
 ## Future extension (Phase 3+)
 

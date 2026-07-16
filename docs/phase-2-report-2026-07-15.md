@@ -65,9 +65,15 @@ main.ts
         ├── Database             one better-sqlite3 connection: open/validate/pragmas/close
         ├── MigrationService     versioned, transactional migrations + history
         ├── initializeMetadata   idempotent seed: device row, sync singleton, defaults
-        ├── TransactionManager   callback-scoped transactions (savepoint nesting)
-        ├── BackupService        online backup / validate / restore
-        └── DatabaseHealthService quick_check, fk violations, sizes, integrity_check
+        └── TransactionManager   callback-scoped transactions (savepoint nesting)
+
+BackupService and DatabaseHealthService are standalone infrastructure — built,
+tested, constructor-injectable — but NOT composed into DatabaseManager; nothing
+in this phase calls them. This was caught by the final whole-branch review:
+earlier drafts of this diagram (and of docs/database.md) showed them as
+DatabaseManager children, which the shipped code does not do. Phase 3 needs to
+decide whether they become DatabaseManager members or stay separately
+instantiated.
 ```
 
 Everything under `electron/database/` is main-process only; nothing crosses the IPC bridge this phase (per the DO NOT list). Services receive the raw connection by constructor injection, so every module is unit-testable against a temp-file database without Electron.
@@ -156,6 +162,7 @@ Online backups via SQLite's backup API (safe while the app is running). Filename
 **Environment / build:**
 
 - **Electron pinned to 42.7.0 (ABI 146)**, not the originally planned 43.1.0, because better-sqlite3 12.11.1 publishes no ABI-148 prebuilds yet and this environment has no C++ toolchain to compile from source. Revert to 43.x once upstream ships electron-v148 prebuilds (or once a toolchain is available everywhere this repo is built).
+- **The Electron version is duplicated** in `apps/desktop/package.json` (the `electron` dependency) and root `package.json` (`rebuild:electron`'s `--target=`) — found in the final whole-branch review. package.json has no comments to couple them, so bumping one without the other silently rebuilds the wrong ABI. Grep both when changing the pin; consider deriving the target programmatically in Phase 3.
 - Electron Forge's automatic native-module rebuild fails silently/hard without a C++ toolchain; the workflow now depends on `pnpm rebuild:node` (test/dev, Node ABI) and `pnpm rebuild:electron` (packaging, Electron ABI) being run explicitly at the right points — there is no automated guard against forgetting this.
 - No CI is wired up yet to run the gate automatically.
 
@@ -168,6 +175,10 @@ Online backups via SQLite's backup API (safe while the app is running). Filename
 - `BackupService.restoreBackup`: if the file rename succeeds but the subsequent stale-`-wal`/`-shm` cleanup throws, the function reports failure even though the primary data swap already succeeded — a narrow, Windows-lock-adjacent edge case.
 - `createTestDatabase` orphans its temp directory if `Database.open()` throws before returning (test-infra only, not shipped code).
 - `prebuild-install@7.1.3` (a transitive dependency of better-sqlite3) is marked deprecated upstream — tracked for awareness, not actionable within this phase.
+- **`DatabaseManager` does not compose `BackupService` or `DatabaseHealthService`** (found in the final whole-branch review, §2's diagram was wrong until this pass corrected it). Both remain standalone, constructor-injectable services with no wiring into the lifecycle owner or any call site.
+- **Backup/restore trust gap:** because nothing in this phase calls `BackupService`, its entire surface — including `restoreBackup`'s rename-over-live-file and `-wal`/`-shm` cleanup — has only ever run against temp-file databases in unit tests, never against the real packaged app. This phase's own packaging bug (§8) showed that "passes unit tests" and "works in the packaged app" are not the same claim for this codebase. Give backup/restore an integration or packaged smoke test before treating it as field-ready.
+- `Database.#applyPragmas` verifies `foreign_keys` took effect after `pragma('foreign_keys = ON')` but does not similarly verify `journal_mode` actually became `wal` (some filesystems — network shares, some removable media — silently refuse WAL). Cheap to add; not yet done.
+- `MigrationService`'s pre-apply history-table creation and `currentVersion()` read, and all of `initializeMetadata`'s prepares, run outside the `MigrationError`/taxonomy wrapper — a raw driver error there (e.g. disk full) would propagate unwrapped and be misclassified by `main.ts`'s `instanceof DatabaseError` check. Harmless while nothing crosses IPC; close before Phase 3 exposes any of this to the renderer.
 
 **Product scope (explicitly deferred per the phase brief, not a gap):**
 
