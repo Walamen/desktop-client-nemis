@@ -12,6 +12,16 @@ export interface ISyncQueueRepository {
   findById(id: string): SyncQueueItem | null;
   /** Oldest pending first — matches idx_sync_queue_status_createdAt. */
   nextBatch(limit: number): SyncQueueItem[];
+  /**
+   * Atomically selects the oldest pending items AND marks them in_flight in
+   * ONE IMMEDIATE transaction — the sync-worker API. Race-safe: (a) today a
+   * single synchronous connection executes the whole callback without
+   * yielding, so interleaving is impossible; (b) for any future second
+   * worker/connection, IMMEDIATE acquires the write lock BEFORE the select,
+   * so no competitor can read-then-claim between our find and our mark — it
+   * blocks until commit and then observes the rows as in_flight.
+   */
+  claimBatch(limit: number): SyncQueueItem[];
   markInFlight(ids: readonly string[]): number;
   markCompleted(ids: readonly string[]): number;
   /** Sets status 'failed' and increments retryCount. */

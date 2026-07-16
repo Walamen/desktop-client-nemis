@@ -23,6 +23,11 @@ export class SyncQueueService {
     return Promise.resolve(this.#deps.syncQueue.nextBatch(limit));
   }
 
+  /** Atomic claim: select + mark in_flight in one transaction (sync-worker API). */
+  claim(limit: number): Promise<SyncQueueItem[]> {
+    return Promise.resolve(this.#deps.syncQueue.claimBatch(limit));
+  }
+
   complete(ids: string[]): Promise<number> {
     return Promise.resolve(this.#deps.syncQueue.markCompleted(ids));
   }

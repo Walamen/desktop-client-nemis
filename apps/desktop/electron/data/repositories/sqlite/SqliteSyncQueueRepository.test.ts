@@ -118,4 +118,34 @@ describe('SqliteSyncQueueRepository', () => {
     expect(repo.markCompleted(ids)).toBe(5);
     expect(repo.countByStatus('completed')).toBe(5);
   });
+
+  it('claimBatch atomically selects and marks the oldest pending items', () => {
+    const first = repo.enqueue(op('c1'));
+    tick();
+    const second = repo.enqueue(op('c2'));
+    tick();
+    repo.enqueue(op('c3'));
+
+    const claimed = repo.claimBatch(2);
+
+    expect(claimed.map((item) => item.id)).toEqual([first.id, second.id]);
+    expect(claimed.every((item) => item.status === 'in_flight')).toBe(true);
+    expect(repo.countByStatus('pending')).toBe(1);
+    expect(repo.countByStatus('in_flight')).toBe(2);
+  });
+
+  it('claimBatch never returns items another claim already took', () => {
+    repo.enqueue(op('c1'));
+    tick();
+    repo.enqueue(op('c2'));
+    const firstClaim = repo.claimBatch(1);
+    const secondClaim = repo.claimBatch(5);
+    expect(secondClaim.map((item) => item.id)).not.toContain(firstClaim[0]!.id);
+    expect(secondClaim).toHaveLength(1);
+  });
+
+  it('claimBatch on an empty queue returns [] without writes', () => {
+    expect(repo.claimBatch(10)).toEqual([]);
+    expect(repo.count()).toBe(0);
+  });
 });

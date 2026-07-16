@@ -81,6 +81,23 @@ export class SqliteSyncQueueRepository
     });
   }
 
+  claimBatch(limit: number): SyncQueueItem[] {
+    return this.query('claimBatch', () =>
+      // IMMEDIATE: the write lock is held before the select — see interface doc.
+      this.context.transactions.runImmediate(() => {
+        const pending = this.nextBatch(limit);
+        if (pending.length === 0) {
+          return [];
+        }
+        this.updateByIds(
+          pending.map((item) => item.id),
+          { status: 'in_flight', updatedAt: nowIso() },
+        );
+        return pending.map((item) => this.findByIdOrThrow(item.id));
+      }),
+    );
+  }
+
   markInFlight(ids: readonly string[]): number {
     return this.#setStatus(ids, 'in_flight', 'markInFlight');
   }
