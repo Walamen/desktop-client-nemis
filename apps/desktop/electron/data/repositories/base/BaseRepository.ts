@@ -115,20 +115,26 @@ export abstract class BaseRepository<TRow extends SqlRow, TModel> {
    */
   executeTransaction<T>(work: () => T): T {
     let workThrew = false;
+    let workError: unknown;
     try {
       return this.context.transactions.run(() => {
         try {
           return work();
         } catch (error) {
           workThrew = true;
+          workError = error;
           throw error;
         }
       });
     } catch (error) {
-      if (workThrew) {
+      if (workThrew && error === workError) {
         throw error;
       }
-      throw translateDatabaseError(error, `${this.#config.entityName}.transaction`);
+      const translated = translateDatabaseError(error, `${this.#config.entityName}.transaction`);
+      if (translated !== error) {
+        this.context.log.error(`${this.#config.entityName}.transaction failed`, translated);
+      }
+      throw translated;
     }
   }
 
