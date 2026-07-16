@@ -1,5 +1,6 @@
 import type { Database as SqliteDatabase } from 'better-sqlite3';
 import { MigrationError } from '../errors/errors';
+import { wrapSqliteError } from '../errors/wrapSqliteError';
 import { nowIso } from '../helpers/time';
 import type { Migration } from '../migrations/types';
 import { TableNames } from '../schema/tableNames';
@@ -35,7 +36,7 @@ export class MigrationService {
   }
 
   migrateToLatest(): AppliedMigration[] {
-    this.#db.exec(CREATE_HISTORY_TABLE);
+    this.#ensureHistoryTable();
     this.#validateRegistry();
     this.#validateHistory();
     const current = this.currentVersion();
@@ -48,7 +49,7 @@ export class MigrationService {
   }
 
   rollbackLast(): AppliedMigration | null {
-    this.#db.exec(CREATE_HISTORY_TABLE);
+    this.#ensureHistoryTable();
     const history = this.appliedMigrations();
     const last = history.at(-1);
     if (!last) {
@@ -80,19 +81,27 @@ export class MigrationService {
   }
 
   appliedMigrations(): AppliedMigration[] {
-    return this.#db
-      .prepare(
-        `SELECT version, name, appliedAt, durationMs
-         FROM ${TableNames.schemaMigrations} ORDER BY version`,
-      )
-      .all() as AppliedMigration[];
+    try {
+      return this.#db
+        .prepare(
+          `SELECT version, name, appliedAt, durationMs
+           FROM ${TableNames.schemaMigrations} ORDER BY version`,
+        )
+        .all() as AppliedMigration[];
+    } catch (error) {
+      throw wrapSqliteError(error, 'migration history read');
+    }
   }
 
   currentVersion(): number {
-    const row = this.#db
-      .prepare(`SELECT MAX(version) AS version FROM ${TableNames.schemaMigrations}`)
-      .get() as { version: number | null };
-    return row.version ?? 0;
+    try {
+      const row = this.#db
+        .prepare(`SELECT MAX(version) AS version FROM ${TableNames.schemaMigrations}`)
+        .get() as { version: number | null };
+      return row.version ?? 0;
+    } catch (error) {
+      throw wrapSqliteError(error, 'migration version read');
+    }
   }
 
   #apply(migration: Migration): AppliedMigration {
@@ -121,6 +130,14 @@ export class MigrationService {
       appliedAt,
       durationMs: Math.round(performance.now() - start),
     };
+  }
+
+  #ensureHistoryTable(): void {
+    try {
+      this.#db.exec(CREATE_HISTORY_TABLE);
+    } catch (error) {
+      throw wrapSqliteError(error, 'migration history setup');
+    }
   }
 
   #validateRegistry(): void {

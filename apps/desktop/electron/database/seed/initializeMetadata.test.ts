@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { DatabaseError } from '../errors/errors';
 import { MigrationService } from '../services/MigrationService';
 import { migrations } from '../migrations/registry';
 import { TableNames } from '../schema/tableNames';
@@ -73,5 +74,11 @@ describe('initializeMetadata', () => {
       .prepare(`SELECT value FROM ${TableNames.appSettings} WHERE key = 'theme'`)
       .get() as { value: string };
     expect(JSON.parse(theme.value)).toBe('dark');
+  });
+
+  it('wraps raw driver failures in the DatabaseError taxonomy', () => {
+    const raw = test.db.raw;
+    test.db.close();
+    expect(() => initializeMetadata(raw, device, 1)).toThrow(DatabaseError);
   });
 });

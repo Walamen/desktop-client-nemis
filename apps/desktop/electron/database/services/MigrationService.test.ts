@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Database as SqliteDatabase } from 'better-sqlite3';
-import { MigrationError } from '../errors/errors';
+import { DatabaseError, MigrationError } from '../errors/errors';
 import type { Migration } from '../migrations/types';
 import { createTestDatabase, type TestDatabase } from '../testing/createTestDatabase';
 import { MigrationService } from './MigrationService';
@@ -96,5 +96,13 @@ describe('MigrationService', () => {
     const service = new MigrationService(test.db.raw, [m1, m2]);
     service.migrateToLatest();
     expect(() => service.rollbackLast()).toThrow(MigrationError);
+  });
+
+  it('wraps raw driver failures from history access in the DatabaseError taxonomy', () => {
+    const service = new MigrationService(test.db.raw, [m1, m2]);
+    test.db.close();
+    expect(() => service.migrateToLatest()).toThrow(DatabaseError);
+    expect(() => service.currentVersion()).toThrow(DatabaseError);
+    expect(() => service.appliedMigrations()).toThrow(DatabaseError);
   });
 });
