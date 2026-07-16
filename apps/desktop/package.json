@@ -24,7 +24,7 @@
     "@nemis-desktop/shared": "workspace:*",
     "@nemis-desktop/types": "workspace:*",
     "@nemis-desktop/ui": "workspace:*",
-    "better-sqlite3": "^12.11.1",
+    "better-sqlite3": "npm:better-sqlite3-multiple-ciphers@^12.11.1",
     "dotenv": "^16.4.7",
     "electron-log": "^5.2.4",
     "electron-squirrel-startup": "^1.0.1",
