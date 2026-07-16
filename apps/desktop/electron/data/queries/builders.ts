@@ -54,6 +54,11 @@ export class SelectBuilder {
   }
 
   orderBy(column: string, direction: SortDirection = 'asc'): this {
+    if (direction !== 'asc' && direction !== 'desc') {
+      throw new QueryError(
+        `ORDER BY direction must be 'asc' or 'desc', got "${String(direction)}"`,
+      );
+    }
     this.#order.push({ column: assertIdentifier(column), direction });
     return this;
   }

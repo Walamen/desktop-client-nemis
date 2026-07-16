@@ -26,19 +26,20 @@ export class AppSettingsService {
   }
 
   /** Writes the setting and its audit entry atomically (cross-repo transaction). */
-  set(key: string, value: unknown): Promise<AppSetting> {
-    return Promise.resolve(
-      this.#deps.transactions.run(() => {
-        const setting = this.#deps.appSettings.setByKey(key, value);
-        // Audit the key only — setting values may be sensitive.
-        this.#deps.auditLog.append({
-          category: 'application',
-          event: 'setting.updated',
-          details: { key },
-        });
-        return setting;
-      }),
-    );
+  // async so a synchronous throw from transactions.run (e.g. translated
+  // transaction-machinery failures) becomes a rejected promise rather than
+  // escaping this method synchronously.
+  async set(key: string, value: unknown): Promise<AppSetting> {
+    return this.#deps.transactions.run(() => {
+      const setting = this.#deps.appSettings.setByKey(key, value);
+      // Audit the key only — setting values may be sensitive.
+      this.#deps.auditLog.append({
+        category: 'application',
+        event: 'setting.updated',
+        details: { key },
+      });
+      return setting;
+    });
   }
 
   remove(key: string): Promise<boolean> {

@@ -46,9 +46,12 @@ export function oneOf(allowed: readonly string[]): ValidationRule {
 
 export function isIsoDate(): ValidationRule {
   return (value, field) =>
-    isAbsent(value) || (typeof value === 'string' && !Number.isNaN(Date.parse(value)))
+    isAbsent(value) ||
+    (typeof value === 'string' &&
+      !Number.isNaN(Date.parse(value)) &&
+      value === new Date(value).toISOString())
       ? null
-      : { field, message: 'must be an ISO-8601 date string' };
+      : { field, message: 'must be an ISO-8601 UTC date string' };
 }
 
 export function isNonNegativeInt(): ValidationRule {

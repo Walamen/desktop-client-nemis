@@ -1,4 +1,5 @@
 import type { DatabaseLogger, DatabaseManager } from '../../database/DatabaseManager';
+import { translateDatabaseError } from '../errors/translateError';
 import { createRepositoryContext } from '../repositories/base/RepositoryContext';
 import type { IAppSettingsRepository } from '../repositories/interfaces/IAppSettingsRepository';
 import type { IAuditLogRepository } from '../repositories/interfaces/IAuditLogRepository';
@@ -15,6 +16,7 @@ import { AuditLogService } from '../services/AuditLogService';
 import { DeviceService } from '../services/DeviceService';
 import { SyncMetadataService } from '../services/SyncMetadataService';
 import { SyncQueueService } from '../services/SyncQueueService';
+import type { TransactionRunner } from '../services/TransactionRunner';
 
 export interface DataLayer {
   repositories: {
@@ -47,6 +49,29 @@ export function createDataLayer(manager: DatabaseManager, log: DatabaseLogger): 
   const syncQueue = new SqliteSyncQueueRepository(context);
   const auditLog = new SqliteAuditLogRepository(context);
 
+  // Services see only the RepositoryError taxonomy: failures of the
+  // transaction machinery itself (BEGIN/COMMIT, closed-connection errors)
+  // are translated here rather than escaping to callers untranslated.
+  // Repositories keep using context.transactions directly — errors thrown
+  // by repo code inside `work` are RepositoryErrors already and pass through
+  // translateDatabaseError unchanged.
+  const transactions: TransactionRunner = {
+    run: (work) => {
+      try {
+        return context.transactions.run(work);
+      } catch (error) {
+        throw translateDatabaseError(error, 'DataLayer.transaction');
+      }
+    },
+    runImmediate: (work) => {
+      try {
+        return context.transactions.runImmediate(work);
+      } catch (error) {
+        throw translateDatabaseError(error, 'DataLayer.transaction');
+      }
+    },
+  };
+
   return {
     repositories: { devices, appSettings, syncMetadata, syncQueue, auditLog },
     services: {
@@ -54,10 +79,10 @@ export function createDataLayer(manager: DatabaseManager, log: DatabaseLogger): 
       appSettings: new AppSettingsService({
         appSettings,
         auditLog,
-        transactions: context.transactions,
+        transactions,
       }),
       syncMetadata: new SyncMetadataService({ syncMetadata }),
-      syncQueue: new SyncQueueService({ syncQueue, transactions: context.transactions }),
+      syncQueue: new SyncQueueService({ syncQueue, transactions }),
       auditLog: new AuditLogService({ auditLog }),
     },
   };

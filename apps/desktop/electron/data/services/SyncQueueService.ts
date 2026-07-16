@@ -28,19 +28,20 @@ export class SyncQueueService {
   }
 
   /** Marks the operation failed and records its error atomically. */
-  fail(id: string, error: { message: string; stack?: string }): Promise<SyncQueueItem> {
-    return Promise.resolve(
-      this.#deps.transactions.run(() => {
-        const item = this.#deps.syncQueue.markFailed(id);
-        this.#deps.syncQueue.recordError({
-          operationId: id,
-          message: error.message,
-          stack: error.stack ?? null,
-          retryCount: item.retryCount,
-        });
-        return item;
-      }),
-    );
+  // async so a synchronous throw from transactions.run (e.g. translated
+  // transaction-machinery failures) becomes a rejected promise rather than
+  // escaping this method synchronously.
+  async fail(id: string, error: { message: string; stack?: string }): Promise<SyncQueueItem> {
+    return this.#deps.transactions.run(() => {
+      const item = this.#deps.syncQueue.markFailed(id);
+      this.#deps.syncQueue.recordError({
+        operationId: id,
+        message: error.message,
+        stack: error.stack ?? null,
+        retryCount: item.retryCount,
+      });
+      return item;
+    });
   }
 
   countByStatus(status: SyncQueueStatus): Promise<number> {

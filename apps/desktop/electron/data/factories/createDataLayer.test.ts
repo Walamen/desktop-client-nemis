@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { DatabaseManager } from '../../database/DatabaseManager';
+import { RepositoryError } from '../errors/repositoryErrors';
 import { createDataLayer, type DataLayer } from './createDataLayer';
 
 const TEST_DEVICE = {
@@ -53,5 +54,24 @@ describe('createDataLayer', () => {
     const errors = dataLayer.repositories.syncQueue.errorsForOperation(item.id);
     expect(errors).toHaveLength(1);
     expect(errors[0]!.retryCount).toBe(1);
+  });
+
+  it('translates transaction-machinery failures into RepositoryError at the service boundary', async () => {
+    const freshDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'nemis-datalayer-test-'));
+    const freshManager = new DatabaseManager({ userDataDir: freshDirectory, device: TEST_DEVICE });
+    freshManager.initialize();
+    const freshDataLayer = createDataLayer(freshManager, {
+      info: () => {},
+      warn: () => {},
+      error: () => {},
+    });
+    freshManager.shutdown();
+
+    await expect(freshDataLayer.services.appSettings.set('k', 1)).rejects.toBeInstanceOf(
+      RepositoryError,
+    );
+
+    freshManager.shutdown();
+    fs.rmSync(freshDirectory, { recursive: true, force: true });
   });
 });

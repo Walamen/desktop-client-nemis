@@ -48,6 +48,12 @@ describe('select', () => {
     expect(() => select('devices').orderBy('a b')).toThrow(QueryError);
   });
 
+  it('rejects a sort direction outside asc/desc at runtime', () => {
+    expect(() => select('devices').orderBy('createdAt', 'asc; DROP TABLE x' as never)).toThrow(
+      QueryError,
+    );
+  });
+
   it('rejects columns() called with no arguments', () => {
     expect(() => select('devices').columns()).toThrow(QueryError);
   });

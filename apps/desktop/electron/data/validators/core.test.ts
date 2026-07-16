@@ -57,6 +57,12 @@ describe('validation rules', () => {
     expect(isIsoDate()(1234, 'f')).not.toBeNull();
   });
 
+  it('isIsoDate rejects strict-ISO-but-non-UTC and non-ISO date formats', () => {
+    expect(isIsoDate()('7/16/2026', 'f')).not.toBeNull();
+    expect(isIsoDate()('July 16 2026', 'f')).not.toBeNull();
+    expect(isIsoDate()('2026-07-16T10:00:00.000Z', 'f')).toBeNull();
+  });
+
   it('isNonNegativeInt accepts 0 and positives, rejects negatives and floats', () => {
     expect(isNonNegativeInt()(0, 'f')).toBeNull();
     expect(isNonNegativeInt()(5, 'f')).toBeNull();
