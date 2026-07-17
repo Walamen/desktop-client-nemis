@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { Database } from './Database';
-import { DatabaseError, IntegrityError } from './errors/errors';
+import { ConnectionError, DatabaseError, IntegrityError } from './errors/errors';
 
 const KEY_A = 'a'.repeat(64);
 const KEY_B = 'b'.repeat(64);
@@ -89,5 +89,21 @@ describe('Database encryption', () => {
     db.raw.exec('CREATE TABLE t (id TEXT)');
     db.close();
     expect(readHeader(filePath)).toBe(PLAINTEXT_HEADER);
+  });
+
+  it('rejects opening a plaintext database read-only with an encryption key (cannot migrate)', () => {
+    const plain = Database.open({ filePath });
+    plain.raw.exec('CREATE TABLE t (id TEXT)');
+    plain.close();
+    expect(readHeader(filePath)).toBe(PLAINTEXT_HEADER);
+
+    expect(() => Database.open({ filePath, encryptionKey: KEY_A, readonly: true })).toThrow(
+      ConnectionError,
+    );
+    // Guarded before any pragma touches the file — it is left untouched, still plaintext.
+    expect(readHeader(filePath)).toBe(PLAINTEXT_HEADER);
+    const reopened = Database.open({ filePath });
+    expect(reopened.raw.prepare('SELECT id FROM t').all()).toEqual([]);
+    reopened.close();
   });
 });

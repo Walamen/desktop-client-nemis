@@ -46,6 +46,12 @@ export class Database {
       encryptionKey !== undefined &&
       filePath !== ':memory:' &&
       Database.#hasPlaintextData(filePath);
+    if (readonly && needsMigration) {
+      // Migration rekeys the file (a write) — a read-only open can never do that,
+      // and silently falling through would hand back a connection whose pragmas
+      // never took effect. Fail before opening the file at all.
+      throw new ConnectionError('Cannot encrypt a plaintext database opened read-only');
+    }
     let raw: SqliteDatabase;
     try {
       raw = new BetterSqlite3(filePath, { readonly });

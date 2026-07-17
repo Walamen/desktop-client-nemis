@@ -10,7 +10,11 @@ export interface ISyncQueueRepository {
   enqueue(input: EnqueueSyncOperationInput): SyncQueueItem;
   enqueueMany(inputs: readonly EnqueueSyncOperationInput[]): SyncQueueItem[];
   findById(id: string): SyncQueueItem | null;
-  /** Oldest pending first — matches idx_sync_queue_status_createdAt. */
+  /**
+   * Oldest pending first — matches idx_sync_queue_status_createdAt.
+   * Read-only peek for diagnostics/UI — NEVER use nextBatch + markInFlight to
+   * claim work (not atomic); the sync worker claims via claimBatch.
+   */
   nextBatch(limit: number): SyncQueueItem[];
   /**
    * Atomically selects the oldest pending items AND marks them in_flight in

@@ -11,7 +11,7 @@ import {
 } from '../../mappers/platformMappers';
 import type { SyncError, SyncQueueItem, SyncQueueStatus } from '../../models/platform';
 import { deleteFrom, insertInto, select } from '../../queries/builders';
-import { and, eq, lt } from '../../queries/predicates';
+import { and, eq, inList, lt } from '../../queries/predicates';
 import { validateEnqueue, validatePurge, validateRecordSyncError } from '../../validators/platform';
 import { BaseRepository } from '../base/BaseRepository';
 import type { RepositoryContext } from '../base/RepositoryContext';
@@ -89,11 +89,16 @@ export class SqliteSyncQueueRepository
         if (pending.length === 0) {
           return [];
         }
-        this.updateByIds(
-          pending.map((item) => item.id),
-          { status: 'in_flight', updatedAt: nowIso() },
-        );
-        return pending.map((item) => this.findByIdOrThrow(item.id));
+        const ids = pending.map((item) => item.id);
+        this.updateByIds(ids, { status: 'in_flight', updatedAt: nowIso() });
+        // One re-read for the whole batch instead of N findByIdOrThrow round
+        // trips; same createdAt,id ordering as nextBatch so return order stays stable.
+        return this.selectWhere('claimBatch', inList('id', ids), {
+          orderBy: [
+            { column: 'createdAt', direction: 'asc' },
+            { column: 'id', direction: 'asc' },
+          ],
+        });
       }),
     );
   }
