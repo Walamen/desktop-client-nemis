@@ -56,11 +56,24 @@ async boundary exactly where the process boundary is (IPC, sync worker).
 - **Transactions:** callback-scoped via `TransactionManager`; nested calls
   become SAVEPOINTs; batch writes use IMMEDIATE mode; rollback is automatic
   on throw. Services orchestrate cross-repo transactions (see
-  `AppSettingsService.set`, `SyncQueueService.fail`).
+  `AppSettingsService.set`, `SyncQueueService.fail`). `ISyncQueueRepository`'s
+  `claimBatch` does an atomic select+mark under one IMMEDIATE transaction —
+  the sync-worker claim API; the race-safety argument (why no competitor can
+  read-then-claim between the find and the mark) lives in its doc comment.
+  Bulk updates go through `BaseRepository.updateByIds`, which chunks the id
+  list below SQLite's sub-999 parameter ceiling automatically and runs every
+  chunk inside one transaction — repositories never encode that ceiling
+  themselves.
 - **Errors:** repositories translate everything into the `RepositoryError`
   taxonomy (`REPO_NOT_FOUND`, `REPO_DUPLICATE`, `REPO_VALIDATION`,
   `REPO_TRANSACTION`, `REPO_QUERY`, `REPO_UNKNOWN`); raw driver errors stay
-  on `cause` and never cross IPC.
+  on `cause` and never cross IPC. At the IPC boundary,
+  `electron/ipc/errorMapping.ts` maps that taxonomy (plus `DatabaseError` and
+  `ApplicationError`) onto the closed `IpcErrorCode` contract —
+  `VALIDATION_FAILED` carries per-field `issues`. Renderer settings access is
+  additionally gated by `electron/security/settingsAllowlist.ts`: a setting
+  is never renderer-readable merely because it exists in the database, only
+  because its key is listed there.
 - **Performance:** every statement is prepared once per repository via
   `StatementCache` (LIMIT/OFFSET are parameterized so SQL text stays stable);
   batch operations run in a single transaction.
@@ -88,7 +101,9 @@ async boundary exactly where the process boundary is (IPC, sync worker).
 - No JOINs in the query builder — platform tables don't need them.
 - No UPSERT in the builder — `setByKey` uses a transactional read-then-write.
 - `sync_errors` is owned by `SyncQueueRepository` (queue aggregate).
-- SQLCipher not yet enabled — decide before business data lands.
+- SQLCipher encryption is enabled (Phase 3.5) below this layer — see
+  `docs/database.md`'s Encryption section; the data access layer itself is
+  unchanged and unaware of it.
 - `BaseRepository` binds its `StatementCache` to the connection captured at
   construction. The `DataLayer` must be recreated after any
   `DatabaseManager.shutdown()` → `initialize()` cycle (e.g. a future

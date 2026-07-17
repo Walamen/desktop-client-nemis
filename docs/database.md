@@ -138,11 +138,36 @@ before treating it as field-ready.
   `--target=`) — package.json has no comments, so bumping one without the
   other is a silent drift trap; grep both when changing the pin.
 
+## Encryption (Phase 3.5)
+
+The database is SQLCipher-encrypted (SQLCipher-4 compatible scheme) via
+`better-sqlite3-multiple-ciphers`, installed as a pnpm alias under the
+`better-sqlite3` name — imports, types, rebuild scripts, and packaging are
+unchanged. `Database.open` applies `cipher='sqlcipher'` + `hexkey` before any
+other pragma; a wrong or missing key fails `quick_check` and surfaces as
+`IntegrityError`/`ConnectionError`.
+
+**Key management:** a per-installation random 256-bit key, wrapped by
+Electron `safeStorage` (Windows DPAPI, per-OS-user) and stored as
+`<userData>/nemis-db-key.bin` (`electron/security/databaseKey.ts`). If
+safeStorage is unavailable startup fails hard — there is no plaintext
+fallback. Losing the OS user profile (or the key file) makes the local
+database unrecoverable BY DESIGN; the authoritative data lives in PostgreSQL
+and is re-synced.
+
+**Migration:** a pre-3.5 plaintext database is encrypted in place on first
+keyed open (`hexrekey`, with a temporary `journal_mode=DELETE` because rekey
+needs a rollback journal); the event is audit-logged as `database.encrypted`.
+
+**Overhead:** SQLCipher-scheme page encryption costs roughly 5–15% on I/O —
+accepted (Decision Framework: data integrity and security outrank
+performance).
+
+**Tests** run keyless (unencrypted) by design; encryption behavior is covered
+by `Database.encryption.test.ts` and the packaged smoke test.
+
 ## Future extension (Phase 3+)
 
 - Repositories consume `DatabaseManager.connection` + `.transactions`; they
   must not construct connections.
 - The sync engine builds on `sync_queue`/`sync_errors`/`sync_metadata` as-is.
-- SQLCipher (preferred eventually): swap the driver behind `Database.open`,
-  bump `DATABASE_VERSION`, add a migration path — the taxonomy and lifecycle
-  are already encryption-agnostic.

@@ -107,9 +107,7 @@ describe('SqliteSyncQueueRepository', () => {
   });
 
   it('markCompleted spans multiple chunks atomically and counts all rows', () => {
-    const items = repo.enqueueMany(
-      Array.from({ length: 5 }, (_, index) => op(`chunk-${index}`)),
-    );
+    const items = repo.enqueueMany(Array.from({ length: 5 }, (_, index) => op(`chunk-${index}`)));
     const ids = items.map((item) => item.id);
     // chunkSize is internal; exercise the chunked path via a tiny chunk by
     // updating through markCompleted after verifying >1 chunk behavior at the
