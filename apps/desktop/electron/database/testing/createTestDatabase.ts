@@ -2,27 +2,12 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { Database } from '../Database';
+import { isAbiMismatch } from '../errors/abiMismatch';
 
 export interface TestDatabase {
   db: Database;
   filePath: string;
   cleanup(): void;
-}
-
-function isAbiMismatch(error: unknown): boolean {
-  const seen = new Set<unknown>();
-  let current: unknown = error;
-  while (current instanceof Error && !seen.has(current)) {
-    seen.add(current);
-    if (
-      current.message.includes('NODE_MODULE_VERSION') ||
-      (current as Error & { code?: string }).code === 'ERR_DLOPEN_FAILED'
-    ) {
-      return true;
-    }
-    current = current.cause;
-  }
-  return false;
 }
 
 /** Temp-file database (file-backed so WAL behaves exactly like production). */

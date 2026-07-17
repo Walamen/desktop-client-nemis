@@ -3,6 +3,7 @@ import path from 'node:path';
 import BetterSqlite3 from 'better-sqlite3';
 import type { Database as SqliteDatabase } from 'better-sqlite3';
 import { PRAGMAS } from './constants/pragmas';
+import { ABI_MISMATCH_HINT, isAbiMismatch } from './errors/abiMismatch';
 import { ConnectionError, IntegrityError } from './errors/errors';
 import { wrapSqliteError } from './errors/wrapSqliteError';
 
@@ -56,7 +57,10 @@ export class Database {
     try {
       raw = new BetterSqlite3(filePath, { readonly });
     } catch (error) {
-      throw new ConnectionError(`Cannot open database at ${filePath}`, { cause: error });
+      // A wrong-runtime prebuilt binary fails right here at module load —
+      // name the fix in the message so the log alone is actionable.
+      const hint = isAbiMismatch(error) ? ` — ${ABI_MISMATCH_HINT}` : '';
+      throw new ConnectionError(`Cannot open database at ${filePath}${hint}`, { cause: error });
     }
     try {
       if (encryptionKey !== undefined) {
