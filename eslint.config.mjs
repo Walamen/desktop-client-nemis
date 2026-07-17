@@ -3,6 +3,7 @@ import tseslint from 'typescript-eslint';
 import reactPlugin from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import prettier from 'eslint-config-prettier';
+import { domainImportGuard } from './packages/domain/eslint.config.mjs';
 
 export default tseslint.config(
   {
@@ -39,5 +40,6 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'error',
     },
   },
+  domainImportGuard,
   prettier,
 );
