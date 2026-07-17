@@ -22,6 +22,8 @@ export interface DatabaseManagerOptions {
   userDataDir: string;
   device: DeviceInfo;
   log?: DatabaseLogger;
+  /** 64-char hex; provided by main via safeStorage-backed key store. */
+  encryptionKey?: string;
 }
 
 const silentLogger: DatabaseLogger = { info: () => {}, warn: () => {}, error: () => {} };
@@ -56,7 +58,10 @@ export class DatabaseManager {
     }
     try {
       this.#log.info(`Opening database: ${this.#paths.databaseFile}`);
-      this.#db = Database.open({ filePath: this.#paths.databaseFile });
+      this.#db = Database.open({
+        filePath: this.#paths.databaseFile,
+        encryptionKey: this.#options.encryptionKey,
+      });
 
       const migrationService = new MigrationService(this.#db.raw, migrations);
       const applied = migrationService.migrateToLatest();
@@ -73,6 +78,11 @@ export class DatabaseManager {
       );
       this.#deviceId = seeded.deviceId;
       this.#transactions = new TransactionManager(this.#db.raw);
+
+      if (this.#db.wasEncryptedInPlace) {
+        this.#writeAudit('database.encrypted', { cipher: 'sqlcipher' });
+        this.#log.info('Existing plaintext database encrypted in place');
+      }
 
       this.#writeAudit('database.started', {
         schemaVersion: migrationService.currentVersion(),
