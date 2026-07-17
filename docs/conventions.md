@@ -50,3 +50,23 @@
 | `packages/types/`                 | IPC contract + shared API types                                              |
 | `packages/shared/`                | Error taxonomy shared across processes                                       |
 | `packages/ui/`                    | Shared UI components (placeholder until Phase 2+)                            |
+
+## Adding an IPC endpoint (Phase 3.5 checklist)
+
+1. Contract first: add the channel to `IpcContract` in `packages/types/src/ipc.ts`
+   and a constant in `IpcChannels` — the `IPC_CHANNELS_EXHAUSTIVE` assertion
+   will not compile until both exist.
+2. Shape validator in `apps/desktop/electron/security/validateIpc.ts`: enforce
+   exact arity and types; bound every string/number; never trust renderer input.
+3. Authorization where the endpoint exposes data: a dedicated module in
+   `electron/security/` (pattern: `settingsAllowlist.ts`) — never inline
+   permission logic in handlers.
+4. Thin handler in `electron/ipc/handlers/`: one line binding channel →
+   validator → service call. Handlers never touch repositories directly.
+5. Errors: nothing to do — the registrar maps every throw through
+   `toIpcError` (`electron/ipc/errorMapping.ts`), the single source of truth
+   for the `IpcErrorCode` contract. Never bypass it.
+6. Preload: add the method to the `NemisApi` surface in
+   `packages/types/src/api.ts` and `electron/preload/preload.ts` via `invoke`.
+7. Tests: validator unit tests (relative imports); mapping is already covered
+   centrally.
