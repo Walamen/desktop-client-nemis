@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { MigrationService } from './MigrationService';
+import { DatabaseError } from '../errors/errors';
 import { migrations } from '../migrations/registry';
 import { createTestDatabase, type TestDatabase } from '../testing/createTestDatabase';
 import { DatabaseHealthService } from './DatabaseHealthService';
@@ -47,5 +48,18 @@ describe('DatabaseHealthService', () => {
     const report = service.check();
     expect(report.foreignKeyViolations).toBeGreaterThan(0);
     expect(report.ok).toBe(false);
+  });
+
+  it('wraps driver failures from check() in the DatabaseError taxonomy', () => {
+    // Sabotage: close the connection out from under the service so the
+    // pragma call hits a real driver failure ("database connection is not
+    // open"), which must surface as a DatabaseError, not a raw driver error.
+    test.cleanup();
+    expect(() => service.check()).toThrow(DatabaseError);
+  });
+
+  it('wraps driver failures from fullIntegrityCheck() in the DatabaseError taxonomy', () => {
+    test.cleanup();
+    expect(() => service.fullIntegrityCheck()).toThrow(DatabaseError);
   });
 });

@@ -2,6 +2,7 @@ import type { Database as SqliteDatabase } from 'better-sqlite3';
 import { Database } from './Database';
 import { resolveDatabasePaths, type DatabasePaths } from './constants/paths';
 import { ConnectionError } from './errors/errors';
+import { wrapSqliteError } from './errors/wrapSqliteError';
 import { newId } from './helpers/ids';
 import { nowIso } from './helpers/time';
 import { migrations } from './migrations/registry';
@@ -157,11 +158,15 @@ export class DatabaseManager {
   }
 
   #writeAudit(event: string, details: object | null): void {
-    this.#db?.raw
-      .prepare(
-        `INSERT INTO ${TableNames.auditLog} (id, category, event, details, createdAt)
-         VALUES (?, 'database', ?, ?, ?)`,
-      )
-      .run(newId(), event, details === null ? null : JSON.stringify(details), nowIso());
+    try {
+      this.#db?.raw
+        .prepare(
+          `INSERT INTO ${TableNames.auditLog} (id, category, event, details, createdAt)
+           VALUES (?, 'database', ?, ?, ?)`,
+        )
+        .run(newId(), event, details === null ? null : JSON.stringify(details), nowIso());
+    } catch (error) {
+      throw wrapSqliteError(error, 'audit write');
+    }
   }
 }

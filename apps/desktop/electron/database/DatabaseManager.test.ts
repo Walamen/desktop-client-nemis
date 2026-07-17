@@ -79,4 +79,27 @@ describe('DatabaseManager', () => {
     expect(manager.state).toBe('failed');
     expect(() => manager.connection).toThrow(ConnectionError);
   });
+
+  it('wraps audit-write driver failures in the DatabaseError taxonomy; shutdown survives', () => {
+    const manager = new DatabaseManager({ userDataDir, device });
+    manager.initialize();
+    // Sabotage: drop the audit table so the shutdown audit write hits a real
+    // driver error; shutdown must survive (it warn-logs) and the error it
+    // logs must be a DatabaseError, not a raw SqliteError.
+    manager.connection.exec(`DROP TABLE ${TableNames.auditLog}`);
+    expect(() => manager.shutdown()).not.toThrow();
+  });
+
+  it('logs a DatabaseError (not a raw driver error) when the shutdown audit write fails', () => {
+    const warnings: string[] = [];
+    const manager = new DatabaseManager({
+      userDataDir,
+      device,
+      log: { info: () => {}, warn: (message) => warnings.push(message), error: () => {} },
+    });
+    manager.initialize();
+    manager.connection.exec(`DROP TABLE ${TableNames.auditLog}`);
+    manager.shutdown();
+    expect(warnings.some((message) => message.includes('DatabaseError'))).toBe(true);
+  });
 });

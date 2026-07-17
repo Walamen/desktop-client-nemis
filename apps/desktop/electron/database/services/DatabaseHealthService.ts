@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import type { Database as SqliteDatabase } from 'better-sqlite3';
+import { wrapSqliteError } from '../errors/wrapSqliteError';
 import { nowIso } from '../helpers/time';
 
 export interface HealthReport {
@@ -37,27 +38,35 @@ export class DatabaseHealthService {
   }
 
   check(): HealthReport {
-    const quickCheck = this.#db.pragma('quick_check', { simple: true }) as string;
-    const foreignKeyViolations = (this.#db.pragma('foreign_key_check') as unknown[]).length;
-    const pageCount = this.#db.pragma('page_count', { simple: true }) as number;
-    const pageSize = this.#db.pragma('page_size', { simple: true }) as number;
-    const schemaVersion = this.#db.pragma('user_version', { simple: true }) as number;
-    return {
-      ok: quickCheck === 'ok' && foreignKeyViolations === 0,
-      quickCheck,
-      foreignKeyViolations,
-      pageCount,
-      pageSize,
-      databaseSizeBytes: fileSize(this.#databaseFile),
-      walSizeBytes: fileSize(`${this.#databaseFile}-wal`),
-      schemaVersion,
-      checkedAt: nowIso(),
-    };
+    try {
+      const quickCheck = this.#db.pragma('quick_check', { simple: true }) as string;
+      const foreignKeyViolations = (this.#db.pragma('foreign_key_check') as unknown[]).length;
+      const pageCount = this.#db.pragma('page_count', { simple: true }) as number;
+      const pageSize = this.#db.pragma('page_size', { simple: true }) as number;
+      const schemaVersion = this.#db.pragma('user_version', { simple: true }) as number;
+      return {
+        ok: quickCheck === 'ok' && foreignKeyViolations === 0,
+        quickCheck,
+        foreignKeyViolations,
+        pageCount,
+        pageSize,
+        databaseSizeBytes: fileSize(this.#databaseFile),
+        walSizeBytes: fileSize(`${this.#databaseFile}-wal`),
+        schemaVersion,
+        checkedAt: nowIso(),
+      };
+    } catch (error) {
+      throw wrapSqliteError(error, 'health check');
+    }
   }
 
   fullIntegrityCheck(): { ok: boolean; errors: string[] } {
-    const rows = this.#db.pragma('integrity_check') as Array<{ integrity_check: string }>;
-    const errors = rows.map((row) => row.integrity_check).filter((line) => line !== 'ok');
-    return { ok: errors.length === 0, errors };
+    try {
+      const rows = this.#db.pragma('integrity_check') as Array<{ integrity_check: string }>;
+      const errors = rows.map((row) => row.integrity_check).filter((line) => line !== 'ok');
+      return { ok: errors.length === 0, errors };
+    } catch (error) {
+      throw wrapSqliteError(error, 'full integrity check');
+    }
   }
 }
