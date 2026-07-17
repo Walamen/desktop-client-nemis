@@ -9,6 +9,7 @@ import { registerIpcHandlers } from '@app/ipc/registrar';
 import { initLogger, logger } from '@app/services/logger';
 import { hardenWebContents } from '@app/security/hardenWindow';
 import { denyPermissionRequests, denyPermissionChecks } from '@app/security/permissions';
+import { loadOrCreateDatabaseKey } from '@app/security/databaseKey';
 import { installProcessSafetyNets } from '@app/main/safetyNets';
 import { createMainWindow, RENDERER_ORIGIN } from '@app/windows/mainWindow';
 import { registerAppProtocolScheme, registerAppProtocolHandler } from '@app/main/appProtocol';
@@ -67,8 +68,10 @@ function bootstrap(): void {
         warn: (message: string) => logger.warn(message),
         error: (message: string, error?: unknown) => logger.error(message, error),
       };
+      const encryptionKey = loadOrCreateDatabaseKey(app.getPath('userData'));
       databaseManager = new DatabaseManager({
         userDataDir: app.getPath('userData'),
+        encryptionKey,
         device: {
           deviceName: os.hostname(),
           platform: process.platform,
