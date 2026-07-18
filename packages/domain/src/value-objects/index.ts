@@ -6,3 +6,6 @@ export * from './address';
 export * from './gps-location';
 export * from './date-range';
 export * from './date-of-birth';
+export * from './money';
+export * from './percentage';
+export * from './marks';
