@@ -70,3 +70,18 @@
    `packages/types/src/api.ts` and `electron/preload/preload.ts` via `invoke`.
 7. Tests: validator unit tests (relative imports); mapping is already covered
    centrally.
+
+## Domain Layer (`@nemis-desktop/domain`, Phase 4)
+
+- Pure TypeScript business model. Only dependency: `@nemis-desktop/types`. No
+  electron/react/next/sqlite/ipc/shared imports (ESLint-enforced).
+- Feature-first folders: `core/` kernel, `exceptions/`, `value-objects/`, then one
+  folder per domain (`identity/`, `institution/`, `students/`, `academics/`,
+  `attendance/`, `assessments/`; more via `_extension-template/`).
+- Entities: private constructor + static `create()` (emits events) / `reconstitute()`
+  (no events). Behavior on the entity; mutations call `touch(by, at)`.
+- Value objects: immutable (frozen), self-validating via static `create()`, throw
+  `InvalidValueObjectException`.
+- Canonical enums live in `@nemis-desktop/types` mirrored from backend `@nemis/types`
+  (single source of truth). Keep values identical; see the Phase 4 spec for the
+  drift-check recommendation.
