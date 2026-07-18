@@ -5,3 +5,4 @@ export * from './identity';
 export * from './institution';
 export * from './students';
 export * from './academics';
+export * from './attendance';
