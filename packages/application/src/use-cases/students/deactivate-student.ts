@@ -16,9 +16,10 @@ export interface DeactivateStudentDeps {
   logger: IAppLogger;
 }
 
-export class DeactivateStudentUseCase
-  implements CommandHandler<DeactivateStudentDto, ApplicationResponse<StudentOutput>>
-{
+export class DeactivateStudentUseCase implements CommandHandler<
+  DeactivateStudentDto,
+  ApplicationResponse<StudentOutput>
+> {
   constructor(private readonly deps: DeactivateStudentDeps) {}
 
   execute(command: DeactivateStudentDto): Promise<ApplicationResponse<StudentOutput>> {

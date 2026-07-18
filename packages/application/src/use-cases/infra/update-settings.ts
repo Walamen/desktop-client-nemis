@@ -16,9 +16,10 @@ export interface UpdateSettingsDeps {
   logger: IAppLogger;
 }
 
-export class UpdateSettingsUseCase
-  implements CommandHandler<UpdateSettingsDto, ApplicationResponse<SettingOutput>>
-{
+export class UpdateSettingsUseCase implements CommandHandler<
+  UpdateSettingsDto,
+  ApplicationResponse<SettingOutput>
+> {
   constructor(private readonly deps: UpdateSettingsDeps) {}
 
   execute(command: UpdateSettingsDto): Promise<ApplicationResponse<SettingOutput>> {

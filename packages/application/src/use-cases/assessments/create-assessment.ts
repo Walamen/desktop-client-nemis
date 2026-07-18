@@ -22,9 +22,10 @@ export interface CreateAssessmentDeps {
   logger: IAppLogger;
 }
 
-export class CreateAssessmentUseCase
-  implements CommandHandler<CreateAssessmentDto, ApplicationResponse<AssessmentOutput>>
-{
+export class CreateAssessmentUseCase implements CommandHandler<
+  CreateAssessmentDto,
+  ApplicationResponse<AssessmentOutput>
+> {
   constructor(private readonly deps: CreateAssessmentDeps) {}
 
   execute(command: CreateAssessmentDto): Promise<ApplicationResponse<AssessmentOutput>> {

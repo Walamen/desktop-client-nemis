@@ -30,7 +30,12 @@ describe('UpdateGradingConfigUseCase', () => {
   it('translates the domain invariant (passing > max) into a UseCaseException', async () => {
     const { useCase } = build();
     await expect(
-      useCase.execute({ id: 'inst-1', maxMarks: 50, passingMarks: 90, requireAdminApproval: false }),
+      useCase.execute({
+        id: 'inst-1',
+        maxMarks: 50,
+        passingMarks: 90,
+        requireAdminApproval: false,
+      }),
     ).rejects.toBeInstanceOf(UseCaseException);
   });
 });

@@ -11,9 +11,10 @@ export interface GetClassRosterDeps {
   logger: IAppLogger;
 }
 
-export class GetClassRosterUseCase
-  implements QueryHandler<GetClassRosterDto, ApplicationResponse<ClassRosterOutput>>
-{
+export class GetClassRosterUseCase implements QueryHandler<
+  GetClassRosterDto,
+  ApplicationResponse<ClassRosterOutput>
+> {
   constructor(private readonly deps: GetClassRosterDeps) {}
 
   execute(query: GetClassRosterDto): Promise<ApplicationResponse<ClassRosterOutput>> {

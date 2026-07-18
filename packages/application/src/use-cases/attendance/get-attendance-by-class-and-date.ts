@@ -14,15 +14,13 @@ export interface GetAttendanceByClassAndDateDeps {
   logger: IAppLogger;
 }
 
-export class GetAttendanceByClassAndDateUseCase
-  implements
-    QueryHandler<GetAttendanceByClassAndDateDto, ApplicationResponse<AttendanceOutput[]>>
-{
+export class GetAttendanceByClassAndDateUseCase implements QueryHandler<
+  GetAttendanceByClassAndDateDto,
+  ApplicationResponse<AttendanceOutput[]>
+> {
   constructor(private readonly deps: GetAttendanceByClassAndDateDeps) {}
 
-  execute(
-    query: GetAttendanceByClassAndDateDto,
-  ): Promise<ApplicationResponse<AttendanceOutput[]>> {
+  execute(query: GetAttendanceByClassAndDateDto): Promise<ApplicationResponse<AttendanceOutput[]>> {
     return invokeUseCase('GetAttendanceByClassAndDate', this.deps.logger, async () => {
       const records = this.deps.attendance
         .findByClassAndDate(query.classId, query.date)

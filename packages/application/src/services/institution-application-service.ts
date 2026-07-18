@@ -14,9 +14,9 @@ export interface InstitutionApplicationServiceDeps {
 
 export class InstitutionApplicationService {
   constructor(private readonly deps: InstitutionApplicationServiceDeps) {}
-  getProfile(
-    query: { institutionId: string },
-  ): Promise<ApplicationResponse<InstitutionProfileOutput | null>> {
+  getProfile(query: {
+    institutionId: string;
+  }): Promise<ApplicationResponse<InstitutionProfileOutput | null>> {
     return this.deps.getProfile.execute(query);
   }
   updateGradingConfig(

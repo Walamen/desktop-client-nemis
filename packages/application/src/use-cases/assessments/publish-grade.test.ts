@@ -50,16 +50,16 @@ describe('PublishGradeUseCase', () => {
 
   it('throws a workflow exception when the grade is missing', async () => {
     const { useCase } = build();
-    await expect(
-      useCase.execute({ gradeId: 'nope', actorId: 'u' }),
-    ).rejects.toBeInstanceOf(WorkflowException);
+    await expect(useCase.execute({ gradeId: 'nope', actorId: 'u' })).rejects.toBeInstanceOf(
+      WorkflowException,
+    );
   });
 
   it('translates a non-publishable status into a UseCaseException', async () => {
     const { grades, useCase } = build();
     seed(grades, GradeStatus.DRAFT);
-    await expect(
-      useCase.execute({ gradeId: 'grd-1', actorId: 'user-9' }),
-    ).rejects.toBeInstanceOf(UseCaseException);
+    await expect(useCase.execute({ gradeId: 'grd-1', actorId: 'user-9' })).rejects.toBeInstanceOf(
+      UseCaseException,
+    );
   });
 });

@@ -19,9 +19,10 @@ export interface RecordGradeDeps {
   logger: IAppLogger;
 }
 
-export class RecordGradeUseCase
-  implements CommandHandler<RecordGradeDto, ApplicationResponse<GradeOutput>>
-{
+export class RecordGradeUseCase implements CommandHandler<
+  RecordGradeDto,
+  ApplicationResponse<GradeOutput>
+> {
   constructor(private readonly deps: RecordGradeDeps) {}
 
   execute(command: RecordGradeDto): Promise<ApplicationResponse<GradeOutput>> {

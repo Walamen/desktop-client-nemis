@@ -58,7 +58,12 @@ function build() {
   return { enrollments, events, useCase };
 }
 
-const dto = { studentId: 'stu-1', classId: 'cls-1', academicYearId: 'ay-1', termId: 'term-1' } as const;
+const dto = {
+  studentId: 'stu-1',
+  classId: 'cls-1',
+  academicYearId: 'ay-1',
+  termId: 'term-1',
+} as const;
 
 describe('EnrollStudentUseCase', () => {
   it('creates an active enrollment and emits an event', async () => {

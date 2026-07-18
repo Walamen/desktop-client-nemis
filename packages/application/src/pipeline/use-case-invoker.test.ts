@@ -13,18 +13,15 @@ describe('invokeUseCase', () => {
     const logger = new RecordingLogger();
     const result = await invokeUseCase('CreateStudent', logger, () => Promise.resolve(7));
     expect(result).toBe(7);
-    expect(logger.infos.map((e) => e.message)).toEqual([
-      'use-case.start',
-      'use-case.success',
-    ]);
+    expect(logger.infos.map((e) => e.message)).toEqual(['use-case.start', 'use-case.success']);
   });
 
   it('passes ApplicationException through unchanged and logs a failure', async () => {
     const logger = new RecordingLogger();
     const thrown = new ApplicationValidationException('bad', []);
-    await expect(
-      invokeUseCase('CreateStudent', logger, () => Promise.reject(thrown)),
-    ).rejects.toBe(thrown);
+    await expect(invokeUseCase('CreateStudent', logger, () => Promise.reject(thrown))).rejects.toBe(
+      thrown,
+    );
     expect(logger.errors).toHaveLength(1);
   });
 
@@ -32,9 +29,9 @@ describe('invokeUseCase', () => {
     const logger = new RecordingLogger();
     const domainErr = new BusinessRuleViolationException('rule broke');
     expect(domainErr).toBeInstanceOf(DomainException);
-    await expect(
-      invokeUseCase('X', logger, () => Promise.reject(domainErr)),
-    ).rejects.toMatchObject({ code: 'USE_CASE_ERROR', message: 'rule broke' });
+    await expect(invokeUseCase('X', logger, () => Promise.reject(domainErr))).rejects.toMatchObject(
+      { code: 'USE_CASE_ERROR', message: 'rule broke' },
+    );
   });
 
   it('wraps unknown errors in UnexpectedApplicationException', async () => {

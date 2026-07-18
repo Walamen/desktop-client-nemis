@@ -17,9 +17,10 @@ export interface UpdateGradingConfigDeps {
   logger: IAppLogger;
 }
 
-export class UpdateGradingConfigUseCase
-  implements CommandHandler<UpdateGradingConfigDto, ApplicationResponse<GradingConfigOutput>>
-{
+export class UpdateGradingConfigUseCase implements CommandHandler<
+  UpdateGradingConfigDto,
+  ApplicationResponse<GradingConfigOutput>
+> {
   constructor(private readonly deps: UpdateGradingConfigDeps) {}
 
   execute(command: UpdateGradingConfigDto): Promise<ApplicationResponse<GradingConfigOutput>> {

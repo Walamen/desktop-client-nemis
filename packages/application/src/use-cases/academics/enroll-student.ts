@@ -27,9 +27,10 @@ export interface EnrollStudentDeps {
   logger: IAppLogger;
 }
 
-export class EnrollStudentUseCase
-  implements CommandHandler<EnrollStudentDto, ApplicationResponse<EnrollmentOutput>>
-{
+export class EnrollStudentUseCase implements CommandHandler<
+  EnrollStudentDto,
+  ApplicationResponse<EnrollmentOutput>
+> {
   constructor(private readonly deps: EnrollStudentDeps) {}
 
   execute(command: EnrollStudentDto): Promise<ApplicationResponse<EnrollmentOutput>> {

@@ -16,9 +16,10 @@ export interface WithdrawEnrollmentDeps {
   logger: IAppLogger;
 }
 
-export class WithdrawEnrollmentUseCase
-  implements CommandHandler<WithdrawEnrollmentDto, ApplicationResponse<EnrollmentOutput>>
-{
+export class WithdrawEnrollmentUseCase implements CommandHandler<
+  WithdrawEnrollmentDto,
+  ApplicationResponse<EnrollmentOutput>
+> {
   constructor(private readonly deps: WithdrawEnrollmentDeps) {}
 
   execute(command: WithdrawEnrollmentDto): Promise<ApplicationResponse<EnrollmentOutput>> {

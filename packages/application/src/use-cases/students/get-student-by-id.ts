@@ -11,9 +11,10 @@ export interface GetStudentByIdDeps {
   logger: IAppLogger;
 }
 
-export class GetStudentByIdUseCase
-  implements QueryHandler<{ studentId: string }, ApplicationResponse<StudentOutput | null>>
-{
+export class GetStudentByIdUseCase implements QueryHandler<
+  { studentId: string },
+  ApplicationResponse<StudentOutput | null>
+> {
   constructor(private readonly deps: GetStudentByIdDeps) {}
 
   execute(query: { studentId: string }): Promise<ApplicationResponse<StudentOutput | null>> {

@@ -11,9 +11,10 @@ export interface GetGradesByStudentDeps {
   logger: IAppLogger;
 }
 
-export class GetGradesByStudentUseCase
-  implements QueryHandler<GetGradesByStudentDto, ApplicationResponse<GradeOutput[]>>
-{
+export class GetGradesByStudentUseCase implements QueryHandler<
+  GetGradesByStudentDto,
+  ApplicationResponse<GradeOutput[]>
+> {
   constructor(private readonly deps: GetGradesByStudentDeps) {}
 
   execute(query: GetGradesByStudentDto): Promise<ApplicationResponse<GradeOutput[]>> {

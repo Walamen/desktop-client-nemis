@@ -19,9 +19,10 @@ export interface PublishGradeDeps {
   logger: IAppLogger;
 }
 
-export class PublishGradeUseCase
-  implements CommandHandler<PublishGradeDto, ApplicationResponse<GradeOutput>>
-{
+export class PublishGradeUseCase implements CommandHandler<
+  PublishGradeDto,
+  ApplicationResponse<GradeOutput>
+> {
   constructor(private readonly deps: PublishGradeDeps) {}
 
   execute(command: PublishGradeDto): Promise<ApplicationResponse<GradeOutput>> {

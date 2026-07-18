@@ -15,14 +15,13 @@ export interface ListStudentsDeps {
   logger: IAppLogger;
 }
 
-export class ListStudentsUseCase
-  implements QueryHandler<ListStudentsDto, ApplicationResponse<PagedResult<StudentSummaryOutput>>>
-{
+export class ListStudentsUseCase implements QueryHandler<
+  ListStudentsDto,
+  ApplicationResponse<PagedResult<StudentSummaryOutput>>
+> {
   constructor(private readonly deps: ListStudentsDeps) {}
 
-  execute(
-    query: ListStudentsDto,
-  ): Promise<ApplicationResponse<PagedResult<StudentSummaryOutput>>> {
+  execute(query: ListStudentsDto): Promise<ApplicationResponse<PagedResult<StudentSummaryOutput>>> {
     return invokeUseCase('ListStudents', this.deps.logger, async () => {
       const limit = Math.min(Math.max(query.limit ?? DEFAULT_LIMIT, 1), MAX_LIMIT);
       const offset = Math.max(query.offset ?? 0, 0);

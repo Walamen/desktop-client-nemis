@@ -24,9 +24,10 @@ export interface LinkGuardianDeps {
   logger: IAppLogger;
 }
 
-export class LinkGuardianToStudentUseCase
-  implements CommandHandler<LinkGuardianDto, ApplicationResponse<StudentOutput>>
-{
+export class LinkGuardianToStudentUseCase implements CommandHandler<
+  LinkGuardianDto,
+  ApplicationResponse<StudentOutput>
+> {
   constructor(private readonly deps: LinkGuardianDeps) {}
 
   execute(command: LinkGuardianDto): Promise<ApplicationResponse<StudentOutput>> {

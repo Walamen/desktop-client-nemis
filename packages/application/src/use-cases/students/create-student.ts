@@ -23,9 +23,10 @@ export interface CreateStudentDeps {
   logger: IAppLogger;
 }
 
-export class CreateStudentUseCase
-  implements CommandHandler<CreateStudentDto, ApplicationResponse<StudentOutput>>
-{
+export class CreateStudentUseCase implements CommandHandler<
+  CreateStudentDto,
+  ApplicationResponse<StudentOutput>
+> {
   constructor(private readonly deps: CreateStudentDeps) {}
 
   execute(command: CreateStudentDto): Promise<ApplicationResponse<StudentOutput>> {

@@ -25,9 +25,10 @@ export interface RecordAttendanceDeps {
   logger: IAppLogger;
 }
 
-export class RecordAttendanceUseCase
-  implements CommandHandler<RecordAttendanceDto, ApplicationResponse<AttendanceOutput>>
-{
+export class RecordAttendanceUseCase implements CommandHandler<
+  RecordAttendanceDto,
+  ApplicationResponse<AttendanceOutput>
+> {
   constructor(private readonly deps: RecordAttendanceDeps) {}
 
   execute(command: RecordAttendanceDto): Promise<ApplicationResponse<AttendanceOutput>> {

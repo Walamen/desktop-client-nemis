@@ -11,15 +11,15 @@ export interface GetInstitutionProfileDeps {
   logger: IAppLogger;
 }
 
-export class GetInstitutionProfileUseCase
-  implements
-    QueryHandler<{ institutionId: string }, ApplicationResponse<InstitutionProfileOutput | null>>
-{
+export class GetInstitutionProfileUseCase implements QueryHandler<
+  { institutionId: string },
+  ApplicationResponse<InstitutionProfileOutput | null>
+> {
   constructor(private readonly deps: GetInstitutionProfileDeps) {}
 
-  execute(
-    query: { institutionId: string },
-  ): Promise<ApplicationResponse<InstitutionProfileOutput | null>> {
+  execute(query: {
+    institutionId: string;
+  }): Promise<ApplicationResponse<InstitutionProfileOutput | null>> {
     return invokeUseCase('GetInstitutionProfile', this.deps.logger, async () => {
       const institution = this.deps.institutions.findById(query.institutionId);
       return ok(institution ? toInstitutionProfileOutput(institution) : null);

@@ -7,7 +7,9 @@ export function requireFields<T>(input: T, fields: readonly (keyof T & string)[]
   for (const field of fields) {
     const value = record[field];
     const blank =
-      value === undefined || value === null || (typeof value === 'string' && value.trim().length === 0);
+      value === undefined ||
+      value === null ||
+      (typeof value === 'string' && value.trim().length === 0);
     if (blank) issues.push({ field, message: 'is required' });
   }
   if (issues.length > 0) {

@@ -73,7 +73,8 @@ the concrete composition root wired into the running app.
   ```
 
   Both `execute` methods are `async` for a uniform calling convention — the
-  transactional work *inside* a command is a synchronous closure (§7).
+  transactional work _inside_ a command is a synchronous closure (§7).
+
 - In the shipped code, the "command" and "query" objects passed to `execute`
   are the use case's own Input DTO (e.g. `CreateStudentDto`,
   `ListStudentsDto`) rather than a separate wrapper type. `core/command.ts`
@@ -258,14 +259,14 @@ like once that domain slice actually ships.
 
 **Fully implemented (17), mock-tested against ports:**
 
-| Domain | Commands | Queries |
-|---|---|---|
-| Students | CreateStudent, DeactivateStudent, LinkGuardianToStudent | GetStudentById, ListStudents (paged) |
-| Academics | EnrollStudent, WithdrawEnrollment | GetClassRoster |
-| Attendance | RecordAttendance | GetAttendanceByClassAndDate |
-| Assessments | CreateAssessment, RecordGrade, PublishGrade | GetGradesByStudent |
-| Identity | — | GetUserById |
-| Institution | UpdateGradingConfig | GetInstitutionProfile |
+| Domain      | Commands                                                | Queries                              |
+| ----------- | ------------------------------------------------------- | ------------------------------------ |
+| Students    | CreateStudent, DeactivateStudent, LinkGuardianToStudent | GetStudentById, ListStudents (paged) |
+| Academics   | EnrollStudent, WithdrawEnrollment                       | GetClassRoster                       |
+| Attendance  | RecordAttendance                                        | GetAttendanceByClassAndDate          |
+| Assessments | CreateAssessment, RecordGrade, PublishGrade             | GetGradesByStudent                   |
+| Identity    | —                                                       | GetUserById                          |
+| Institution | UpdateGradingConfig                                     | GetInstitutionProfile                |
 
 (Identity has no commands — per `CLAUDE.md`, Electron never owns
 authentication; that stays backend-owned.)

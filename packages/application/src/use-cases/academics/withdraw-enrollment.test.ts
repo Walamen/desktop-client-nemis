@@ -40,9 +40,9 @@ describe('WithdrawEnrollmentUseCase', () => {
 
   it('throws a workflow exception when the enrollment is missing', async () => {
     const { useCase } = build();
-    await expect(
-      useCase.execute({ enrollmentId: 'nope', actorId: 'u' }),
-    ).rejects.toBeInstanceOf(WorkflowException);
+    await expect(useCase.execute({ enrollmentId: 'nope', actorId: 'u' })).rejects.toBeInstanceOf(
+      WorkflowException,
+    );
   });
 
   it('translates the domain double-withdraw error into a UseCaseException', async () => {

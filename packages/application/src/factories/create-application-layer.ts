@@ -86,8 +86,20 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
   const { unitOfWork, clock, ids, events, logger } = ports;
 
   const students = new StudentApplicationService({
-    create: new CreateStudentUseCase({ students: ports.students, unitOfWork, clock, ids, events, logger }),
-    deactivate: new DeactivateStudentUseCase({ students: ports.students, unitOfWork, clock, logger }),
+    create: new CreateStudentUseCase({
+      students: ports.students,
+      unitOfWork,
+      clock,
+      ids,
+      events,
+      logger,
+    }),
+    deactivate: new DeactivateStudentUseCase({
+      students: ports.students,
+      unitOfWork,
+      clock,
+      logger,
+    }),
     linkGuardian: new LinkGuardianToStudentUseCase({
       students: ports.students,
       guardians: ports.guardians,
@@ -112,7 +124,12 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
       events,
       logger,
     }),
-    withdraw: new WithdrawEnrollmentUseCase({ enrollments: ports.enrollments, unitOfWork, clock, logger }),
+    withdraw: new WithdrawEnrollmentUseCase({
+      enrollments: ports.enrollments,
+      unitOfWork,
+      clock,
+      logger,
+    }),
     getClassRoster: new GetClassRosterUseCase({ enrollments: ports.enrollments, logger }),
   });
 
@@ -126,13 +143,29 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
       events,
       logger,
     }),
-    getByClassAndDate: new GetAttendanceByClassAndDateUseCase({ attendance: ports.attendance, logger }),
+    getByClassAndDate: new GetAttendanceByClassAndDateUseCase({
+      attendance: ports.attendance,
+      logger,
+    }),
   });
 
   const assessments = new AssessmentsApplicationService({
-    createAssessment: new CreateAssessmentUseCase({ assessments: ports.assessments, unitOfWork, clock, ids, events, logger }),
+    createAssessment: new CreateAssessmentUseCase({
+      assessments: ports.assessments,
+      unitOfWork,
+      clock,
+      ids,
+      events,
+      logger,
+    }),
     recordGrade: new RecordGradeUseCase({ grades: ports.grades, unitOfWork, clock, ids, logger }),
-    publishGrade: new PublishGradeUseCase({ grades: ports.grades, unitOfWork, clock, events, logger }),
+    publishGrade: new PublishGradeUseCase({
+      grades: ports.grades,
+      unitOfWork,
+      clock,
+      events,
+      logger,
+    }),
     getGradesByStudent: new GetGradesByStudentUseCase({ grades: ports.grades, logger }),
   });
 
@@ -142,12 +175,26 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
 
   const institution = new InstitutionApplicationService({
     getProfile: new GetInstitutionProfileUseCase({ institutions: ports.institutions, logger }),
-    updateGradingConfig: new UpdateGradingConfigUseCase({ configs: ports.gradingConfigs, unitOfWork, logger }),
+    updateGradingConfig: new UpdateGradingConfigUseCase({
+      configs: ports.gradingConfigs,
+      unitOfWork,
+      logger,
+    }),
   });
 
   const infra = new InfraApplicationService({
-    registerDevice: new RegisterDeviceUseCase({ deviceGateway: ports.deviceGateway, clock, events, logger }),
-    updateSettings: new UpdateSettingsUseCase({ settingsGateway: ports.settingsGateway, clock, events, logger }),
+    registerDevice: new RegisterDeviceUseCase({
+      deviceGateway: ports.deviceGateway,
+      clock,
+      events,
+      logger,
+    }),
+    updateSettings: new UpdateSettingsUseCase({
+      settingsGateway: ports.settingsGateway,
+      clock,
+      events,
+      logger,
+    }),
   });
 
   return { students, academics, attendance, assessments, identity, institution, infra };

@@ -16,9 +16,10 @@ export interface RegisterDeviceDeps {
   logger: IAppLogger;
 }
 
-export class RegisterDeviceUseCase
-  implements CommandHandler<RegisterDeviceDto, ApplicationResponse<DeviceOutput>>
-{
+export class RegisterDeviceUseCase implements CommandHandler<
+  RegisterDeviceDto,
+  ApplicationResponse<DeviceOutput>
+> {
   constructor(private readonly deps: RegisterDeviceDeps) {}
 
   execute(command: RegisterDeviceDto): Promise<ApplicationResponse<DeviceOutput>> {
