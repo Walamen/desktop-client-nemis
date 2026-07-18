@@ -10,3 +10,7 @@ export * from './validators/validate';
 export * from './testing';
 export * from './dto/students/student-dto';
 export * from './mappers/students/student-mapper';
+export * from './events';
+export * from './use-cases/students/create-student';
+export * from './use-cases/students/deactivate-student';
+export * from './use-cases/students/link-guardian-to-student';
