@@ -6,3 +6,4 @@ export * from './event-publisher';
 export * from './permission-evaluator';
 export * from './students';
 export * from './academics';
+export * from './attendance';
