@@ -14,3 +14,6 @@ export * from './events';
 export * from './use-cases/students/create-student';
 export * from './use-cases/students/deactivate-student';
 export * from './use-cases/students/link-guardian-to-student';
+export * from './use-cases/students/get-student-by-id';
+export * from './use-cases/students/list-students';
+export * from './services/student-application-service';
