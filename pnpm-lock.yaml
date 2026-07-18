@@ -139,6 +139,15 @@ importers:
         specifier: ^8.0.2
         version: 8.0.5
 
+  packages/application:
+    dependencies:
+      '@nemis-desktop/domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@nemis-desktop/types':
+        specifier: workspace:*
+        version: link:../types
+
   packages/domain:
     dependencies:
       '@nemis-desktop/types':

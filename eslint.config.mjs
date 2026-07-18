@@ -4,6 +4,7 @@ import reactPlugin from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import prettier from 'eslint-config-prettier';
 import { domainImportGuard } from './packages/domain/eslint.config.mjs';
+import { applicationImportGuard } from './packages/application/eslint.config.mjs';
 
 export default tseslint.config(
   {
@@ -41,5 +42,6 @@ export default tseslint.config(
     },
   },
   domainImportGuard,
+  applicationImportGuard,
   prettier,
 );
