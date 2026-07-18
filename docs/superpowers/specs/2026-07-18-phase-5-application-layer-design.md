@@ -204,16 +204,26 @@ All ports return/accept domain entities or primitives — never SQLite rows, nev
 
 ## 9. Use-case catalog
 
-**Fully implemented (~16), mock-tested against ports:**
+**Catalog adjusted during planning to match real Phase-4 domain methods.** The Phase-4
+domain was built as a minimal slice: not every entity has a rich mutation API. To honor
+"do not invent business behavior," each command below maps to a factory/method that
+actually exists on the entity. Adjustments from the design-review catalog:
+`UpdateStudent → DeactivateStudent` (Student exposes `deactivate()`, no generic update);
+`CreateClass`/`CreateAcademicYear` dropped (those entities have `reconstitute` only, no
+`create()` factory) and replaced with `WithdrawEnrollment` (`Enrollment.withdraw()`);
+`PublishAssessment → CreateAssessment` (Assessment has `create()`, not `publish()`; grade
+publishing is covered by `PublishGrade`).
+
+**Fully implemented (~17), mock-tested against ports:**
 
 | Domain | Commands | Queries |
 |---|---|---|
-| Students | CreateStudent, UpdateStudent, LinkGuardianToStudent | GetStudentById, ListStudents (paged) |
-| Academics | EnrollStudent, CreateClass, CreateAcademicYear | GetClassRoster |
-| Attendance | RecordAttendance | GetAttendanceByClassAndDate |
-| Assessments | PublishAssessment, RecordGrade, PublishGrade | GetGradesByStudent |
+| Students | CreateStudent (`Student.create`), DeactivateStudent (`student.deactivate`), LinkGuardianToStudent (`student.addGuardian`) | GetStudentById, ListStudents (paged) |
+| Academics | EnrollStudent (`Enrollment.create`), WithdrawEnrollment (`enrollment.withdraw`) | GetClassRoster |
+| Attendance | RecordAttendance (`Attendance.record`) | GetAttendanceByClassAndDate |
+| Assessments | CreateAssessment (`Assessment.create`), RecordGrade (`Grade.create`), PublishGrade (`grade.publish`) | GetGradesByStudent |
 | Identity | — (authentication is backend-owned) | GetUserById |
-| Institution | UpdateGradingConfig (local config write) | GetInstitutionProfile |
+| Institution | UpdateGradingConfig (`GradingConfig.reconstitute`, local config) | GetInstitutionProfile |
 
 **Infra, wired end-to-end via adapters to the real DAL:**
 `RegisterDevice`, `UpdateSettings`.
@@ -231,9 +241,10 @@ grades) plus local config (grading config, settings) and device registration.
 ## 10. Application events
 
 Type definitions only, plus the `IEventPublisher` port. **No event bus** is built this phase.
-Events are defined **only** where the corresponding use case exists:
-`StudentRegistered`, `AttendanceSaved`, `AssessmentPublished`, `GradePublished`,
-`SettingsUpdated`, `DeviceRegistered`. (`TeacherAssigned` is declared as a skeleton alongside
+Events are defined **only** where the corresponding use case exists (names aligned to the
+real domain events they mirror): `StudentRegistered`, `StudentGuardianLinked`,
+`EnrollmentCreated`, `AttendanceRecorded`, `AssessmentCreated`, `GradePublished`,
+`DeviceRegistered`, `SettingsUpdated`. (`TeacherAssigned` is declared as a skeleton alongside
 its skeleton use case.) Default publisher is a no-op; commands call it after successful
 persistence.
 
