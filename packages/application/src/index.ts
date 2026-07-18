@@ -8,6 +8,7 @@ export * from './defaults';
 export * from './pipeline';
 export * from './validators/validate';
 export * from './testing';
+export * from './policies';
 export * from './dto/students/student-dto';
 export * from './mappers/students/student-mapper';
 export * from './dto/academics/academics-dto';
