@@ -1,0 +1,9 @@
+import type { Institution } from '@nemis-desktop/domain';
+import type { IInstitutionRepository } from '../../interfaces/institution/institution-repository';
+
+export class InMemoryInstitutionRepository implements IInstitutionRepository {
+  readonly store = new Map<string, Institution>();
+  findById(id: string): Institution | null {
+    return this.store.get(id) ?? null;
+  }
+}
