@@ -51,3 +51,4 @@ export * from './dto/infra/infra-dto';
 export * from './use-cases/infra/register-device';
 export * from './use-cases/infra/update-settings';
 export * from './services/infra-application-service';
+export * from './factories';
