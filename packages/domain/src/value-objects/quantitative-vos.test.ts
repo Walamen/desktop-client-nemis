@@ -32,4 +32,16 @@ describe('Marks', () => {
     expect(marks.percentage.value).toBe(75);
     expect(() => Marks.create({ obtained: 70, total: 60 })).toThrow(InvalidValueObjectException);
   });
+
+  it('rejects NaN obtained', () => {
+    expect(() => Marks.create({ obtained: NaN, total: 50 })).toThrow(InvalidValueObjectException);
+  });
+
+  it('rejects NaN total', () => {
+    expect(() => Marks.create({ obtained: 10, total: NaN })).toThrow(InvalidValueObjectException);
+  });
+
+  it('rejects a zero total', () => {
+    expect(() => Marks.create({ obtained: 10, total: 0 })).toThrow(InvalidValueObjectException);
+  });
 });

@@ -13,10 +13,10 @@ export class Marks extends ValueObject<MarksProps> {
   }
 
   static create(input: MarksProps): Marks {
-    if (input.total <= 0) {
-      throw new InvalidValueObjectException('Marks total must be greater than zero');
+    if (Number.isNaN(input.total) || input.total <= 0) {
+      throw new InvalidValueObjectException('Marks total must be a positive number');
     }
-    if (input.obtained < 0 || input.obtained > input.total) {
+    if (Number.isNaN(input.obtained) || input.obtained < 0 || input.obtained > input.total) {
       throw new InvalidValueObjectException('Marks obtained must be between 0 and total');
     }
     return new Marks({ obtained: input.obtained, total: input.total });

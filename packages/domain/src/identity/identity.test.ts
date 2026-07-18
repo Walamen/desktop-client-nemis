@@ -85,6 +85,36 @@ describe('User', () => {
     expect(user.version).toBe(2);
     expect(user.isActive).toBe(false);
   });
+
+  it('defensively copies the organizations array so external mutation is not observed', () => {
+    const orgs = [
+      UserOrganization.reconstitute({
+        id: 'org-1',
+        role: SystemRole.TEACHER,
+        institutionId: 'inst-1',
+        isActive: true,
+      }),
+    ];
+    const user = User.create({
+      id: 'user-1',
+      firstName: 'Ama',
+      lastName: 'Kollie',
+      email: 'ama@moe.gov.lr',
+      organizations: orgs,
+      occurredAt: ISO,
+    });
+
+    orgs.push(
+      UserOrganization.reconstitute({
+        id: 'org-2',
+        role: SystemRole.DEO,
+        institutionId: 'inst-2',
+        isActive: true,
+      }),
+    );
+
+    expect(user.organizations).toHaveLength(1);
+  });
 });
 
 describe('CanSyncEntity', () => {

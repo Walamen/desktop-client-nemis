@@ -66,7 +66,7 @@ export class User extends AggregateRoot<UserId> {
         }),
         email: EmailAddress.create(input.email),
         isActive: true,
-        organizations: input.organizations,
+        organizations: [...input.organizations],
       },
       { version: 1, updatedAt: input.occurredAt },
     );
@@ -91,7 +91,7 @@ export class User extends AggregateRoot<UserId> {
         }),
         email: EmailAddress.create(input.email),
         isActive: input.isActive,
-        organizations: input.organizations,
+        organizations: [...input.organizations],
       },
       { version: input.version, updatedAt: input.updatedAt, lastModifiedBy: input.lastModifiedBy },
     );

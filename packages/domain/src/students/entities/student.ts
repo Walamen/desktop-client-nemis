@@ -107,7 +107,7 @@ export class Student extends AggregateRoot<StudentId> {
         gender: input.gender,
         gradeLevel: input.gradeLevel,
         isActive: input.isActive,
-        guardians: input.guardians,
+        guardians: [...input.guardians],
       },
       { version: input.version, updatedAt: input.updatedAt, lastModifiedBy: input.lastModifiedBy },
     );

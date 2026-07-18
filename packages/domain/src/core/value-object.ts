@@ -11,6 +11,9 @@ export abstract class ValueObject<TProps extends object> {
     if (!other) return false;
     if (this === other) return true;
     if (this.constructor !== other.constructor) return false;
+    // JSON.stringify comparison is order-sensitive (key insertion order matters) and
+    // drops `undefined`-valued keys entirely, so this is only safe for VOs whose props
+    // object is built with the same key order and shape on every construction.
     return JSON.stringify(this.props) === JSON.stringify(other.props);
   }
 }
