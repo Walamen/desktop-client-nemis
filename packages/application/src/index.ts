@@ -47,3 +47,7 @@ export * from './use-cases/institution/get-institution-profile';
 export * from './use-cases/institution/update-grading-config';
 export * from './services/identity-application-service';
 export * from './services/institution-application-service';
+export * from './dto/infra/infra-dto';
+export * from './use-cases/infra/register-device';
+export * from './use-cases/infra/update-settings';
+export * from './services/infra-application-service';
