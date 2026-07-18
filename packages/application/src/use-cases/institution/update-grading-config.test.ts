@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { UpdateGradingConfigUseCase } from './update-grading-config';
 import { InMemoryGradingConfigRepository } from '../../testing/institution/in-memory-grading-config-repository';
-import { FixedClock, PassthroughUnitOfWork, RecordingLogger } from '../../testing';
+import { PassthroughUnitOfWork, RecordingLogger } from '../../testing';
 import { UseCaseException } from '../../exceptions';
 
 function build() {

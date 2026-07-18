@@ -42,3 +42,19 @@ export const applicationImportGuard = {
     ],
   },
 };
+
+// Allow intentionally-unused, underscore-prefixed identifiers (no-op interface
+// method params, stub args) in the application layer.
+export const applicationLintRules = {
+  files: ['packages/application/**/*.ts'],
+  rules: {
+    '@typescript-eslint/no-unused-vars': [
+      'error',
+      {
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
+        caughtErrorsIgnorePattern: '^_',
+      },
+    ],
+  },
+};

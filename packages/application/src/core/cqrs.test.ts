@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { CommandHandler, QueryHandler } from './command';
+import type { CommandHandler } from './command';
 import type { QueryHandler as QH } from './query';
 
 describe('CQRS base types', () => {
