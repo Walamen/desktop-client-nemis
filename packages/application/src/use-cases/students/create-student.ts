@@ -30,7 +30,7 @@ export class CreateStudentUseCase
 
   execute(command: CreateStudentDto): Promise<ApplicationResponse<StudentOutput>> {
     return invokeUseCase('CreateStudent', this.deps.logger, async () => {
-      requireFields(command as unknown as Record<string, unknown>, [
+      requireFields(command, [
         'institutionId',
         'firstName',
         'lastName',

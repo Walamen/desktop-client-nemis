@@ -1,14 +1,13 @@
 import { ApplicationValidationException, type ValidationIssue } from '../exceptions';
 
 /** Throws if any listed field is missing, null, or a blank string. */
-export function requireFields<T extends Record<string, unknown>>(
-  input: T,
-  fields: readonly (keyof T & string)[],
-): void {
+export function requireFields<T>(input: T, fields: readonly (keyof T & string)[]): void {
+  const record = input as Record<string, unknown>;
   const issues: ValidationIssue[] = [];
   for (const field of fields) {
-    const value = input[field];
-    const blank = value === undefined || value === null || (typeof value === 'string' && value.trim().length === 0);
+    const value = record[field];
+    const blank =
+      value === undefined || value === null || (typeof value === 'string' && value.trim().length === 0);
     if (blank) issues.push({ field, message: 'is required' });
   }
   if (issues.length > 0) {
