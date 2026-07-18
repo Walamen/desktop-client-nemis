@@ -4,3 +4,4 @@ export * from './core/query';
 export * from './exceptions';
 export * from './interfaces';
 export * from './defaults';
+export * from './pipeline';
