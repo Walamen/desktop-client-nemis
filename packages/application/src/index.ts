@@ -5,3 +5,5 @@ export * from './exceptions';
 export * from './interfaces';
 export * from './defaults';
 export * from './pipeline';
+export * from './validators/validate';
+export * from './testing';
