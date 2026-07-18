@@ -39,6 +39,24 @@ export interface CreateInstitutionInput {
   occurredAt: string;
 }
 
+export interface ReconstituteInstitutionInput {
+  id: string;
+  code: string;
+  name: string;
+  type: InstitutionType;
+  ownership: OwnershipType;
+  countyId: string;
+  districtId?: string;
+  approvalStatus: ApprovalStatus;
+  address?: { street?: string; communityTown?: string };
+  location?: { latitude: number; longitude: number };
+  rejectionReason?: string;
+  profile?: Record<string, unknown>;
+  version: number;
+  updatedAt: string;
+  lastModifiedBy?: string;
+}
+
 export class Institution extends AggregateRoot<InstitutionId> {
   #state: InstitutionState;
 
@@ -70,6 +88,26 @@ export class Institution extends AggregateRoot<InstitutionId> {
     );
   }
 
+  static reconstitute(input: ReconstituteInstitutionInput): Institution {
+    return new Institution(
+      input.id as InstitutionId,
+      {
+        code: SchoolCode.create(input.code),
+        name: input.name,
+        type: input.type,
+        ownership: input.ownership,
+        countyId: input.countyId,
+        districtId: input.districtId,
+        approvalStatus: input.approvalStatus,
+        address: Address.create(input.address ?? {}),
+        location: input.location ? GpsLocation.create(input.location) : undefined,
+        rejectionReason: input.rejectionReason,
+        profile: input.profile ?? {},
+      },
+      { version: input.version, updatedAt: input.updatedAt, lastModifiedBy: input.lastModifiedBy },
+    );
+  }
+
   get code(): SchoolCode {
     return this.#state.code;
   }
@@ -93,6 +131,9 @@ export class Institution extends AggregateRoot<InstitutionId> {
   }
   get isApproved(): boolean {
     return this.#state.approvalStatus === ApprovalStatus.APPROVED;
+  }
+  get profile(): Readonly<Record<string, unknown>> {
+    return this.#state.profile;
   }
 
   approve(by: string, at: string): void {
