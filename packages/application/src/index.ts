@@ -10,6 +10,8 @@ export * from './validators/validate';
 export * from './testing';
 export * from './dto/students/student-dto';
 export * from './mappers/students/student-mapper';
+export * from './dto/academics/academics-dto';
+export * from './mappers/academics/enrollment-mapper';
 export * from './events';
 export * from './use-cases/students/create-student';
 export * from './use-cases/students/deactivate-student';
