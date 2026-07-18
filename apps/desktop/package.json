@@ -21,6 +21,7 @@
     "typecheck": "tsc --noEmit && tsc --noEmit -p renderer/tsconfig.json"
   },
   "dependencies": {
+    "@nemis-desktop/application": "workspace:*",
     "@nemis-desktop/shared": "workspace:*",
     "@nemis-desktop/types": "workspace:*",
     "@nemis-desktop/ui": "workspace:*",
