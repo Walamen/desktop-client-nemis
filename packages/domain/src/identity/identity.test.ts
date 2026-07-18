@@ -51,6 +51,40 @@ describe('User', () => {
       User.create({ id: 'u', firstName: '', lastName: 'x', email: 'a@b.co', organizations: [], occurredAt: ISO }),
     ).toThrow(EntityValidationException);
   });
+
+  it('reconstitute does not emit domain events', () => {
+    const user = User.reconstitute({
+      id: 'user-1',
+      firstName: 'Ama',
+      lastName: 'Kollie',
+      email: 'ama@moe.gov.lr',
+      isActive: true,
+      organizations: [
+        UserOrganization.reconstitute({
+          id: 'org-1',
+          role: SystemRole.TEACHER,
+          institutionId: 'inst-1',
+          isActive: true,
+        }),
+      ],
+      version: 3,
+      updatedAt: ISO,
+    });
+
+    expect(user.pullDomainEvents()).toHaveLength(0);
+  });
+
+  it('deactivate is idempotent on an already-inactive user', () => {
+    const user = newUser();
+
+    user.deactivate('admin', ISO);
+    expect(user.version).toBe(2);
+    expect(user.isActive).toBe(false);
+
+    user.deactivate('admin', ISO);
+    expect(user.version).toBe(2);
+    expect(user.isActive).toBe(false);
+  });
 });
 
 describe('CanSyncEntity', () => {
