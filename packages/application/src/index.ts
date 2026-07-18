@@ -31,3 +31,8 @@ export * from './services/academics-application-service';
 export * from './use-cases/attendance/record-attendance';
 export * from './use-cases/attendance/get-attendance-by-class-and-date';
 export * from './services/attendance-application-service';
+export * from './use-cases/assessments/create-assessment';
+export * from './use-cases/assessments/record-grade';
+export * from './use-cases/assessments/publish-grade';
+export * from './use-cases/assessments/get-grades-by-student';
+export * from './services/assessments-application-service';
