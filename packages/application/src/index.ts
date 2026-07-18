@@ -19,3 +19,7 @@ export * from './use-cases/students/link-guardian-to-student';
 export * from './use-cases/students/get-student-by-id';
 export * from './use-cases/students/list-students';
 export * from './services/student-application-service';
+export * from './use-cases/academics/enroll-student';
+export * from './use-cases/academics/withdraw-enrollment';
+export * from './use-cases/academics/get-class-roster';
+export * from './services/academics-application-service';
