@@ -4,3 +4,4 @@ export * from './clock';
 export * from './id-generator';
 export * from './event-publisher';
 export * from './permission-evaluator';
+export * from './students';
