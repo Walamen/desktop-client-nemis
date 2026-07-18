@@ -31,6 +31,10 @@ describe('AcademicYear', () => {
     year.makeCurrent('admin', ISO);
     expect(year.isCurrent).toBe(true);
     expect(year.version).toBe(2);
+
+    year.makeCurrent('admin', ISO);
+    expect(year.isCurrent).toBe(true);
+    expect(year.version).toBe(2);
   });
 });
 
