@@ -1,6 +1,15 @@
-/**
- * Placeholder barrel for the shared UI package.
- * Shared components arrive in a later phase; this keeps the package
- * installable and type-checkable from Phase 1.
- */
-export const UI_PACKAGE_PLACEHOLDER = true;
+export * from './Alert';
+export * from './Avatar';
+export * from './Badge';
+export * from './Button';
+export * from './Card';
+export * from './Drawer';
+export * from './EmptyState';
+export * from './Input';
+export * from './Modal';
+export * from './ProgressBar';
+export * from './Select';
+export * from './Spinner';
+export * from './Table';
+export * from './Textarea';
+export * from './Toast';
