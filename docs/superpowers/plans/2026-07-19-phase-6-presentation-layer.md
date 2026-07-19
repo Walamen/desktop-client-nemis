@@ -2549,14 +2549,33 @@ describe('StudentsViewModel', () => {
     expect(vm.store.getState().details.status).toBe('idle');
   });
 
-  it('deactivateStudent updates details and list row status', async () => {
+  it('deactivateStudent updates the open details and list row status', async () => {
     const { app, vm } = build();
     const created = await app.students.create(dto);
+    await vm.loadStudents();
+    await vm.selectStudent(created.data.id); // open this student's details
     const outcome = await vm.deactivateStudent({ studentId: created.data.id, actorId: 'usr-1' });
     expect(outcome.ok).toBe(true);
     if (outcome.ok) expect(outcome.data.status.label).toBe('Inactive');
+    const details = vm.store.getState().details;
+    expect(details.status).toBe('success');
+    if (details.status === 'success') expect(details.data.status.label).toBe('Inactive');
     const rows = selectStudentRows(vm.store.getState());
     expect(rows[0]?.status.label).toBe('Inactive');
+  });
+
+  it('deactivateStudent does not clobber details for a different open student', async () => {
+    const { app, vm } = build();
+    const a = await app.students.create(dto);
+    const b = await app.students.create({ ...dto, firstName: 'Grace', admissionNumber: 'ADM-002' });
+    await vm.selectStudent(a.data.id); // details shows A
+    await vm.deactivateStudent({ studentId: b.data.id, actorId: 'usr-1' });
+    const details = vm.store.getState().details;
+    expect(details.status).toBe('success');
+    if (details.status === 'success') {
+      expect(details.data.id).toBe(a.data.id);
+      expect(details.data.status.label).toBe('Active'); // A untouched
+    }
   });
 
   it('linkGuardian surfaces a business failure as an error notification', async () => {
@@ -2775,7 +2794,7 @@ import type {
   StudentApplicationService,
 } from '@nemis-desktop/application';
 import { createStore } from 'zustand/vanilla';
-import { idleState, type AsyncState } from '../../core/async-state';
+import { hasData, idleState, type AsyncState } from '../../core/async-state';
 import { trackQuery, type CommandOutcome } from '../../core/async-runner';
 import type { SubmissionStatus } from '../../core/submission';
 import { CreateStudentUiCommand } from '../../commands/students/create-student-ui-command';
@@ -2896,7 +2915,7 @@ export class StudentsViewModel {
     const outcome = await this.deactivateCommand.execute(dto);
     this.store.setState({ submission: outcome.ok ? 'submitted' : 'failed' });
     if (outcome.ok) {
-      this.store.setState({ details: { status: 'success', data: outcome.data } });
+      this.updateDetailsIfCurrent(outcome.data);
       await this.loadStudents();
     }
     return outcome;
@@ -2907,9 +2926,18 @@ export class StudentsViewModel {
     const outcome = await this.linkGuardianCommand.execute(dto);
     this.store.setState({ submission: outcome.ok ? 'submitted' : 'failed' });
     if (outcome.ok) {
-      this.store.setState({ details: { status: 'success', data: outcome.data } });
+      this.updateDetailsIfCurrent(outcome.data);
     }
     return outcome;
+  }
+
+  /** Refresh the open details panel only when it is showing the mutated
+   * student — never clobber a different student's open details. */
+  private updateDetailsIfCurrent(view: StudentDetailsView): void {
+    const details = this.store.getState().details;
+    if (hasData(details) && details.data.id === view.id) {
+      this.store.setState({ details: { status: 'success', data: view } });
+    }
   }
 }
 ```
