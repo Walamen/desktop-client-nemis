@@ -17,6 +17,7 @@ import {
   rendererImportGuard,
   rendererCompositionRelaxation,
 } from './apps/desktop/renderer/eslint.config.mjs';
+import { uiLintRules } from './packages/ui/eslint.config.mjs';
 
 export default tseslint.config(
   {
@@ -59,6 +60,7 @@ export default tseslint.config(
   presentationImportGuard,
   presentationTestImportRelaxation,
   presentationLintRules,
+  uiLintRules,
   rendererImportGuard,
   rendererCompositionRelaxation,
   prettier,
