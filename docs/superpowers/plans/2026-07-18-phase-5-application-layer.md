@@ -125,6 +125,7 @@ docs/
 ## Task 1: Scaffold the `@nemis-desktop/application` package
 
 **Files:**
+
 - Create: `packages/application/package.json`
 - Create: `packages/application/tsconfig.json`
 - Create: `packages/application/eslint.config.mjs`
@@ -134,6 +135,7 @@ docs/
 - Modify: `eslint.config.mjs` (repo root) — import & register `applicationImportGuard`
 
 **Interfaces:**
+
 - Produces: package `@nemis-desktop/application` resolvable from other workspaces; `ApplicationResponse<T>` and `ok<T>(data, warnings?)` from `core/response.ts`.
 
 - [ ] **Step 1: Create `packages/application/package.json`**
@@ -305,6 +307,7 @@ git commit -m "feat(application): scaffold @nemis-desktop/application package wi
 ## Task 2: Application exceptions
 
 **Files:**
+
 - Create: `packages/application/src/exceptions/application-exception.ts`
 - Create: `packages/application/src/exceptions/use-case-exception.ts`
 - Create: `packages/application/src/exceptions/application-validation-exception.ts`
@@ -315,6 +318,7 @@ git commit -m "feat(application): scaffold @nemis-desktop/application package wi
 - Test: `packages/application/src/exceptions/exceptions.test.ts`
 
 **Interfaces:**
+
 - Produces: `ApplicationException` (base; `code: string`, optional `cause`), `UseCaseException`, `ApplicationValidationException` (carries `issues: ValidationIssue[]`), `PermissionDeniedException`, `WorkflowException`, `UnexpectedApplicationException`. `ValidationIssue = { field: string; message: string }`.
 
 - [ ] **Step 1: Write the failing test — `exceptions.test.ts`**
@@ -496,12 +500,14 @@ git commit -m "feat(application): add application exception taxonomy"
 ## Task 3: Core CQRS base types
 
 **Files:**
+
 - Create: `packages/application/src/core/command.ts`
 - Create: `packages/application/src/core/query.ts`
 - Test: `packages/application/src/core/cqrs.test.ts`
 - Modify: `packages/application/src/index.ts`
 
 **Interfaces:**
+
 - Produces:
   - `interface CommandHandler<TCommand, TResult> { execute(command: TCommand): Promise<TResult>; }`
   - `interface QueryHandler<TQuery, TResult> { execute(query: TQuery): Promise<TResult>; }`
@@ -589,6 +595,7 @@ git commit -m "feat(application): add CQRS command/query base types"
 ## Task 4: Cross-cutting ports and default implementations
 
 **Files:**
+
 - Create: `packages/application/src/interfaces/unit-of-work.ts`
 - Create: `packages/application/src/interfaces/app-logger.ts`
 - Create: `packages/application/src/interfaces/clock.ts`
@@ -606,6 +613,7 @@ git commit -m "feat(application): add CQRS command/query base types"
 - Modify: `packages/application/src/index.ts`
 
 **Interfaces:**
+
 - Produces:
   - `interface IUnitOfWork { run<T>(work: () => T): T; runImmediate<T>(work: () => T): T; }`
   - `interface IAppLogger { info(msg: string, meta?: Record<string, unknown>): void; warn(...): void; error(msg: string, meta?: Record<string, unknown>): void; }`
@@ -858,12 +866,14 @@ git commit -m "feat(application): add cross-cutting ports and default implementa
 ## Task 5: Use case invoker (pipeline)
 
 **Files:**
+
 - Create: `packages/application/src/pipeline/use-case-invoker.ts`
 - Create: `packages/application/src/pipeline/index.ts`
 - Test: `packages/application/src/pipeline/use-case-invoker.test.ts`
 - Modify: `packages/application/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: `IAppLogger` (Task 4); `ApplicationException`, `UseCaseException`, `UnexpectedApplicationException` (Task 2); `DomainException` from `@nemis-desktop/domain`.
 - Produces: `invokeUseCase<T>(name: string, logger: IAppLogger, work: () => Promise<T>): Promise<T>` — logs start/success/failure, passes `ApplicationException` through untouched, translates `DomainException` → `UseCaseException`, wraps anything else in `UnexpectedApplicationException`.
 
@@ -890,18 +900,15 @@ describe('invokeUseCase', () => {
     const logger = new RecordingLogger();
     const result = await invokeUseCase('CreateStudent', logger, () => Promise.resolve(7));
     expect(result).toBe(7);
-    expect(logger.infos.map((e) => e.message)).toEqual([
-      'use-case.start',
-      'use-case.success',
-    ]);
+    expect(logger.infos.map((e) => e.message)).toEqual(['use-case.start', 'use-case.success']);
   });
 
   it('passes ApplicationException through unchanged and logs a failure', async () => {
     const logger = new RecordingLogger();
     const thrown = new ApplicationValidationException('bad', []);
-    await expect(
-      invokeUseCase('CreateStudent', logger, () => Promise.reject(thrown)),
-    ).rejects.toBe(thrown);
+    await expect(invokeUseCase('CreateStudent', logger, () => Promise.reject(thrown))).rejects.toBe(
+      thrown,
+    );
     expect(logger.errors).toHaveLength(1);
   });
 
@@ -909,9 +916,9 @@ describe('invokeUseCase', () => {
     const logger = new RecordingLogger();
     const domainErr = new BusinessRuleViolationException('rule broke');
     expect(domainErr).toBeInstanceOf(DomainException);
-    await expect(
-      invokeUseCase('X', logger, () => Promise.reject(domainErr)),
-    ).rejects.toMatchObject({ code: 'USE_CASE_ERROR', message: 'rule broke' });
+    await expect(invokeUseCase('X', logger, () => Promise.reject(domainErr))).rejects.toMatchObject(
+      { code: 'USE_CASE_ERROR', message: 'rule broke' },
+    );
   });
 
   it('wraps unknown errors in UnexpectedApplicationException', async () => {
@@ -1030,6 +1037,7 @@ git commit -m "feat(application): add use case invoker pipeline (logging + excep
 ## Task 6: Testing fakes and input validation helpers
 
 **Files:**
+
 - Create: `packages/application/src/testing/fixed-clock.ts`
 - Create: `packages/application/src/testing/passthrough-unit-of-work.ts`
 - Create: `packages/application/src/testing/collecting-event-publisher.ts`
@@ -1040,6 +1048,7 @@ git commit -m "feat(application): add use case invoker pipeline (logging + excep
 - Modify: `packages/application/src/index.ts`
 
 **Interfaces:**
+
 - Produces:
   - `FixedClock(iso: string)` → `IClock` returning `iso`.
   - `PassthroughUnitOfWork` → `IUnitOfWork` running the closure directly (records call count).
@@ -1097,7 +1106,10 @@ export function requireFields<T extends Record<string, unknown>>(
   const issues: ValidationIssue[] = [];
   for (const field of fields) {
     const value = input[field];
-    const blank = value === undefined || value === null || (typeof value === 'string' && value.trim().length === 0);
+    const blank =
+      value === undefined ||
+      value === null ||
+      (typeof value === 'string' && value.trim().length === 0);
     if (blank) issues.push({ field, message: 'is required' });
   }
   if (issues.length > 0) {
@@ -1221,6 +1233,7 @@ git commit -m "feat(application): add testing fakes and input validation helpers
 ## Task 7: Students — ports, pagination, DTOs, mapper
 
 **Files:**
+
 - Create: `packages/application/src/core/pagination.ts`
 - Create: `packages/application/src/interfaces/students/student-repository.ts`
 - Create: `packages/application/src/interfaces/students/guardian-repository.ts`
@@ -1231,6 +1244,7 @@ git commit -m "feat(application): add testing fakes and input validation helpers
 - Modify: `packages/application/src/interfaces/index.ts`, `packages/application/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: `Student`, `Guardian` from `@nemis-desktop/domain`.
 - Produces:
   - `PageRequest { limit: number; offset: number }`, `PagedResult<T> { items: readonly T[]; total: number; limit: number; offset: number }`.
@@ -1497,6 +1511,7 @@ git commit -m "feat(application): add student ports, DTOs, and mapper"
 ## Task 8: Students — command use cases + events
 
 **Files:**
+
 - Create: `packages/application/src/events/students.ts`
 - Create: `packages/application/src/use-cases/students/create-student.ts`
 - Create: `packages/application/src/use-cases/students/deactivate-student.ts`
@@ -1509,6 +1524,7 @@ git commit -m "feat(application): add student ports, DTOs, and mapper"
 - Modify: `packages/application/src/events/index.ts` (create), `packages/application/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: `IStudentRepository`, `IGuardianRepository` (Task 7); `IUnitOfWork`, `IClock`, `IIdGenerator`, `IEventPublisher` (Task 4); `Student`, `StudentGuardian` from `@nemis-desktop/domain`; validation helpers (Task 6); `ApplicationResponse`, `ok` (Task 1).
 - Produces:
   - `CreateStudentUseCase` implementing `CommandHandler<CreateStudentDto, ApplicationResponse<StudentOutput>>`.
@@ -1732,9 +1748,10 @@ export interface CreateStudentDeps {
   logger: IAppLogger;
 }
 
-export class CreateStudentUseCase
-  implements CommandHandler<CreateStudentDto, ApplicationResponse<StudentOutput>>
-{
+export class CreateStudentUseCase implements CommandHandler<
+  CreateStudentDto,
+  ApplicationResponse<StudentOutput>
+> {
   constructor(private readonly deps: CreateStudentDeps) {}
 
   execute(command: CreateStudentDto): Promise<ApplicationResponse<StudentOutput>> {
@@ -1871,9 +1888,10 @@ export interface DeactivateStudentDeps {
   logger: IAppLogger;
 }
 
-export class DeactivateStudentUseCase
-  implements CommandHandler<DeactivateStudentDto, ApplicationResponse<StudentOutput>>
-{
+export class DeactivateStudentUseCase implements CommandHandler<
+  DeactivateStudentDto,
+  ApplicationResponse<StudentOutput>
+> {
   constructor(private readonly deps: DeactivateStudentDeps) {}
 
   execute(command: DeactivateStudentDto): Promise<ApplicationResponse<StudentOutput>> {
@@ -2012,9 +2030,10 @@ export interface LinkGuardianDeps {
   logger: IAppLogger;
 }
 
-export class LinkGuardianToStudentUseCase
-  implements CommandHandler<LinkGuardianDto, ApplicationResponse<StudentOutput>>
-{
+export class LinkGuardianToStudentUseCase implements CommandHandler<
+  LinkGuardianDto,
+  ApplicationResponse<StudentOutput>
+> {
   constructor(private readonly deps: LinkGuardianDeps) {}
 
   execute(command: LinkGuardianDto): Promise<ApplicationResponse<StudentOutput>> {
@@ -2076,6 +2095,7 @@ git commit -m "feat(application): add student command use cases (create, deactiv
 ## Task 9: Students — query use cases + application service
 
 **Files:**
+
 - Create: `packages/application/src/queries/students/list-students.ts` (query shape)
 - Create: `packages/application/src/use-cases/students/get-student-by-id.ts`
 - Create: `packages/application/src/use-cases/students/list-students.ts`
@@ -2086,6 +2106,7 @@ git commit -m "feat(application): add student command use cases (create, deactiv
 - Modify: `packages/application/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: `IStudentRepository` (Task 7); `PagedResult`, `PageRequest` (Task 7); mapper (Task 7); the three command use cases (Task 8).
 - Produces:
   - `GetStudentByIdUseCase` implementing `QueryHandler<{ studentId: string }, ApplicationResponse<StudentOutput | null>>`.
@@ -2153,9 +2174,10 @@ export interface GetStudentByIdDeps {
   logger: IAppLogger;
 }
 
-export class GetStudentByIdUseCase
-  implements QueryHandler<{ studentId: string }, ApplicationResponse<StudentOutput | null>>
-{
+export class GetStudentByIdUseCase implements QueryHandler<
+  { studentId: string },
+  ApplicationResponse<StudentOutput | null>
+> {
   constructor(private readonly deps: GetStudentByIdDeps) {}
 
   execute(query: { studentId: string }): Promise<ApplicationResponse<StudentOutput | null>> {
@@ -2256,14 +2278,13 @@ export interface ListStudentsDeps {
   logger: IAppLogger;
 }
 
-export class ListStudentsUseCase
-  implements QueryHandler<ListStudentsDto, ApplicationResponse<PagedResult<StudentSummaryOutput>>>
-{
+export class ListStudentsUseCase implements QueryHandler<
+  ListStudentsDto,
+  ApplicationResponse<PagedResult<StudentSummaryOutput>>
+> {
   constructor(private readonly deps: ListStudentsDeps) {}
 
-  execute(
-    query: ListStudentsDto,
-  ): Promise<ApplicationResponse<PagedResult<StudentSummaryOutput>>> {
+  execute(query: ListStudentsDto): Promise<ApplicationResponse<PagedResult<StudentSummaryOutput>>> {
     return invokeUseCase('ListStudents', this.deps.logger, async () => {
       const limit = Math.min(Math.max(query.limit ?? DEFAULT_LIMIT, 1), MAX_LIMIT);
       const offset = Math.max(query.offset ?? 0, 0);
@@ -2402,6 +2423,7 @@ git commit -m "feat(application): add student query use cases and application se
 ## Task 10: Academics — ports, DTOs, mapper
 
 **Files:**
+
 - Create: `packages/application/src/interfaces/academics/enrollment-repository.ts`
 - Create: `packages/application/src/interfaces/academics/class-repository.ts`
 - Create: `packages/application/src/interfaces/academics/index.ts`
@@ -2414,6 +2436,7 @@ git commit -m "feat(application): add student query use cases and application se
 - Modify: `packages/application/src/interfaces/index.ts`, `packages/application/src/testing/index.ts`, `packages/application/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: `Enrollment`, `Class` from `@nemis-desktop/domain`.
 - Produces:
   - `IEnrollmentRepository { findById(id: string): Enrollment | null; save(e: Enrollment): void; hasActiveEnrollment(studentId: string, classId: string): boolean; findByClassId(classId: string): Enrollment[]; }`
@@ -2629,6 +2652,7 @@ git commit -m "feat(application): add academics ports, DTOs, and enrollment mapp
 ## Task 11: Academics — use cases + events + service
 
 **Files:**
+
 - Create: `packages/application/src/events/academics.ts`
 - Create: `packages/application/src/use-cases/academics/enroll-student.ts`
 - Create: `packages/application/src/use-cases/academics/withdraw-enrollment.ts`
@@ -2640,6 +2664,7 @@ git commit -m "feat(application): add academics ports, DTOs, and enrollment mapp
 - Modify: `packages/application/src/events/index.ts`, `packages/application/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: `IEnrollmentRepository`, `IClassRepository` (Task 10); `IStudentRepository` (Task 7); cross-cutting ports; `Enrollment` from domain.
 - Produces:
   - `EnrollStudentUseCase: CommandHandler<EnrollStudentDto, ApplicationResponse<EnrollmentOutput>>`.
@@ -2726,7 +2751,12 @@ function build() {
   return { enrollments, events, useCase };
 }
 
-const dto = { studentId: 'stu-1', classId: 'cls-1', academicYearId: 'ay-1', termId: 'term-1' } as const;
+const dto = {
+  studentId: 'stu-1',
+  classId: 'cls-1',
+  academicYearId: 'ay-1',
+  termId: 'term-1',
+} as const;
 
 describe('EnrollStudentUseCase', () => {
   it('creates an active enrollment and emits an event', async () => {
@@ -2787,9 +2817,10 @@ export interface EnrollStudentDeps {
   logger: IAppLogger;
 }
 
-export class EnrollStudentUseCase
-  implements CommandHandler<EnrollStudentDto, ApplicationResponse<EnrollmentOutput>>
-{
+export class EnrollStudentUseCase implements CommandHandler<
+  EnrollStudentDto,
+  ApplicationResponse<EnrollmentOutput>
+> {
   constructor(private readonly deps: EnrollStudentDeps) {}
 
   execute(command: EnrollStudentDto): Promise<ApplicationResponse<EnrollmentOutput>> {
@@ -2879,9 +2910,9 @@ describe('WithdrawEnrollmentUseCase', () => {
 
   it('throws a workflow exception when the enrollment is missing', async () => {
     const { useCase } = build();
-    await expect(
-      useCase.execute({ enrollmentId: 'nope', actorId: 'u' }),
-    ).rejects.toBeInstanceOf(WorkflowException);
+    await expect(useCase.execute({ enrollmentId: 'nope', actorId: 'u' })).rejects.toBeInstanceOf(
+      WorkflowException,
+    );
   });
 
   it('translates the domain double-withdraw error into a UseCaseException', async () => {
@@ -2918,9 +2949,10 @@ export interface WithdrawEnrollmentDeps {
   logger: IAppLogger;
 }
 
-export class WithdrawEnrollmentUseCase
-  implements CommandHandler<WithdrawEnrollmentDto, ApplicationResponse<EnrollmentOutput>>
-{
+export class WithdrawEnrollmentUseCase implements CommandHandler<
+  WithdrawEnrollmentDto,
+  ApplicationResponse<EnrollmentOutput>
+> {
   constructor(private readonly deps: WithdrawEnrollmentDeps) {}
 
   execute(command: WithdrawEnrollmentDto): Promise<ApplicationResponse<EnrollmentOutput>> {
@@ -2989,9 +3021,10 @@ export interface GetClassRosterDeps {
   logger: IAppLogger;
 }
 
-export class GetClassRosterUseCase
-  implements QueryHandler<GetClassRosterDto, ApplicationResponse<ClassRosterOutput>>
-{
+export class GetClassRosterUseCase implements QueryHandler<
+  GetClassRosterDto,
+  ApplicationResponse<ClassRosterOutput>
+> {
   constructor(private readonly deps: GetClassRosterDeps) {}
 
   execute(query: GetClassRosterDto): Promise<ApplicationResponse<ClassRosterOutput>> {
@@ -3066,6 +3099,7 @@ git commit -m "feat(application): add academics use cases (enroll, withdraw, cla
 ## Task 12: Attendance — ports, DTOs, mapper, use cases, service
 
 **Files:**
+
 - Create: `packages/application/src/interfaces/attendance/attendance-repository.ts`
 - Create: `packages/application/src/interfaces/attendance/index.ts`
 - Create: `packages/application/src/dto/attendance/attendance-dto.ts`
@@ -3081,6 +3115,7 @@ git commit -m "feat(application): add academics use cases (enroll, withdraw, cla
 - Modify: `interfaces/index.ts`, `events/index.ts`, `testing/index.ts`, `packages/application/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: `Attendance` from domain; `IStudentRepository` (Task 7); cross-cutting ports.
 - Produces:
   - `IAttendanceRepository { save(a: Attendance): void; findByClassAndDate(classId: string, date: string): Attendance[]; }`
@@ -3295,9 +3330,10 @@ export interface RecordAttendanceDeps {
   logger: IAppLogger;
 }
 
-export class RecordAttendanceUseCase
-  implements CommandHandler<RecordAttendanceDto, ApplicationResponse<AttendanceOutput>>
-{
+export class RecordAttendanceUseCase implements CommandHandler<
+  RecordAttendanceDto,
+  ApplicationResponse<AttendanceOutput>
+> {
   constructor(private readonly deps: RecordAttendanceDeps) {}
 
   execute(command: RecordAttendanceDto): Promise<ApplicationResponse<AttendanceOutput>> {
@@ -3392,15 +3428,13 @@ export interface GetAttendanceByClassAndDateDeps {
   logger: IAppLogger;
 }
 
-export class GetAttendanceByClassAndDateUseCase
-  implements
-    QueryHandler<GetAttendanceByClassAndDateDto, ApplicationResponse<AttendanceOutput[]>>
-{
+export class GetAttendanceByClassAndDateUseCase implements QueryHandler<
+  GetAttendanceByClassAndDateDto,
+  ApplicationResponse<AttendanceOutput[]>
+> {
   constructor(private readonly deps: GetAttendanceByClassAndDateDeps) {}
 
-  execute(
-    query: GetAttendanceByClassAndDateDto,
-  ): Promise<ApplicationResponse<AttendanceOutput[]>> {
+  execute(query: GetAttendanceByClassAndDateDto): Promise<ApplicationResponse<AttendanceOutput[]>> {
     return invokeUseCase('GetAttendanceByClassAndDate', this.deps.logger, async () => {
       const records = this.deps.attendance
         .findByClassAndDate(query.classId, query.date)
@@ -3466,6 +3500,7 @@ git commit -m "feat(application): add attendance ports, use cases, and service"
 ## Task 13: Assessments — ports, DTOs, mappers, test doubles
 
 **Files:**
+
 - Create: `packages/application/src/interfaces/assessments/assessment-repository.ts`
 - Create: `packages/application/src/interfaces/assessments/grade-repository.ts`
 - Create: `packages/application/src/interfaces/assessments/index.ts`
@@ -3479,6 +3514,7 @@ git commit -m "feat(application): add attendance ports, use cases, and service"
 - Modify: `interfaces/index.ts`, `testing/index.ts`, `packages/application/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: `Assessment`, `Grade` from domain.
 - Produces:
   - `IAssessmentRepository { findById(id: string): Assessment | null; save(a: Assessment): void; }`
@@ -3721,6 +3757,7 @@ git commit -m "feat(application): add assessments ports, DTOs, and mappers"
 ## Task 14: Assessments — use cases + events + service
 
 **Files:**
+
 - Create: `packages/application/src/events/assessments.ts`
 - Create: `packages/application/src/use-cases/assessments/create-assessment.ts`
 - Create: `packages/application/src/use-cases/assessments/record-grade.ts`
@@ -3734,6 +3771,7 @@ git commit -m "feat(application): add assessments ports, DTOs, and mappers"
 - Modify: `events/index.ts`, `packages/application/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: `IAssessmentRepository`, `IGradeRepository` (Task 13); cross-cutting ports; `Assessment`, `Grade` from domain.
 - Produces:
   - `CreateAssessmentUseCase: CommandHandler<CreateAssessmentDto, ApplicationResponse<AssessmentOutput>>`.
@@ -3848,9 +3886,10 @@ export interface CreateAssessmentDeps {
   logger: IAppLogger;
 }
 
-export class CreateAssessmentUseCase
-  implements CommandHandler<CreateAssessmentDto, ApplicationResponse<AssessmentOutput>>
-{
+export class CreateAssessmentUseCase implements CommandHandler<
+  CreateAssessmentDto,
+  ApplicationResponse<AssessmentOutput>
+> {
   constructor(private readonly deps: CreateAssessmentDeps) {}
 
   execute(command: CreateAssessmentDto): Promise<ApplicationResponse<AssessmentOutput>> {
@@ -3969,9 +4008,10 @@ export interface RecordGradeDeps {
   logger: IAppLogger;
 }
 
-export class RecordGradeUseCase
-  implements CommandHandler<RecordGradeDto, ApplicationResponse<GradeOutput>>
-{
+export class RecordGradeUseCase implements CommandHandler<
+  RecordGradeDto,
+  ApplicationResponse<GradeOutput>
+> {
   constructor(private readonly deps: RecordGradeDeps) {}
 
   execute(command: RecordGradeDto): Promise<ApplicationResponse<GradeOutput>> {
@@ -4053,17 +4093,17 @@ describe('PublishGradeUseCase', () => {
 
   it('throws a workflow exception when the grade is missing', async () => {
     const { useCase } = build();
-    await expect(
-      useCase.execute({ gradeId: 'nope', actorId: 'u' }),
-    ).rejects.toBeInstanceOf(WorkflowException);
+    await expect(useCase.execute({ gradeId: 'nope', actorId: 'u' })).rejects.toBeInstanceOf(
+      WorkflowException,
+    );
   });
 
   it('translates a non-publishable status into a UseCaseException', async () => {
     const { grades, useCase } = build();
     seed(grades, GradeStatus.DRAFT);
-    await expect(
-      useCase.execute({ gradeId: 'grd-1', actorId: 'user-9' }),
-    ).rejects.toBeInstanceOf(UseCaseException);
+    await expect(useCase.execute({ gradeId: 'grd-1', actorId: 'user-9' })).rejects.toBeInstanceOf(
+      UseCaseException,
+    );
   });
 });
 ```
@@ -4092,9 +4132,10 @@ export interface PublishGradeDeps {
   logger: IAppLogger;
 }
 
-export class PublishGradeUseCase
-  implements CommandHandler<PublishGradeDto, ApplicationResponse<GradeOutput>>
-{
+export class PublishGradeUseCase implements CommandHandler<
+  PublishGradeDto,
+  ApplicationResponse<GradeOutput>
+> {
   constructor(private readonly deps: PublishGradeDeps) {}
 
   execute(command: PublishGradeDto): Promise<ApplicationResponse<GradeOutput>> {
@@ -4175,9 +4216,10 @@ export interface GetGradesByStudentDeps {
   logger: IAppLogger;
 }
 
-export class GetGradesByStudentUseCase
-  implements QueryHandler<GetGradesByStudentDto, ApplicationResponse<GradeOutput[]>>
-{
+export class GetGradesByStudentUseCase implements QueryHandler<
+  GetGradesByStudentDto,
+  ApplicationResponse<GradeOutput[]>
+> {
   constructor(private readonly deps: GetGradesByStudentDeps) {}
 
   execute(query: GetGradesByStudentDto): Promise<ApplicationResponse<GradeOutput[]>> {
@@ -4254,6 +4296,7 @@ git commit -m "feat(application): add assessments use cases (assessment, grade r
 ## Task 15: Identity & Institution — read queries + grading config
 
 **Files:**
+
 - Create: `packages/application/src/interfaces/identity/user-repository.ts`, `.../identity/index.ts`
 - Create: `packages/application/src/interfaces/institution/institution-repository.ts`, `.../institution/grading-config-repository.ts`, `.../institution/index.ts`
 - Create: `packages/application/src/dto/identity/identity-dto.ts`
@@ -4274,6 +4317,7 @@ git commit -m "feat(application): add assessments use cases (assessment, grade r
 - Modify: `interfaces/index.ts`, `testing/index.ts`, `packages/application/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: `User`, `Institution`, `GradingConfig` from domain.
 - Produces:
   - `IUserRepository { findById(id: string): User | null; }`
@@ -4557,9 +4601,10 @@ export interface GetUserByIdDeps {
   logger: IAppLogger;
 }
 
-export class GetUserByIdUseCase
-  implements QueryHandler<{ userId: string }, ApplicationResponse<UserOutput | null>>
-{
+export class GetUserByIdUseCase implements QueryHandler<
+  { userId: string },
+  ApplicationResponse<UserOutput | null>
+> {
   constructor(private readonly deps: GetUserByIdDeps) {}
 
   execute(query: { userId: string }): Promise<ApplicationResponse<UserOutput | null>> {
@@ -4640,15 +4685,15 @@ export interface GetInstitutionProfileDeps {
   logger: IAppLogger;
 }
 
-export class GetInstitutionProfileUseCase
-  implements
-    QueryHandler<{ institutionId: string }, ApplicationResponse<InstitutionProfileOutput | null>>
-{
+export class GetInstitutionProfileUseCase implements QueryHandler<
+  { institutionId: string },
+  ApplicationResponse<InstitutionProfileOutput | null>
+> {
   constructor(private readonly deps: GetInstitutionProfileDeps) {}
 
-  execute(
-    query: { institutionId: string },
-  ): Promise<ApplicationResponse<InstitutionProfileOutput | null>> {
+  execute(query: {
+    institutionId: string;
+  }): Promise<ApplicationResponse<InstitutionProfileOutput | null>> {
     return invokeUseCase('GetInstitutionProfile', this.deps.logger, async () => {
       const institution = this.deps.institutions.findById(query.institutionId);
       return ok(institution ? toInstitutionProfileOutput(institution) : null);
@@ -4697,7 +4742,12 @@ describe('UpdateGradingConfigUseCase', () => {
   it('translates the domain invariant (passing > max) into a UseCaseException', async () => {
     const { useCase } = build();
     await expect(
-      useCase.execute({ id: 'inst-1', maxMarks: 50, passingMarks: 90, requireAdminApproval: false }),
+      useCase.execute({
+        id: 'inst-1',
+        maxMarks: 50,
+        passingMarks: 90,
+        requireAdminApproval: false,
+      }),
     ).rejects.toBeInstanceOf(UseCaseException);
   });
 });
@@ -4727,9 +4777,10 @@ export interface UpdateGradingConfigDeps {
   logger: IAppLogger;
 }
 
-export class UpdateGradingConfigUseCase
-  implements CommandHandler<UpdateGradingConfigDto, ApplicationResponse<GradingConfigOutput>>
-{
+export class UpdateGradingConfigUseCase implements CommandHandler<
+  UpdateGradingConfigDto,
+  ApplicationResponse<GradingConfigOutput>
+> {
   constructor(private readonly deps: UpdateGradingConfigDeps) {}
 
   execute(command: UpdateGradingConfigDto): Promise<ApplicationResponse<GradingConfigOutput>> {
@@ -4792,9 +4843,9 @@ export interface InstitutionApplicationServiceDeps {
 
 export class InstitutionApplicationService {
   constructor(private readonly deps: InstitutionApplicationServiceDeps) {}
-  getProfile(
-    query: { institutionId: string },
-  ): Promise<ApplicationResponse<InstitutionProfileOutput | null>> {
+  getProfile(query: {
+    institutionId: string;
+  }): Promise<ApplicationResponse<InstitutionProfileOutput | null>> {
     return this.deps.getProfile.execute(query);
   }
   updateGradingConfig(
@@ -4832,6 +4883,7 @@ git commit -m "feat(application): add identity/institution read queries and grad
 ## Task 16: Policies + extension template for future domains
 
 **Files:**
+
 - Create: `packages/application/src/policies/permissions.ts`
 - Create: `packages/application/src/policies/index.ts`
 - Test: `packages/application/src/policies/permissions.test.ts`
@@ -4839,6 +4891,7 @@ git commit -m "feat(application): add identity/institution read queries and grad
 - Modify: `packages/application/src/index.ts`
 
 **Interfaces:**
+
 - Produces: `permission(action, opts?)` builder returning a `PermissionRequest`; a set of named action constants `APPLICATION_ACTIONS`. The extension template documents how future domains (geography, staff, finance, communication, resources, reporting — incl. `CreateTeacher`/`AssignTeacher`) slot in. No use cases or DTOs are invented for unbuilt domains.
 
 - [ ] **Step 1: Write the failing test — `policies/permissions.test.ts`**
@@ -4952,6 +5005,7 @@ git commit -m "feat(application): add advisory permission policies and extension
 ## Task 17: Infra use cases (RegisterDevice, UpdateSettings) — mock-tested
 
 **Files:**
+
 - Create: `packages/application/src/interfaces/infra/device-gateway.ts`, `.../infra/settings-gateway.ts`, `.../infra/index.ts`
 - Create: `packages/application/src/dto/infra/infra-dto.ts`
 - Create: `packages/application/src/events/infra.ts`
@@ -4964,6 +5018,7 @@ git commit -m "feat(application): add advisory permission policies and extension
 - Modify: `interfaces/index.ts`, `events/index.ts`, `testing/index.ts`, `packages/application/src/index.ts`
 
 **Interfaces:**
+
 - Produces:
   - `RegisterDeviceDto { deviceName: string; platform: string; osVersion: string; appVersion: string }`, `DeviceOutput { id: string; deviceName: string; platform: string; osVersion: string; appVersion: string; createdAt: string; updatedAt: string }`.
   - `UpdateSettingsDto { key: string; value: unknown }`, `SettingOutput { key: string; value: unknown; updatedAt: string }`.
@@ -5166,9 +5221,10 @@ export interface RegisterDeviceDeps {
   logger: IAppLogger;
 }
 
-export class RegisterDeviceUseCase
-  implements CommandHandler<RegisterDeviceDto, ApplicationResponse<DeviceOutput>>
-{
+export class RegisterDeviceUseCase implements CommandHandler<
+  RegisterDeviceDto,
+  ApplicationResponse<DeviceOutput>
+> {
   constructor(private readonly deps: RegisterDeviceDeps) {}
 
   execute(command: RegisterDeviceDto): Promise<ApplicationResponse<DeviceOutput>> {
@@ -5254,9 +5310,10 @@ export interface UpdateSettingsDeps {
   logger: IAppLogger;
 }
 
-export class UpdateSettingsUseCase
-  implements CommandHandler<UpdateSettingsDto, ApplicationResponse<SettingOutput>>
-{
+export class UpdateSettingsUseCase implements CommandHandler<
+  UpdateSettingsDto,
+  ApplicationResponse<SettingOutput>
+> {
   constructor(private readonly deps: UpdateSettingsDeps) {}
 
   execute(command: UpdateSettingsDto): Promise<ApplicationResponse<SettingOutput>> {
@@ -5330,12 +5387,14 @@ git commit -m "feat(application): add infra use cases (register device, update s
 ## Task 18: Composition root — `createApplicationLayer`
 
 **Files:**
+
 - Create: `packages/application/src/factories/create-application-layer.ts`
 - Create: `packages/application/src/factories/index.ts`
 - Test: `packages/application/src/factories/create-application-layer.test.ts`
 - Modify: `packages/application/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: every use case + service + port defined in Tasks 4–17.
 - Produces:
   - `ApplicationPorts` — the full DI input (all repository ports + infra gateways + cross-cutting ports).
@@ -5511,8 +5570,20 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
   const { unitOfWork, clock, ids, events, logger } = ports;
 
   const students = new StudentApplicationService({
-    create: new CreateStudentUseCase({ students: ports.students, unitOfWork, clock, ids, events, logger }),
-    deactivate: new DeactivateStudentUseCase({ students: ports.students, unitOfWork, clock, logger }),
+    create: new CreateStudentUseCase({
+      students: ports.students,
+      unitOfWork,
+      clock,
+      ids,
+      events,
+      logger,
+    }),
+    deactivate: new DeactivateStudentUseCase({
+      students: ports.students,
+      unitOfWork,
+      clock,
+      logger,
+    }),
     linkGuardian: new LinkGuardianToStudentUseCase({
       students: ports.students,
       guardians: ports.guardians,
@@ -5537,7 +5608,12 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
       events,
       logger,
     }),
-    withdraw: new WithdrawEnrollmentUseCase({ enrollments: ports.enrollments, unitOfWork, clock, logger }),
+    withdraw: new WithdrawEnrollmentUseCase({
+      enrollments: ports.enrollments,
+      unitOfWork,
+      clock,
+      logger,
+    }),
     getClassRoster: new GetClassRosterUseCase({ enrollments: ports.enrollments, logger }),
   });
 
@@ -5551,13 +5627,29 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
       events,
       logger,
     }),
-    getByClassAndDate: new GetAttendanceByClassAndDateUseCase({ attendance: ports.attendance, logger }),
+    getByClassAndDate: new GetAttendanceByClassAndDateUseCase({
+      attendance: ports.attendance,
+      logger,
+    }),
   });
 
   const assessments = new AssessmentsApplicationService({
-    createAssessment: new CreateAssessmentUseCase({ assessments: ports.assessments, unitOfWork, clock, ids, events, logger }),
+    createAssessment: new CreateAssessmentUseCase({
+      assessments: ports.assessments,
+      unitOfWork,
+      clock,
+      ids,
+      events,
+      logger,
+    }),
     recordGrade: new RecordGradeUseCase({ grades: ports.grades, unitOfWork, clock, ids, logger }),
-    publishGrade: new PublishGradeUseCase({ grades: ports.grades, unitOfWork, clock, events, logger }),
+    publishGrade: new PublishGradeUseCase({
+      grades: ports.grades,
+      unitOfWork,
+      clock,
+      events,
+      logger,
+    }),
     getGradesByStudent: new GetGradesByStudentUseCase({ grades: ports.grades, logger }),
   });
 
@@ -5567,12 +5659,26 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
 
   const institution = new InstitutionApplicationService({
     getProfile: new GetInstitutionProfileUseCase({ institutions: ports.institutions, logger }),
-    updateGradingConfig: new UpdateGradingConfigUseCase({ configs: ports.gradingConfigs, unitOfWork, logger }),
+    updateGradingConfig: new UpdateGradingConfigUseCase({
+      configs: ports.gradingConfigs,
+      unitOfWork,
+      logger,
+    }),
   });
 
   const infra = new InfraApplicationService({
-    registerDevice: new RegisterDeviceUseCase({ deviceGateway: ports.deviceGateway, clock, events, logger }),
-    updateSettings: new UpdateSettingsUseCase({ settingsGateway: ports.settingsGateway, clock, events, logger }),
+    registerDevice: new RegisterDeviceUseCase({
+      deviceGateway: ports.deviceGateway,
+      clock,
+      events,
+      logger,
+    }),
+    updateSettings: new UpdateSettingsUseCase({
+      settingsGateway: ports.settingsGateway,
+      clock,
+      events,
+      logger,
+    }),
   });
 
   return { students, academics, attendance, assessments, identity, institution, infra };
@@ -5603,6 +5709,7 @@ git commit -m "feat(application): add createApplicationLayer composition root"
 ## Task 19: Electron adapters — wire the infra use cases to the real DAL (end-to-end)
 
 **Files:**
+
 - Create: `apps/desktop/electron/data/adapters/UnitOfWorkAdapter.ts`
 - Create: `apps/desktop/electron/data/adapters/DeviceGatewayAdapter.ts`
 - Create: `apps/desktop/electron/data/adapters/SettingsGatewayAdapter.ts`
@@ -5611,6 +5718,7 @@ git commit -m "feat(application): add createApplicationLayer composition root"
 - Modify: `apps/desktop/electron/data/factories/createDataLayer.ts` (export a helper `toApplicationPorts` is NOT required; the composition file reads the DataLayer)
 
 **Interfaces:**
+
 - Consumes: `DataLayer` (from `createDataLayer`), `IDeviceRepository`, `IAppSettingsRepository`, `AppSettingsService`, `TransactionRunner` (all from the DAL); application ports `IDeviceGateway`, `ISettingsGateway`, `IUnitOfWork`; `RegisterDeviceDto`, `DeviceOutput`, `SettingOutput` (from `@nemis-desktop/application`); `IAppLogger`.
 - Produces: `UnitOfWorkAdapter`, `DeviceGatewayAdapter`, `SettingsGatewayAdapter`, and `createApplicationComposition(dataLayer, logger)` returning a partially-wired `ApplicationLayer` whose infra service runs against real SQLite. (Business repositories are not yet built, so their ports are backed by `notImplemented` stubs that throw — this is the documented Phase-6 seam.)
 
@@ -5705,7 +5813,12 @@ import {
   type ApplicationLayer,
   type ApplicationPorts,
 } from '@nemis-desktop/application';
-import { ConsoleLogger, CryptoIdGenerator, NoopEventPublisher, SystemClock } from '@nemis-desktop/application';
+import {
+  ConsoleLogger,
+  CryptoIdGenerator,
+  NoopEventPublisher,
+  SystemClock,
+} from '@nemis-desktop/application';
 import type { IAppLogger } from '@nemis-desktop/application';
 import type { DataLayer } from '../factories/createDataLayer';
 import type { TransactionRunner } from '../services/TransactionRunner';
@@ -5838,6 +5951,7 @@ git commit -m "feat(application): wire infra use cases to the real SQLite DAL vi
 ## Task 20: Documentation
 
 **Files:**
+
 - Create: `docs/application-layer.md`
 - Modify: `docs/conventions.md` (add an "Application Layer" section + "adding a use case" recipe)
 

@@ -22,7 +22,10 @@ export interface CreateGradeInput {
   occurredAt: string;
 }
 
-const PUBLISHABLE: ReadonlySet<GradeStatus> = new Set([GradeStatus.APPROVED, GradeStatus.SUBMITTED]);
+const PUBLISHABLE: ReadonlySet<GradeStatus> = new Set([
+  GradeStatus.APPROVED,
+  GradeStatus.SUBMITTED,
+]);
 
 export class Grade extends AggregateRoot<string> {
   #state: GradeState;

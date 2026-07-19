@@ -54,7 +54,11 @@ describe('Student', () => {
   });
 
   it('reconstitutes from persisted state without emitting events', () => {
-    const guardianLink = StudentGuardian.reconstitute({ id: 'sg-1', guardianId: 'g-1', isPrimary: true });
+    const guardianLink = StudentGuardian.reconstitute({
+      id: 'sg-1',
+      guardianId: 'g-1',
+      isPrimary: true,
+    });
     const student = Student.reconstitute({
       id: 'stu-1',
       institutionId: 'inst-1',

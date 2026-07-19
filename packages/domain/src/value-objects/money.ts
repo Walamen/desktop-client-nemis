@@ -31,6 +31,9 @@ export class Money extends ValueObject<MoneyProps> {
         `Cannot add ${other.currency} to ${this.props.currency}`,
       );
     }
-    return Money.create({ amount: this.props.amount + other.amount, currency: this.props.currency });
+    return Money.create({
+      amount: this.props.amount + other.amount,
+      currency: this.props.currency,
+    });
   }
 }

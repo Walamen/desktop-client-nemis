@@ -19,9 +19,9 @@ const externalRuntimeModules = ['better-sqlite3', 'bindings', 'file-uri-to-path'
 
 const config: ForgeConfig = {
   packagerConfig: {
-   name: 'Nemis',
-  executableName: 'Nemis',
-  icon: path.resolve(__dirname, 'assets', 'icon'),
+    name: 'Nemis',
+    executableName: 'Nemis',
+    icon: path.resolve(__dirname, 'assets', 'icon'),
     asar: true,
     extraResource: ['./renderer/out'],
   },
@@ -42,7 +42,11 @@ const config: ForgeConfig = {
     },
   },
   makers: [
-    new MakerSquirrel({ name: 'Nemis', setupExe: 'nemis-setup.exe',  setupIcon: path.resolve(__dirname, 'assets', 'icon.ico'), }),
+    new MakerSquirrel({
+      name: 'Nemis',
+      setupExe: 'nemis-setup.exe',
+      setupIcon: path.resolve(__dirname, 'assets', 'icon.ico'),
+    }),
     new MakerZIP({}, ['darwin']),
     new MakerRpm({}),
     new MakerDeb({}),

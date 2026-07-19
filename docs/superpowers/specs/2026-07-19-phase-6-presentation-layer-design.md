@@ -19,11 +19,11 @@ React (Phase 7) → @nemis-desktop/presentation → @nemis-desktop/application
 
 ## 2. Decisions made during brainstorming
 
-| Decision | Choice | Alternatives considered |
-|---|---|---|
-| Location | New workspace package `packages/presentation` (`@nemis-desktop/presentation`), mirroring Phases 4–5 | Inside `packages/shared` (rejected: weakens boundary enforcement; `shared` stays a small utility package) |
-| State management | **Zustand vanilla stores** (`zustand/vanilla`) wrapped by ViewModel classes (MVVM) | Redux Toolkit (rejected: duplicates existing Command/Query pattern, global-store coupling), MobX (rejected: implicit proxy reactivity, weaker strict-mode auditability), Jotai (rejected: React-centric atoms, awkward to drive from sync worker/IPC events) |
-| React in package | **None.** Package is 100 % React-free; the renderer adds a thin `useStore(vm.store, selector)` binding in Phase 7 | Shipping a `/react` subpath now (rejected: YAGNI, keeps phase testable with zero rendering) |
+| Decision         | Choice                                                                                                            | Alternatives considered                                                                                                                                                                                                                                      |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Location         | New workspace package `packages/presentation` (`@nemis-desktop/presentation`), mirroring Phases 4–5               | Inside `packages/shared` (rejected: weakens boundary enforcement; `shared` stays a small utility package)                                                                                                                                                    |
+| State management | **Zustand vanilla stores** (`zustand/vanilla`) wrapped by ViewModel classes (MVVM)                                | Redux Toolkit (rejected: duplicates existing Command/Query pattern, global-store coupling), MobX (rejected: implicit proxy reactivity, weaker strict-mode auditability), Jotai (rejected: React-centric atoms, awkward to drive from sync worker/IPC events) |
+| React in package | **None.** Package is 100 % React-free; the renderer adds a thin `useStore(vm.store, selector)` binding in Phase 7 | Shipping a `/react` subpath now (rejected: YAGNI, keeps phase testable with zero rendering)                                                                                                                                                                  |
 
 ### State-management decision report (required deliverable)
 
@@ -112,7 +112,7 @@ Discriminated union standardizing every screen's request lifecycle:
 type AsyncState<T> =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'refreshing'; data: T }   // stale data still shown
+  | { status: 'refreshing'; data: T } // stale data still shown
   | { status: 'success'; data: T }
   | { status: 'empty' }
   | { status: 'error'; error: PresentationError };
@@ -203,15 +203,15 @@ only (application services + shared stores + presenters).
 
 **Fully implemented** (backed by real Phase-5 use cases):
 
-| ViewModel | Backing service methods |
-|---|---|
-| `StudentsViewModel` | `students.list` (paginated/search), `getById`, `create`, `deactivate`, `linkGuardian` |
-| `ClassRosterViewModel` | `academics.getClassRoster`, `enroll`, `withdraw` |
-| `AttendanceViewModel` | `attendance.getByClassAndDate`, `record` |
-| `AssessmentsViewModel` | `assessments.createAssessment`, `recordGrade`, `publishGrade`, `getGradesByStudent` |
-| `SettingsViewModel` | `institution.getProfile`, `updateGradingConfig`; `infra.updateSettings` |
-| `DeviceViewModel` | `infra.registerDevice` + device status state |
-| `SessionViewModel` | `identity.getUserById` → current-user selection |
+| ViewModel              | Backing service methods                                                               |
+| ---------------------- | ------------------------------------------------------------------------------------- |
+| `StudentsViewModel`    | `students.list` (paginated/search), `getById`, `create`, `deactivate`, `linkGuardian` |
+| `ClassRosterViewModel` | `academics.getClassRoster`, `enroll`, `withdraw`                                      |
+| `AttendanceViewModel`  | `attendance.getByClassAndDate`, `record`                                              |
+| `AssessmentsViewModel` | `assessments.createAssessment`, `recordGrade`, `publishGrade`, `getGradesByStudent`   |
+| `SettingsViewModel`    | `institution.getProfile`, `updateGradingConfig`; `infra.updateSettings`               |
+| `DeviceViewModel`      | `infra.registerDevice` + device status state                                          |
+| `SessionViewModel`     | `identity.getUserById` → current-user selection                                       |
 
 **Extension points only** — typed state shape + store contract defined, methods
 throw `NotImplementedPresentationError`, documented in
@@ -274,5 +274,5 @@ Vitest, **no UI rendering tests**:
 - Repo uses `noUncheckedIndexedAccess`; index access needs guards.
 - Named exports only; small focused modules; no `any`.
 - The acceptance criterion "UI depends only on Presentation Layer" is
-  *structurally prepared* here (boundary design + lint guards); it becomes
+  _structurally prepared_ here (boundary design + lint guards); it becomes
   fully verifiable when Phase 7 wires the renderer.

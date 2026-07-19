@@ -82,7 +82,12 @@ describe('Institution', () => {
 describe('GradingConfig', () => {
   it('rejects passingMarks greater than maxMarks', () => {
     expect(() =>
-      GradingConfig.reconstitute({ id: 'gc-1', maxMarks: 50, passingMarks: 60, requireAdminApproval: true }),
+      GradingConfig.reconstitute({
+        id: 'gc-1',
+        maxMarks: 50,
+        passingMarks: 60,
+        requireAdminApproval: true,
+      }),
     ).toThrow(EntityValidationException);
   });
 

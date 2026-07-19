@@ -14,7 +14,7 @@
 
 - Work on branch `phase-6-presentation-layer`, created from `main` (Task 1). Commit after every task with trailer `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>`.
 - All commands run from repo root: `c:\Users\Alvin Dogba Jr\Desktop\Walamen\desktop-client-nemis`.
-- Package deps: ONLY `@nemis-desktop/application`, `@nemis-desktop/types`, `zustand`. Import zustand ONLY from `'zustand/vanilla'`. NEVER import `react`, `next`, `electron`, `better-sqlite3`, or `@nemis-desktop/domain` (domain is allowed ONLY in `*.test.ts` and `src/testing/**` for seeding fakes — enforced by ESLint in Task 1).
+- Runtime deps: ONLY `@nemis-desktop/application`, `@nemis-desktop/types`, `zustand`. Import zustand ONLY from `'zustand/vanilla'`. NEVER import `react`, `next`, `electron`, `better-sqlite3`, or `@nemis-desktop/domain` in non-test source (enforced by ESLint in Task 1). Domain is allowed ONLY in `*.test.ts` and `src/testing/**` for seeding fakes; because pnpm needs a declared dependency to resolve it there, `@nemis-desktop/domain` is a **devDependency** (test-only — kept out of runtime `dependencies` so the production boundary holds). It is added when the first domain-seeding test lands (Task 13's ClassRoster test, which must seed a `Class` entity directly since no application use case creates one).
 - TypeScript strict + `noUncheckedIndexedAccess` (indexing may return `undefined` — guard it). Named exports only. No `any`. No default exports. `"type": "module"`.
 - Scoped test run during development: `pnpm vitest run packages/presentation` (fast, no SQLite). Do NOT run full `pnpm test` until the final task — the repo's better-sqlite3 is currently built for the **Electron** ABI; the final task handles `pnpm rebuild:node` / `pnpm rebuild:electron`.
 - Run `pnpm prettier --write packages/presentation docs eslint.config.mjs` before each commit so no formatting-fix commit is needed later.
@@ -61,6 +61,7 @@ docs/presentation-layer.md    (+ conventions.md section)
 ### Task 1: Package scaffold + ESLint boundary guard
 
 **Files:**
+
 - Create: `packages/presentation/package.json`
 - Create: `packages/presentation/tsconfig.json`
 - Create: `packages/presentation/eslint.config.mjs`
@@ -69,6 +70,7 @@ docs/presentation-layer.md    (+ conventions.md section)
 - Modify: `eslint.config.mjs` (repo root)
 
 **Interfaces:**
+
 - Consumes: nothing (first task).
 - Produces: the `@nemis-desktop/presentation` workspace package; ESLint guards `presentationImportGuard`, `presentationTestImportRelaxation`, `presentationLintRules`; zustand available.
 
@@ -208,10 +210,7 @@ export const presentationImportGuard = {
 export const presentationTestImportRelaxation = {
   files: ['packages/presentation/src/**/*.test.ts', 'packages/presentation/src/testing/**/*.ts'],
   rules: {
-    'no-restricted-imports': [
-      'error',
-      { paths: RESTRICTED_PATHS, patterns: RESTRICTED_PATTERNS },
-    ],
+    'no-restricted-imports': ['error', { paths: RESTRICTED_PATHS, patterns: RESTRICTED_PATTERNS }],
   },
 };
 
@@ -281,11 +280,13 @@ git commit -m "feat(presentation): scaffold @nemis-desktop/presentation with bou
 ### Task 2: AsyncState + ViewStatus + SubmissionStatus (core)
 
 **Files:**
+
 - Create: `packages/presentation/src/core/async-state.ts`
 - Create: `packages/presentation/src/core/submission.ts`
 - Test: `packages/presentation/src/core/async-state.test.ts`
 
 **Interfaces:**
+
 - Consumes: nothing.
 - Produces:
   - `AsyncState<T>` = discriminated union on `status`: `'idle' | 'loading' | 'refreshing'(data: T) | 'success'(data: T) | 'empty' | 'error'(error: PresentationError placeholder — see note)`
@@ -335,15 +336,15 @@ describe('AsyncState', () => {
       ),
     ).toBe('offline');
     // data on screen wins over the offline badge
-    expect(toViewStatus({ status: 'success', data: 1 }, { isOffline: true, isSyncing: false })).toBe(
-      'success',
-    );
+    expect(
+      toViewStatus({ status: 'success', data: 1 }, { isOffline: true, isSyncing: false }),
+    ).toBe('success');
   });
 
   it('toViewStatus reports syncing while data is shown during a sync', () => {
-    expect(toViewStatus({ status: 'success', data: 1 }, { isOffline: false, isSyncing: true })).toBe(
-      'syncing',
-    );
+    expect(
+      toViewStatus({ status: 'success', data: 1 }, { isOffline: false, isSyncing: true }),
+    ).toBe('syncing');
     expect(toViewStatus({ status: 'loading' }, { isOffline: false, isSyncing: true })).toBe(
       'loading',
     );
@@ -400,14 +401,7 @@ export function isBusy<T>(state: AsyncState<T>): boolean {
  * connectivity/sync context. Offline never hides data already on screen;
  * syncing only decorates states that show data. */
 export type ViewStatus =
-  | 'idle'
-  | 'loading'
-  | 'refreshing'
-  | 'success'
-  | 'empty'
-  | 'error'
-  | 'offline'
-  | 'syncing';
+  'idle' | 'loading' | 'refreshing' | 'success' | 'empty' | 'error' | 'offline' | 'syncing';
 
 export interface ViewStatusContext {
   readonly isOffline: boolean;
@@ -436,12 +430,14 @@ git commit -m "feat(presentation): add AsyncState/ViewStatus/SubmissionStatus co
 ### Task 3: Presentation error taxonomy + translator
 
 **Files:**
+
 - Create: `packages/presentation/src/errors/presentation-error.ts`
 - Create: `packages/presentation/src/errors/to-presentation-error.ts`
 - Create: `packages/presentation/src/errors/index.ts`
 - Test: `packages/presentation/src/errors/errors.test.ts`
 
 **Interfaces:**
+
 - Consumes: `ApplicationValidationException` (`.issues: {field,message}[]`), `PermissionDeniedException`, `UseCaseException`, `WorkflowException` from `@nemis-desktop/application` (all extend `ApplicationException` with `.code`, renderer-safe `.message`).
 - Produces:
   - `PresentationErrorKind = 'validation' | 'permission' | 'operation-failed' | 'loading' | 'network-unavailable' | 'unexpected' | 'not-implemented'`
@@ -495,9 +491,9 @@ describe('toPresentationError', () => {
     const err = toPresentationError(new UseCaseException('Grade is not publishable'), 'command');
     expect(err).toBeInstanceOf(OperationFailedError);
     expect(err.userMessage).toBe('Grade is not publishable');
-    expect(toPresentationError(new WorkflowException('Student not found'), 'command')).toBeInstanceOf(
-      OperationFailedError,
-    );
+    expect(
+      toPresentationError(new WorkflowException('Student not found'), 'command'),
+    ).toBeInstanceOf(OperationFailedError);
   });
 
   it('maps unknown errors by context', () => {
@@ -627,10 +623,7 @@ import {
 /** Single translation point from application-layer (and unknown) errors into
  * UI-friendly presentation errors. Queries degrade to LoadingError; commands
  * to UnexpectedPresentationError. */
-export function toPresentationError(
-  err: unknown,
-  context: 'query' | 'command',
-): PresentationError {
+export function toPresentationError(err: unknown, context: 'query' | 'command'): PresentationError {
   if (err instanceof PresentationError) return err;
 
   if (err instanceof ApplicationValidationException) {
@@ -674,11 +667,13 @@ git commit -m "feat(presentation): add presentation error taxonomy and translato
 ### Task 4: Notifications + NotificationStore
 
 **Files:**
+
 - Create: `packages/presentation/src/notifications/notification.ts`
 - Create: `packages/presentation/src/stores/notification-store.ts`
 - Test: `packages/presentation/src/stores/notification-store.test.ts`
 
 **Interfaces:**
+
 - Consumes: `createStore` from `zustand/vanilla`.
 - Produces:
   - `NotificationKind = 'success' | 'info' | 'warning' | 'error'`
@@ -837,10 +832,12 @@ git commit -m "feat(presentation): add notification model and NotificationStore"
 ### Task 5: Async runner pipeline (trackQuery / executeCommand)
 
 **Files:**
+
 - Create: `packages/presentation/src/core/async-runner.ts`
 - Test: `packages/presentation/src/core/async-runner.test.ts`
 
 **Interfaces:**
+
 - Consumes: `AsyncState`, `hasData` (Task 2); `toPresentationError`, `PresentationError` (Task 3); `NotificationStore` (Task 4); `ApplicationResponse<T>` from `@nemis-desktop/application`.
 - Produces:
   - `QueryStateAccess<TView> { get(): AsyncState<TView>; set(next: AsyncState<TView>): void }`
@@ -1011,9 +1008,7 @@ export async function trackQuery<TDto, TView>(opts: {
     }
     opts.onData?.(res.data);
     const view = opts.map(res.data);
-    opts.access.set(
-      opts.isEmpty?.(view) ? { status: 'empty' } : { status: 'success', data: view },
-    );
+    opts.access.set(opts.isEmpty?.(view) ? { status: 'empty' } : { status: 'success', data: view });
   } catch (err) {
     opts.access.set({ status: 'error', error: toPresentationError(err, 'query') });
   }
@@ -1059,6 +1054,7 @@ git commit -m "feat(presentation): add trackQuery/executeCommand async pipeline"
 ### Task 6: Pagination, filters, search, constants
 
 **Files:**
+
 - Create: `packages/presentation/src/constants/defaults.ts`
 - Create: `packages/presentation/src/pagination/pagination.ts`
 - Create: `packages/presentation/src/filters/filter-descriptor.ts`
@@ -1067,6 +1063,7 @@ git commit -m "feat(presentation): add trackQuery/executeCommand async pipeline"
 - Test: `packages/presentation/src/search/search-state.test.ts`
 
 **Interfaces:**
+
 - Consumes: `PageRequest { limit; offset }` from `@nemis-desktop/application`.
 - Produces:
   - `DEFAULT_PAGE_SIZE = 25`, `DEFAULT_SEARCH_DEBOUNCE_MS = 300`
@@ -1130,7 +1127,13 @@ describe('pagination', () => {
 
 ```ts
 import { describe, expect, it } from 'vitest';
-import { clearSearch, createSearch, matchesKeyword, withFilters, withKeyword } from './search-state';
+import {
+  clearSearch,
+  createSearch,
+  matchesKeyword,
+  withFilters,
+  withKeyword,
+} from './search-state';
 
 describe('search state', () => {
   it('creates defaults and updates immutably', () => {
@@ -1281,11 +1284,13 @@ git commit -m "feat(presentation): add pagination, filter, and search infrastruc
 ### Task 7: Form infrastructure (FormManager + validators)
 
 **Files:**
+
 - Create: `packages/presentation/src/forms/form-manager.ts`
 - Create: `packages/presentation/src/validators/form-validators.ts`
 - Test: `packages/presentation/src/forms/form-manager.test.ts`
 
 **Interfaces:**
+
 - Consumes: `createStore` (zustand/vanilla), `SubmissionStatus` (Task 2), `PresentationError`, `ValidationError` (Task 3).
 - Produces:
   - `FormState<TValues> { values; errors: Readonly<Partial<Record<keyof TValues & string, string>>>; isDirty; submission: SubmissionStatus; submitError: PresentationError | null }`
@@ -1400,7 +1405,11 @@ export function required<TValues>(
     const errors: Partial<Record<keyof TValues & string, string>> = {};
     for (const field of fields) {
       const value = values[field];
-      if (value === null || value === undefined || (typeof value === 'string' && value.trim() === '')) {
+      if (
+        value === null ||
+        value === undefined ||
+        (typeof value === 'string' && value.trim() === '')
+      ) {
         errors[field] = 'This field is required.';
       }
     }
@@ -1415,19 +1424,26 @@ export function maxLength<TValues>(
   return (values) => {
     const value = values[field];
     return typeof value === 'string' && value.length > max
-      ? { [field]: `Must be at most ${max} characters.` } as Partial<
+      ? ({ [field]: `Must be at most ${max} characters.` } as Partial<
           Record<keyof TValues & string, string>
-        >
+        >)
       : {};
   };
 }
 
+/** Accepts an ISO-8601 date (YYYY-MM-DD, optional time) that also parses to a
+ * real calendar date — rejects Date.parse-permissive non-ISO strings like
+ * "01/02/2020" that the validator's name would otherwise silently allow. */
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})?)?$/;
+
 export function isoDate<TValues>(field: keyof TValues & string): FormValidator<TValues> {
   return (values) => {
     const value = values[field];
-    return typeof value === 'string' && value !== '' && Number.isNaN(Date.parse(value))
-      ? { [field]: 'Enter a valid date.' } as Partial<Record<keyof TValues & string, string>>
-      : {};
+    if (typeof value !== 'string' || value === '') return {};
+    const valid = ISO_DATE.test(value) && !Number.isNaN(Date.parse(value));
+    return valid
+      ? {}
+      : ({ [field]: 'Enter a valid date.' } as Partial<Record<keyof TValues & string, string>>);
   };
 }
 ```
@@ -1461,7 +1477,7 @@ export class FormManager<TValues extends Record<string, unknown>> {
     this.initialValues = { ...initialValues };
     this.store = createStore<FormState<TValues>>(() => ({
       values: { ...initialValues },
-      errors: {},
+      errors: {} as Partial<Record<keyof TValues & string, string>>,
       isDirty: false,
       submission: 'idle',
       submitError: null,
@@ -1492,7 +1508,7 @@ export class FormManager<TValues extends Record<string, unknown>> {
     this.store.setState(
       {
         values: { ...this.initialValues },
-        errors: {},
+        errors: {} as Partial<Record<keyof TValues & string, string>>,
         isDirty: false,
         submission: 'idle',
         submitError: null,
@@ -1517,7 +1533,7 @@ export class FormManager<TValues extends Record<string, unknown>> {
   /** Copies field errors from a command's ValidationError onto the form. */
   applyExternalErrors(error: PresentationError): void {
     if (!(error instanceof ValidationError)) return;
-    const errors: Record<string, string> = { ...this.store.getState().errors };
+    const errors: Record<string, string | undefined> = { ...this.store.getState().errors };
     for (const [field, message] of Object.entries(error.fieldErrors)) errors[field] = message;
     this.store.setState({
       errors: errors as Partial<Record<keyof TValues & string, string>>,
@@ -1541,12 +1557,14 @@ git commit -m "feat(presentation): add FormManager and presentational validators
 ### Task 8: Formatters
 
 **Files:**
+
 - Create: `packages/presentation/src/formatters/format-date.ts`
 - Create: `packages/presentation/src/formatters/format-text.ts`
 - Create: `packages/presentation/src/formatters/format-marks.ts`
 - Test: `packages/presentation/src/formatters/formatters.test.ts`
 
 **Interfaces:**
+
 - Consumes: `GradeLevel` from `@nemis-desktop/types`.
 - Produces (all pure):
   - `formatIsoDate(iso: string): string` → `'19 Jul 2026'`; invalid → `'—'`
@@ -1653,7 +1671,9 @@ export function humanizeEnum(value: string): string {
 
 export function formatGradeLevel(gradeLevel?: GradeLevel): string {
   if (!gradeLevel) return '—';
-  return gradeLevel.startsWith('GRADE_') ? `Grade ${gradeLevel.slice('GRADE_'.length)}` : gradeLevel;
+  return gradeLevel.startsWith('GRADE_')
+    ? `Grade ${gradeLevel.slice('GRADE_'.length)}`
+    : gradeLevel;
 }
 ```
 
@@ -1684,11 +1704,13 @@ git commit -m "feat(presentation): add pure display formatters"
 ### Task 9: Status presenters (badge tokens)
 
 **Files:**
+
 - Create: `packages/presentation/src/presenters/status-presentation.ts`
 - Create: `packages/presentation/src/presenters/present-status.ts`
 - Test: `packages/presentation/src/presenters/present-status.test.ts`
 
 **Interfaces:**
+
 - Consumes: `AttendanceStatus`, `EnrollmentStatus`, `GradeStatus`, `ApprovalStatus` from `@nemis-desktop/types`; `formatIsoDateTime` (Task 8); `SyncStatus` — defined HERE as `'idle' | 'syncing' | 'failed'` (Task 10's ConnectivityStore imports it from here to avoid a cycle).
 - Produces:
   - `BadgeToken = 'success' | 'active' | 'pending' | 'error' | 'neutral'` (semantic names; the UI maps tokens to the enterprise palette — never hex here)
@@ -1697,6 +1719,7 @@ git commit -m "feat(presentation): add pure display formatters"
   - `presentActive(isActive: boolean)`, `presentAttendanceStatus(status)`, `presentEnrollmentStatus(status)`, `presentGradeStatus(status, isPublished)`, `presentApprovalStatus(status)`, `presentSyncStatus(status: SyncStatus, lastSyncAt: string | null)`, `presentConnectivity(isOnline: boolean)` — all return `StatusPresentation`.
 
 Fixed mappings (exhaustive `Record` lookups):
+
 - Attendance: PRESENT→`Present`/success, ABSENT→`Absent`/error, LATE→`Late`/pending, EXCUSED→`Excused`/neutral, SICK→`Sick`/pending
 - Enrollment: ACTIVE→`Active`/active, COMPLETED→`Completed`/success, WITHDRAWN→`Withdrawn`/neutral, TRANSFERRED→`Transferred`/pending, SUSPENDED→`Suspended`/error
 - Grade: `isPublished || status === PUBLISHED`→`Published`/success; DRAFT→`Draft`/neutral, SUBMITTED→`Submitted`/pending, APPROVED→`Approved`/active, LOCKED→`Locked`/neutral
@@ -1711,7 +1734,12 @@ Fixed mappings (exhaustive `Record` lookups):
 
 ```ts
 import { describe, expect, it } from 'vitest';
-import { ApprovalStatus, AttendanceStatus, EnrollmentStatus, GradeStatus } from '@nemis-desktop/types';
+import {
+  ApprovalStatus,
+  AttendanceStatus,
+  EnrollmentStatus,
+  GradeStatus,
+} from '@nemis-desktop/types';
 import {
   presentActive,
   presentApprovalStatus,
@@ -1894,6 +1922,7 @@ git commit -m "feat(presentation): add status presenters with semantic badge tok
 ### Task 10: Shared stores (session, connectivity, dialogs, navigation) + shared selectors
 
 **Files:**
+
 - Create: `packages/presentation/src/stores/session-store.ts`
 - Create: `packages/presentation/src/stores/connectivity-store.ts`
 - Create: `packages/presentation/src/stores/dialog-store.ts`
@@ -1904,6 +1933,7 @@ git commit -m "feat(presentation): add status presenters with semantic badge tok
 - Test: `packages/presentation/src/stores/shared-stores.test.ts`
 
 **Interfaces:**
+
 - Consumes: `createStore`; `NotificationStore` (Task 4); `SyncStatus`, `presentSyncStatus`, `presentConnectivity`, `StatusPresentation` (Task 9).
 - Produces:
   - `SessionState { currentUserId; selectedStudentId; selectedSchoolId; activeAcademicYearId; activeTermId; currentDeviceId }` (all `string | null`) and `class SessionStore { store; setCurrentUser(id); selectStudent(id); selectSchool(id); setActiveAcademicYear(yearId, termId?); setCurrentDevice(id) }`
@@ -2134,12 +2164,20 @@ export class DialogStore {
   private pendingConfirm: ((result: boolean) => void) | null = null;
 
   open(name: string, payload?: unknown): void {
+    // Opening any dialog cancels a pending confirm so its awaiter never orphans.
+    this.pendingConfirm?.(false);
+    this.pendingConfirm = null;
     this.store.setState({ current: { kind: 'custom', name, payload } });
   }
 
   /** Promise-based confirmation; the UI renders `current` and calls
    * resolveConfirm with the user's answer. */
-  confirm(request: { title?: string; message: string; confirmLabel?: string; cancelLabel?: string }): Promise<boolean> {
+  confirm(request: {
+    title?: string;
+    message: string;
+    confirmLabel?: string;
+    cancelLabel?: string;
+  }): Promise<boolean> {
     this.pendingConfirm?.(false);
     const payload: ConfirmRequest = {
       title: request.title ?? 'Are you sure?',
@@ -2283,10 +2321,12 @@ git commit -m "feat(presentation): add session/connectivity/dialog/navigation st
 ### Task 11: Test helper — real application layer over in-memory fakes
 
 **Files:**
+
 - Create: `packages/presentation/src/testing/create-test-application.ts`
 - Test: `packages/presentation/src/testing/create-test-application.test.ts`
 
 **Interfaces:**
+
 - Consumes: `createApplicationLayer`, `ApplicationLayer`, and the Phase-5 testing exports from `@nemis-desktop/application`: `InMemoryStudentRepository`, `InMemoryGuardianRepository`, `InMemoryEnrollmentRepository`, `InMemoryClassRepository`, `InMemoryAttendanceRepository`, `InMemoryAssessmentRepository`, `InMemoryGradeRepository`, `InMemoryUserRepository`, `InMemoryInstitutionRepository`, `InMemoryGradingConfigRepository`, `InMemoryDeviceGateway`, `InMemorySettingsGateway`, `PassthroughUnitOfWork`, `FixedClock`, `SequentialIdGenerator`, `CollectingEventPublisher`, `RecordingLogger`.
 - Produces: `TestPorts` (the concrete fake types, so tests can reach `.store` maps for seeding) and `createTestApplication(): { app: ApplicationLayer; ports: TestPorts }`. ViewModel tests use this — real presentation→application integration, no SQLite, no mocks of our own code.
 
@@ -2413,6 +2453,7 @@ git commit -m "test(presentation): add createTestApplication helper over in-memo
 ### Task 12: Students slice (views, mapper, commands, queries, ViewModel, selectors)
 
 **Files:**
+
 - Create: `packages/presentation/src/view-models/students/students-views.ts`
 - Create: `packages/presentation/src/mappers/students/student-view-mapper.ts`
 - Create: `packages/presentation/src/commands/students/students-command-deps.ts`
@@ -2426,6 +2467,7 @@ git commit -m "test(presentation): add createTestApplication helper over in-memo
 - Test: `packages/presentation/src/view-models/students/students-view-model.test.ts`
 
 **Interfaces:**
+
 - Consumes: `StudentApplicationService` (`create/deactivate/linkGuardian/getById/list`), DTOs `CreateStudentDto`, `DeactivateStudentDto`, `LinkGuardianDto`, `StudentOutput`, `StudentSummaryOutput`, `PagedResult`, `PageRequest`, `ApplicationResponse` from `@nemis-desktop/application`; Tasks 2–10 building blocks; `SessionStore`; `createTestApplication` (Task 11).
 - Produces:
   - `StudentRowView { id; fullName; admissionNumber; gradeLevel: string; status: StatusPresentation }`
@@ -2446,10 +2488,7 @@ git commit -m "test(presentation): add createTestApplication helper over in-memo
 import { describe, expect, it } from 'vitest';
 import { Gender } from '@nemis-desktop/types';
 import { ValidationError } from '../../errors';
-import {
-  selectSelectedStudent,
-  selectStudentRows,
-} from '../../selectors/students-selectors';
+import { selectSelectedStudent, selectStudentRows } from '../../selectors/students-selectors';
 import { NotificationStore } from '../../stores/notification-store';
 import { SessionStore } from '../../stores/session-store';
 import { createTestApplication } from '../../testing/create-test-application';
@@ -2546,14 +2585,33 @@ describe('StudentsViewModel', () => {
     expect(vm.store.getState().details.status).toBe('idle');
   });
 
-  it('deactivateStudent updates details and list row status', async () => {
+  it('deactivateStudent updates the open details and list row status', async () => {
     const { app, vm } = build();
     const created = await app.students.create(dto);
+    await vm.loadStudents();
+    await vm.selectStudent(created.data.id); // open this student's details
     const outcome = await vm.deactivateStudent({ studentId: created.data.id, actorId: 'usr-1' });
     expect(outcome.ok).toBe(true);
     if (outcome.ok) expect(outcome.data.status.label).toBe('Inactive');
+    const details = vm.store.getState().details;
+    expect(details.status).toBe('success');
+    if (details.status === 'success') expect(details.data.status.label).toBe('Inactive');
     const rows = selectStudentRows(vm.store.getState());
     expect(rows[0]?.status.label).toBe('Inactive');
+  });
+
+  it('deactivateStudent does not clobber details for a different open student', async () => {
+    const { app, vm } = build();
+    const a = await app.students.create(dto);
+    const b = await app.students.create({ ...dto, firstName: 'Grace', admissionNumber: 'ADM-002' });
+    await vm.selectStudent(a.data.id); // details shows A
+    await vm.deactivateStudent({ studentId: b.data.id, actorId: 'usr-1' });
+    const details = vm.store.getState().details;
+    expect(details.status).toBe('success');
+    if (details.status === 'success') {
+      expect(details.data.id).toBe(a.data.id);
+      expect(details.data.status.label).toBe('Active'); // A untouched
+    }
   });
 
   it('linkGuardian surfaces a business failure as an error notification', async () => {
@@ -2610,10 +2668,7 @@ import type { StudentOutput, StudentSummaryOutput } from '@nemis-desktop/applica
 import { formatIsoDate, formatIsoDateTime } from '../../formatters/format-date';
 import { formatGradeLevel, humanizeEnum } from '../../formatters/format-text';
 import { presentActive } from '../../presenters/present-status';
-import type {
-  StudentDetailsView,
-  StudentRowView,
-} from '../../view-models/students/students-views';
+import type { StudentDetailsView, StudentRowView } from '../../view-models/students/students-views';
 
 export function toStudentRowView(dto: StudentSummaryOutput): StudentRowView {
   return {
@@ -2772,7 +2827,7 @@ import type {
   StudentApplicationService,
 } from '@nemis-desktop/application';
 import { createStore } from 'zustand/vanilla';
-import { idleState, type AsyncState } from '../../core/async-state';
+import { hasData, idleState, type AsyncState } from '../../core/async-state';
 import { trackQuery, type CommandOutcome } from '../../core/async-runner';
 import type { SubmissionStatus } from '../../core/submission';
 import { CreateStudentUiCommand } from '../../commands/students/create-student-ui-command';
@@ -2893,7 +2948,7 @@ export class StudentsViewModel {
     const outcome = await this.deactivateCommand.execute(dto);
     this.store.setState({ submission: outcome.ok ? 'submitted' : 'failed' });
     if (outcome.ok) {
-      this.store.setState({ details: { status: 'success', data: outcome.data } });
+      this.updateDetailsIfCurrent(outcome.data);
       await this.loadStudents();
     }
     return outcome;
@@ -2904,9 +2959,18 @@ export class StudentsViewModel {
     const outcome = await this.linkGuardianCommand.execute(dto);
     this.store.setState({ submission: outcome.ok ? 'submitted' : 'failed' });
     if (outcome.ok) {
-      this.store.setState({ details: { status: 'success', data: outcome.data } });
+      this.updateDetailsIfCurrent(outcome.data);
     }
     return outcome;
+  }
+
+  /** Refresh the open details panel only when it is showing the mutated
+   * student — never clobber a different student's open details. */
+  private updateDetailsIfCurrent(view: StudentDetailsView): void {
+    const details = this.store.getState().details;
+    if (hasData(details) && details.data.id === view.id) {
+      this.store.setState({ details: { status: 'success', data: view } });
+    }
   }
 }
 ```
@@ -2963,6 +3027,7 @@ git commit -m "feat(presentation): add Students slice (ViewModel, commands, quer
 ### Task 13: ClassRoster + Attendance slices
 
 **Files:**
+
 - Create: `packages/presentation/src/view-models/class-roster/class-roster-views.ts`
 - Create: `packages/presentation/src/mappers/academics/enrollment-view-mapper.ts`
 - Create: `packages/presentation/src/commands/academics/enroll-student-ui-command.ts`
@@ -2978,6 +3043,7 @@ git commit -m "feat(presentation): add Students slice (ViewModel, commands, quer
 - Test: `packages/presentation/src/view-models/attendance/attendance-view-model.test.ts`
 
 **Interfaces:**
+
 - Consumes: `AcademicsApplicationService` (`enroll/withdraw/getClassRoster`), `AttendanceApplicationService` (`record/getByClassAndDate`), DTOs `EnrollStudentDto`, `WithdrawEnrollmentDto`, `EnrollmentOutput`, `ClassRosterOutput`, `RecordAttendanceDto`, `AttendanceOutput`; `EnrollmentStatus` from `@nemis-desktop/types`; Tasks 2–11 building blocks.
 - Produces:
   - `EnrollmentRowView { id; studentId; classId; status: StatusPresentation; updatedAt: string }`, `ClassRosterView { classId; enrollments: readonly EnrollmentRowView[]; activeCount: number }`, `toEnrollmentRowView`, `toClassRosterView`
@@ -3280,9 +3346,7 @@ import { createStore } from 'zustand/vanilla';
 import { idleState, type AsyncState } from '../../core/async-state';
 import { trackQuery, type CommandOutcome } from '../../core/async-runner';
 import type { SubmissionStatus } from '../../core/submission';
-import {
-  EnrollStudentUiCommand,
-} from '../../commands/academics/enroll-student-ui-command';
+import { EnrollStudentUiCommand } from '../../commands/academics/enroll-student-ui-command';
 import { WithdrawEnrollmentUiCommand } from '../../commands/academics/withdraw-enrollment-ui-command';
 import { toClassRosterView } from '../../mappers/academics/enrollment-view-mapper';
 import { GetClassRosterUiQuery } from '../../queries/academics/get-class-roster-ui-query';
@@ -3511,6 +3575,7 @@ git commit -m "feat(presentation): add ClassRoster and Attendance slices"
 ### Task 14: Assessments slice
 
 **Files:**
+
 - Create: `packages/presentation/src/view-models/assessments/assessments-views.ts`
 - Create: `packages/presentation/src/mappers/assessments/assessment-view-mapper.ts`
 - Create: `packages/presentation/src/commands/assessments/create-assessment-ui-command.ts`
@@ -3521,6 +3586,7 @@ git commit -m "feat(presentation): add ClassRoster and Attendance slices"
 - Test: `packages/presentation/src/view-models/assessments/assessments-view-model.test.ts`
 
 **Interfaces:**
+
 - Consumes: `AssessmentsApplicationService` (`createAssessment/recordGrade/publishGrade/getGradesByStudent`), DTOs `CreateAssessmentDto`, `RecordGradeDto`, `PublishGradeDto`, `AssessmentOutput`, `GradeOutput`; `AssessmentType`, `GradeStatus` enums. Note Phase-5 N1: RecordGrade/CreateAssessment do no existence checks; PublishGrade requires a `SUBMITTED` grade.
 - Produces:
   - `GradeRowView { id; studentId; subjectId; marks: string; percent: string; status: StatusPresentation }`, `AssessmentView { id; typeLabel: string; marks: string; updatedAt: string }`, `toGradeRowView(dto: GradeOutput)`, `toAssessmentView(dto: AssessmentOutput)`
@@ -3650,10 +3716,7 @@ import { formatIsoDateTime } from '../../formatters/format-date';
 import { formatMarks, formatPercent } from '../../formatters/format-marks';
 import { humanizeEnum } from '../../formatters/format-text';
 import { presentGradeStatus } from '../../presenters/present-status';
-import type {
-  AssessmentView,
-  GradeRowView,
-} from '../../view-models/assessments/assessments-views';
+import type { AssessmentView, GradeRowView } from '../../view-models/assessments/assessments-views';
 
 export function toGradeRowView(dto: GradeOutput): GradeRowView {
   return {
@@ -3882,6 +3945,7 @@ git commit -m "feat(presentation): add Assessments slice"
 ### Task 15: Settings, Device, and CurrentUser slices
 
 **Files:**
+
 - Create: `packages/presentation/src/view-models/settings/settings-views.ts`
 - Create: `packages/presentation/src/mappers/institution/institution-view-mapper.ts`
 - Create: `packages/presentation/src/mappers/infra/infra-view-mapper.ts`
@@ -3901,6 +3965,7 @@ git commit -m "feat(presentation): add Assessments slice"
 - Test: `packages/presentation/src/view-models/current-user/current-user-view-model.test.ts`
 
 **Interfaces:**
+
 - Consumes: `InstitutionApplicationService` (`getProfile/updateGradingConfig`), `InfraApplicationService` (`registerDevice/updateSettings`), `IdentityApplicationService` (`getUserById`), DTOs `InstitutionProfileOutput`, `UpdateGradingConfigDto`, `GradingConfigOutput`, `RegisterDeviceDto`, `DeviceOutput`, `UpdateSettingsDto`, `SettingOutput`, `UserOutput`; `SessionStore`.
 - Produces:
   - Views: `InstitutionProfileView { id; code; name; typeLabel; ownershipLabel; approval: StatusPresentation; address: string }` and `GradingConfigView { id; maxMarks; passingMarks; requireAdminApproval }` (in `settings-views.ts`); `DeviceView { id; deviceName; platform; appVersion; registeredAt }` and `SettingView { key; value: unknown; updatedAt }` (in `device-views.ts`); `UserView { id; fullName; email; roleLabels: readonly string[]; status: StatusPresentation }` (in `current-user-views.ts`)
@@ -4556,6 +4621,7 @@ git commit -m "feat(presentation): add Settings, Device, and CurrentUser slices"
 ### Task 16: Extension-point ViewModels (Dashboard, Teachers, Sync) + template
 
 **Files:**
+
 - Create: `packages/presentation/src/view-models/dashboard/dashboard-view-model.ts`
 - Create: `packages/presentation/src/view-models/teachers/teachers-view-model.ts`
 - Create: `packages/presentation/src/view-models/sync/sync-view-model.ts`
@@ -4563,6 +4629,7 @@ git commit -m "feat(presentation): add Settings, Device, and CurrentUser slices"
 - Test: `packages/presentation/src/view-models/extension-stubs.test.ts`
 
 **Interfaces:**
+
 - Consumes: `NotImplementedPresentationError` (Task 3), `AsyncState`/`idleState` (Task 2), `ConnectivityStore` + `presentSyncStatus` (Tasks 9–10).
 - Produces:
   - `DashboardSummaryView { totalStudents: number; presentToday: number; pendingGrades: number }`, `DashboardState { summary: AsyncState<DashboardSummaryView> }`, `class DashboardViewModel { store; loadSummary(): Promise<void> /* throws NotImplementedPresentationError('Dashboard') */ }`
@@ -4632,7 +4699,9 @@ export interface DashboardState {
 export class DashboardViewModel {
   readonly store = createStore<DashboardState>(() => ({ summary: idleState() }));
 
-  loadSummary(): Promise<void> {
+  // async so the NotImplemented signal surfaces as a rejected promise,
+  // matching the Promise<void> contract a Phase-7 caller will `.catch()`.
+  async loadSummary(): Promise<void> {
     throw new NotImplementedPresentationError('Dashboard');
   }
 }
@@ -4660,7 +4729,8 @@ export interface TeachersState {
 export class TeachersViewModel {
   readonly store = createStore<TeachersState>(() => ({ list: idleState() }));
 
-  loadTeachers(): Promise<void> {
+  // async so the NotImplemented signal surfaces as a rejected promise.
+  async loadTeachers(): Promise<void> {
     throw new NotImplementedPresentationError('Teachers');
   }
 }
@@ -4689,7 +4759,8 @@ export class SyncViewModel {
     return presentSyncStatus(state.syncStatus, state.lastSyncAt);
   }
 
-  startSync(): Promise<void> {
+  // async so the NotImplemented signal surfaces as a rejected promise.
+  async startSync(): Promise<void> {
     throw new NotImplementedPresentationError('Manual sync');
   }
 }
@@ -4742,11 +4813,13 @@ git commit -m "feat(presentation): add extension-point ViewModels and screen tem
 ### Task 17: Composition root + public API
 
 **Files:**
+
 - Create: `packages/presentation/src/factories/create-presentation-layer.ts`
 - Modify: `packages/presentation/src/index.ts` (replace the `export {}` placeholder)
 - Test: `packages/presentation/src/factories/create-presentation-layer.test.ts`
 
 **Interfaces:**
+
 - Consumes: `ApplicationLayer` from `@nemis-desktop/application`; every store and ViewModel from Tasks 4–16.
 - Produces:
   - `PresentationStores { notifications: NotificationStore; connectivity: ConnectivityStore; session: SessionStore; dialogs: DialogStore; navigation: NavigationStore }`
@@ -4784,9 +4857,9 @@ describe('createPresentationLayer', () => {
     });
     expect(outcome.ok).toBe(true);
     // the command's notification landed in the SHARED store
-    const kinds = presentation.stores.notifications.store.getState().notifications.map(
-      (n) => n.kind,
-    );
+    const kinds = presentation.stores.notifications.store
+      .getState()
+      .notifications.map((n) => n.kind);
     expect(kinds).toContain('success');
   });
 
@@ -4796,9 +4869,9 @@ describe('createPresentationLayer', () => {
       autoDismissOverrides: { success: 999 },
     });
     presentation.stores.notifications.success('hi');
-    expect(
-      presentation.stores.notifications.store.getState().notifications[0]?.autoDismissMs,
-    ).toBe(999);
+    expect(presentation.stores.notifications.store.getState().notifications[0]?.autoDismissMs).toBe(
+      999,
+    );
   });
 });
 ```
@@ -4990,10 +5063,12 @@ git commit -m "feat(presentation): add createPresentationLayer composition root 
 ### Task 18: Documentation + full gate
 
 **Files:**
+
 - Create: `docs/presentation-layer.md`
 - Modify: `docs/conventions.md` (append a "Presentation Layer" section at the end)
 
 **Interfaces:**
+
 - Consumes: everything built in Tasks 1–17; the spec (`docs/superpowers/specs/2026-07-19-phase-6-presentation-layer-design.md`) — copy its §2 state-management decision report into the doc rather than rewriting it.
 - Produces: the Phase-6 documentation and a fully green gate on the branch.
 
@@ -5048,20 +5123,19 @@ The branch is now ready for the whole-branch review (superpowers:requesting-code
 
 ## Acceptance-criteria audit (map to spec)
 
-| Criterion | Where satisfied |
-|---|---|
-| UI depends only on Presentation Layer | Structural: boundary guards (Task 1) + public API (Task 17); verifiable fully in Phase 7 |
-| Presentation depends only on Application Layer | package.json deps + ESLint guard (Task 1) |
-| ViewModels implemented | Tasks 12–16 |
-| State management configured | Zustand vanilla stores throughout (Tasks 2–16) |
-| Commands implemented | Tasks 12–15 |
-| Queries implemented | Tasks 12–15 |
-| Selectors implemented | Tasks 10, 12 |
-| Loading states standardized | Task 2 (`AsyncState`/`ViewStatus`) used by every VM |
-| Form infrastructure prepared | Task 7 |
-| Pagination/search prepared | Task 6 |
-| Notifications prepared | Task 4 |
-| Error handling prepared | Task 3 |
-| TypeScript/ESLint/tests pass | Every task's gate + Task 18 full gate |
-| Documentation | Task 18 |
-
+| Criterion                                      | Where satisfied                                                                          |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| UI depends only on Presentation Layer          | Structural: boundary guards (Task 1) + public API (Task 17); verifiable fully in Phase 7 |
+| Presentation depends only on Application Layer | package.json deps + ESLint guard (Task 1)                                                |
+| ViewModels implemented                         | Tasks 12–16                                                                              |
+| State management configured                    | Zustand vanilla stores throughout (Tasks 2–16)                                           |
+| Commands implemented                           | Tasks 12–15                                                                              |
+| Queries implemented                            | Tasks 12–15                                                                              |
+| Selectors implemented                          | Tasks 10, 12                                                                             |
+| Loading states standardized                    | Task 2 (`AsyncState`/`ViewStatus`) used by every VM                                      |
+| Form infrastructure prepared                   | Task 7                                                                                   |
+| Pagination/search prepared                     | Task 6                                                                                   |
+| Notifications prepared                         | Task 4                                                                                   |
+| Error handling prepared                        | Task 3                                                                                   |
+| TypeScript/ESLint/tests pass                   | Every task's gate + Task 18 full gate                                                    |
+| Documentation                                  | Task 18                                                                                  |
