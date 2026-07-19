@@ -19,7 +19,7 @@ export interface DashboardState {
 export class DashboardViewModel {
   readonly store = createStore<DashboardState>(() => ({ summary: idleState() }));
 
-  loadSummary(): Promise<void> {
+  async loadSummary(): Promise<void> {
     throw new NotImplementedPresentationError('Dashboard');
   }
 }

@@ -17,7 +17,7 @@ export interface TeachersState {
 export class TeachersViewModel {
   readonly store = createStore<TeachersState>(() => ({ list: idleState() }));
 
-  loadTeachers(): Promise<void> {
+  async loadTeachers(): Promise<void> {
     throw new NotImplementedPresentationError('Teachers');
   }
 }

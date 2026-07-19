@@ -18,7 +18,7 @@ export class SyncViewModel {
     return presentSyncStatus(state.syncStatus, state.lastSyncAt);
   }
 
-  startSync(): Promise<void> {
+  async startSync(): Promise<void> {
     throw new NotImplementedPresentationError('Manual sync');
   }
 }

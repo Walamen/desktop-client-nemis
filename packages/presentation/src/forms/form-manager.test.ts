@@ -45,6 +45,17 @@ describe('FormManager', () => {
     expect(form.validate()).toBe(true);
   });
 
+  it('isoDate rejects Date.parse-permissive non-ISO strings', () => {
+    const form = build();
+    form.setValue('firstName', 'Ada');
+    form.setValue('lastName', 'Lovelace');
+    form.setValue('dateOfBirth', '01/02/2020');
+    expect(form.validate()).toBe(false);
+    expect(form.store.getState().errors.dateOfBirth).toBe('Enter a valid date.');
+    form.setValue('dateOfBirth', '2015-06-01');
+    expect(form.validate()).toBe(true);
+  });
+
   it('runs the submission lifecycle and applies external field errors', () => {
     const form = build();
     form.beginSubmit();
