@@ -206,11 +206,13 @@ section.
 **`DashboardViewModel` graduates from stub to implementation** (in
 `packages/presentation`, per the extension template, with tests):
 
-- Student stats computed from the real `listStudents` use case (total + male/female split —
-  `StudentView.gender` exists).
-- Staff/class stats, recent activity, and teachers list return **clearly marked
-  placeholder data** (`placeholder: true` on the view slices) — no application use cases
-  exist for them yet. The view types document which fields are real vs placeholder.
+- Total-students count is computed from the real `listStudents` use case (`PagedResult.total`).
+  This is the ONLY real stat: `StudentSummaryOutput` (the list projection) carries no
+  gender, so the male/female split is a placeholder — deriving it would need an N+1
+  per-student `getById`, which is out of scope.
+- Gender split, staff/class stats, recent activity, and teachers list return **clearly
+  marked placeholder data** (`placeholder: true` on the view slices) — no application use
+  cases exist for them yet. The view types document which fields are real vs placeholder.
 - All loading through `trackQuery`; UI renders Skeletons while pending and ErrorState on
   failure via `AsyncState`.
 
@@ -223,8 +225,8 @@ Dashboard sub-components (`QuickActionCard`, `RecentActivityFeed`,
   sidebar; `nav`/`main`/`status` landmarks with ARIA labels.
 - Escape closes dropdowns and dialogs (DialogStore already promise-based); dropdown
   keyboard navigation (arrow keys, Enter, Escape).
-- Min window size (1024×700) enforced in the main-process window options (Electron owns
-  window management — small `electron/` change).
+- Min window size (1024×700) is **already enforced** in `electron/windows/mainWindow.ts`
+  (`minWidth: 1024, minHeight: 700`) — no Electron change needed this phase.
 - Styled scrollbars matching the web `sidebar-scroll` treatment; large-screen (`3xl`)
   layout behavior preserved from web.
 - No visual identity changes.
