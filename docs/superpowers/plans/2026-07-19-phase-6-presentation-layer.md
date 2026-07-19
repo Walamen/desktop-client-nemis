@@ -2134,6 +2134,9 @@ export class DialogStore {
   private pendingConfirm: ((result: boolean) => void) | null = null;
 
   open(name: string, payload?: unknown): void {
+    // Opening any dialog cancels a pending confirm so its awaiter never orphans.
+    this.pendingConfirm?.(false);
+    this.pendingConfirm = null;
     this.store.setState({ current: { kind: 'custom', name, payload } });
   }
 
