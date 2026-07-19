@@ -1,16 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { NotImplementedPresentationError } from '../errors';
 import { ConnectivityStore } from '../stores/connectivity-store';
-import { DashboardViewModel } from './dashboard/dashboard-view-model';
 import { SyncViewModel } from './sync/sync-view-model';
 import { TeachersViewModel } from './teachers/teachers-view-model';
 
 describe('extension-point view models', () => {
-  it('dashboard and teachers expose typed idle state and throw NotImplemented', async () => {
-    const dashboard = new DashboardViewModel();
-    expect(dashboard.store.getState().summary.status).toBe('idle');
-    await expect(dashboard.loadSummary()).rejects.toBeInstanceOf(NotImplementedPresentationError);
-
+  it('teachers exposes typed idle state and throws NotImplemented', async () => {
     const teachers = new TeachersViewModel();
     expect(teachers.store.getState().list.status).toBe('idle');
     await expect(teachers.loadTeachers()).rejects.toBeInstanceOf(NotImplementedPresentationError);
