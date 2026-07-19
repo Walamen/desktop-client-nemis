@@ -56,6 +56,12 @@ importers:
       '@nemis-desktop/application':
         specifier: workspace:*
         version: link:../../packages/application
+      '@nemis-desktop/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
+      '@nemis-desktop/presentation':
+        specifier: workspace:*
+        version: link:../../packages/presentation
       '@nemis-desktop/shared':
         specifier: workspace:*
         version: link:../../packages/shared

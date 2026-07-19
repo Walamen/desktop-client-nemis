@@ -1,7 +1,7 @@
 // Renderer boundary: React components talk ONLY to @nemis-desktop/presentation
 // and @nemis-desktop/ui. Application/domain/electron/sqlite/data/ipc are banned;
-// the presentation `./testing` composition helper is allowed only in the
-// composition root (lib/presentation).
+// the presentation `./testing` composition helper, plus domain and application,
+// are allowed only in the composition root (lib/presentation).
 
 const RENDERER_RESTRICTED = {
   paths: [
@@ -25,13 +25,24 @@ export const rendererImportGuard = {
 };
 
 // The composition root is the one place allowed to build the fake application.
+// lib/presentation is the Phase-8 composition seam that wires every layer
+// (domain reconstitute + the application layer's ApplicationLayer type) over
+// the fake application into React; it is replaced by the IPC facade in the
+// sync phase, so domain/application/testing imports are permitted only here.
+// electron, native SQLite, and main-process/infra path patterns stay banned.
+const COMPOSITION_ALLOWED_PATH_NAMES = new Set([
+  '@nemis-desktop/presentation/testing',
+  '@nemis-desktop/domain',
+  '@nemis-desktop/application',
+]);
+
 export const rendererCompositionRelaxation = {
   files: ['apps/desktop/renderer/lib/presentation/**/*.{ts,tsx}'],
   rules: {
     'no-restricted-imports': [
       'error',
       {
-        paths: RENDERER_RESTRICTED.paths.filter((p) => p.name !== '@nemis-desktop/presentation/testing'),
+        paths: RENDERER_RESTRICTED.paths.filter((p) => !COMPOSITION_ALLOWED_PATH_NAMES.has(p.name)),
         patterns: RENDERER_RESTRICTED.patterns,
       },
     ],

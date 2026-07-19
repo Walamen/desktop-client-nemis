@@ -22,6 +22,8 @@
   },
   "dependencies": {
     "@nemis-desktop/application": "workspace:*",
+    "@nemis-desktop/domain": "workspace:*",
+    "@nemis-desktop/presentation": "workspace:*",
     "@nemis-desktop/shared": "workspace:*",
     "@nemis-desktop/types": "workspace:*",
     "@nemis-desktop/ui": "workspace:*",
