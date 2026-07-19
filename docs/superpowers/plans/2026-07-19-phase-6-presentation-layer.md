@@ -1461,7 +1461,7 @@ export class FormManager<TValues extends Record<string, unknown>> {
     this.initialValues = { ...initialValues };
     this.store = createStore<FormState<TValues>>(() => ({
       values: { ...initialValues },
-      errors: {},
+      errors: {} as Partial<Record<keyof TValues & string, string>>,
       isDirty: false,
       submission: 'idle',
       submitError: null,
@@ -1492,7 +1492,7 @@ export class FormManager<TValues extends Record<string, unknown>> {
     this.store.setState(
       {
         values: { ...this.initialValues },
-        errors: {},
+        errors: {} as Partial<Record<keyof TValues & string, string>>,
         isDirty: false,
         submission: 'idle',
         submitError: null,
@@ -1517,7 +1517,7 @@ export class FormManager<TValues extends Record<string, unknown>> {
   /** Copies field errors from a command's ValidationError onto the form. */
   applyExternalErrors(error: PresentationError): void {
     if (!(error instanceof ValidationError)) return;
-    const errors: Record<string, string> = { ...this.store.getState().errors };
+    const errors: Record<string, string | undefined> = { ...this.store.getState().errors };
     for (const [field, message] of Object.entries(error.fieldErrors)) errors[field] = message;
     this.store.setState({
       errors: errors as Partial<Record<keyof TValues & string, string>>,
