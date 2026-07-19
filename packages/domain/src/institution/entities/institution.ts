@@ -140,7 +140,11 @@ export class Institution extends AggregateRoot<InstitutionId> {
     if (this.#state.approvalStatus === ApprovalStatus.APPROVED) {
       throw new InvalidStateException('Institution is already approved');
     }
-    this.#state = { ...this.#state, approvalStatus: ApprovalStatus.APPROVED, rejectionReason: undefined };
+    this.#state = {
+      ...this.#state,
+      approvalStatus: ApprovalStatus.APPROVED,
+      rejectionReason: undefined,
+    };
     this.touch(by, at);
   }
 
@@ -148,7 +152,11 @@ export class Institution extends AggregateRoot<InstitutionId> {
     if (this.#state.approvalStatus === ApprovalStatus.REJECTED) {
       throw new InvalidStateException('Institution is already rejected');
     }
-    this.#state = { ...this.#state, approvalStatus: ApprovalStatus.REJECTED, rejectionReason: reason };
+    this.#state = {
+      ...this.#state,
+      approvalStatus: ApprovalStatus.REJECTED,
+      rejectionReason: reason,
+    };
     this.touch(by, at);
   }
 }

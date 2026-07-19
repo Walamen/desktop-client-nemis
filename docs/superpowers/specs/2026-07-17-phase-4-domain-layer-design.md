@@ -81,20 +81,20 @@ fee-obligation models, class resources, notification-type expansions, attendance
 (legacy finance subsystems). Migration history = business knowledge; the domain
 boundaries below honor it.
 
-| # | Domain | Responsibility |
-|---|--------|----------------|
-| 1 | Identity & Access | Users, role assignments across the org hierarchy, preferences, auth tokens |
-| 2 | Geography & Administration | National geographic hierarchy (county → district), census, generic registries/workflows |
-| 3 | Institution | Schools and their profile, levels, grading config, reviews, access requests, inspections |
-| 4 | Students | Students, guardians, applications, transfers, student-initiated requests |
-| 5 | Staff | Staff members and staff attendance |
-| 6 | Academics | Academic calendar (year/term), classes, subjects, teaching assignments, enrollment, timetable |
-| 7 | Attendance | Student attendance records |
-| 8 | Assessments & Grading | Assessments/templates, grades + audit, grading periods, entry windows, term/yearly averages, assignments |
-| 9 | Finance | Fee rules, per-student obligations, payments, reversals |
-| 10 | Communication | Announcements, conversations/messages (student-teacher, direct, district), notifications, alerts |
-| 11 | Resources | Institution and class learning resources |
-| 12 | Reporting & Audit | Cross-level reports, immutable audit log |
+| #   | Domain                     | Responsibility                                                                                           |
+| --- | -------------------------- | -------------------------------------------------------------------------------------------------------- |
+| 1   | Identity & Access          | Users, role assignments across the org hierarchy, preferences, auth tokens                               |
+| 2   | Geography & Administration | National geographic hierarchy (county → district), census, generic registries/workflows                  |
+| 3   | Institution                | Schools and their profile, levels, grading config, reviews, access requests, inspections                 |
+| 4   | Students                   | Students, guardians, applications, transfers, student-initiated requests                                 |
+| 5   | Staff                      | Staff members and staff attendance                                                                       |
+| 6   | Academics                  | Academic calendar (year/term), classes, subjects, teaching assignments, enrollment, timetable            |
+| 7   | Attendance                 | Student attendance records                                                                               |
+| 8   | Assessments & Grading      | Assessments/templates, grades + audit, grading periods, entry windows, term/yearly averages, assignments |
+| 9   | Finance                    | Fee rules, per-student obligations, payments, reversals                                                  |
+| 10  | Communication              | Announcements, conversations/messages (student-teacher, direct, district), notifications, alerts         |
+| 11  | Resources                  | Institution and class learning resources                                                                 |
+| 12  | Reporting & Audit          | Cross-level reports, immutable audit log                                                                 |
 
 ## A.2 Discovered entities
 
@@ -116,7 +116,7 @@ backend. Fields cited come directly from `schema.prisma`.
 - **UserPreference** — 1–1 with User; `notificationPreferences`, `readNotificationIds`,
   `officeAddress`. Ownership: User. Offline: Yes. Sync: Yes (LWW candidate).
 - **RefreshToken** / **ActivationToken** — auth artifacts. Ownership: User.
-  Offline: No (auth is online). Sync: No. *Excluded from the domain model* — these
+  Offline: No (auth is online). Sync: No. _Excluded from the domain model_ — these
   are infrastructure/auth concerns, not business domain.
 
 ### Domain 2 — Geography & Administration
@@ -164,7 +164,7 @@ backend. Fields cited come directly from `schema.prisma`.
 - **EnrollmentApplication** — pre-enrollment intake (denormalized guardian fields);
   `status: ApplicationStatus`. Ownership: Institution. Offline: Yes. Sync: Yes.
 - **StudentTransfer** — inter-institution transfer request; `status:
-  TransferRequestStatus`; from/to institution. Ownership: Student. Sync: Yes.
+TransferRequestStatus`; from/to institution. Ownership: Student. Sync: Yes.
 - **StudentRequest** — student-initiated request (`StudentRequestType`);
   `documents String[]`. Ownership: Student. Sync: Yes.
 
@@ -191,7 +191,7 @@ backend. Fields cited come directly from `schema.prisma`.
 - **ClassSubject** / **ClassTeacher** / **ClassSubjectTeacher** / **SubjectTeacher** —
   teaching-assignment joins (M–N with attributes). Ownership: Class/Subject.
 - **Enrollment** — Student↔Class for a year+term; unique `(studentId,
-  academicYearId, termId)`; `status: EnrollmentStatus`. Ownership: Student.
+academicYearId, termId)`; `status: EnrollmentStatus`. Ownership: Student.
   Offline: Yes. Sync: Yes.
 - **TimetableEntry** — class schedule slot; `dayOfWeek`, `startTime`/`endTime`
   (string HH:mm), `room?`; unique `(classId, dayOfWeek, startTime)`. Offline: Yes.
@@ -199,7 +199,7 @@ backend. Fields cited come directly from `schema.prisma`.
 ### Domain 7 — Attendance
 
 - **Attendance** — student attendance record; `date @db.Date`, `status:
-  AttendanceStatus`, optional `subjectId`, `recordedBy`, `updateReason`; unique
+AttendanceStatus`, optional `subjectId`, `recordedBy`, `updateReason`; unique
   `(studentId, subjectId, date)`. Ownership: Student (recorded against a Class).
   Offline: **Yes — primary offline write path.** Sync: Yes.
 
@@ -210,7 +210,7 @@ backend. Fields cited come directly from `schema.prisma`.
 - **Assessment** — a concrete assessment instance in a grading period; unique
   `(templateId, gradingPeriodId)`. Owns grades. Offline: Yes. Sync: Yes.
 - **Grade** — a student's mark on an assessment/subject; unique `(studentId,
-  assessmentId)`; `status: GradeStatus`, `isPublished`, computed
+assessmentId)`; `status: GradeStatus`, `isPublished`, computed
   `percentage`/`letterGrade`/`gradePoint`, `lastModifiedBy`. Owns `GradeAudit`.
   Offline: **Yes — primary offline write path.** Sync: Yes (critical → manual
   conflict resolution).
@@ -218,7 +218,7 @@ backend. Fields cited come directly from `schema.prisma`.
   value, actor, IP/UA). Ownership: Grade. Offline: Yes. Sync: Yes (append-only).
 - **GradingPeriod** — per institution+year+term; `periodType`, `sequence`,
   `maxMarks`/`passingMarks`, `weight?`; unique `(institutionId, academicYearId,
-  termId, code)`. Offline: Yes.
+termId, code)`. Offline: Yes.
 - **GradeEntryWindow** / **GradeEntryWindowClass** — controls when grades may be
   entered (`WindowStatus`, open/close dates, allowed roles). Ownership:
   Institution / (Window↔Class join). Offline: Yes. Sync: Yes.
@@ -227,7 +227,7 @@ backend. Fields cited come directly from `schema.prisma`.
   recomputed locally). Sync: Yes.
 - **Assignment** / **AssignmentSubmission** — homework lifecycle (`AssignmentType`,
   `AssignmentStatus`, `SubmissionStatus`). Ownership: Class/Staff, Student.
-  Offline: Yes. Sync: Yes. *(Non-slice; recipe.)*
+  Offline: Yes. Sync: Yes. _(Non-slice; recipe.)_
 
 ### Domain 9 — Finance
 
@@ -236,33 +236,33 @@ backend. Fields cited come directly from `schema.prisma`.
   Ownership: Institution (nullable → national default). Offline: Yes.
 - **StudentFeeObligation** — per student per rule per year+term; `requiredAmount`,
   `totalPaid`, `status: FeeObligationStatus`; unique `(studentId, feeRuleId,
-  academicYearId, termId)`. Ownership: Student. Offline: Yes. Sync: Yes.
+academicYearId, termId)`. Ownership: Student. Offline: Yes. Sync: Yes.
 - **FeePayment** — payment against an obligation; `method: PaymentMethod`,
   `receiptNumber` unique, unique `(reference, institutionId)`, `isReversed`.
   Ownership: Obligation. Offline: Yes. Sync: Yes (financial → careful conflict).
 - **FeePaymentReversal** — 1–1 reversal of a payment. Ownership: FeePayment.
-  *(Non-slice; recipe.)*
+  _(Non-slice; recipe.)_
 
 ### Domain 10 — Communication
 
 - **Announcement** — institution-wide notice; `priority`, `targetAudience`,
   publish/expiry. Ownership: Institution.
 - **Conversation** + **Message** — student↔teacher threads; unique `(studentId,
-  teacherId)`; message cascade on conversation delete.
+teacherId)`; message cascade on conversation delete.
 - **DirectConversation** + **DirectMessage** — user↔user threads.
 - **DistrictConversation** + **DistrictConversationMessage** — district↔institution.
 - **TeacherNotification** / **ParentNotification** / **UserNotification** —
   role-scoped notifications (`isRead`, typed).
 - **Alert** — system alert (`AlertType`, `AlertSeverity`, `isResolved`), scoped to
   county/district/institution. Ownership: root/scoped.
-- Offline: partial (read-mostly). Sync: Yes. *(Non-slice; recipe.)*
+- Offline: partial (read-mostly). Sync: Yes. _(Non-slice; recipe.)_
 
 ### Domain 11 — Resources
 
 - **Resource** — institution-level file; `category: ResourceCategory`.
 - **ClassResource** — class+subject material; `type: ResourceType` (FILE/LINK),
   `category: ClassResourceCategory`, `isVisible`. Ownership: Institution/Class/Staff.
-  Offline: Yes (download & cache). Sync: Yes (metadata). *(Non-slice; recipe.)*
+  Offline: Yes (download & cache). Sync: Yes (metadata). _(Non-slice; recipe.)_
 
 ### Domain 12 — Reporting & Audit
 
@@ -271,7 +271,7 @@ backend. Fields cited come directly from `schema.prisma`.
   Offline: Yes (draft locally). Sync: Yes.
 - **AuditLog** — immutable server-side audit (`AuditAction`, entity ref, `changes`
   Json). Distinct from the desktop-local `audit_log` platform table. Offline: No
-  (this is the backend's audit). Sync: append-only push. *(Non-slice; recipe.)*
+  (this is the backend's audit). Sync: append-only push. _(Non-slice; recipe.)_
 
 ## A.3 Entity relationships (overview)
 
@@ -349,7 +349,7 @@ the Mapping Matrix and mirrored file).
 
 These exist **only** because the client is offline-first. They already live in the
 Phase 2/3 data layer (`electron/data/models/platform.ts`) and are **not**
-duplicated in the domain package — the domain references the *concepts*, not the
+duplicated in the domain package — the domain references the _concepts_, not the
 infra types:
 
 - **Device** — one desktop installation identity (`deviceId`). Why: the conflict
@@ -363,7 +363,7 @@ infra types:
   Why: local traceability before sync.
 
 **Domain-relevant concurrency metadata** (`version`, `updatedAt`, `lastModifiedBy`)
-*is* modeled in the kernel `AggregateRoot` because it is legitimately business/
+_is_ modeled in the kernel `AggregateRoot` because it is legitimately business/
 conflict-resolution state per the CLAUDE.md conflict model. `deviceId` is **not**
 in the domain — it is assigned at the sync layer (pure infrastructure identity).
 
@@ -374,77 +374,77 @@ in the domain — it is assigned at the sync layer (pure infrastructure identity
 Legend: **Slice** = built this phase (✔) or recipe (·). SQLite table = the future
 Phase-5 local table (snake_case, mirrors Prisma `@@map`).
 
-| # | Prisma Model | Domain Entity | Domain | SQLite Table (future) | Sync | Offline | Slice |
-|---|--------------|---------------|--------|------------------------|------|---------|-------|
-| 1 | User | User (AR) | Identity | users | Yes | Yes | ✔ |
-| 2 | UserOrganization | UserOrganization | Identity | user_organizations | Yes | Yes | ✔ |
-| 3 | UserPreference | UserPreference | Identity | user_preferences | Yes | Yes | · |
-| 4 | RefreshToken | — (excluded: auth infra) | Identity | — | No | No | — |
-| 5 | ActivationToken | — (excluded: auth infra) | Identity | — | No | No | — |
-| 6 | County | County | Geography | counties | Pull | Yes | · |
-| 7 | District | District | Geography | districts | Pull | Yes | · |
-| 8 | Census | Census | Geography | census | Pull | No | · |
-| 9 | Registry | Registry | Geography | registries | No | No | · |
-| 10 | Workflow | Workflow | Geography | workflows | No | No | · |
-| 11 | Institution | Institution (AR) | Institution | institutions | Yes | Yes | ✔ |
-| 12 | InstitutionLevelOnInstitution | InstitutionLevel (VO/child) | Institution | institution_levels | Yes | Yes | ✔ |
-| 13 | InstitutionLevelSubject | InstitutionLevelSubject | Institution | institution_level_subjects | Yes | Yes | · |
-| 14 | InstitutionGradingConfig | GradingConfig | Institution | institution_grading_configs | Yes | Yes | ✔ |
-| 15 | SchoolReview | SchoolReview | Institution | school_reviews | Yes | No | · |
-| 16 | SchoolAccessRequest | SchoolAccessRequest | Institution | school_access_requests | Yes | No | · |
-| 17 | InspectionHistory | InspectionHistory | Institution | inspection_history | Yes | No | · |
-| 18 | Student | Student (AR) | Students | students | Yes | Yes | ✔ |
-| 19 | Guardian | Guardian (AR) | Students | guardians | Yes | Yes | ✔ |
-| 20 | StudentGuardian | StudentGuardian | Students | student_guardians | Yes | Yes | ✔ |
-| 21 | EnrollmentApplication | EnrollmentApplication | Students | enrollment_applications | Yes | Yes | · |
-| 22 | StudentTransfer | StudentTransfer | Students | student_transfers | Yes | Yes | · |
-| 23 | StudentRequest | StudentRequest | Students | student_requests | Yes | Yes | · |
-| 24 | Staff | Staff (AR) | Staff | staff | Yes | Yes | · |
-| 25 | StaffAttendance | StaffAttendance | Staff | staff_attendance | Yes | Yes | · |
-| 26 | AcademicYear | AcademicYear (AR) | Academics | academic_years | Yes | Yes | ✔ |
-| 27 | Term | Term | Academics | terms | Yes | Yes | ✔ |
-| 28 | Class | Class (AR) | Academics | classes | Yes | Yes | ✔ |
-| 29 | Subject | Subject (AR) | Academics | subjects | Yes | Yes | ✔ |
-| 30 | ClassSubject | ClassSubject | Academics | class_subjects | Yes | Yes | ✔ |
-| 31 | ClassTeacher | ClassTeacher | Academics | class_teachers | Yes | Yes | · |
-| 32 | ClassSubjectTeacher | ClassSubjectTeacher | Academics | class_subject_teachers | Yes | Yes | · |
-| 33 | SubjectTeacher | SubjectTeacher | Academics | subject_teachers | Yes | Yes | · |
-| 34 | Enrollment | Enrollment | Academics | enrollments | Yes | Yes | ✔ |
-| 35 | TimetableEntry | TimetableEntry | Academics | timetable_entries | Yes | Yes | · |
-| 36 | Attendance | Attendance (AR) | Attendance | attendance | Yes | Yes | ✔ |
-| 37 | AssessmentTemplate | AssessmentTemplate | Assessments | assessment_templates | Yes | Yes | · |
-| 38 | Assessment | Assessment (AR) | Assessments | assessments | Yes | Yes | ✔ |
-| 39 | Grade | Grade (AR) | Assessments | grades | Yes | Yes | ✔ |
-| 40 | GradeAudit | GradeAudit | Assessments | grade_audits | Yes | Yes | ✔ |
-| 41 | GradingPeriod | GradingPeriod | Assessments | grading_periods | Yes | Yes | ✔ |
-| 42 | GradeEntryWindow | GradeEntryWindow | Assessments | grade_entry_windows | Yes | Yes | · |
-| 43 | GradeEntryWindowClass | GradeEntryWindowClass | Assessments | grade_entry_window_classes | Yes | Yes | · |
-| 44 | TermAverage | TermAverage | Assessments | term_averages | Yes | Yes | · |
-| 45 | YearlyAverage | YearlyAverage | Assessments | yearly_averages | Yes | Yes | · |
-| 46 | Assignment | Assignment | Assessments | assignments | Yes | Yes | · |
-| 47 | AssignmentSubmission | AssignmentSubmission | Assessments | assignment_submissions | Yes | Yes | · |
-| 48 | FeeRule | FeeRule | Finance | fee_rules | Yes | Yes | · |
-| 49 | StudentFeeObligation | StudentFeeObligation | Finance | student_fee_obligations | Yes | Yes | · |
-| 50 | FeePayment | FeePayment | Finance | fee_payments | Yes | Yes | · |
-| 51 | FeePaymentReversal | FeePaymentReversal | Finance | fee_payment_reversals | Yes | Yes | · |
-| 52 | Announcement | Announcement | Communication | announcements | Yes | Yes | · |
-| 53 | Conversation | Conversation | Communication | conversations | Yes | No | · |
-| 54 | Message | Message | Communication | messages | Yes | No | · |
-| 55 | DirectConversation | DirectConversation | Communication | direct_conversations | Yes | No | · |
-| 56 | DirectMessage | DirectMessage | Communication | direct_messages | Yes | No | · |
-| 57 | DistrictConversation | DistrictConversation | Communication | district_conversations | Yes | No | · |
-| 58 | DistrictConversationMessage | DistrictConversationMessage | Communication | district_conversation_messages | Yes | No | · |
-| 59 | TeacherNotification | TeacherNotification | Communication | teacher_notifications | Yes | Yes | · |
-| 60 | ParentNotification | ParentNotification | Communication | parent_notifications | Yes | Yes | · |
-| 61 | UserNotification | UserNotification | Communication | user_notifications | Yes | Yes | · |
-| 62 | Alert | Alert | Communication | alerts | Yes | No | · |
-| 63 | Resource | Resource | Resources | resources | Yes | Yes | · |
-| 64 | ClassResource | ClassResource | Resources | class_resources | Yes | Yes | · |
-| 65 | Report | Report | Reporting | reports | Yes | Yes | · |
-| 66 | AuditLog | AuditLog (backend) | Reporting | audit_logs | Push | No | · |
+| #   | Prisma Model                  | Domain Entity               | Domain        | SQLite Table (future)          | Sync | Offline | Slice |
+| --- | ----------------------------- | --------------------------- | ------------- | ------------------------------ | ---- | ------- | ----- |
+| 1   | User                          | User (AR)                   | Identity      | users                          | Yes  | Yes     | ✔     |
+| 2   | UserOrganization              | UserOrganization            | Identity      | user_organizations             | Yes  | Yes     | ✔     |
+| 3   | UserPreference                | UserPreference              | Identity      | user_preferences               | Yes  | Yes     | ·     |
+| 4   | RefreshToken                  | — (excluded: auth infra)    | Identity      | —                              | No   | No      | —     |
+| 5   | ActivationToken               | — (excluded: auth infra)    | Identity      | —                              | No   | No      | —     |
+| 6   | County                        | County                      | Geography     | counties                       | Pull | Yes     | ·     |
+| 7   | District                      | District                    | Geography     | districts                      | Pull | Yes     | ·     |
+| 8   | Census                        | Census                      | Geography     | census                         | Pull | No      | ·     |
+| 9   | Registry                      | Registry                    | Geography     | registries                     | No   | No      | ·     |
+| 10  | Workflow                      | Workflow                    | Geography     | workflows                      | No   | No      | ·     |
+| 11  | Institution                   | Institution (AR)            | Institution   | institutions                   | Yes  | Yes     | ✔     |
+| 12  | InstitutionLevelOnInstitution | InstitutionLevel (VO/child) | Institution   | institution_levels             | Yes  | Yes     | ✔     |
+| 13  | InstitutionLevelSubject       | InstitutionLevelSubject     | Institution   | institution_level_subjects     | Yes  | Yes     | ·     |
+| 14  | InstitutionGradingConfig      | GradingConfig               | Institution   | institution_grading_configs    | Yes  | Yes     | ✔     |
+| 15  | SchoolReview                  | SchoolReview                | Institution   | school_reviews                 | Yes  | No      | ·     |
+| 16  | SchoolAccessRequest           | SchoolAccessRequest         | Institution   | school_access_requests         | Yes  | No      | ·     |
+| 17  | InspectionHistory             | InspectionHistory           | Institution   | inspection_history             | Yes  | No      | ·     |
+| 18  | Student                       | Student (AR)                | Students      | students                       | Yes  | Yes     | ✔     |
+| 19  | Guardian                      | Guardian (AR)               | Students      | guardians                      | Yes  | Yes     | ✔     |
+| 20  | StudentGuardian               | StudentGuardian             | Students      | student_guardians              | Yes  | Yes     | ✔     |
+| 21  | EnrollmentApplication         | EnrollmentApplication       | Students      | enrollment_applications        | Yes  | Yes     | ·     |
+| 22  | StudentTransfer               | StudentTransfer             | Students      | student_transfers              | Yes  | Yes     | ·     |
+| 23  | StudentRequest                | StudentRequest              | Students      | student_requests               | Yes  | Yes     | ·     |
+| 24  | Staff                         | Staff (AR)                  | Staff         | staff                          | Yes  | Yes     | ·     |
+| 25  | StaffAttendance               | StaffAttendance             | Staff         | staff_attendance               | Yes  | Yes     | ·     |
+| 26  | AcademicYear                  | AcademicYear (AR)           | Academics     | academic_years                 | Yes  | Yes     | ✔     |
+| 27  | Term                          | Term                        | Academics     | terms                          | Yes  | Yes     | ✔     |
+| 28  | Class                         | Class (AR)                  | Academics     | classes                        | Yes  | Yes     | ✔     |
+| 29  | Subject                       | Subject (AR)                | Academics     | subjects                       | Yes  | Yes     | ✔     |
+| 30  | ClassSubject                  | ClassSubject                | Academics     | class_subjects                 | Yes  | Yes     | ✔     |
+| 31  | ClassTeacher                  | ClassTeacher                | Academics     | class_teachers                 | Yes  | Yes     | ·     |
+| 32  | ClassSubjectTeacher           | ClassSubjectTeacher         | Academics     | class_subject_teachers         | Yes  | Yes     | ·     |
+| 33  | SubjectTeacher                | SubjectTeacher              | Academics     | subject_teachers               | Yes  | Yes     | ·     |
+| 34  | Enrollment                    | Enrollment                  | Academics     | enrollments                    | Yes  | Yes     | ✔     |
+| 35  | TimetableEntry                | TimetableEntry              | Academics     | timetable_entries              | Yes  | Yes     | ·     |
+| 36  | Attendance                    | Attendance (AR)             | Attendance    | attendance                     | Yes  | Yes     | ✔     |
+| 37  | AssessmentTemplate            | AssessmentTemplate          | Assessments   | assessment_templates           | Yes  | Yes     | ·     |
+| 38  | Assessment                    | Assessment (AR)             | Assessments   | assessments                    | Yes  | Yes     | ✔     |
+| 39  | Grade                         | Grade (AR)                  | Assessments   | grades                         | Yes  | Yes     | ✔     |
+| 40  | GradeAudit                    | GradeAudit                  | Assessments   | grade_audits                   | Yes  | Yes     | ✔     |
+| 41  | GradingPeriod                 | GradingPeriod               | Assessments   | grading_periods                | Yes  | Yes     | ✔     |
+| 42  | GradeEntryWindow              | GradeEntryWindow            | Assessments   | grade_entry_windows            | Yes  | Yes     | ·     |
+| 43  | GradeEntryWindowClass         | GradeEntryWindowClass       | Assessments   | grade_entry_window_classes     | Yes  | Yes     | ·     |
+| 44  | TermAverage                   | TermAverage                 | Assessments   | term_averages                  | Yes  | Yes     | ·     |
+| 45  | YearlyAverage                 | YearlyAverage               | Assessments   | yearly_averages                | Yes  | Yes     | ·     |
+| 46  | Assignment                    | Assignment                  | Assessments   | assignments                    | Yes  | Yes     | ·     |
+| 47  | AssignmentSubmission          | AssignmentSubmission        | Assessments   | assignment_submissions         | Yes  | Yes     | ·     |
+| 48  | FeeRule                       | FeeRule                     | Finance       | fee_rules                      | Yes  | Yes     | ·     |
+| 49  | StudentFeeObligation          | StudentFeeObligation        | Finance       | student_fee_obligations        | Yes  | Yes     | ·     |
+| 50  | FeePayment                    | FeePayment                  | Finance       | fee_payments                   | Yes  | Yes     | ·     |
+| 51  | FeePaymentReversal            | FeePaymentReversal          | Finance       | fee_payment_reversals          | Yes  | Yes     | ·     |
+| 52  | Announcement                  | Announcement                | Communication | announcements                  | Yes  | Yes     | ·     |
+| 53  | Conversation                  | Conversation                | Communication | conversations                  | Yes  | No      | ·     |
+| 54  | Message                       | Message                     | Communication | messages                       | Yes  | No      | ·     |
+| 55  | DirectConversation            | DirectConversation          | Communication | direct_conversations           | Yes  | No      | ·     |
+| 56  | DirectMessage                 | DirectMessage               | Communication | direct_messages                | Yes  | No      | ·     |
+| 57  | DistrictConversation          | DistrictConversation        | Communication | district_conversations         | Yes  | No      | ·     |
+| 58  | DistrictConversationMessage   | DistrictConversationMessage | Communication | district_conversation_messages | Yes  | No      | ·     |
+| 59  | TeacherNotification           | TeacherNotification         | Communication | teacher_notifications          | Yes  | Yes     | ·     |
+| 60  | ParentNotification            | ParentNotification          | Communication | parent_notifications           | Yes  | Yes     | ·     |
+| 61  | UserNotification              | UserNotification            | Communication | user_notifications             | Yes  | Yes     | ·     |
+| 62  | Alert                         | Alert                       | Communication | alerts                         | Yes  | No      | ·     |
+| 63  | Resource                      | Resource                    | Resources     | resources                      | Yes  | Yes     | ·     |
+| 64  | ClassResource                 | ClassResource               | Resources     | class_resources                | Yes  | Yes     | ·     |
+| 65  | Report                        | Report                      | Reporting     | reports                        | Yes  | Yes     | ·     |
+| 66  | AuditLog                      | AuditLog (backend)          | Reporting     | audit_logs                     | Push | No      | ·     |
 
-*(AR = aggregate root. RefreshToken/ActivationToken are intentionally excluded
-from the domain model as authentication infrastructure — documented divergence.)*
+_(AR = aggregate root. RefreshToken/ActivationToken are intentionally excluded
+from the domain model as authentication infrastructure — documented divergence.)_
 
 ---
 
@@ -546,7 +546,7 @@ single flat `entities/`, `value-objects/`, `specifications/`, etc. We use
 feature-first folders (kernel + cross-cutting + per-domain) because 66 entities in
 one flat folder is unmaintainable and violates the spec's own "organize for
 long-term maintainability" instruction. Technical categories still exist — they are
-nested *within* each domain.
+nested _within_ each domain.
 
 ## C.3 Kernel
 
@@ -562,7 +562,7 @@ nested *within* each domain.
   by deep structural comparison; each concrete VO exposes a static `create(...)`
   that validates and throws `InvalidValueObjectException`.
 - **`DomainEvent`** — `{ readonly name: string; readonly occurredAt: string;
-  readonly aggregateId: string; ... }`. Concrete events are plain immutable data.
+readonly aggregateId: string; ... }`. Concrete events are plain immutable data.
 - **`Specification<T>`** — `isSatisfiedBy(candidate: T): boolean`; base provides
   `.and()`, `.or()`, `.not()` returning composed specifications.
 - **`guard`** — tiny invariant helpers (`guard.againstEmpty`, `guard.range`) that
@@ -573,19 +573,19 @@ nested *within* each domain.
 Every VO is immutable (frozen), self-validating (static `create`), and reusable.
 Cross-cutting (in `value-objects/`):
 
-| VO | Wraps / validates | Reused by |
-|----|-------------------|-----------|
-| `PersonName` | first/middle/last, non-empty | User, Student, Staff, Guardian |
-| `EmailAddress` | RFC-ish email | User, Student, Staff, Guardian |
-| `PhoneNumber` | Liberia-format tolerant | User, Guardian, Staff, Institution |
-| `NationalId` | optional national id uniqueness shape | Student, Staff |
-| `Address` | free-form + community/town | Institution, Student, Staff |
-| `GpsLocation` | lat/lng bounds (from `gpsCoordinates` JSON) | Institution |
-| `DateRange` | start ≤ end invariant | AcademicYear, Term, GradingPeriod, Window |
-| `DateOfBirth` | past date, plausible age | Student, Staff |
-| `Money` | amount ≥ 0 + currency (default `LRD`) | FeeRule, obligation, payment |
-| `Percentage` | 0–100 | Grade, averages |
-| `Marks` | `obtained ≤ total`, both ≥ 0 | Grade, Assessment |
+| VO             | Wraps / validates                           | Reused by                                 |
+| -------------- | ------------------------------------------- | ----------------------------------------- |
+| `PersonName`   | first/middle/last, non-empty                | User, Student, Staff, Guardian            |
+| `EmailAddress` | RFC-ish email                               | User, Student, Staff, Guardian            |
+| `PhoneNumber`  | Liberia-format tolerant                     | User, Guardian, Staff, Institution        |
+| `NationalId`   | optional national id uniqueness shape       | Student, Staff                            |
+| `Address`      | free-form + community/town                  | Institution, Student, Staff               |
+| `GpsLocation`  | lat/lng bounds (from `gpsCoordinates` JSON) | Institution                               |
+| `DateRange`    | start ≤ end invariant                       | AcademicYear, Term, GradingPeriod, Window |
+| `DateOfBirth`  | past date, plausible age                    | Student, Staff                            |
+| `Money`        | amount ≥ 0 + currency (default `LRD`)       | FeeRule, obligation, payment              |
+| `Percentage`   | 0–100                                       | Grade, averages                           |
+| `Marks`        | `obtained ≤ total`, both ≥ 0                | Grade, Assessment                         |
 
 Domain-local VOs live with their domain: `SchoolCode` (Institution),
 `AdmissionNumber` (Student), `AcademicYearCode` (AcademicYear), `RoleScope`

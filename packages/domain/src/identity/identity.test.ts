@@ -48,7 +48,14 @@ describe('User', () => {
 
   it('rejects reconstitute without organizations having roles', () => {
     expect(() =>
-      User.create({ id: 'u', firstName: '', lastName: 'x', email: 'a@b.co', organizations: [], occurredAt: ISO }),
+      User.create({
+        id: 'u',
+        firstName: '',
+        lastName: 'x',
+        email: 'a@b.co',
+        organizations: [],
+        occurredAt: ISO,
+      }),
     ).toThrow(EntityValidationException);
   });
 

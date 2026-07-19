@@ -6,7 +6,10 @@ export interface GradePublishContext {
   windowOpen: boolean;
 }
 
-const PUBLISHABLE: ReadonlySet<GradeStatus> = new Set([GradeStatus.APPROVED, GradeStatus.SUBMITTED]);
+const PUBLISHABLE: ReadonlySet<GradeStatus> = new Set([
+  GradeStatus.APPROVED,
+  GradeStatus.SUBMITTED,
+]);
 
 export class CanPublishGrade extends Specification<GradePublishContext> {
   isSatisfiedBy(candidate: GradePublishContext): boolean {

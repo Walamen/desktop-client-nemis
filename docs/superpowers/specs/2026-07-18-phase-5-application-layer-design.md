@@ -168,7 +168,7 @@ Application-owned port:
 
 ```ts
 interface IUnitOfWork {
-  run<T>(work: () => T): T;          // deferred BEGIN
+  run<T>(work: () => T): T; // deferred BEGIN
   runImmediate<T>(work: () => T): T; // BEGIN IMMEDIATE
 }
 ```
@@ -216,14 +216,14 @@ publishing is covered by `PublishGrade`).
 
 **Fully implemented (~17), mock-tested against ports:**
 
-| Domain | Commands | Queries |
-|---|---|---|
-| Students | CreateStudent (`Student.create`), DeactivateStudent (`student.deactivate`), LinkGuardianToStudent (`student.addGuardian`) | GetStudentById, ListStudents (paged) |
-| Academics | EnrollStudent (`Enrollment.create`), WithdrawEnrollment (`enrollment.withdraw`) | GetClassRoster |
-| Attendance | RecordAttendance (`Attendance.record`) | GetAttendanceByClassAndDate |
-| Assessments | CreateAssessment (`Assessment.create`), RecordGrade (`Grade.create`), PublishGrade (`grade.publish`) | GetGradesByStudent |
-| Identity | — (authentication is backend-owned) | GetUserById |
-| Institution | UpdateGradingConfig (`GradingConfig.reconstitute`, local config) | GetInstitutionProfile |
+| Domain      | Commands                                                                                                                  | Queries                              |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| Students    | CreateStudent (`Student.create`), DeactivateStudent (`student.deactivate`), LinkGuardianToStudent (`student.addGuardian`) | GetStudentById, ListStudents (paged) |
+| Academics   | EnrollStudent (`Enrollment.create`), WithdrawEnrollment (`enrollment.withdraw`)                                           | GetClassRoster                       |
+| Attendance  | RecordAttendance (`Attendance.record`)                                                                                    | GetAttendanceByClassAndDate          |
+| Assessments | CreateAssessment (`Assessment.create`), RecordGrade (`Grade.create`), PublishGrade (`grade.publish`)                      | GetGradesByStudent                   |
+| Identity    | — (authentication is backend-owned)                                                                                       | GetUserById                          |
+| Institution | UpdateGradingConfig (`GradingConfig.reconstitute`, local config)                                                          | GetInstitutionProfile                |
 
 **Infra, wired end-to-end via adapters to the real DAL:**
 `RegisterDevice`, `UpdateSettings`.

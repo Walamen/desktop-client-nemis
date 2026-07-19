@@ -13,9 +13,9 @@ describe('Money', () => {
 
   it('rejects negative amounts and cross-currency addition', () => {
     expect(() => Money.create({ amount: -1 })).toThrow(InvalidValueObjectException);
-    expect(() => Money.create({ amount: 1, currency: 'USD' }).add(Money.create({ amount: 1 }))).toThrow(
-      InvalidValueObjectException,
-    );
+    expect(() =>
+      Money.create({ amount: 1, currency: 'USD' }).add(Money.create({ amount: 1 })),
+    ).toThrow(InvalidValueObjectException);
   });
 });
 

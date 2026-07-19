@@ -27,6 +27,7 @@
 ### Task 1: Scaffold the `@nemis-desktop/domain` package
 
 **Files:**
+
 - Create: `packages/domain/package.json`
 - Create: `packages/domain/tsconfig.json`
 - Create: `packages/domain/eslint.config.mjs`
@@ -34,12 +35,14 @@
 - Create: `packages/domain/src/index.test.ts`
 
 **Interfaces:**
+
 - Consumes: nothing.
 - Produces: workspace package `@nemis-desktop/domain` with entry `./src/index.ts`; empty barrel `export {}`.
 
 - [ ] **Step 1: Write the failing test**
 
 `packages/domain/src/index.test.ts`:
+
 ```ts
 import { describe, expect, it } from 'vitest';
 import * as domain from './index';
@@ -59,6 +62,7 @@ Expected: FAIL — cannot resolve `./index` (file does not exist yet).
 - [ ] **Step 3: Create the package files**
 
 `packages/domain/package.json`:
+
 ```json
 {
   "name": "@nemis-desktop/domain",
@@ -80,6 +84,7 @@ Expected: FAIL — cannot resolve `./index` (file does not exist yet).
 ```
 
 `packages/domain/tsconfig.json`:
+
 ```json
 {
   "extends": "../../tsconfig.base.json",
@@ -88,6 +93,7 @@ Expected: FAIL — cannot resolve `./index` (file does not exist yet).
 ```
 
 `packages/domain/eslint.config.mjs` (package-local guard; the root config still lints the files, this documents intent and can be referenced):
+
 ```js
 // Dependency guard for the domain layer. The root flat config lints these files;
 // this block is added to the ROOT eslint.config.mjs in Step 4. Kept here as the
@@ -127,6 +133,7 @@ export const domainImportGuard = {
 ```
 
 `packages/domain/src/index.ts`:
+
 ```ts
 export {};
 ```
@@ -134,10 +141,13 @@ export {};
 - [ ] **Step 4: Wire the import guard into the root ESLint config**
 
 Modify `eslint.config.mjs` (repo root). Add the import at the top:
+
 ```js
 import { domainImportGuard } from './packages/domain/eslint.config.mjs';
 ```
+
 Then add `domainImportGuard` as a config object in the `tseslint.config(...)` array, immediately before the final `prettier,`:
+
 ```js
   domainImportGuard,
   prettier,
@@ -171,11 +181,13 @@ git commit -m "chore(domain): scaffold @nemis-desktop/domain package with import
 ### Task 2: Mirror canonical enums into `@nemis-desktop/types`
 
 **Files:**
+
 - Create: `packages/types/src/enums.ts`
 - Create: `packages/types/src/enums.test.ts`
 - Modify: `packages/types/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: nothing.
 - Produces: `as const` enum objects + derived union types, exported from `@nemis-desktop/types`. Names/values below are the exact set the domain slice needs. Each is `export const X = {...} as const; export type X = (typeof X)[keyof typeof X];`.
 
@@ -184,6 +196,7 @@ Enums to mirror (values verbatim from `schema.prisma`): `SystemRole`, `Status`, 
 - [ ] **Step 1: Write the failing test**
 
 `packages/types/src/enums.test.ts`:
+
 ```ts
 import { describe, expect, it } from 'vitest';
 import {
@@ -229,6 +242,7 @@ Expected: FAIL — `./enums` not found.
 - [ ] **Step 3: Create the enum mirror**
 
 `packages/types/src/enums.ts` (canonical source: backend `@nemis/types` `enums.ts` + `apps/Server/prisma/schema.prisma`; keep values identical):
+
 ```ts
 /**
  * Canonical business enums mirrored from the production backend
@@ -426,6 +440,7 @@ export type DayOfWeek = (typeof DayOfWeek)[keyof typeof DayOfWeek];
 - [ ] **Step 4: Export from the types barrel**
 
 Modify `packages/types/src/index.ts` to add (keep existing lines):
+
 ```ts
 export * from './enums';
 ```
@@ -452,12 +467,14 @@ git commit -m "feat(types): mirror canonical business enums from backend @nemis/
 ### Task 3: Domain exception hierarchy
 
 **Files:**
+
 - Create: `packages/domain/src/exceptions/domain-exception.ts`
 - Create: `packages/domain/src/exceptions/index.ts`
 - Create: `packages/domain/src/exceptions/exceptions.test.ts`
 - Modify: `packages/domain/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: nothing.
 - Produces:
   - `abstract class DomainException extends Error { readonly code: string }`
@@ -470,6 +487,7 @@ git commit -m "feat(types): mirror canonical business enums from backend @nemis/
 - [ ] **Step 1: Write the failing test**
 
 `packages/domain/src/exceptions/exceptions.test.ts`:
+
 ```ts
 import { describe, expect, it } from 'vitest';
 import {
@@ -516,6 +534,7 @@ Expected: FAIL — `./index` not found.
 - [ ] **Step 3: Implement the exceptions**
 
 `packages/domain/src/exceptions/domain-exception.ts`:
+
 ```ts
 export interface ValidationIssue {
   field: string;
@@ -566,6 +585,7 @@ export class EntityValidationException extends DomainException {
 ```
 
 `packages/domain/src/exceptions/index.ts`:
+
 ```ts
 export * from './domain-exception';
 ```
@@ -573,6 +593,7 @@ export * from './domain-exception';
 - [ ] **Step 4: Re-export from the package barrel**
 
 Modify `packages/domain/src/index.ts`:
+
 ```ts
 export * from './exceptions';
 ```
@@ -599,6 +620,7 @@ git commit -m "feat(domain): add domain exception hierarchy"
 ### Task 4: Kernel — identifier, Entity, AggregateRoot, DomainEvent, Specification
 
 **Files:**
+
 - Create: `packages/domain/src/core/identifier.ts`
 - Create: `packages/domain/src/core/entity.ts`
 - Create: `packages/domain/src/core/aggregate-root.ts`
@@ -609,6 +631,7 @@ git commit -m "feat(domain): add domain exception hierarchy"
 - Modify: `packages/domain/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: nothing (exceptions not needed here).
 - Produces:
   - `type EntityId<B extends string> = string & { readonly __brand: B }`
@@ -622,6 +645,7 @@ git commit -m "feat(domain): add domain exception hierarchy"
 - [ ] **Step 1: Write the failing test**
 
 `packages/domain/src/core/kernel.test.ts`:
+
 ```ts
 import { describe, expect, it } from 'vitest';
 import { AggregateRoot } from './aggregate-root';
@@ -721,12 +745,12 @@ Expected: FAIL — modules under `./core` not found.
 - [ ] **Step 3: Implement the kernel**
 
 `packages/domain/src/core/identifier.ts`:
+
 ```ts
 /** Branded id type so a StudentId cannot be passed where a ClassId is expected. */
 export type EntityId<B extends string> = string & { readonly __brand: B };
 
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export function isUuid(value: string): boolean {
   return UUID_RE.test(value);
@@ -734,6 +758,7 @@ export function isUuid(value: string): boolean {
 ```
 
 `packages/domain/src/core/entity.ts`:
+
 ```ts
 export abstract class Entity<TId extends string> {
   readonly id: TId;
@@ -752,6 +777,7 @@ export abstract class Entity<TId extends string> {
 ```
 
 `packages/domain/src/core/domain-event.ts`:
+
 ```ts
 /** Immutable record of something that happened to an aggregate. Definition only —
  * the domain never dispatches events. Callers drain via pullDomainEvents(). */
@@ -763,6 +789,7 @@ export interface DomainEvent {
 ```
 
 `packages/domain/src/core/aggregate-root.ts`:
+
 ```ts
 import { Entity } from './entity';
 import type { DomainEvent } from './domain-event';
@@ -819,6 +846,7 @@ export abstract class AggregateRoot<TId extends string> extends Entity<TId> {
 ```
 
 `packages/domain/src/core/specification.ts`:
+
 ```ts
 /** Reusable business rule. Compose with and/or/not. No side effects, no workflows. */
 export abstract class Specification<T> {
@@ -872,6 +900,7 @@ class NotSpecification<T> extends Specification<T> {
 ```
 
 `packages/domain/src/core/index.ts`:
+
 ```ts
 export * from './identifier';
 export * from './entity';
@@ -883,6 +912,7 @@ export * from './specification';
 - [ ] **Step 4: Re-export from the package barrel**
 
 Modify `packages/domain/src/index.ts` (add above the exceptions line so core is first):
+
 ```ts
 export * from './core';
 export * from './exceptions';
@@ -910,12 +940,14 @@ git commit -m "feat(domain): add kernel (entity, aggregate root, event, specific
 ### Task 5: Kernel — ValueObject base + guard helpers
 
 **Files:**
+
 - Create: `packages/domain/src/core/value-object.ts`
 - Create: `packages/domain/src/core/guard.ts`
 - Create: `packages/domain/src/core/value-object.test.ts`
 - Modify: `packages/domain/src/core/index.ts`
 
 **Interfaces:**
+
 - Consumes: `EntityValidationException`, `InvalidValueObjectException` from `../exceptions`.
 - Produces:
   - `abstract class ValueObject<TProps extends object> { protected readonly props: Readonly<TProps>; equals(o?): boolean }`
@@ -924,6 +956,7 @@ git commit -m "feat(domain): add kernel (entity, aggregate root, event, specific
 - [ ] **Step 1: Write the failing test**
 
 `packages/domain/src/core/value-object.test.ts`:
+
 ```ts
 import { describe, expect, it } from 'vitest';
 import { ValueObject } from './value-object';
@@ -980,6 +1013,7 @@ Expected: FAIL — `./value-object` / `./guard` not found.
 - [ ] **Step 3: Implement value-object and guard**
 
 `packages/domain/src/core/value-object.ts`:
+
 ```ts
 export abstract class ValueObject<TProps extends object> {
   protected readonly props: Readonly<TProps>;
@@ -1000,6 +1034,7 @@ export abstract class ValueObject<TProps extends object> {
 ```
 
 `packages/domain/src/core/guard.ts`:
+
 ```ts
 import { InvalidValueObjectException } from '../exceptions';
 
@@ -1039,6 +1074,7 @@ export const guard = {
 - [ ] **Step 4: Extend the core barrel**
 
 Modify `packages/domain/src/core/index.ts` (append):
+
 ```ts
 export * from './value-object';
 export * from './guard';
@@ -1066,6 +1102,7 @@ git commit -m "feat(domain): add ValueObject base and guard helpers"
 ### Task 6: Cross-cutting value objects — identity set (PersonName, EmailAddress, PhoneNumber, NationalId)
 
 **Files:**
+
 - Create: `packages/domain/src/value-objects/person-name.ts`
 - Create: `packages/domain/src/value-objects/email-address.ts`
 - Create: `packages/domain/src/value-objects/phone-number.ts`
@@ -1075,6 +1112,7 @@ git commit -m "feat(domain): add ValueObject base and guard helpers"
 - Modify: `packages/domain/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: `ValueObject`, `guard` from `../core`; `InvalidValueObjectException` from `../exceptions`.
 - Produces:
   - `PersonName.create({firstName, lastName, middleName?}): PersonName` with getters `firstName`, `lastName`, `middleName`, `full`.
@@ -1085,6 +1123,7 @@ git commit -m "feat(domain): add ValueObject base and guard helpers"
 - [ ] **Step 1: Write the failing test**
 
 `packages/domain/src/value-objects/identity-vos.test.ts`:
+
 ```ts
 import { describe, expect, it } from 'vitest';
 import { PersonName } from './person-name';
@@ -1139,6 +1178,7 @@ Expected: FAIL — modules not found.
 - [ ] **Step 3: Implement the value objects**
 
 `packages/domain/src/value-objects/person-name.ts`:
+
 ```ts
 import { ValueObject, guard } from '../core';
 
@@ -1180,6 +1220,7 @@ export class PersonName extends ValueObject<PersonNameProps> {
 ```
 
 `packages/domain/src/value-objects/email-address.ts`:
+
 ```ts
 import { ValueObject } from '../core';
 import { InvalidValueObjectException } from '../exceptions';
@@ -1210,6 +1251,7 @@ export class EmailAddress extends ValueObject<EmailProps> {
 ```
 
 `packages/domain/src/value-objects/phone-number.ts`:
+
 ```ts
 import { ValueObject } from '../core';
 import { InvalidValueObjectException } from '../exceptions';
@@ -1240,6 +1282,7 @@ export class PhoneNumber extends ValueObject<PhoneProps> {
 ```
 
 `packages/domain/src/value-objects/national-id.ts`:
+
 ```ts
 import { ValueObject, guard } from '../core';
 
@@ -1265,6 +1308,7 @@ export class NationalId extends ValueObject<NationalIdProps> {
 - [ ] **Step 4: Create the value-objects barrel and export from package**
 
 `packages/domain/src/value-objects/index.ts`:
+
 ```ts
 export * from './person-name';
 export * from './email-address';
@@ -1273,6 +1317,7 @@ export * from './national-id';
 ```
 
 Modify `packages/domain/src/index.ts` (append):
+
 ```ts
 export * from './value-objects';
 ```
@@ -1299,6 +1344,7 @@ git commit -m "feat(domain): add identity value objects (name, email, phone, nat
 ### Task 7: Cross-cutting value objects — place & time set (Address, GpsLocation, DateRange, DateOfBirth)
 
 **Files:**
+
 - Create: `packages/domain/src/value-objects/address.ts`
 - Create: `packages/domain/src/value-objects/gps-location.ts`
 - Create: `packages/domain/src/value-objects/date-range.ts`
@@ -1307,6 +1353,7 @@ git commit -m "feat(domain): add identity value objects (name, email, phone, nat
 - Modify: `packages/domain/src/value-objects/index.ts`
 
 **Interfaces:**
+
 - Consumes: `ValueObject`, `guard` from `../core`; `InvalidValueObjectException` from `../exceptions`.
 - Produces:
   - `Address.create({street?, communityTown?}): Address` — getters `street`, `communityTown`, `isEmpty`.
@@ -1317,6 +1364,7 @@ git commit -m "feat(domain): add identity value objects (name, email, phone, nat
 - [ ] **Step 1: Write the failing test**
 
 `packages/domain/src/value-objects/place-time-vos.test.ts`:
+
 ```ts
 import { describe, expect, it } from 'vitest';
 import { Address } from './address';
@@ -1371,6 +1419,7 @@ Expected: FAIL — modules not found.
 - [ ] **Step 3: Implement the value objects**
 
 `packages/domain/src/value-objects/address.ts`:
+
 ```ts
 import { ValueObject } from '../core';
 
@@ -1406,6 +1455,7 @@ export class Address extends ValueObject<AddressProps> {
 ```
 
 `packages/domain/src/value-objects/gps-location.ts`:
+
 ```ts
 import { ValueObject, guard } from '../core';
 
@@ -1436,6 +1486,7 @@ export class GpsLocation extends ValueObject<GpsProps> {
 ```
 
 `packages/domain/src/value-objects/date-range.ts`:
+
 ```ts
 import { ValueObject, guard } from '../core';
 import { InvalidValueObjectException } from '../exceptions';
@@ -1474,6 +1525,7 @@ export class DateRange extends ValueObject<DateRangeProps> {
 ```
 
 `packages/domain/src/value-objects/date-of-birth.ts`:
+
 ```ts
 import { ValueObject, guard } from '../core';
 
@@ -1511,6 +1563,7 @@ export class DateOfBirth extends ValueObject<DobProps> {
 - [ ] **Step 4: Extend the value-objects barrel**
 
 Modify `packages/domain/src/value-objects/index.ts` (append):
+
 ```ts
 export * from './address';
 export * from './gps-location';
@@ -1540,6 +1593,7 @@ git commit -m "feat(domain): add place & time value objects (address, gps, date 
 ### Task 8: Cross-cutting value objects — quantitative set (Money, Percentage, Marks)
 
 **Files:**
+
 - Create: `packages/domain/src/value-objects/money.ts`
 - Create: `packages/domain/src/value-objects/percentage.ts`
 - Create: `packages/domain/src/value-objects/marks.ts`
@@ -1547,6 +1601,7 @@ git commit -m "feat(domain): add place & time value objects (address, gps, date 
 - Modify: `packages/domain/src/value-objects/index.ts`
 
 **Interfaces:**
+
 - Consumes: `ValueObject`, `guard` from `../core`; `InvalidValueObjectException` from `../exceptions`.
 - Produces:
   - `Money.create({amount, currency?}): Money` — default currency `'LRD'`; getters `amount`, `currency`; `add(other): Money` (same-currency guard).
@@ -1556,6 +1611,7 @@ git commit -m "feat(domain): add place & time value objects (address, gps, date 
 - [ ] **Step 1: Write the failing test**
 
 `packages/domain/src/value-objects/quantitative-vos.test.ts`:
+
 ```ts
 import { describe, expect, it } from 'vitest';
 import { Money } from './money';
@@ -1572,9 +1628,9 @@ describe('Money', () => {
 
   it('rejects negative amounts and cross-currency addition', () => {
     expect(() => Money.create({ amount: -1 })).toThrow(InvalidValueObjectException);
-    expect(() => Money.create({ amount: 1, currency: 'USD' }).add(Money.create({ amount: 1 }))).toThrow(
-      InvalidValueObjectException,
-    );
+    expect(() =>
+      Money.create({ amount: 1, currency: 'USD' }).add(Money.create({ amount: 1 })),
+    ).toThrow(InvalidValueObjectException);
   });
 });
 
@@ -1602,6 +1658,7 @@ Expected: FAIL — modules not found.
 - [ ] **Step 3: Implement the value objects**
 
 `packages/domain/src/value-objects/money.ts`:
+
 ```ts
 import { ValueObject } from '../core';
 import { InvalidValueObjectException } from '../exceptions';
@@ -1636,12 +1693,16 @@ export class Money extends ValueObject<MoneyProps> {
         `Cannot add ${other.currency} to ${this.props.currency}`,
       );
     }
-    return Money.create({ amount: this.props.amount + other.amount, currency: this.props.currency });
+    return Money.create({
+      amount: this.props.amount + other.amount,
+      currency: this.props.currency,
+    });
   }
 }
 ```
 
 `packages/domain/src/value-objects/percentage.ts`:
+
 ```ts
 import { ValueObject, guard } from '../core';
 
@@ -1665,6 +1726,7 @@ export class Percentage extends ValueObject<PercentageProps> {
 ```
 
 `packages/domain/src/value-objects/marks.ts`:
+
 ```ts
 import { ValueObject } from '../core';
 import { InvalidValueObjectException } from '../exceptions';
@@ -1705,6 +1767,7 @@ export class Marks extends ValueObject<MarksProps> {
 - [ ] **Step 4: Extend the value-objects barrel**
 
 Modify `packages/domain/src/value-objects/index.ts` (append):
+
 ```ts
 export * from './money';
 export * from './percentage';
@@ -1733,6 +1796,7 @@ git commit -m "feat(domain): add quantitative value objects (money, percentage, 
 ### Task 9: Identity domain — User aggregate, UserOrganization, CanSyncEntity spec, UserCreated event
 
 **Files:**
+
 - Create: `packages/domain/src/identity/entities/user-organization.ts`
 - Create: `packages/domain/src/identity/entities/user.ts`
 - Create: `packages/domain/src/identity/events/user-created.ts`
@@ -1742,6 +1806,7 @@ git commit -m "feat(domain): add quantitative value objects (money, percentage, 
 - Modify: `packages/domain/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: `AggregateRoot`, `AggregateMetadata`, `Entity`, `Specification`, `EntityId` from `../core`; `PersonName`, `EmailAddress` from `../value-objects`; `SystemRole` from `@nemis-desktop/types`; `EntityValidationException` from `../exceptions`.
 - Produces:
   - `type UserId = EntityId<'User'>`
@@ -1753,6 +1818,7 @@ git commit -m "feat(domain): add quantitative value objects (money, percentage, 
 - [ ] **Step 1: Write the failing test**
 
 `packages/domain/src/identity/identity.test.ts`:
+
 ```ts
 import { describe, expect, it } from 'vitest';
 import { SystemRole } from '@nemis-desktop/types';
@@ -1804,7 +1870,14 @@ describe('User', () => {
 
   it('rejects reconstitute without organizations having roles', () => {
     expect(() =>
-      User.create({ id: 'u', firstName: '', lastName: 'x', email: 'a@b.co', organizations: [], occurredAt: ISO }),
+      User.create({
+        id: 'u',
+        firstName: '',
+        lastName: 'x',
+        email: 'a@b.co',
+        organizations: [],
+        occurredAt: ISO,
+      }),
     ).toThrow(EntityValidationException);
   });
 });
@@ -1827,6 +1900,7 @@ Expected: FAIL — modules not found.
 - [ ] **Step 3: Implement the identity domain**
 
 `packages/domain/src/identity/entities/user-organization.ts`:
+
 ```ts
 import { Entity } from '../../core';
 import type { SystemRole } from '@nemis-desktop/types';
@@ -1869,6 +1943,7 @@ export class UserOrganization extends Entity<string> {
 ```
 
 `packages/domain/src/identity/events/user-created.ts`:
+
 ```ts
 import type { DomainEvent } from '../../core';
 
@@ -1879,6 +1954,7 @@ export interface UserCreatedEvent extends DomainEvent {
 ```
 
 `packages/domain/src/identity/entities/user.ts`:
+
 ```ts
 import { AggregateRoot } from '../../core';
 import type { EntityId } from '../../core';
@@ -2005,6 +2081,7 @@ export class User extends AggregateRoot<UserId> {
 ```
 
 `packages/domain/src/identity/specifications/can-sync-entity.ts`:
+
 ```ts
 import { Specification } from '../../core';
 
@@ -2022,6 +2099,7 @@ export class CanSyncEntity extends Specification<SyncableSnapshot> {
 ```
 
 `packages/domain/src/identity/index.ts`:
+
 ```ts
 export * from './entities/user';
 export * from './entities/user-organization';
@@ -2032,6 +2110,7 @@ export * from './specifications/can-sync-entity';
 - [ ] **Step 4: Re-export from the package barrel**
 
 Modify `packages/domain/src/index.ts` (append):
+
 ```ts
 export * from './identity';
 ```
@@ -2058,6 +2137,7 @@ git commit -m "feat(domain): add identity domain (User aggregate, org roles, syn
 ### Task 10: Institution domain — Institution aggregate, GradingConfig, SchoolCode VO, IsInstitutionApproved spec
 
 **Files:**
+
 - Create: `packages/domain/src/institution/value-objects/school-code.ts`
 - Create: `packages/domain/src/institution/entities/grading-config.ts`
 - Create: `packages/domain/src/institution/entities/institution.ts`
@@ -2067,6 +2147,7 @@ git commit -m "feat(domain): add identity domain (User aggregate, org roles, syn
 - Modify: `packages/domain/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: `AggregateRoot`, `Entity`, `EntityId`, `Specification`, `ValueObject`, `guard` from `../core`; `Address`, `GpsLocation` from `../value-objects`; `InstitutionType`, `OwnershipType`, `ApprovalStatus` from `@nemis-desktop/types`; exceptions.
 - Produces:
   - `type InstitutionId = EntityId<'Institution'>`
@@ -2078,6 +2159,7 @@ git commit -m "feat(domain): add identity domain (User aggregate, org roles, syn
 - [ ] **Step 1: Write the failing test**
 
 `packages/domain/src/institution/institution.test.ts`:
+
 ```ts
 import { describe, expect, it } from 'vitest';
 import { ApprovalStatus, InstitutionType, OwnershipType } from '@nemis-desktop/types';
@@ -2141,6 +2223,7 @@ Expected: FAIL — modules not found.
 - [ ] **Step 3: Implement the institution domain**
 
 `packages/domain/src/institution/value-objects/school-code.ts`:
+
 ```ts
 import { ValueObject, guard } from '../../core';
 
@@ -2164,6 +2247,7 @@ export class SchoolCode extends ValueObject<SchoolCodeProps> {
 ```
 
 `packages/domain/src/institution/entities/grading-config.ts`:
+
 ```ts
 import { Entity } from '../../core';
 import { EntityValidationException } from '../../exceptions';
@@ -2205,6 +2289,7 @@ export class GradingConfig extends Entity<string> {
 ```
 
 `packages/domain/src/institution/entities/institution.ts`:
+
 ```ts
 import { AggregateRoot } from '../../core';
 import type { EntityId } from '../../core';
@@ -2307,7 +2392,11 @@ export class Institution extends AggregateRoot<InstitutionId> {
     if (this.#state.approvalStatus === ApprovalStatus.APPROVED) {
       throw new InvalidStateException('Institution is already approved');
     }
-    this.#state = { ...this.#state, approvalStatus: ApprovalStatus.APPROVED, rejectionReason: undefined };
+    this.#state = {
+      ...this.#state,
+      approvalStatus: ApprovalStatus.APPROVED,
+      rejectionReason: undefined,
+    };
     this.touch(by, at);
   }
 
@@ -2315,13 +2404,18 @@ export class Institution extends AggregateRoot<InstitutionId> {
     if (this.#state.approvalStatus === ApprovalStatus.REJECTED) {
       throw new InvalidStateException('Institution is already rejected');
     }
-    this.#state = { ...this.#state, approvalStatus: ApprovalStatus.REJECTED, rejectionReason: reason };
+    this.#state = {
+      ...this.#state,
+      approvalStatus: ApprovalStatus.REJECTED,
+      rejectionReason: reason,
+    };
     this.touch(by, at);
   }
 }
 ```
 
 `packages/domain/src/institution/specifications/is-institution-approved.ts`:
+
 ```ts
 import { Specification } from '../../core';
 import { ApprovalStatus } from '@nemis-desktop/types';
@@ -2334,6 +2428,7 @@ export class IsInstitutionApproved extends Specification<{ approvalStatus: Appro
 ```
 
 `packages/domain/src/institution/index.ts`:
+
 ```ts
 export * from './value-objects/school-code';
 export * from './entities/grading-config';
@@ -2344,6 +2439,7 @@ export * from './specifications/is-institution-approved';
 - [ ] **Step 4: Re-export from the package barrel**
 
 Modify `packages/domain/src/index.ts` (append):
+
 ```ts
 export * from './institution';
 ```
@@ -2370,6 +2466,7 @@ git commit -m "feat(domain): add institution domain (aggregate, grading config, 
 ### Task 11: Students domain — Student aggregate, Guardian, StudentGuardian, AdmissionNumber VO, StudentCreated event
 
 **Files:**
+
 - Create: `packages/domain/src/students/value-objects/admission-number.ts`
 - Create: `packages/domain/src/students/entities/guardian.ts`
 - Create: `packages/domain/src/students/entities/student-guardian.ts`
@@ -2380,6 +2477,7 @@ git commit -m "feat(domain): add institution domain (aggregate, grading config, 
 - Modify: `packages/domain/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: `AggregateRoot`, `Entity`, `EntityId` from `../core`; `PersonName`, `DateOfBirth`, `NationalId` from `../value-objects`; `Gender`, `GradeLevel`, `ApprovalStatus` from `@nemis-desktop/types`; exceptions.
 - Produces:
   - `type StudentId = EntityId<'Student'>`
@@ -2392,6 +2490,7 @@ git commit -m "feat(domain): add institution domain (aggregate, grading config, 
 - [ ] **Step 1: Write the failing test**
 
 `packages/domain/src/students/students.test.ts`:
+
 ```ts
 import { describe, expect, it } from 'vitest';
 import { Gender, GradeLevel } from '@nemis-desktop/types';
@@ -2458,6 +2557,7 @@ Expected: FAIL — modules not found.
 - [ ] **Step 3: Implement the students domain**
 
 `packages/domain/src/students/value-objects/admission-number.ts`:
+
 ```ts
 import { ValueObject, guard } from '../../core';
 
@@ -2481,6 +2581,7 @@ export class AdmissionNumber extends ValueObject<AdmissionNumberProps> {
 ```
 
 `packages/domain/src/students/entities/student-guardian.ts`:
+
 ```ts
 import { Entity } from '../../core';
 
@@ -2512,6 +2613,7 @@ export class StudentGuardian extends Entity<string> {
 ```
 
 `packages/domain/src/students/entities/guardian.ts`:
+
 ```ts
 import { AggregateRoot } from '../../core';
 import { PersonName, PhoneNumber } from '../../value-objects';
@@ -2569,6 +2671,7 @@ export class Guardian extends AggregateRoot<string> {
 ```
 
 `packages/domain/src/students/events/student-created.ts`:
+
 ```ts
 import type { DomainEvent } from '../../core';
 
@@ -2580,6 +2683,7 @@ export interface StudentCreatedEvent extends DomainEvent {
 ```
 
 `packages/domain/src/students/entities/student.ts`:
+
 ```ts
 import { AggregateRoot } from '../../core';
 import type { EntityId } from '../../core';
@@ -2700,6 +2804,7 @@ export class Student extends AggregateRoot<StudentId> {
 ```
 
 `packages/domain/src/students/index.ts`:
+
 ```ts
 export * from './value-objects/admission-number';
 export * from './entities/guardian';
@@ -2711,6 +2816,7 @@ export * from './events/student-created';
 - [ ] **Step 4: Re-export from the package barrel**
 
 Modify `packages/domain/src/index.ts` (append):
+
 ```ts
 export * from './students';
 ```
@@ -2737,6 +2843,7 @@ git commit -m "feat(domain): add students domain (Student/Guardian aggregates, g
 ### Task 12: Academics domain — AcademicYear, Term, Class, Subject, Enrollment, IsEnrollmentOpen spec, EnrollmentCreated event
 
 **Files:**
+
 - Create: `packages/domain/src/academics/value-objects/academic-year-code.ts`
 - Create: `packages/domain/src/academics/entities/academic-year.ts`
 - Create: `packages/domain/src/academics/entities/term.ts`
@@ -2750,6 +2857,7 @@ git commit -m "feat(domain): add students domain (Student/Guardian aggregates, g
 - Modify: `packages/domain/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: `AggregateRoot`, `Entity`, `EntityId`, `Specification`, `ValueObject`, `guard` from `../core`; `DateRange` from `../value-objects`; `GradeLevel`, `EnrollmentStatus` from `@nemis-desktop/types`; exceptions.
 - Produces:
   - `class AcademicYearCode` VO (e.g. `2025/2026`; getter `value`).
@@ -2764,6 +2872,7 @@ git commit -m "feat(domain): add students domain (Student/Guardian aggregates, g
 - [ ] **Step 1: Write the failing test**
 
 `packages/domain/src/academics/academics.test.ts`:
+
 ```ts
 import { describe, expect, it } from 'vitest';
 import { EnrollmentStatus, GradeLevel } from '@nemis-desktop/types';
@@ -2855,6 +2964,7 @@ Expected: FAIL — modules not found.
 - [ ] **Step 3: Implement the academics domain**
 
 `packages/domain/src/academics/value-objects/academic-year-code.ts`:
+
 ```ts
 import { ValueObject } from '../../core';
 import { InvalidValueObjectException } from '../../exceptions';
@@ -2873,7 +2983,9 @@ export class AcademicYearCode extends ValueObject<AcademicYearCodeProps> {
   static create(value: string): AcademicYearCode {
     const normalized = (value ?? '').trim();
     if (!CODE_RE.test(normalized)) {
-      throw new InvalidValueObjectException(`Invalid academic year code: "${value}" (expected YYYY/YYYY)`);
+      throw new InvalidValueObjectException(
+        `Invalid academic year code: "${value}" (expected YYYY/YYYY)`,
+      );
     }
     return new AcademicYearCode({ value: normalized });
   }
@@ -2885,6 +2997,7 @@ export class AcademicYearCode extends ValueObject<AcademicYearCodeProps> {
 ```
 
 `packages/domain/src/academics/entities/academic-year.ts`:
+
 ```ts
 import { AggregateRoot } from '../../core';
 import { DateRange } from '../../value-objects';
@@ -2956,6 +3069,7 @@ export class AcademicYear extends AggregateRoot<string> {
 ```
 
 `packages/domain/src/academics/entities/term.ts`:
+
 ```ts
 import { Entity } from '../../core';
 import { DateRange } from '../../value-objects';
@@ -3004,6 +3118,7 @@ export class Term extends Entity<string> {
 ```
 
 `packages/domain/src/academics/entities/subject.ts`:
+
 ```ts
 import { AggregateRoot } from '../../core';
 import { guard } from '../../core';
@@ -3067,6 +3182,7 @@ export class Subject extends AggregateRoot<string> {
 ```
 
 `packages/domain/src/academics/entities/class.ts`:
+
 ```ts
 import { AggregateRoot } from '../../core';
 import { guard } from '../../core';
@@ -3151,6 +3267,7 @@ export class Class extends AggregateRoot<string> {
 ```
 
 `packages/domain/src/academics/events/enrollment-created.ts`:
+
 ```ts
 import type { DomainEvent } from '../../core';
 
@@ -3162,6 +3279,7 @@ export interface EnrollmentCreatedEvent extends DomainEvent {
 ```
 
 `packages/domain/src/academics/entities/enrollment.ts`:
+
 ```ts
 import { AggregateRoot } from '../../core';
 import { InvalidStateException } from '../../exceptions';
@@ -3241,6 +3359,7 @@ export class Enrollment extends AggregateRoot<string> {
 ```
 
 `packages/domain/src/academics/specifications/is-enrollment-open.ts`:
+
 ```ts
 import { Specification } from '../../core';
 
@@ -3257,6 +3376,7 @@ export class IsEnrollmentOpen extends Specification<EnrollmentWindowSnapshot> {
 ```
 
 `packages/domain/src/academics/index.ts`:
+
 ```ts
 export * from './value-objects/academic-year-code';
 export * from './entities/academic-year';
@@ -3271,6 +3391,7 @@ export * from './specifications/is-enrollment-open';
 - [ ] **Step 4: Re-export from the package barrel**
 
 Modify `packages/domain/src/index.ts` (append):
+
 ```ts
 export * from './academics';
 ```
@@ -3297,6 +3418,7 @@ git commit -m "feat(domain): add academics domain (year, term, class, subject, e
 ### Task 13: Attendance domain — Attendance aggregate, CanRecordAttendance spec, AttendanceRecorded/Corrected events
 
 **Files:**
+
 - Create: `packages/domain/src/attendance/entities/attendance.ts`
 - Create: `packages/domain/src/attendance/events/attendance-events.ts`
 - Create: `packages/domain/src/attendance/specifications/can-record-attendance.ts`
@@ -3305,6 +3427,7 @@ git commit -m "feat(domain): add academics domain (year, term, class, subject, e
 - Modify: `packages/domain/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: `AggregateRoot`, `Specification` from `../core`; `AttendanceStatus` from `@nemis-desktop/types`; `InvalidStateException` from `../exceptions`.
 - Produces:
   - `class Attendance extends AggregateRoot<string>` (`studentId`, `classId`, `subjectId?`, `date`, `status`, `recordedBy?`, static `record(...)`, `correct(status, reason, by, at)`).
@@ -3315,6 +3438,7 @@ git commit -m "feat(domain): add academics domain (year, term, class, subject, e
 - [ ] **Step 1: Write the failing test**
 
 `packages/domain/src/attendance/attendance.test.ts`:
+
 ```ts
 import { describe, expect, it } from 'vitest';
 import { AttendanceStatus } from '@nemis-desktop/types';
@@ -3381,6 +3505,7 @@ Expected: FAIL — modules not found.
 - [ ] **Step 3: Implement the attendance domain**
 
 `packages/domain/src/attendance/events/attendance-events.ts`:
+
 ```ts
 import type { DomainEvent } from '../../core';
 import type { AttendanceStatus } from '@nemis-desktop/types';
@@ -3399,6 +3524,7 @@ export interface AttendanceCorrectedEvent extends DomainEvent {
 ```
 
 `packages/domain/src/attendance/entities/attendance.ts`:
+
 ```ts
 import { AggregateRoot } from '../../core';
 import { InvalidStateException } from '../../exceptions';
@@ -3496,6 +3622,7 @@ export class Attendance extends AggregateRoot<string> {
 ```
 
 `packages/domain/src/attendance/specifications/can-record-attendance.ts`:
+
 ```ts
 import { Specification } from '../../core';
 
@@ -3513,6 +3640,7 @@ export class CanRecordAttendance extends Specification<AttendanceContext> {
 ```
 
 `packages/domain/src/attendance/index.ts`:
+
 ```ts
 export * from './entities/attendance';
 export * from './events/attendance-events';
@@ -3522,6 +3650,7 @@ export * from './specifications/can-record-attendance';
 - [ ] **Step 4: Re-export from the package barrel**
 
 Modify `packages/domain/src/index.ts` (append):
+
 ```ts
 export * from './attendance';
 ```
@@ -3548,6 +3677,7 @@ git commit -m "feat(domain): add attendance domain (record/correct, can-record s
 ### Task 14: Assessments domain — GradingPeriod, Assessment, Grade aggregate, GradeAudit, specs & events
 
 **Files:**
+
 - Create: `packages/domain/src/assessments/entities/grading-period.ts`
 - Create: `packages/domain/src/assessments/entities/assessment.ts`
 - Create: `packages/domain/src/assessments/entities/grade-audit.ts`
@@ -3560,6 +3690,7 @@ git commit -m "feat(domain): add attendance domain (record/correct, can-record s
 - Modify: `packages/domain/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: `AggregateRoot`, `Entity`, `Specification`, `guard` from `../core`; `Marks` from `../value-objects`; `AssessmentType`, `GradeStatus`, `WindowStatus`, `PeriodType` from `@nemis-desktop/types`; exceptions.
 - Produces:
   - `class GradingPeriod extends Entity<string>` (`name`, `periodType`, `sequence`, `maxMarks`, `passingMarks`).
@@ -3573,6 +3704,7 @@ git commit -m "feat(domain): add attendance domain (record/correct, can-record s
 - [ ] **Step 1: Write the failing test**
 
 `packages/domain/src/assessments/assessments.test.ts`:
+
 ```ts
 import { describe, expect, it } from 'vitest';
 import { AssessmentType, GradeStatus, WindowStatus } from '@nemis-desktop/types';
@@ -3656,6 +3788,7 @@ Expected: FAIL — modules not found.
 - [ ] **Step 3: Implement the assessments domain**
 
 `packages/domain/src/assessments/entities/grading-period.ts`:
+
 ```ts
 import { Entity } from '../../core';
 import { guard } from '../../core';
@@ -3702,6 +3835,7 @@ export class GradingPeriod extends Entity<string> {
 ```
 
 `packages/domain/src/assessments/events/assessment-events.ts`:
+
 ```ts
 import type { DomainEvent } from '../../core';
 
@@ -3719,6 +3853,7 @@ export interface GradePublishedEvent extends DomainEvent {
 ```
 
 `packages/domain/src/assessments/entities/assessment.ts`:
+
 ```ts
 import { AggregateRoot } from '../../core';
 import { Marks } from '../../value-objects';
@@ -3788,6 +3923,7 @@ export class Assessment extends AggregateRoot<string> {
 ```
 
 `packages/domain/src/assessments/entities/grade-audit.ts`:
+
 ```ts
 import { Entity } from '../../core';
 import type { GradeAuditAction } from '@nemis-desktop/types';
@@ -3825,6 +3961,7 @@ export class GradeAudit extends Entity<string> {
 ```
 
 `packages/domain/src/assessments/entities/grade.ts`:
+
 ```ts
 import { AggregateRoot } from '../../core';
 import { Marks } from '../../value-objects';
@@ -3850,7 +3987,10 @@ export interface CreateGradeInput {
   occurredAt: string;
 }
 
-const PUBLISHABLE: ReadonlySet<GradeStatus> = new Set([GradeStatus.APPROVED, GradeStatus.SUBMITTED]);
+const PUBLISHABLE: ReadonlySet<GradeStatus> = new Set([
+  GradeStatus.APPROVED,
+  GradeStatus.SUBMITTED,
+]);
 
 export class Grade extends AggregateRoot<string> {
   #state: GradeState;
@@ -3921,6 +4061,7 @@ export class Grade extends AggregateRoot<string> {
 ```
 
 `packages/domain/src/assessments/specifications/can-publish-grade.ts`:
+
 ```ts
 import { Specification } from '../../core';
 import { GradeStatus } from '@nemis-desktop/types';
@@ -3930,7 +4071,10 @@ export interface GradePublishContext {
   windowOpen: boolean;
 }
 
-const PUBLISHABLE: ReadonlySet<GradeStatus> = new Set([GradeStatus.APPROVED, GradeStatus.SUBMITTED]);
+const PUBLISHABLE: ReadonlySet<GradeStatus> = new Set([
+  GradeStatus.APPROVED,
+  GradeStatus.SUBMITTED,
+]);
 
 export class CanPublishGrade extends Specification<GradePublishContext> {
   isSatisfiedBy(candidate: GradePublishContext): boolean {
@@ -3940,6 +4084,7 @@ export class CanPublishGrade extends Specification<GradePublishContext> {
 ```
 
 `packages/domain/src/assessments/specifications/is-grade-entry-window-open.ts`:
+
 ```ts
 import { Specification } from '../../core';
 import { WindowStatus } from '@nemis-desktop/types';
@@ -3952,6 +4097,7 @@ export class IsGradeEntryWindowOpen extends Specification<{ status: WindowStatus
 ```
 
 `packages/domain/src/assessments/index.ts`:
+
 ```ts
 export * from './entities/grading-period';
 export * from './entities/assessment';
@@ -3965,6 +4111,7 @@ export * from './specifications/is-grade-entry-window-open';
 - [ ] **Step 4: Re-export from the package barrel**
 
 Modify `packages/domain/src/index.ts` (append):
+
 ```ts
 export * from './assessments';
 ```
@@ -3991,17 +4138,20 @@ git commit -m "feat(domain): add assessments domain (grading period, assessment,
 ### Task 15: Extension recipe + domain README
 
 **Files:**
+
 - Create: `packages/domain/src/_extension-template/README.md`
 - Create: `packages/domain/src/_extension-template/example.template.md`
 - Create: `packages/domain/README.md`
 
 **Interfaces:**
+
 - Consumes: nothing (documentation).
 - Produces: developer docs. No runtime code, so no test.
 
 - [ ] **Step 1: Write the extension recipe**
 
 `packages/domain/src/_extension-template/README.md`:
+
 ```markdown
 # Adding a new domain (extension recipe)
 
@@ -4032,6 +4182,7 @@ assessments) are the reference implementation. To add one of the remaining domai
 ```
 
 `packages/domain/src/_extension-template/example.template.md`:
+
 ```markdown
 # Example skeleton: FeePayment (finance domain)
 
@@ -4066,6 +4217,7 @@ Copy and adapt. Uses the cross-cutting `Money` value object.
 - [ ] **Step 2: Write the domain package README**
 
 `packages/domain/README.md`:
+
 ```markdown
 # @nemis-desktop/domain
 
@@ -4135,9 +4287,11 @@ git commit -m "docs(domain): add extension recipe and domain package README"
 ### Task 16: Full-workspace verification and conventions doc update
 
 **Files:**
+
 - Modify: `docs/conventions.md` (append a Domain Layer section)
 
 **Interfaces:**
+
 - Consumes: everything built.
 - Produces: green typecheck + lint + tests across the workspace; a documented convention entry.
 
@@ -4159,18 +4313,20 @@ Expected: PASS — including the domain import-guard rule (no violations).
 - [ ] **Step 4: Prove the dependency guard actually fires (temporary check)**
 
 Add a deliberately-illegal import to a scratch file to confirm the guard works, then remove it:
+
 ```bash
 printf "import 'electron';\nexport {};\n" > packages/domain/src/_guard-check.ts
 pnpm lint packages/domain/src/_guard-check.ts || echo "GUARD OK: lint rejected the illegal import"
 rm packages/domain/src/_guard-check.ts
 ```
+
 Expected: lint reports `no-restricted-imports` for `electron`; after `rm`, tree is clean. (`git status` shows no leftover file.)
 
 - [ ] **Step 5: Append the conventions entry**
 
 Add to the end of `docs/conventions.md`:
-```markdown
 
+```markdown
 ## Domain Layer (`@nemis-desktop/domain`, Phase 4)
 
 - Pure TypeScript business model. Only dependency: `@nemis-desktop/types`. No
@@ -4204,6 +4360,7 @@ Expected: all three succeed. Phase 4 slice complete.
 ## Self-Review
 
 **1. Spec coverage:**
+
 - Discovery Report / Mapping Matrix → produced in the spec doc (Phase 4 spec Parts A–B); this plan implements the code slice they specify. ✔
 - Kernel (Entity/AggregateRoot/ValueObject/DomainEvent/Specification/exceptions) → Tasks 3–5. ✔
 - Cross-cutting value objects → Tasks 6–8. ✔
