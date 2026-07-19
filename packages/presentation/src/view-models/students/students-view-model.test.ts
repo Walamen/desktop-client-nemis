@@ -98,14 +98,33 @@ describe('StudentsViewModel', () => {
     expect(vm.store.getState().details.status).toBe('idle');
   });
 
-  it('deactivateStudent updates details and list row status', async () => {
+  it('deactivateStudent updates the open details and list row status', async () => {
     const { app, vm } = build();
     const created = await app.students.create(dto);
+    await vm.loadStudents();
+    await vm.selectStudent(created.data.id); // open this student's details
     const outcome = await vm.deactivateStudent({ studentId: created.data.id, actorId: 'usr-1' });
     expect(outcome.ok).toBe(true);
     if (outcome.ok) expect(outcome.data.status.label).toBe('Inactive');
+    const details = vm.store.getState().details;
+    expect(details.status).toBe('success');
+    if (details.status === 'success') expect(details.data.status.label).toBe('Inactive');
     const rows = selectStudentRows(vm.store.getState());
     expect(rows[0]?.status.label).toBe('Inactive');
+  });
+
+  it('deactivateStudent does not clobber details for a different open student', async () => {
+    const { app, vm } = build();
+    const a = await app.students.create(dto);
+    const b = await app.students.create({ ...dto, firstName: 'Grace', admissionNumber: 'ADM-002' });
+    await vm.selectStudent(a.data.id); // details shows A
+    await vm.deactivateStudent({ studentId: b.data.id, actorId: 'usr-1' });
+    const details = vm.store.getState().details;
+    expect(details.status).toBe('success');
+    if (details.status === 'success') {
+      expect(details.data.id).toBe(a.data.id);
+      expect(details.data.status.label).toBe('Active'); // A untouched
+    }
   });
 
   it('linkGuardian surfaces a business failure as an error notification', async () => {
