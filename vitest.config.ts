@@ -15,7 +15,7 @@ export default defineConfig({
         plugins: [react()],
         test: {
           name: 'renderer',
-          include: ['apps/desktop/renderer/**/*.test.{ts,tsx}'],
+          include: ['apps/desktop/renderer/**/*.test.{ts,tsx}', 'packages/ui/**/*.test.tsx'],
           environment: 'jsdom',
           setupFiles: ['apps/desktop/renderer/vitest.setup.ts'],
         },
