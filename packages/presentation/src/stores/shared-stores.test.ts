@@ -77,6 +77,18 @@ describe('DialogStore', () => {
     dialogs.close();
     await expect(answer).resolves.toBe(false);
   });
+
+  it('open() cancels a pending confirm by resolving it false', async () => {
+    const dialogs = new DialogStore();
+    const answer = dialogs.confirm({ message: 'Sure?' });
+    dialogs.open('link-guardian', { studentId: 'stu-1' });
+    await expect(answer).resolves.toBe(false);
+    expect(dialogs.store.getState().current).toEqual({
+      kind: 'custom',
+      name: 'link-guardian',
+      payload: { studentId: 'stu-1' },
+    });
+  });
 });
 
 describe('NavigationStore', () => {
