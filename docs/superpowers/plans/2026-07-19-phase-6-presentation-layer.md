@@ -1431,12 +1431,19 @@ export function maxLength<TValues>(
   };
 }
 
+/** Accepts an ISO-8601 date (YYYY-MM-DD, optional time) that also parses to a
+ * real calendar date — rejects Date.parse-permissive non-ISO strings like
+ * "01/02/2020" that the validator's name would otherwise silently allow. */
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})?)?$/;
+
 export function isoDate<TValues>(field: keyof TValues & string): FormValidator<TValues> {
   return (values) => {
     const value = values[field];
-    return typeof value === 'string' && value !== '' && Number.isNaN(Date.parse(value))
-      ? ({ [field]: 'Enter a valid date.' } as Partial<Record<keyof TValues & string, string>>)
-      : {};
+    if (typeof value !== 'string' || value === '') return {};
+    const valid = ISO_DATE.test(value) && !Number.isNaN(Date.parse(value));
+    return valid
+      ? {}
+      : ({ [field]: 'Enter a valid date.' } as Partial<Record<keyof TValues & string, string>>);
   };
 }
 ```
@@ -4692,7 +4699,9 @@ export interface DashboardState {
 export class DashboardViewModel {
   readonly store = createStore<DashboardState>(() => ({ summary: idleState() }));
 
-  loadSummary(): Promise<void> {
+  // async so the NotImplemented signal surfaces as a rejected promise,
+  // matching the Promise<void> contract a Phase-7 caller will `.catch()`.
+  async loadSummary(): Promise<void> {
     throw new NotImplementedPresentationError('Dashboard');
   }
 }
@@ -4720,7 +4729,8 @@ export interface TeachersState {
 export class TeachersViewModel {
   readonly store = createStore<TeachersState>(() => ({ list: idleState() }));
 
-  loadTeachers(): Promise<void> {
+  // async so the NotImplemented signal surfaces as a rejected promise.
+  async loadTeachers(): Promise<void> {
     throw new NotImplementedPresentationError('Teachers');
   }
 }
@@ -4749,7 +4759,8 @@ export class SyncViewModel {
     return presentSyncStatus(state.syncStatus, state.lastSyncAt);
   }
 
-  startSync(): Promise<void> {
+  // async so the NotImplemented signal surfaces as a rejected promise.
+  async startSync(): Promise<void> {
     throw new NotImplementedPresentationError('Manual sync');
   }
 }
