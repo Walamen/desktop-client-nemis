@@ -140,3 +140,54 @@ Domains without entities yet (`geography`, `staff`, `finance`,
 `communication`, `resources`, `reporting`) get extension points only — no
 invented DTOs, ports, or use cases until their `@nemis-desktop/domain` slice
 ships.
+
+## Presentation Layer (`@nemis-desktop/presentation`, Phase 6)
+
+The only layer the React UI (Phase 7) imports from. Full architecture writeup:
+`docs/presentation-layer.md`.
+
+- **Dependency rules.** `package.json` dependencies are exactly
+  `@nemis-desktop/application`, `@nemis-desktop/types`, `zustand`. No React,
+  no Electron, no SQLite, no IPC. `@nemis-desktop/domain` is a
+  **devDependency only** — enforced by `presentationImportGuard`
+  (`packages/presentation/eslint.config.mjs`): non-test source may never
+  import `@nemis-desktop/domain` (presentation speaks application DTOs only),
+  but `presentationTestImportRelaxation` lifts that one ban for
+  `src/**/*.test.ts` and `src/testing/**/*.ts`, which seed the Phase-5
+  in-memory application fakes with real domain entities. React/Electron/
+  SQLite/IPC imports stay forbidden everywhere, tests included.
+- **ViewModel files.** One folder per screen under `view-models/<screen>/`:
+  `<screen>-view-model.ts` (the class + Zustand store), `<screen>-views.ts`
+  (display-ready view-model interfaces), colocated
+  `<screen>-view-model.test.ts`. Commands live in `commands/<domain>/`, one
+  class per action; queries live in `queries/<domain>/`, one class per read.
+  Both wrap exactly one application-service method through
+  `trackQuery`/`executeCommand` (`core/async-runner.ts`) — never hand-rolled
+  `try/catch` around an application call.
+- **State-shape rule.** Every async slice of ViewModel state is an
+  `AsyncState<T>` field (`core/async-state.ts`:
+  `idle|loading|refreshing|success|empty|error`); every command-bearing
+  ViewModel has a top-level `submission: SubmissionStatus` field
+  (`core/submission.ts`: `idle|submitting|submitted|failed`). Do not invent
+  ad-hoc `isLoading`/`error` boolean pairs.
+- **Notification rule.** Commands notify the user **only** through
+  `executeCommand`'s built-in `notifications.success/warning/error` calls.
+  ViewModels never call `NotificationStore` directly around a command result
+  (the one exception is `ConnectivityStore.setOnline`, which notifies for
+  offline/online transitions — not a command).
+- **Badge-token rule.** Status is always presented as `StatusPresentation {
+label, badge: BadgeToken }` with `BadgeToken` a semantic name (`'success' |
+'active' | 'pending' | 'error' | 'neutral'`, `presenters/status-presentation.ts`).
+  Presentation code never emits a hex value or any palette-specific styling —
+  the UI owns the token → palette mapping.
+- **Selector purity.** Selectors (`selectors/`) are plain functions of state
+  (optionally two stores' state) with no side effects, no store writes, no
+  hidden caching — safe to call on every render.
+- **New screens** follow `view-models/_extension-template/README.md`
+  (Students slice is the reference implementation): views → mapper → queries
+  → commands → ViewModel → selectors → wire into
+  `factories/create-presentation-layer.ts` and `src/index.ts` → tests via
+  `testing/create-test-application.ts`. Until the backing domain/application
+  slice exists, ship a typed stub whose methods throw
+  `NotImplementedPresentationError` (see `DashboardViewModel`,
+  `TeachersViewModel`, `SyncViewModel`).
