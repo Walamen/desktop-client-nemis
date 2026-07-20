@@ -336,6 +336,20 @@ deviations, carried forward for the Phase 8 planner.
   Phase 7 (the design spec's non-goals call this out directly) — it is a
   hard Phase-8 prerequisite, not decorative debt.
 
+**Seam coupling beyond the composition root:**
+
+- The Phase-8 seam is described elsewhere in this doc as "swap only
+  `create-renderer-presentation.ts`," but the portal layout
+  (`apps/desktop/renderer/app/government/school-admin/layout.tsx`) also imports
+  `DEMO_INSTITUTION_ID` / `DEMO_USER_ID` from
+  `lib/presentation/seed-demo-data.ts` to call
+  `loadProfile(institutionId)` / `loadUser(userId)`. So the real Phase-8 scope
+  is the whole `lib/presentation/` composition folder plus reworking
+  `layout.tsx` to source the active user/institution id from a session/
+  ViewModel selector instead of seed constants — the Phase-6
+  `loadUser(userId)`/`loadProfile(institutionId)` API shape currently forces a
+  component to supply the id explicitly.
+
 **Build/tooling minors (accept-as-debt, non-blocking):**
 
 - `package.json` `engines.node` is `>=22`, looser than the jsdom 29 floor of

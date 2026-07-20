@@ -14,8 +14,8 @@ export interface DashboardViewModelDeps {
   readonly notifications: NotificationStore;
 }
 
-/** A wide page size so the total reflects the whole roster. Real production
- * summaries (a dedicated count query) arrive with the sync/reporting phase. */
+/** We only read PagedResult.total (independent of limit); a real count/summary
+ * query replaces this in the reporting phase. */
 const COUNT_PAGE: Readonly<{ limit: number; offset: number }> = { limit: 1000, offset: 0 };
 
 const PLACEHOLDER_STATS: readonly Omit<DashboardStat, 'placeholder'>[] = [

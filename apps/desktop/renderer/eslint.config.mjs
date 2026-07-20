@@ -48,3 +48,31 @@ export const rendererCompositionRelaxation = {
     ],
   },
 };
+
+// no-restricted-imports cannot catch a global member access like
+// `window.nemis`, so components could bypass the bridge boundary entirely by
+// reaching for the preload global directly. This rule bans that syntax
+// pattern outright; only renderer/services bridge modules (relaxed below) may
+// touch window.nemis.
+export const rendererGlobalGuard = {
+  files: ['apps/desktop/renderer/**/*.{ts,tsx}'],
+  rules: {
+    'no-restricted-syntax': [
+      'error',
+      {
+        selector: "MemberExpression[object.name='window'][property.name='nemis']",
+        message: 'Renderer components must not access window.nemis directly; use a renderer/services bridge module.',
+      },
+    ],
+  },
+};
+
+// services/ is the bridge boundary itself, so it is the one place allowed to
+// touch window.nemis directly. This must be registered after
+// rendererGlobalGuard so its 'off' wins for these files.
+export const rendererServicesRelaxation = {
+  files: ['apps/desktop/renderer/services/**/*.{ts,tsx}'],
+  rules: {
+    'no-restricted-syntax': 'off',
+  },
+};

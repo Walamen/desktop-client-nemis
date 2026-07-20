@@ -12,7 +12,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@radix-ui/react-dialog": "^1.1.15",
     "framer-motion": "^12.38.0",
     "sweetalert2": "^11.14.5"
   },
