@@ -30,4 +30,7 @@ export class InMemoryStudentRepository implements IStudentRepository {
   findByClassId(_classId: string): Student[] {
     return [];
   }
+  countAll(): number {
+    return this.store.size;
+  }
 }

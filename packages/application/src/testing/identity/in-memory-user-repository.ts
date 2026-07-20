@@ -6,4 +6,8 @@ export class InMemoryUserRepository implements IUserRepository {
   findById(id: string): User | null {
     return this.store.get(id) ?? null;
   }
+  findFirst(): User | null {
+    for (const user of this.store.values()) return user;
+    return null;
+  }
 }

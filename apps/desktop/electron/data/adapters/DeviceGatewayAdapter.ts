@@ -21,4 +21,17 @@ export class DeviceGatewayAdapter implements IDeviceGateway {
       updatedAt: device.updatedAt,
     };
   }
+  getCurrent(): DeviceOutput | null {
+    const [device] = this.devices.findAll();
+    if (!device) return null;
+    return {
+      id: device.id,
+      deviceName: device.deviceName,
+      platform: device.platform,
+      osVersion: device.osVersion,
+      appVersion: device.appVersion,
+      createdAt: device.createdAt,
+      updatedAt: device.updatedAt,
+    };
+  }
 }

@@ -12,6 +12,7 @@ import { InMemoryStudentRepository } from '../testing/students/in-memory-student
 import { InMemoryGuardianRepository } from '../testing/students/in-memory-guardian-repository';
 import { InMemoryEnrollmentRepository } from '../testing/academics/in-memory-enrollment-repository';
 import { InMemoryClassRepository } from '../testing/academics/in-memory-class-repository';
+import { InMemoryAcademicYearRepository } from '../testing/academics/in-memory-academic-year-repository';
 import { InMemoryAttendanceRepository } from '../testing/attendance/in-memory-attendance-repository';
 import { InMemoryAssessmentRepository } from '../testing/assessments/in-memory-assessment-repository';
 import { InMemoryGradeRepository } from '../testing/assessments/in-memory-grade-repository';
@@ -27,6 +28,7 @@ function buildLayer() {
     guardians: new InMemoryGuardianRepository(),
     enrollments: new InMemoryEnrollmentRepository(),
     classes: new InMemoryClassRepository(),
+    academicYears: new InMemoryAcademicYearRepository(),
     attendance: new InMemoryAttendanceRepository(),
     assessments: new InMemoryAssessmentRepository(),
     grades: new InMemoryGradeRepository(),

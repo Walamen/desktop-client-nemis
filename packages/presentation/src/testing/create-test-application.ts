@@ -1,6 +1,7 @@
 import {
   CollectingEventPublisher,
   FixedClock,
+  InMemoryAcademicYearRepository,
   InMemoryAssessmentRepository,
   InMemoryAttendanceRepository,
   InMemoryClassRepository,
@@ -26,6 +27,7 @@ export interface TestPorts {
   guardians: InMemoryGuardianRepository;
   enrollments: InMemoryEnrollmentRepository;
   classes: InMemoryClassRepository;
+  academicYears: InMemoryAcademicYearRepository;
   attendance: InMemoryAttendanceRepository;
   assessments: InMemoryAssessmentRepository;
   grades: InMemoryGradeRepository;
@@ -50,6 +52,7 @@ export function createTestApplication(): { app: ApplicationLayer; ports: TestPor
     guardians: new InMemoryGuardianRepository(),
     enrollments: new InMemoryEnrollmentRepository(),
     classes: new InMemoryClassRepository(),
+    academicYears: new InMemoryAcademicYearRepository(),
     attendance: new InMemoryAttendanceRepository(),
     assessments: new InMemoryAssessmentRepository(),
     grades: new InMemoryGradeRepository(),

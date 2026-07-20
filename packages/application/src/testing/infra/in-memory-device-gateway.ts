@@ -11,4 +11,7 @@ export class InMemoryDeviceGateway implements IDeviceGateway {
     this.registered.push(device);
     return device;
   }
+  getCurrent(): DeviceOutput | null {
+    return this.registered[this.registered.length - 1] ?? null;
+  }
 }

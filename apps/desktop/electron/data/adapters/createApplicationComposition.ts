@@ -45,6 +45,7 @@ export function createApplicationComposition(
     guardians: new Proxy({} as never, { get: () => () => notBuilt('Guardian') }),
     enrollments: new Proxy({} as never, { get: () => () => notBuilt('Enrollment') }),
     classes: new Proxy({} as never, { get: () => () => notBuilt('Class') }),
+    academicYears: new Proxy({} as never, { get: () => () => notBuilt('AcademicYear') }),
     attendance: new Proxy({} as never, { get: () => () => notBuilt('Attendance') }),
     assessments: new Proxy({} as never, { get: () => () => notBuilt('Assessment') }),
     grades: new Proxy({} as never, { get: () => () => notBuilt('Grade') }),

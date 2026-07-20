@@ -10,4 +10,6 @@ export interface IStudentRepository {
   existsByAdmissionNumber(institutionId: string, admissionNumber: string): boolean;
   findPage(request: PageRequest): { items: Student[]; total: number };
   findByClassId(classId: string): Student[];
+  /** Real COUNT(*) — total students in this installation. */
+  countAll(): number;
 }

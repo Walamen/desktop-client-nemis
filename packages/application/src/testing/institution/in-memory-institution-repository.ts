@@ -6,4 +6,8 @@ export class InMemoryInstitutionRepository implements IInstitutionRepository {
   findById(id: string): Institution | null {
     return this.store.get(id) ?? null;
   }
+  findFirst(): Institution | null {
+    for (const institution of this.store.values()) return institution;
+    return null;
+  }
 }

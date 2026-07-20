@@ -9,4 +9,7 @@ export class InMemoryClassRepository implements IClassRepository {
   exists(id: string): boolean {
     return this.store.has(id);
   }
+  countAll(): number {
+    return this.store.size;
+  }
 }

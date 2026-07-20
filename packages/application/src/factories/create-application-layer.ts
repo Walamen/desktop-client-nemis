@@ -2,6 +2,7 @@ import type { IStudentRepository } from '../interfaces/students/student-reposito
 import type { IGuardianRepository } from '../interfaces/students/guardian-repository';
 import type { IEnrollmentRepository } from '../interfaces/academics/enrollment-repository';
 import type { IClassRepository } from '../interfaces/academics/class-repository';
+import type { IAcademicYearRepository } from '../interfaces/academics/academic-year-repository';
 import type { IAttendanceRepository } from '../interfaces/attendance/attendance-repository';
 import type { IAssessmentRepository } from '../interfaces/assessments/assessment-repository';
 import type { IGradeRepository } from '../interfaces/assessments/grade-repository';
@@ -54,6 +55,7 @@ export interface ApplicationPorts {
   guardians: IGuardianRepository;
   enrollments: IEnrollmentRepository;
   classes: IClassRepository;
+  academicYears: IAcademicYearRepository;
   attendance: IAttendanceRepository;
   assessments: IAssessmentRepository;
   grades: IGradeRepository;
