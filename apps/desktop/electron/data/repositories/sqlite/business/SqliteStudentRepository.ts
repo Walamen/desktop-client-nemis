@@ -134,9 +134,9 @@ export class SqliteStudentRepository implements IStudentRepository {
     });
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- IStudentRepository requires the param; no class-student link table exists this phase.
-  findByClassId(_classId: string): Student[] {
-    // No class↔student link table exists this phase; enrollment arrives later.
+  // IStudentRepository declares findByClassId(classId); TS lets the impl omit
+  // the unused param. No class↔student link table exists this phase.
+  findByClassId(): Student[] {
     return [];
   }
 
