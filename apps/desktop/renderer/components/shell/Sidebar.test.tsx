@@ -1,0 +1,31 @@
+import { cleanup, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('next/navigation', () => ({ usePathname: () => '/government/school-admin' }));
+vi.mock('../../lib/presentation/hooks', () => ({
+  useSettingsViewModel: () => ({ store: { getState: () => ({ profile: { status: 'idle' } }) }, loadProfile: vi.fn() }),
+}));
+
+import { Sidebar } from './Sidebar';
+
+// This repo's vitest config does not set `test.globals: true`, so
+// @testing-library/react's auto-cleanup (which only registers when it finds
+// a global `afterEach`) never fires. Without this, the first test's render
+// leaks into the second and duplicate-text queries fail.
+afterEach(cleanup);
+
+describe('Sidebar', () => {
+  it('renders every nav group and item with correct hrefs', () => {
+    render(<Sidebar institutionName="Monrovia Central School" />);
+    expect(screen.getByText('Overview')).toBeInTheDocument();
+    expect(screen.getByText('Students').closest('a')).toHaveAttribute('href', '/government/school-admin/students');
+    expect(screen.getByText('Attendence Management')).toBeInTheDocument();
+    expect(screen.getByText('School Settings')).toBeInTheDocument();
+    expect(screen.getByText('Monrovia Central School')).toBeInTheDocument();
+  });
+
+  it('marks the active route', () => {
+    render(<Sidebar institutionName="X" />);
+    expect(screen.getByText('Overview').closest('a')).toHaveClass('bg-slate-800');
+  });
+});
