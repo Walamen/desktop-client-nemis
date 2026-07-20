@@ -68,6 +68,7 @@ export * from './view-models/device/device-view-model';
 export * from './view-models/current-user/current-user-views';
 export * from './view-models/current-user/current-user-view-model';
 export * from './view-models/dashboard/dashboard-view-model';
+export * from './view-models/dashboard/dashboard-views';
 export * from './view-models/teachers/teachers-view-model';
 export * from './view-models/sync/sync-view-model';
 export * from './factories/create-presentation-layer';

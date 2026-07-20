@@ -191,3 +191,70 @@ label, badge: BadgeToken }` with `BadgeToken` a semantic name (`'success' |
   slice exists, ship a typed stub whose methods throw
   `NotImplementedPresentationError` (see `DashboardViewModel`,
   `TeachersViewModel`, `SyncViewModel`).
+
+## Adding a desktop page (`@nemis-desktop/renderer`, Phase 7)
+
+Full architecture writeup: `docs/desktop-shell.md`. Every School Admin
+destination that isn't yet migrated renders the shared `ComingSoon` component;
+migrating one means replacing that placeholder. Follow this recipe:
+
+1. **Route.** The page already exists as a route — every School Admin
+   destination is scaffolded under
+   `apps/desktop/renderer/app/government/school-admin/<path>/page.tsx`
+   rendering `<ComingSoon title={resolvePageTitle('<path>').title} />`
+   (`components/shell/page-titles.ts`). Replace that file's contents; do not
+   change the route path.
+2. **Mark the file `'use client'`.** Any page reading a ViewModel needs hooks
+   (`useEffect`, `useState` via the store subscription), so it is a client
+   component, same as the Dashboard page
+   (`apps/desktop/renderer/app/government/school-admin/page.tsx`).
+3. **Bind to the ViewModel.** Get the typed accessor from
+   `renderer/lib/presentation/hooks.ts` (add one following the existing
+   pattern — `usePresentation().viewModels.<x>` — if the screen is new), then
+   read its store through the renderer's one binding hook:
+
+   ```tsx
+   'use client';
+   import { useEffect } from 'react';
+   import { useStudentsViewModel } from '@/lib/presentation/hooks';
+   import { useViewModel } from '@/hooks/use-view-model';
+
+   export default function StudentsPage() {
+     const vm = useStudentsViewModel();
+     useEffect(() => {
+       void vm.loadStudents();
+     }, [vm]);
+     const students = useViewModel(vm.store, (s) => s.students);
+     // render AsyncState below
+   }
+   ```
+
+4. **Render every `AsyncState` branch.** ViewModel async slices are always
+   `idle | loading | refreshing | success | empty | error`
+   (`@nemis-desktop/presentation`'s `core/async-state.ts`) — render all of
+   them, never just the success path:
+   - `idle` / `loading` → `Skeleton` (`@nemis-desktop/ui`), matching the
+     Dashboard's 6-tile skeleton grid.
+   - `error` → `ErrorState` (`@nemis-desktop/ui`) with `message={state.error.userMessage}`
+     and an `onRetry` that re-invokes the load.
+   - `empty` → `EmptyState` (`@nemis-desktop/ui`), same component `ComingSoon`
+     already uses.
+   - `success` (and typically `refreshing`, treated the same as `success` so a
+     background refresh doesn't blank the screen — see the Dashboard page's
+     `status === 'success' || status === 'refreshing'` branch) → render the
+     real data.
+5. **Never import `@nemis-desktop/application`, `@nemis-desktop/domain`, or
+   `electron`** from a component or page. This is ESLint-enforced, not just a
+   convention — `apps/desktop/renderer/eslint.config.mjs`'s
+   `rendererImportGuard` rejects those imports (and any `**/electron/**`,
+   `**/data/**`, `**/database/**`, `**/ipc/**` deep path) everywhere under
+   `apps/desktop/renderer/**`, with a single carve-out for
+   `renderer/lib/presentation/**` (the composition root). Pages talk only to
+   `@nemis-desktop/presentation` (via the hooks above) and `@nemis-desktop/ui`.
+6. **Wire navigation.** If the page is reachable from the sidebar (it already
+   should be — the full School Admin nav is scaffolded), confirm its entry in
+   `components/shell/sidebar-config.ts` (`SIDEBAR_NAV` / `SIDEBAR_DASHBOARD_ITEM`)
+   and its title in `components/shell/page-titles.ts` (`resolvePageTitle`'s
+   `TITLES` map) already point at the route. Add both if the page is genuinely
+   new — the sidebar link and the header/breadcrumb title are two separate
+   places and both are required for a discoverable, correctly-labeled page.

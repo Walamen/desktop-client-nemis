@@ -71,7 +71,7 @@ export function createPresentationLayer(
     }),
     device: new DeviceViewModel({ infra: app.infra, notifications, session }),
     currentUser: new CurrentUserViewModel({ identity: app.identity, session }),
-    dashboard: new DashboardViewModel(),
+    dashboard: new DashboardViewModel({ students: app.students, notifications }),
     teachers: new TeachersViewModel(),
     sync: new SyncViewModel(connectivity),
   };
