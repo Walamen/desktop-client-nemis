@@ -1,5 +1,5 @@
-import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('next/navigation', () => ({ usePathname: () => '/government/school-admin' }));
 vi.mock('../../lib/presentation/hooks', () => ({
@@ -7,12 +7,6 @@ vi.mock('../../lib/presentation/hooks', () => ({
 }));
 
 import { Sidebar } from './Sidebar';
-
-// This repo's vitest config does not set `test.globals: true`, so
-// @testing-library/react's auto-cleanup (which only registers when it finds
-// a global `afterEach`) never fires. Without this, the first test's render
-// leaks into the second and duplicate-text queries fail.
-afterEach(cleanup);
 
 describe('Sidebar', () => {
   it('renders every nav group and item with correct hrefs', () => {
