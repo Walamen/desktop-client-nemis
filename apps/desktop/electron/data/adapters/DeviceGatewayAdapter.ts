@@ -22,7 +22,13 @@ export class DeviceGatewayAdapter implements IDeviceGateway {
     };
   }
   getCurrent(): DeviceOutput | null {
-    const [device] = this.devices.findAll();
+    // One device row per install; if re-registration ever adds more, "current"
+    // is the most recently created — matching the in-memory gateway's
+    // most-recent-registration semantics.
+    const [device] = this.devices.findAll({
+      orderBy: [{ column: 'createdAt', direction: 'desc' }],
+      page: { limit: 1, offset: 0 },
+    });
     if (!device) return null;
     return {
       id: device.id,
