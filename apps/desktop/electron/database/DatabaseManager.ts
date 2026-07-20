@@ -7,6 +7,7 @@ import { newId } from './helpers/ids';
 import { nowIso } from './helpers/time';
 import { migrations } from './migrations/registry';
 import { TableNames } from './schema/tableNames';
+import { initializeLocalUser } from './seed/initializeLocalUser';
 import { initializeMetadata, type DeviceInfo } from './seed/initializeMetadata';
 import { MigrationService } from './services/MigrationService';
 import { TransactionManager } from './transaction/TransactionManager';
@@ -78,6 +79,7 @@ export class DatabaseManager {
         migrationService.currentVersion(),
       );
       this.#deviceId = seeded.deviceId;
+      const localUser = initializeLocalUser(this.#db.raw);
       this.#transactions = new TransactionManager(this.#db.raw);
 
       if (this.#db.wasEncryptedInPlace) {
@@ -89,6 +91,7 @@ export class DatabaseManager {
         schemaVersion: migrationService.currentVersion(),
         migrationsApplied: applied.length,
         deviceCreated: seeded.deviceCreated,
+        localUserCreated: localUser.userCreated,
       });
       this.#state = 'ready';
       this.#log.info('Database ready');
