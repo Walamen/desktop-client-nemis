@@ -6,14 +6,17 @@ import type {
   GetClassRosterDto,
   WithdrawEnrollmentDto,
 } from '../dto/academics/academics-dto';
+import type { AcademicYearOutput } from '../dto/academics/academic-year-dto';
 import type { EnrollStudentUseCase } from '../use-cases/academics/enroll-student';
 import type { WithdrawEnrollmentUseCase } from '../use-cases/academics/withdraw-enrollment';
 import type { GetClassRosterUseCase } from '../use-cases/academics/get-class-roster';
+import type { GetCurrentAcademicYearUseCase } from '../use-cases/academics/get-current-academic-year';
 
 export interface AcademicsApplicationServiceDeps {
   enroll: EnrollStudentUseCase;
   withdraw: WithdrawEnrollmentUseCase;
   getClassRoster: GetClassRosterUseCase;
+  getCurrentAcademicYear: GetCurrentAcademicYearUseCase;
 }
 
 export class AcademicsApplicationService {
@@ -26,5 +29,8 @@ export class AcademicsApplicationService {
   }
   getClassRoster(dto: GetClassRosterDto): Promise<ApplicationResponse<ClassRosterOutput>> {
     return this.deps.getClassRoster.execute(dto);
+  }
+  getCurrentAcademicYear(): Promise<ApplicationResponse<AcademicYearOutput | null>> {
+    return this.deps.getCurrentAcademicYear.execute({});
   }
 }

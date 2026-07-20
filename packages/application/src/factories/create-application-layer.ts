@@ -40,15 +40,22 @@ import { GetGradesByStudentUseCase } from '../use-cases/assessments/get-grades-b
 import { AssessmentsApplicationService } from '../services/assessments-application-service';
 
 import { GetUserByIdUseCase } from '../use-cases/identity/get-user-by-id';
+import { GetCurrentUserUseCase } from '../use-cases/identity/get-current-user';
 import { IdentityApplicationService } from '../services/identity-application-service';
 
 import { GetInstitutionProfileUseCase } from '../use-cases/institution/get-institution-profile';
 import { UpdateGradingConfigUseCase } from '../use-cases/institution/update-grading-config';
+import { GetCurrentSchoolUseCase } from '../use-cases/institution/get-current-school';
 import { InstitutionApplicationService } from '../services/institution-application-service';
 
 import { RegisterDeviceUseCase } from '../use-cases/infra/register-device';
 import { UpdateSettingsUseCase } from '../use-cases/infra/update-settings';
+import { GetDeviceInformationUseCase } from '../use-cases/infra/get-device-information';
 import { InfraApplicationService } from '../services/infra-application-service';
+
+import { GetCurrentAcademicYearUseCase } from '../use-cases/academics/get-current-academic-year';
+import { GetDashboardOverviewUseCase } from '../use-cases/reporting/get-dashboard-overview';
+import { ReportingApplicationService } from '../services/reporting-application-service';
 
 export interface ApplicationPorts {
   students: IStudentRepository;
@@ -79,6 +86,7 @@ export interface ApplicationLayer {
   identity: IdentityApplicationService;
   institution: InstitutionApplicationService;
   infra: InfraApplicationService;
+  reporting: ReportingApplicationService;
 }
 
 /** Composition root: constructs every use case from injected ports and groups
@@ -133,6 +141,7 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
       logger,
     }),
     getClassRoster: new GetClassRosterUseCase({ enrollments: ports.enrollments, logger }),
+    getCurrentAcademicYear: new GetCurrentAcademicYearUseCase({ academicYears: ports.academicYears, logger }),
   });
 
   const attendance = new AttendanceApplicationService({
@@ -173,6 +182,7 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
 
   const identity = new IdentityApplicationService({
     getUserById: new GetUserByIdUseCase({ users: ports.users, logger }),
+    getCurrentUser: new GetCurrentUserUseCase({ users: ports.users, logger }),
   });
 
   const institution = new InstitutionApplicationService({
@@ -182,6 +192,7 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
       unitOfWork,
       logger,
     }),
+    getCurrentSchool: new GetCurrentSchoolUseCase({ institutions: ports.institutions, logger }),
   });
 
   const infra = new InfraApplicationService({
@@ -197,7 +208,18 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
       events,
       logger,
     }),
+    getDeviceInfo: new GetDeviceInformationUseCase({ deviceGateway: ports.deviceGateway, logger }),
   });
 
-  return { students, academics, attendance, assessments, identity, institution, infra };
+  const reporting = new ReportingApplicationService({
+    getDashboardOverview: new GetDashboardOverviewUseCase({
+      students: ports.students,
+      classes: ports.classes,
+      attendance: ports.attendance,
+      clock,
+      logger,
+    }),
+  });
+
+  return { students, academics, attendance, assessments, identity, institution, infra, reporting };
 }
