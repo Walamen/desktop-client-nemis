@@ -7,6 +7,14 @@ export const TableNames = {
   syncQueue: 'sync_queue',
   syncErrors: 'sync_errors',
   auditLog: 'audit_log',
+  // Business tables (Phase 8). Created empty; populated by sync/import in later phases.
+  institutions: 'institutions',
+  users: 'users',
+  userOrganizations: 'user_organizations',
+  academicYears: 'academic_years',
+  classes: 'classes',
+  students: 'students',
+  attendance: 'attendance',
 } as const;
 
 export type TableName = (typeof TableNames)[keyof typeof TableNames];

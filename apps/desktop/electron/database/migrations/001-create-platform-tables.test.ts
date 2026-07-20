@@ -2,7 +2,12 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { MigrationService } from '../services/MigrationService';
 import { TableNames } from '../schema/tableNames';
 import { createTestDatabase, type TestDatabase } from '../testing/createTestDatabase';
-import { migrations } from './registry';
+import { createPlatformTables } from './001-create-platform-tables';
+import type { Migration } from './types';
+
+// This suite verifies migration 001 in isolation (its exact table/index
+// shape), so it runs only 001 — not the full (growing) registry.
+const migrations: readonly Migration[] = [createPlatformTables];
 
 describe('001-create-platform-tables', () => {
   let test: TestDatabase;

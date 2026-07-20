@@ -64,7 +64,9 @@ describe('DatabaseManager', () => {
       const history = second.connection
         .prepare(`SELECT COUNT(*) AS n FROM ${TableNames.schemaMigrations}`)
         .get() as { n: number };
-      expect(history.n).toBe(1);
+      // One history row per registered migration (currently 001 + 002);
+      // the assertion is "no duplicates on restart", not a fixed count.
+      expect(history.n).toBe(2);
     } finally {
       second.shutdown();
     }
