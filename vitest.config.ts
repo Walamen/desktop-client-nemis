@@ -6,6 +6,11 @@ export default defineConfig({
   test: {
     projects: [
       {
+        resolve: {
+          alias: {
+            '@app': path.resolve(__dirname, 'apps/desktop/electron'),
+          },
+        },
         test: {
           name: 'node',
           include: ['packages/**/src/**/*.test.ts', 'apps/desktop/electron/**/*.test.ts'],

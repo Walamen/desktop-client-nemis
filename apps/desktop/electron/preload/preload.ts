@@ -22,6 +22,21 @@ const nemisApi: NemisApi = {
   settings: {
     get: (key: string) => invoke(IpcChannels.SETTINGS_GET, key),
   },
+  dashboard: {
+    getOverview: () => invoke(IpcChannels.DASHBOARD_GET_OVERVIEW),
+  },
+  school: {
+    getSummary: () => invoke(IpcChannels.SCHOOL_GET_SUMMARY),
+  },
+  academicYear: {
+    getCurrent: () => invoke(IpcChannels.ACADEMIC_YEAR_GET_CURRENT),
+  },
+  identity: {
+    getCurrentUser: () => invoke(IpcChannels.IDENTITY_GET_CURRENT_USER),
+  },
+  device: {
+    getInfo: () => invoke(IpcChannels.DEVICE_GET_INFO),
+  },
 };
 
 contextBridge.exposeInMainWorld('nemis', nemisApi);

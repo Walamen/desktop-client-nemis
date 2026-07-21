@@ -1,16 +1,27 @@
 import { ipcMain } from 'electron';
 import type { IpcChannel, IpcContract, IpcResult } from '@nemis-desktop/types';
+import type { ApplicationLayer } from '@nemis-desktop/application';
 import { logger } from '@app/services/logger';
 import { registerSystemHandlers } from '@app/ipc/handlers/system';
 import type { DataLayer } from '@app/data/factories/createDataLayer';
 import { registerSettingsHandlers } from '@app/ipc/handlers/settings';
+import { registerDashboardHandlers } from '@app/ipc/handlers/dashboard';
+import { registerSchoolHandlers } from '@app/ipc/handlers/school';
+import { registerAcademicYearHandlers } from '@app/ipc/handlers/academicYear';
+import { registerIdentityHandlers } from '@app/ipc/handlers/identity';
+import { registerDeviceHandlers } from '@app/ipc/handlers/device';
 import { toIpcError } from './errorMapping';
 
 export type IpcValidator = (args: readonly unknown[]) => void;
 
-export function registerIpcHandlers(services: DataLayer['services']): void {
+export function registerIpcHandlers(services: DataLayer['services'], app: ApplicationLayer): void {
   registerSystemHandlers(handle);
   registerSettingsHandlers(handle, services.appSettings);
+  registerDashboardHandlers(handle, app);
+  registerSchoolHandlers(handle, app);
+  registerAcademicYearHandlers(handle, app);
+  registerIdentityHandlers(handle, app);
+  registerDeviceHandlers(handle, app);
 }
 
 /**

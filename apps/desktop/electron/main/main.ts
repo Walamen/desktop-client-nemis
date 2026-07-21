@@ -5,6 +5,7 @@ import { loadConfig } from '@app/config/env';
 import { DatabaseManager } from '@app/database/DatabaseManager';
 import { DatabaseError } from '@app/database/errors/errors';
 import { createDataLayer } from '@app/data/factories/createDataLayer';
+import { createApplicationComposition } from '@app/data/adapters/createApplicationComposition';
 import { registerIpcHandlers } from '@app/ipc/registrar';
 import { initLogger, logger } from '@app/services/logger';
 import { hardenWebContents } from '@app/security/hardenWindow';
@@ -82,6 +83,7 @@ function bootstrap(): void {
       });
       databaseManager.initialize();
       const dataLayer = createDataLayer(databaseManager, databaseLog);
+      const application = createApplicationComposition(dataLayer);
 
       denyPermissionRequests();
       denyPermissionChecks();
@@ -90,7 +92,7 @@ function bootstrap(): void {
         registerAppProtocolHandler();
       }
 
-      registerIpcHandlers(dataLayer.services);
+      registerIpcHandlers(dataLayer.services, application);
 
       mainWindow = createHardenedWindow();
 
