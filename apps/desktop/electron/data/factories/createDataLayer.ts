@@ -1,3 +1,11 @@
+import type {
+  IStudentRepository,
+  IInstitutionRepository,
+  IUserRepository,
+  IAcademicYearRepository,
+  IClassRepository,
+  IAttendanceRepository,
+} from '@nemis-desktop/application';
 import type { DatabaseLogger, DatabaseManager } from '../../database/DatabaseManager';
 import { translateDatabaseError } from '../errors/translateError';
 import { createRepositoryContext } from '../repositories/base/RepositoryContext';
@@ -6,6 +14,12 @@ import type { IAuditLogRepository } from '../repositories/interfaces/IAuditLogRe
 import type { IDeviceRepository } from '../repositories/interfaces/IDeviceRepository';
 import type { ISyncMetadataRepository } from '../repositories/interfaces/ISyncMetadataRepository';
 import type { ISyncQueueRepository } from '../repositories/interfaces/ISyncQueueRepository';
+import { SqliteAcademicYearRepository } from '../repositories/sqlite/business/SqliteAcademicYearRepository';
+import { SqliteAttendanceRepository } from '../repositories/sqlite/business/SqliteAttendanceRepository';
+import { SqliteClassRepository } from '../repositories/sqlite/business/SqliteClassRepository';
+import { SqliteInstitutionRepository } from '../repositories/sqlite/business/SqliteInstitutionRepository';
+import { SqliteStudentRepository } from '../repositories/sqlite/business/SqliteStudentRepository';
+import { SqliteUserRepository } from '../repositories/sqlite/business/SqliteUserRepository';
 import { SqliteAppSettingsRepository } from '../repositories/sqlite/SqliteAppSettingsRepository';
 import { SqliteAuditLogRepository } from '../repositories/sqlite/SqliteAuditLogRepository';
 import { SqliteDeviceRepository } from '../repositories/sqlite/SqliteDeviceRepository';
@@ -25,6 +39,12 @@ export interface DataLayer {
     syncMetadata: ISyncMetadataRepository;
     syncQueue: ISyncQueueRepository;
     auditLog: IAuditLogRepository;
+    students: IStudentRepository;
+    institutions: IInstitutionRepository;
+    users: IUserRepository;
+    academicYears: IAcademicYearRepository;
+    classes: IClassRepository;
+    attendance: IAttendanceRepository;
   };
   services: {
     device: DeviceService;
@@ -33,6 +53,7 @@ export interface DataLayer {
     syncQueue: SyncQueueService;
     auditLog: AuditLogService;
   };
+  transactions: TransactionRunner;
 }
 
 /**
@@ -48,6 +69,12 @@ export function createDataLayer(manager: DatabaseManager, log: DatabaseLogger): 
   const syncMetadata = new SqliteSyncMetadataRepository(context);
   const syncQueue = new SqliteSyncQueueRepository(context);
   const auditLog = new SqliteAuditLogRepository(context);
+  const students = new SqliteStudentRepository(context);
+  const institutions = new SqliteInstitutionRepository(context);
+  const users = new SqliteUserRepository(context);
+  const academicYears = new SqliteAcademicYearRepository(context);
+  const classes = new SqliteClassRepository(context);
+  const attendanceRepo = new SqliteAttendanceRepository(context);
 
   // Services see only the RepositoryError taxonomy: failures of the
   // transaction machinery itself (BEGIN/COMMIT, closed-connection errors)
@@ -73,7 +100,19 @@ export function createDataLayer(manager: DatabaseManager, log: DatabaseLogger): 
   };
 
   return {
-    repositories: { devices, appSettings, syncMetadata, syncQueue, auditLog },
+    repositories: {
+      devices,
+      appSettings,
+      syncMetadata,
+      syncQueue,
+      auditLog,
+      students,
+      institutions,
+      users,
+      academicYears,
+      classes,
+      attendance: attendanceRepo,
+    },
     services: {
       device: new DeviceService({ devices }),
       appSettings: new AppSettingsService({
@@ -85,5 +124,6 @@ export function createDataLayer(manager: DatabaseManager, log: DatabaseLogger): 
       syncQueue: new SyncQueueService({ syncQueue, transactions }),
       auditLog: new AuditLogService({ auditLog }),
     },
+    transactions,
   };
 }
