@@ -4,6 +4,8 @@ import type {
   IUserRepository,
   IAcademicYearRepository,
   IClassRepository,
+  ITermRepository,
+  ISubjectRepository,
   IAttendanceRepository,
 } from '@nemis-desktop/application';
 import type { DatabaseLogger, DatabaseManager } from '../../database/DatabaseManager';
@@ -17,6 +19,8 @@ import type { ISyncQueueRepository } from '../repositories/interfaces/ISyncQueue
 import { SqliteAcademicYearRepository } from '../repositories/sqlite/business/SqliteAcademicYearRepository';
 import { SqliteAttendanceRepository } from '../repositories/sqlite/business/SqliteAttendanceRepository';
 import { SqliteClassRepository } from '../repositories/sqlite/business/SqliteClassRepository';
+import { SqliteTermRepository } from '../repositories/sqlite/business/SqliteTermRepository';
+import { SqliteSubjectRepository } from '../repositories/sqlite/business/SqliteSubjectRepository';
 import { SqliteInstitutionRepository } from '../repositories/sqlite/business/SqliteInstitutionRepository';
 import { SqliteStudentRepository } from '../repositories/sqlite/business/SqliteStudentRepository';
 import { SqliteUserRepository } from '../repositories/sqlite/business/SqliteUserRepository';
@@ -44,6 +48,8 @@ export interface DataLayer {
     users: IUserRepository;
     academicYears: IAcademicYearRepository;
     classes: IClassRepository;
+    terms: ITermRepository;
+    subjects: ISubjectRepository;
     attendance: IAttendanceRepository;
   };
   services: {
@@ -74,6 +80,8 @@ export function createDataLayer(manager: DatabaseManager, log: DatabaseLogger): 
   const users = new SqliteUserRepository(context);
   const academicYears = new SqliteAcademicYearRepository(context);
   const classes = new SqliteClassRepository(context);
+  const terms = new SqliteTermRepository(context);
+  const subjects = new SqliteSubjectRepository(context);
   const attendanceRepo = new SqliteAttendanceRepository(context);
 
   // Services see only the RepositoryError taxonomy: failures of the
@@ -111,6 +119,8 @@ export function createDataLayer(manager: DatabaseManager, log: DatabaseLogger): 
       users,
       academicYears,
       classes,
+      terms,
+      subjects,
       attendance: attendanceRepo,
     },
     services: {

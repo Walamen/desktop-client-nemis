@@ -19,9 +19,10 @@ function notBuilt(name: string): never {
   throw new Error(`${name} repository is not built yet.`);
 }
 
-/** Wires the application layer to the real DAL. Dashboard-path business ports
- * are real SQLite adapters; the remaining ports (guardians, enrollments,
- * assessments, grades, grading configs) throw until their phase lands. */
+/** Wires the application layer to the real DAL. Dashboard-path and Academic
+ * Foundation business ports are real SQLite adapters; the remaining ports
+ * (guardians, enrollments, assessments, grades, grading configs) throw until
+ * their phase lands. */
 export function createApplicationComposition(
   dataLayer: DataLayer,
   logger: IAppLogger = new ConsoleLogger(),
@@ -39,12 +40,14 @@ export function createApplicationComposition(
     ids: new CryptoIdGenerator(),
     events: new NoopEventPublisher(),
     logger,
-    // Business — real SQLite (Phase 8 dashboard path).
+    // Business — real SQLite (Phase 8 dashboard path + Phase 9 academic foundation).
     students: dataLayer.repositories.students,
     institutions: dataLayer.repositories.institutions,
     users: dataLayer.repositories.users,
     academicYears: dataLayer.repositories.academicYears,
     classes: dataLayer.repositories.classes,
+    terms: dataLayer.repositories.terms,
+    subjects: dataLayer.repositories.subjects,
     attendance: dataLayer.repositories.attendance,
     // Not built yet — throw if used.
     guardians: new Proxy({} as never, { get: () => () => notBuilt('Guardian') }),
