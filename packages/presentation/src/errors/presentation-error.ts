@@ -4,6 +4,7 @@ export type PresentationErrorKind =
   | 'operation-failed'
   | 'loading'
   | 'network-unavailable'
+  | 'database-unavailable'
   | 'unexpected'
   | 'not-implemented';
 
@@ -59,6 +60,16 @@ export class LoadingError extends PresentationError {
 export class NetworkUnavailableError extends PresentationError {
   constructor(userMessage: string, options?: { cause?: unknown }) {
     super('network-unavailable', userMessage, options);
+  }
+}
+
+/** The local SQLite database could not be reached (locked, corrupt, or not
+ * ready). Distinct from network-unavailable: this is the on-device store, not
+ * a remote service. Produced by the IPC facade from DATABASE_UNAVAILABLE /
+ * MIGRATION_REQUIRED IPC error codes. */
+export class DatabaseUnavailableError extends PresentationError {
+  constructor(userMessage: string, options?: { cause?: unknown }) {
+    super('database-unavailable', userMessage, options);
   }
 }
 
