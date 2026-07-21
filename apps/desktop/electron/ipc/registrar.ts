@@ -8,6 +8,9 @@ import { registerSettingsHandlers } from '@app/ipc/handlers/settings';
 import { registerDashboardHandlers } from '@app/ipc/handlers/dashboard';
 import { registerSchoolHandlers } from '@app/ipc/handlers/school';
 import { registerAcademicYearHandlers } from '@app/ipc/handlers/academicYear';
+import { registerTermHandlers } from '@app/ipc/handlers/term';
+import { registerClassHandlers } from '@app/ipc/handlers/classes';
+import { registerSubjectHandlers } from '@app/ipc/handlers/subject';
 import { registerIdentityHandlers } from '@app/ipc/handlers/identity';
 import { registerDeviceHandlers } from '@app/ipc/handlers/device';
 import { toIpcError } from './errorMapping';
@@ -20,6 +23,9 @@ export function registerIpcHandlers(services: DataLayer['services'], app: Applic
   registerDashboardHandlers(handle, app);
   registerSchoolHandlers(handle, app);
   registerAcademicYearHandlers(handle, app);
+  registerTermHandlers(handle, app);
+  registerClassHandlers(handle, app);
+  registerSubjectHandlers(handle, app);
   registerIdentityHandlers(handle, app);
   registerDeviceHandlers(handle, app);
 }

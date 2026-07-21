@@ -1,4 +1,8 @@
-import type { ApplicationLayer, ApplicationResponse } from '@nemis-desktop/application';
+import type {
+  AcademicsApplicationService,
+  ApplicationLayer,
+  ApplicationResponse,
+} from '@nemis-desktop/application';
 import {
   DatabaseUnavailableError,
   NetworkUnavailableError,
@@ -71,8 +75,122 @@ export function createIpcApplicationLayer(): ApplicationLayer {
     identity: group('identity', {
       getCurrentUser: () => query(() => nemisBridge.getCurrentUser()),
     }),
-    academics: group('academics', {
+    academics: group<AcademicsApplicationService>('academics', {
       getCurrentAcademicYear: () => query(() => nemisBridge.getCurrentAcademicYear()),
+      listAcademicYears: () => query(() => nemisBridge.listAcademicYears()),
+      createAcademicYear: (dto) =>
+        query(() =>
+          nemisBridge.createAcademicYear({
+            code: dto.code,
+            startDate: dto.startDate,
+            endDate: dto.endDate,
+            makeCurrent: dto.makeCurrent,
+          }),
+        ),
+      updateAcademicYear: (dto) =>
+        query(() =>
+          nemisBridge.updateAcademicYear({
+            id: dto.id,
+            code: dto.code,
+            startDate: dto.startDate,
+            endDate: dto.endDate,
+          }),
+        ),
+      setCurrentAcademicYear: (dto) => query(() => nemisBridge.setCurrentAcademicYear(dto.id)),
+      setAcademicYearStatus: (dto) =>
+        query(() => nemisBridge.setAcademicYearStatus({ id: dto.id, status: dto.status })),
+      listTerms: (dto) => query(() => nemisBridge.listTerms(dto.academicYearId)),
+      getCurrentTerm: () => query(() => nemisBridge.getCurrentTerm()),
+      createTerm: (dto) =>
+        query(() =>
+          nemisBridge.createTerm({
+            academicYearId: dto.academicYearId,
+            name: dto.name,
+            startDate: dto.startDate,
+            endDate: dto.endDate,
+            makeCurrent: dto.makeCurrent,
+          }),
+        ),
+      updateTerm: (dto) =>
+        query(() =>
+          nemisBridge.updateTerm({
+            id: dto.id,
+            name: dto.name,
+            startDate: dto.startDate,
+            endDate: dto.endDate,
+          }),
+        ),
+      setCurrentTerm: (dto) => query(() => nemisBridge.setCurrentTerm(dto.id)),
+      deleteTerm: (dto) => query(() => nemisBridge.deleteTerm(dto.id)),
+      listClasses: (dto) =>
+        query(() =>
+          nemisBridge.listClasses({
+            limit: dto.limit,
+            offset: dto.offset,
+            keyword: dto.keyword,
+            academicYearId: dto.academicYearId,
+            gradeLevel: dto.gradeLevel,
+            includeInactive: dto.includeInactive,
+            sort: dto.sort,
+          }),
+        ),
+      createClass: (dto) =>
+        query(() =>
+          nemisBridge.createClass({
+            academicYearId: dto.academicYearId,
+            name: dto.name,
+            section: dto.section,
+            gradeLevel: dto.gradeLevel,
+            capacity: dto.capacity,
+          }),
+        ),
+      updateClass: (dto) =>
+        query(() =>
+          nemisBridge.updateClass({
+            id: dto.id,
+            name: dto.name,
+            section: dto.section,
+            gradeLevel: dto.gradeLevel,
+            capacity: dto.capacity,
+          }),
+        ),
+      setClassActive: (dto) =>
+        query(() => nemisBridge.setClassActive({ id: dto.id, isActive: dto.isActive })),
+      getGradeLevelCounts: () => query(() => nemisBridge.getGradeLevelCounts()),
+      listSubjects: (dto) =>
+        query(() =>
+          nemisBridge.listSubjects({
+            limit: dto.limit,
+            offset: dto.offset,
+            keyword: dto.keyword,
+            includeInactive: dto.includeInactive,
+            sort: dto.sort,
+          }),
+        ),
+      createSubject: (dto) =>
+        query(() =>
+          nemisBridge.createSubject({ name: dto.name, code: dto.code, description: dto.description }),
+        ),
+      updateSubject: (dto) =>
+        query(() =>
+          nemisBridge.updateSubject({
+            id: dto.id,
+            name: dto.name,
+            code: dto.code,
+            description: dto.description,
+          }),
+        ),
+      setSubjectActive: (dto) =>
+        query(() => nemisBridge.setSubjectActive({ id: dto.id, isActive: dto.isActive })),
+      listClassSubjects: (dto) => query(() => nemisBridge.listClassSubjects(dto.classId)),
+      assignSubjectToClass: (dto) =>
+        query(() =>
+          nemisBridge.assignSubjectToClass({ classId: dto.classId, subjectId: dto.subjectId }),
+        ),
+      unassignSubjectFromClass: (dto) =>
+        query(() =>
+          nemisBridge.unassignSubjectFromClass({ classId: dto.classId, subjectId: dto.subjectId }),
+        ),
     }),
     infra: group('infra', {
       getDeviceInfo: () => query(() => nemisBridge.getDeviceInfo()),

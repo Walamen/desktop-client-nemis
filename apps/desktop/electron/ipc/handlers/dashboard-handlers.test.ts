@@ -23,7 +23,7 @@ function makeHarness() {
 }
 
 const app = {
-  reporting: { getDashboardOverview: async () => ({ data: { totalStudents: 3, totalClasses: 2, attendanceToday: { present: 1, total: 3 } } }) },
+  reporting: { getDashboardOverview: async () => ({ data: { totalStudents: 3, totalClasses: 2, totalSubjects: 1, attendanceToday: { present: 1, total: 3 } } }) },
   institution: { getCurrentSchool: async () => ({ data: null }) },
   academics: { getCurrentAcademicYear: async () => ({ data: null }) },
   identity: { getCurrentUser: async () => ({ data: { id: 'u1', fullName: 'Local Admin', email: 'a@b', isActive: true, roles: [] } }) },

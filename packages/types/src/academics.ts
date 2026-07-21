@@ -153,7 +153,7 @@ export interface GradeLevelCountResult {
 }
 
 export interface PagedListResult<T> {
-  items: T[];
+  items: readonly T[];
   total: number;
   limit: number;
   offset: number;
