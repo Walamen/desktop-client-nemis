@@ -12,6 +12,7 @@ import { UpdateGradingConfigUiCommand } from '../../commands/settings/update-gra
 import { UpdateSettingUiCommand } from '../../commands/settings/update-setting-ui-command';
 import { toInstitutionProfileView } from '../../mappers/institution/institution-view-mapper';
 import { GetInstitutionProfileUiQuery } from '../../queries/settings/get-institution-profile-ui-query';
+import { GetCurrentSchoolUiQuery } from '../../queries/settings/get-current-school-ui-query';
 import type { NotificationStore } from '../../stores/notification-store';
 import type { SettingView } from '../device/device-views';
 import type { GradingConfigView, InstitutionProfileView } from './settings-views';
@@ -36,11 +37,13 @@ export class SettingsViewModel {
   }));
 
   private readonly profileQuery: GetInstitutionProfileUiQuery;
+  private readonly currentSchoolQuery: GetCurrentSchoolUiQuery;
   private readonly gradingConfigCommand: UpdateGradingConfigUiCommand;
   private readonly settingCommand: UpdateSettingUiCommand;
 
   constructor(deps: SettingsViewModelDeps) {
     this.profileQuery = new GetInstitutionProfileUiQuery(deps.institution);
+    this.currentSchoolQuery = new GetCurrentSchoolUiQuery(deps.institution);
     this.gradingConfigCommand = new UpdateGradingConfigUiCommand({
       institution: deps.institution,
       notifications: deps.notifications,
@@ -58,6 +61,17 @@ export class SettingsViewModel {
         set: (profile) => this.store.setState({ profile }),
       },
       fetch: () => this.profileQuery.execute(institutionId),
+      map: toInstitutionProfileView,
+    });
+  }
+
+  async loadCurrentSchool(): Promise<void> {
+    await trackQuery({
+      access: {
+        get: () => this.store.getState().profile,
+        set: (profile) => this.store.setState({ profile }),
+      },
+      fetch: () => this.currentSchoolQuery.execute(),
       map: toInstitutionProfileView,
     });
   }

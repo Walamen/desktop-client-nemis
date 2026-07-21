@@ -1,9 +1,11 @@
 import type { InfraApplicationService, RegisterDeviceDto } from '@nemis-desktop/application';
 import { createStore } from 'zustand/vanilla';
 import { idleState, type AsyncState } from '../../core/async-state';
-import type { CommandOutcome } from '../../core/async-runner';
+import { trackQuery, type CommandOutcome } from '../../core/async-runner';
 import type { SubmissionStatus } from '../../core/submission';
 import { RegisterDeviceUiCommand } from '../../commands/device/register-device-ui-command';
+import { toDeviceView } from '../../mappers/infra/infra-view-mapper';
+import { GetDeviceInfoUiQuery } from '../../queries/device/get-device-info-ui-query';
 import type { NotificationStore } from '../../stores/notification-store';
 import type { SessionStore } from '../../stores/session-store';
 import type { DeviceView } from './device-views';
@@ -26,12 +28,14 @@ export class DeviceViewModel {
   }));
 
   private readonly registerCommand: RegisterDeviceUiCommand;
+  private readonly deviceInfoQuery: GetDeviceInfoUiQuery;
 
   constructor(private readonly deps: DeviceViewModelDeps) {
     this.registerCommand = new RegisterDeviceUiCommand({
       infra: deps.infra,
       notifications: deps.notifications,
     });
+    this.deviceInfoQuery = new GetDeviceInfoUiQuery(deps.infra);
   }
 
   async registerDevice(dto: RegisterDeviceDto): Promise<CommandOutcome<DeviceView>> {
@@ -43,5 +47,16 @@ export class DeviceViewModel {
       this.deps.session.setCurrentDevice(outcome.data.id);
     }
     return outcome;
+  }
+
+  async loadDeviceInfo(): Promise<void> {
+    await trackQuery({
+      access: {
+        get: () => this.store.getState().device,
+        set: (device) => this.store.setState({ device }),
+      },
+      fetch: () => this.deviceInfoQuery.execute(),
+      map: toDeviceView,
+    });
   }
 }
