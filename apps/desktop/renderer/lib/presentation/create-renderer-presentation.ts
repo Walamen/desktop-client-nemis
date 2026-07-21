@@ -1,12 +1,9 @@
 import { createPresentationLayer, type PresentationLayer } from '@nemis-desktop/presentation';
-import { createTestApplication } from '@nemis-desktop/presentation/testing';
-import { seedDemoData } from './seed-demo-data';
+import { createIpcApplicationLayer } from './create-ipc-application-layer';
 
-/** THE Phase-8 SEAM: today this builds the in-memory fake application; the
- * sync/IPC phase replaces the body with an ApplicationLayer-shaped proxy over
- * window.nemis. Nothing else in the renderer changes. */
-export async function createRendererPresentation(): Promise<PresentationLayer> {
-  const { app, ports } = createTestApplication();
-  await seedDemoData(app, ports);
-  return createPresentationLayer(app);
+/** THE Phase-8 SEAM (now live): the renderer's presentation layer is built over
+ * an ApplicationLayer-shaped IPC facade to the main process — no in-memory
+ * fakes, no seeded demo data. Every screen reads real local SQLite data. */
+export function createRendererPresentation(): PresentationLayer {
+  return createPresentationLayer(createIpcApplicationLayer());
 }
