@@ -1,25 +1,20 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
-import type { PresentationLayer } from '@nemis-desktop/presentation';
+import { useEffect, useMemo, type ReactNode } from 'react';
+import { useStore } from 'zustand';
+import { Spinner } from '@nemis-desktop/ui';
 import { PresentationProvider } from '../lib/presentation/presentation-provider';
 import { createRendererPresentation } from '../lib/presentation/create-renderer-presentation';
-import { Spinner } from '@nemis-desktop/ui';
 
 export function RootProviders({ children }: { children: ReactNode }) {
-  const [layer, setLayer] = useState<PresentationLayer | null>(null);
+  const layer = useMemo(() => createRendererPresentation(), []);
+  const phase = useStore(layer.stores.bootstrap.store, (s) => s.phase);
 
   useEffect(() => {
-    let active = true;
-    void createRendererPresentation().then((l) => {
-      if (active) setLayer(l);
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
+    void layer.bootstrap.run();
+  }, [layer]);
 
-  if (!layer) {
+  if (phase === 'idle' || phase === 'loading') {
     return (
       <div className="flex items-center justify-center h-screen">
         <Spinner size="lg" />

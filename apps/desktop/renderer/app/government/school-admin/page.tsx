@@ -1,11 +1,17 @@
 'use client';
 
 import { useEffect } from 'react';
-import { Users, UserCog2, Layers3, UserPlus, CalendarCheck, BookOpen, GraduationCap, Bell, Settings, Calendar } from 'lucide-react';
+import {
+  Users, UserCog2, Layers3, UserPlus, CalendarCheck, BookOpen, GraduationCap, Bell, Settings, Calendar,
+} from 'lucide-react';
 import { Skeleton, ErrorState } from '@nemis-desktop/ui';
-import { useDashboardViewModel, useCurrentUserViewModel } from '@/lib/presentation/hooks';
+import {
+  useDashboardViewModel, useCurrentUserViewModel, useSettingsViewModel, useAcademicYearViewModel,
+} from '@/lib/presentation/hooks';
 import { useViewModel } from '@/hooks/use-view-model';
 import { StatCard } from '@/components/dashboard/StatCard';
+import { InfoTile } from '@/components/dashboard/InfoTile';
+import { DatabaseUnavailablePanel } from '@/components/dashboard/DatabaseUnavailablePanel';
 import { DashboardGreeting } from '@/components/dashboard/DashboardGreeting';
 import QuickActionCard from '@/components/dashboard/QuickActionCard';
 import RecentActivityFeed from '@/components/dashboard/RecentActivityFeed';
@@ -13,23 +19,26 @@ import TeachersListSection from '@/components/dashboard/TeachersListSection';
 
 const STAT_ICONS: Record<string, typeof Users> = {
   'total-students': Users,
-  'total-teachers': UserCog2,
   'total-classes': Layers3,
-  'avg-class-size': Users,
-  'male-students': Users,
-  'female-students': Users,
 };
 
 export default function DashboardPage() {
   const dashboard = useDashboardViewModel();
   const currentUser = useCurrentUserViewModel();
-
-  useEffect(() => {
-    void dashboard.loadSummary();
-  }, [dashboard]);
+  const settings = useSettingsViewModel();
+  const academicYear = useAcademicYearViewModel();
 
   const summary = useViewModel(dashboard.store, (s) => s.summary);
   const user = useViewModel(currentUser.store, (s) => s.user);
+  const profile = useViewModel(settings.store, (s) => s.profile);
+  const year = useViewModel(academicYear.store, (s) => s.current);
+
+  // Bootstrap loads this on startup; only self-load if the store is still idle
+  // (e.g. navigated here before bootstrap ran).
+  useEffect(() => {
+    if (summary.status === 'idle') void dashboard.loadOverview();
+  }, [dashboard, summary.status]);
+
   const name = user.status === 'success' ? user.data.fullName : 'Principal';
 
   return (
@@ -37,18 +46,26 @@ export default function DashboardPage() {
       <div className="px-6 py-6 space-y-5">
         <DashboardGreeting name={name} />
 
-        {summary.status === 'error' ? (
-          <ErrorState message={summary.error.userMessage} onRetry={() => void dashboard.loadSummary()} />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <InfoTile label="School" value={profile.status === 'success' ? profile.data.name : null} emptyText="School profile not set up yet" />
+          <InfoTile label="Academic Year" value={year.status === 'success' ? year.data.code : null} emptyText="No academic year configured" />
+        </div>
+
+        {summary.status === 'error' && summary.error.kind === 'database-unavailable' ? (
+          <DatabaseUnavailablePanel onRetry={() => void dashboard.loadOverview()} />
+        ) : summary.status === 'error' ? (
+          <ErrorState message={summary.error.userMessage} onRetry={() => void dashboard.loadOverview()} />
         ) : summary.status === 'success' || summary.status === 'refreshing' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
             {summary.data.stats.map((stat) => (
               <StatCard key={stat.key} stat={stat} icon={STAT_ICONS[stat.key] ?? Users} />
             ))}
+            <InfoTile label="Attendance Today" value={`${summary.data.attendanceToday.present} / ${summary.data.attendanceToday.total}`} emptyText="No attendance recorded" />
+            <InfoTile label="Total Teachers" value={null} emptyText="Staff records not tracked yet" />
           </div>
         ) : (
-          // idle | loading | empty — no summary data to render yet.
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-            {Array.from({ length: 6 }).map((_, i) => (
+            {Array.from({ length: 4 }).map((_, i) => (
               <Skeleton key={i} className="h-28 w-full rounded-card" />
             ))}
           </div>

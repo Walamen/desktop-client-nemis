@@ -1,24 +1,17 @@
 'use client';
 
-import { type ReactNode, useEffect } from 'react';
+import { type ReactNode } from 'react';
 import { Sidebar } from '@/components/shell/Sidebar';
 import { Header } from '@/components/shell/Header';
 import { StatusBar } from '@/components/shell/StatusBar';
 import { RouteGuard } from '@/components/shell/RouteGuard';
 import { ToastHost } from '@/components/shell/ToastHost';
-import { useSettingsViewModel, useCurrentUserViewModel } from '@/lib/presentation/hooks';
+import { useSettingsViewModel } from '@/lib/presentation/hooks';
 import { useViewModel } from '@/hooks/use-view-model';
-import { DEMO_INSTITUTION_ID, DEMO_USER_ID } from '@/lib/presentation/seed-demo-data';
 
 export default function SchoolAdminLayout({ children }: { children: ReactNode }) {
+  // The school profile is loaded once by the BootstrapService; here we only read it.
   const settings = useSettingsViewModel();
-  const currentUser = useCurrentUserViewModel();
-
-  useEffect(() => {
-    void settings.loadProfile(DEMO_INSTITUTION_ID);
-    void currentUser.loadUser(DEMO_USER_ID);
-  }, [settings, currentUser]);
-
   const profile = useViewModel(settings.store, (s) => s.profile);
   const institutionName = profile.status === 'success' ? profile.data.name : 'NEMIS School';
 

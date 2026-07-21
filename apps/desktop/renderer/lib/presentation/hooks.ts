@@ -9,3 +9,5 @@ export const useCurrentUserViewModel = () => usePresentation().viewModels.curren
 export const useSyncViewModel = () => usePresentation().viewModels.sync;
 export const useConnectivityStore = () => usePresentation().stores.connectivity;
 export const useNotificationStore = () => usePresentation().stores.notifications;
+export const useAcademicYearViewModel = () => usePresentation().viewModels.academicYear;
+export const useBootstrapStore = () => usePresentation().stores.bootstrap;
