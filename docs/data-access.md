@@ -76,19 +76,19 @@ table rewrites.
 
 Six real SQLite repository adapters wired in `createDataLayer.ts`:
 
-- `SqliteStudentRepository` (IStudentRepository) — `countAll()`, `findById()`, `save()`, `deactivate()`, `existsByAdmissionNumber()`.
-- `SqliteClassRepository` (IClassRepository) — `countAll()`, `findById()`, `save()`.
-- `SqliteInstitutionRepository` (IInstitutionRepository) — `findFirst()`, `findById()`, `save()`.
-- `SqliteUserRepository` (IUserRepository) — `findFirst()`, `findById()`, `save()`.
-- `SqliteAcademicYearRepository` (IAcademicYearRepository) — `findCurrent()`, `findById()`, `save()`.
-- `SqliteAttendanceRepository` (IAttendanceRepository) — `countByDate()`, `findByClassAndDate()`, `record()`.
+- `SqliteStudentRepository` (IStudentRepository) — `findById`, `save`, `exists`, `existsByAdmissionNumber`, `findPage`, `findByClassId` (returns []), `countAll`.
+- `SqliteClassRepository` (IClassRepository) — `findById`, `exists`, `countAll` (read-only).
+- `SqliteInstitutionRepository` (IInstitutionRepository) — `findById`, `findFirst` (read-only, no save).
+- `SqliteUserRepository` (IUserRepository) — `findById`, `findFirst` (read-only).
+- `SqliteAcademicYearRepository` (IAcademicYearRepository) — `findCurrent` ONLY.
+- `SqliteAttendanceRepository` (IAttendanceRepository) — `save` (upsert), `findByClassAndDate`, `countByDate`.
 
-Each extends `BaseRepository<Entity, Row>` and implements a pure interface (no
+Each composes a `StatementCache` over `context.connection` directly and implements a pure interface (no
 implementation details leak to callers). Repositories are created once in
 `createDataLayer` and passed to the `ApplicationLayer` via `createApplicationComposition`.
 
-A helper function `guarded()` wraps repository creation, validating the repository
-interface implementation at type-check time (unused at runtime, zero cost).
+A helper function `guarded()` is a RUNTIME wrapper that catches driver errors from every SQL statement
+and translates them via `wrapSqliteError` into the `DatabaseError` taxonomy (see `.../business/support.ts`).
 
 ## DataLayer composition
 
@@ -129,17 +129,18 @@ service wrappers (services live in the application layer).
 ## Local user seeding
 
 `initializeLocalUser(db)` runs on every app startup. If no rows exist in the
-`users` table, it inserts a synthetic "Local User" row with:
+`users` table, it inserts a synthetic row with:
 
 - `id`: UUID generated fresh
 - `firstName`: "Local"
-- `lastName`: "User"
-- `email`: "local@nemis.local"
+- `lastName`: "Admin"
+- `email`: "admin@local.nemis"
+- `role`: INSTITUTION_ADMIN
 - `isActive`: 1
 
 If rows exist, it returns the first found. This guarantees the identity queries
 (GetCurrentUserUseCase) never throw "no user found" on a fresh install; the
-dashboard renders with "Local User" greeting and the app stays functional.
+dashboard renders with a greeting and the app stays functional.
 
 ## Strategies
 

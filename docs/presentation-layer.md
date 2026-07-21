@@ -143,17 +143,16 @@ remains the shared cross-screen selection store.
 methods throw `NotImplementedPresentationError`, documented in
 `view-models/_extension-template/README.md`:
 
-| ViewModel                                                              | Why it's a stub                                                                                                                                                                                                                                                                                                                  |
-| ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DashboardViewModel` (`view-models/dashboard/dashboard-view-model.ts`) | No dashboard aggregate/summary use cases exist in the Phase-5 application layer yet (no count/summary queries). `DashboardSummaryView` (totalStudents, presentToday, pendingGrades) is typed now so the screen can be scaffolded; `loadSummary()` throws until the application layer grows summary queries.                      |
-| `TeachersViewModel` (`view-models/teachers/teachers-view-model.ts`)    | The Teachers/Staff domain was not built in Phases 4–5 (no `@nemis-desktop/domain` slice, no application service). `loadTeachers()` throws until that domain ships.                                                                                                                                                               |
-| `SyncViewModel` (`view-models/sync/sync-view-model.ts`)                | Sync **state** is live today — it reads the shared `ConnectivityStore` (which a future sync worker will write) and exposes `statusPresentation()` via `presentSyncStatus`. Only the **action** is stubbed: `startSync()` throws `NotImplementedPresentationError` until the synchronization phase implements a real sync worker. |
+| ViewModel                                                         | Why it's a stub                                                                                                                                                                                                                            |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `TeachersViewModel` (`view-models/teachers/teachers-view-model.ts`) | The Teachers/Staff domain was not built in Phases 4–5 (no `@nemis-desktop/domain` slice, no application service). `loadTeachers()` throws until that domain ships.                                                                         |
+| `SyncViewModel` (`view-models/sync/sync-view-model.ts`)            | Sync **state** is live today — it reads the shared `ConnectivityStore` (which a future sync worker will write) and exposes `statusPresentation()` via `presentSyncStatus`. Only the **action** is stubbed: `startSync()` throws `NotImplementedPresentationError` until the synchronization phase implements a real sync worker. |
 
 All eleven ViewModels (9 implemented + 2 stubs) are wired in one composition root,
 `createPresentationLayer` (`factories/create-presentation-layer.ts`), and
 exposed on `PresentationLayer.viewModels`. The BootstrapService wires the 5
 main queries (`device`, `user`, `school`, `academic-year`, `dashboard`) as
-parallel startup tasks in `create-presentation-layer.ts` lines 87–113.
+parallel startup tasks.
 
 **Phase 8 view model additions:**
 

@@ -304,12 +304,12 @@ database (Phase 3.5). Phase 8 adds five query use cases above.
 exist for them; `_extension-template/README.md` is the recipe and the only
 place that names example future use cases (`CreateTeacher`, `AssignTeacher`).
 
-**The Phase 6 seam.** `createApplicationComposition.ts` wires the two infra
-gateways to real repositories but stubs every business repository port
-(`students`, `guardians`, `enrollments`, `classes`, `attendance`,
-`assessments`, `grades`, `users`, `institutions`, `gradingConfigs`) with a
-`Proxy` that throws `"<Name> repository is not built yet (Phase 6)."` on any
-call. Making a business domain live in the running desktop app means:
+**The Phase 8 seam (six real, five stubbed).** `createApplicationComposition.ts` wires six
+**real** business repository ports (students, institutions, users, academicYears, classes, attendance)
+to SQLite adapters for dashboard-path bootstrap queries. The remaining five ports
+(`guardians`, `enrollments`, `assessments`, `grades`, `gradingConfigs`) are still stubbed
+with a `Proxy` that throws `"<Name> repository is not built yet."` on any call. Making a
+business domain live in the running desktop app means:
 
 1. Implement its SQLite repository **adapter** against the existing port
    interface (in `interfaces/<domain>/`), speaking in domain entities.

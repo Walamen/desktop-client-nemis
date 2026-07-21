@@ -4,10 +4,9 @@ Phase 8 wires the five parallel bootstrap queries (`device`, `user`, `school`,
 `academic-year`, `dashboard`) into the IPC facade and connects them through the
 presentation layer to the React dashboard on startup. The offline-first SQLite
 platform is now live: the renderer never queries in-memory fakes; every call
-travels through IPC to the real Application Layer backed by real SQLite adapters
-and 200+ COUNT-based repository operations. This document is the durable
-reference for the startup sequence, the bootstrap design, the data flow,
-state transitions, error handling, and Phase-9 readiness.
+travels through IPC to the real Application Layer backed by real SQLite adapters.
+This document is the durable reference for the startup sequence, the bootstrap design, 
+the data flow, state transitions, error handling, and Phase-9 readiness.
 
 ---
 
@@ -40,7 +39,7 @@ On error: `DatabaseError` caught at app.whenReady, shows native dialog, quits.
 ```
 React: RootProviders (app/providers.tsx)
   ↓ createRendererPresentation()  [SYNC, returns immediately]
-    └─ createTestApplication() + seedDemoData()  [Phase 8 facade placeholder]
+    └─ createIpcApplicationLayer()  [IPC facade to main process]
   ↓ useMemo() wraps the layer, useStore reads bootstrap.phase = 'idle'
   ↓ useEffect() calls layer.bootstrap.run()
     └─ BootstrapService.run()
@@ -54,8 +53,8 @@ React: RootProviders (app/providers.tsx)
       │ ])  [all 5 parallel, no blocking]
       ├─ For each task, call .hasError() and mark done/failed
       ├─ store.finish()  [phase = 'ready' if any task succeeded; 'error' if ALL failed]
-  ↓ if phase === 'idle' || 'loading': render Spinner
-  ↓ if phase === 'ready' || 'error': render PresentationProvider + children
+  ↓ if phase === 'idle' || 'loading': render Spinner (splash screen)
+  ↓ if phase === 'ready' || 'error': render APP (PresentationProvider + children)
     └─ RootProviders mounts app/government/school-admin/layout.tsx
       └─ Dashboard page renders, branching on bootstrap query states
 ```
@@ -121,31 +120,24 @@ React component (page.tsx)
     ↓ .loadOverview() → trackQuery()
     ↓ GetDashboardOverviewUiQuery (presentation/queries)
       ↓ .execute() → reporting.getDashboardOverview()
-      ↓ ReportingApplicationService (packages/application)
-        ↓ GetDashboardOverviewUseCase (application/use-cases)
-          ↓ .execute() → invokeUseCase()
-            ├─ students.countAll()
-            ├─ classes.countAll()
-            └─ attendance.countByDate(today)
-            ↓ Each call crosses IPC to main process
-              ↓ IPC handler: registerDashboardHandlers()
-                ↓ app.reporting.getDashboardOverview() [real app]
-                  ↓ GetDashboardOverviewUseCase (real, over SQLite adapters)
-                    ├─ SqliteStudentRepository.countAll()  [COUNT(*) FROM students]
-                    ├─ SqliteClassRepository.countAll()    [COUNT(*) FROM classes]
-                    └─ SqliteAttendanceRepository.countByDate(date)  [complex SELECT, see below]
-                    ↓ SQLite (real database)
-                    ↓ Returns DTO → IpcResult { ok, data }
-                ↓ Renderer IPC handler routes response
-              ↓ Renderer: ui-query receives data
-              ↓ Mapper: toDashboardSummaryView()
-              ↓ Store.setState({ summary: { status: 'success', data: view } })
+      ↓ ReportingApplicationService (IPC facade, packages/presentation/lib)
+        ↓ One IPC call: DASHBOARD_GET_OVERVIEW
+          ↓ Main process IPC handler
+            ↓ GetDashboardOverviewUseCase (real app, packages/application)
+              ↓ Executes entirely in main process (no per-repo IPC calls)
+                ├─ students.countAll()  [local SQLite read]
+                ├─ classes.countAll()   [local SQLite read]
+                └─ attendance.countByDate(today)  [local SQLite read]
+              ↓ Returns DTO → IpcResult { ok, data }
+          ↓ Renderer receives response
+    ↓ Mapper: toDashboardSummaryView()
+    ↓ Store.setState({ summary: { status: 'success', data: view } })
   ↓ Dashboard page renders stats grid / empty states / error panel
 ```
 
 Every no-arg query follows the same layered path: React → ViewModel → UiQuery →
-ApplicationLayer facade → window.nemis → IPC handler → real ApplicationLayer →
-SQLite adapter → SQLite.
+IPC facade (one call) → main-process handler → real use case (local SQLite reads) →
+DTO returned to renderer.
 
 ---
 
@@ -194,7 +186,7 @@ Each task transitions as `idle` → `loading` → `success/empty/error`.
 | --- | --- | --- | --- |
 | `'database-unavailable'` | SQLite locked, corrupt, or shut down | `toIpcError(DatabaseError)` → `DATABASE_UNAVAILABLE` IPC code → `DatabaseUnavailableError` | Main process can't open file; migration fails at startup |
 | `'loading'` | Load failed for app-layer reasons (not DB) | `toIpcError(ApplicationError)` → `UNEXPECTED_ERROR` IPC code → `LoadingError` mapper | Repository query threw non-DB error |
-| `'network-unavailable'` | Reserved for future transports | None wired yet | Phase 9+ when sync worker is live |
+| `'network-unavailable'` | IPC bridge call failed without an IPC error code | Facade throws `NetworkUnavailableError` when bridge fails | Renderer-side IPC transport dropout (rare; indicates process communication failure) |
 | `'unexpected'` | Unmapped error (never happens if toIpcError is exhaustive) | Non-coded IPC error | Renderer received malformed IPC response |
 
 **UI branches in `dashboard/page.tsx`:**
@@ -224,8 +216,8 @@ A fresh install legitimately shows zeros and empty states. No fabricated numbers
 
 - **School profile:** "School profile not set up yet" (when `profile.status === 'empty'`)
 - **Academic Year:** "No academic year configured" (when `year.status === 'empty'`)
-- **Attendance:** "No attendance recorded" (when `attendanceToday.total === 0`)
-- **Teachers:** "Staff records not tracked yet" (when teacher data unavailable)
+- **Attendance:** shows real counts (`present / total`, e.g. `0 / 0` on fresh install); "No attendance recorded" is not reachable in Phase 8
+- **Teachers:** "Staff records not tracked yet" (TeachersListSection renders EmptyState; no ViewModel backing yet)
 
 **Stats rendering** (from `DashboardSummaryView`):
 
@@ -274,6 +266,14 @@ No recovery offered; operator must troubleshoot logs or uninstall/reinstall.
 | `ApplicationError` (domain rule violation) | `OPERATION_FAILED` / specific codes | Mapped kind | Context-specific (not used in bootstrap queries) |
 | Non-coded error (network drop, serialization fail) | `UNEXPECTED_ERROR` | `UnexpectedPresentationError` | ErrorState tile |
 
+**Error cause unwrapping** (commit c7f56a2):
+
+`toIpcError` (in `apps/desktop/electron/ipc/errorMapping.ts`) unwraps bounded `error.cause`
+chains to depth 5, so that `DatabaseError` masked by application-pipeline wrappers
+(e.g. application validation → command handler → `DatabaseError` on cause) still surfaces as
+`DATABASE_UNAVAILABLE` instead of `UNEXPECTED_ERROR`. When a `DatabaseError` with code
+`DB_CONNECTION` or `DB_INTEGRITY` is found on the cause chain, it maps to `DATABASE_UNAVAILABLE`.
+
 **Single sub-query failure is isolated:**
 
 If `device.loadDeviceInfo()` fails but `dashboard.loadOverview()` succeeds:
@@ -293,8 +293,7 @@ Every exception from the main process → logs → `IpcErrorPayload { code: 'UNE
 ### Parallel bootstrap
 
 `Promise.allSettled()` runs all five queries concurrently. No task blocks another.
-Typical startup: 50–150ms for all five queries on a warm SQLite database (cached
-in memory by better-sqlite3).
+All five queries run in parallel with no blocking.
 
 ### Query optimization
 
@@ -309,7 +308,7 @@ Phase 8 replaces with:
 ```ts
 students.countAll()  // COUNT(*) → integer, no row fetching
 classes.countAll()   // COUNT(*) FROM classes
-attendance.countByDate(date)  // SELECT status, COUNT(*) GROUP BY status
+attendance.countByDate(date)  // SELECT COUNT(*), SUM(CASE WHEN status = ? THEN 1 ELSE 0 END)
 ```
 
 Each is a single prepared statement, no row deserialization.
@@ -326,8 +325,7 @@ CREATE INDEX idx_attendance_date ON attendance (date);
 CREATE INDEX idx_attendance_class_date ON attendance (classId, date);
 ```
 
-Attendance index `(classId, date)` supports `countByDate` and Phase-9's per-class
-attendance queries.
+Attendance index `(classId, date)` supports Phase-9's per-class attendance queries.
 
 ### Statement cache
 
@@ -351,8 +349,8 @@ These throw immediately if used; they are Phase-9+ scope.
 - Domain model `Attendance` has no `reconstitute()` method.
 - Repository `findByClassAndDate()` rebuilds from SQL rows, losing no data
   (only attendance records are reread, not domain invariants).
-- `countByDate()` uses raw SQL GROUP BY, exact and correct.
-- Write path (`record()`) has no optimistic-concurrency guard (sync-phase debt).
+- `countByDate()` uses `SUM(CASE WHEN status = ? THEN 1 ELSE 0 END)` + `COUNT(*)`, exact and correct.
+- Write path (`save`) has no optimistic-concurrency guard (sync-phase debt).
 
 **Academic-year port has one consumer:**
 - `GetCurrentAcademicYearUseCase` queries it for the dashboard.
@@ -360,10 +358,10 @@ These throw immediately if used; they are Phase-9+ scope.
   all defer to Phase 9+).
 - Port is real; usage is thin.
 
-**RecentActivityFeed / TeachersListSection still static:**
-- Components render `<EmptyState>` placeholder copy, no ViewModel backing.
-- No business data source yet (no events log, no teacher list queries).
-- Honest placeholder, no fabricated data.
+**RecentActivityFeed / TeachersListSection:**
+- `RecentActivityFeed` renders three static sample `ActivityItem`s with a "Sample activity — live feed arrives with sync" disclaimer.
+- `TeachersListSection` renders `<EmptyState>` with message "Teacher directory not available yet".
+- No ViewModel backing; live data will arrive in Phase 9+.
 
 ---
 
