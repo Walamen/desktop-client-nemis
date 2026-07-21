@@ -1,3 +1,11 @@
+import type {
+  AcademicYearResult,
+  CurrentUserResult,
+  DashboardOverviewResult,
+  DeviceInfoResult,
+  SchoolSummaryResult,
+} from './dashboard';
+
 /**
  * Single source of truth for every IPC endpoint's request/response types.
  * Add an endpoint by adding an entry here first — the main-process
@@ -7,6 +15,11 @@
 export interface IpcContract {
   'system:get-version': { args: []; result: string };
   'settings:get': { args: [key: string]; result: unknown };
+  'dashboard:get-overview': { args: []; result: DashboardOverviewResult };
+  'school:get-summary': { args: []; result: SchoolSummaryResult | null };
+  'academic-year:get-current': { args: []; result: AcademicYearResult | null };
+  'identity:get-current-user': { args: []; result: CurrentUserResult | null };
+  'device:get-info': { args: []; result: DeviceInfoResult | null };
 }
 
 export type IpcChannel = keyof IpcContract;
@@ -14,6 +27,11 @@ export type IpcChannel = keyof IpcContract;
 export const IpcChannels = {
   SYSTEM_GET_VERSION: 'system:get-version',
   SETTINGS_GET: 'settings:get',
+  DASHBOARD_GET_OVERVIEW: 'dashboard:get-overview',
+  SCHOOL_GET_SUMMARY: 'school:get-summary',
+  ACADEMIC_YEAR_GET_CURRENT: 'academic-year:get-current',
+  IDENTITY_GET_CURRENT_USER: 'identity:get-current-user',
+  DEVICE_GET_INFO: 'device:get-info',
 } as const satisfies Record<string, IpcChannel>;
 
 // Compile-time exhaustiveness: adding a channel to IpcContract without
