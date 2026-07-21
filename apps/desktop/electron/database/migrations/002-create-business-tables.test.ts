@@ -67,9 +67,10 @@ describe('002-create-business-tables', () => {
     expect(() => insert.run('s2', now)).toThrow();
   });
 
-  it('down() removes every business table (rollback of 002 only)', () => {
+  it('down() removes every business table (rollback through 002)', () => {
     const service = new MigrationService(test.db.raw, migrations);
-    service.rollbackLast();
+    service.rollbackLast(); // 003 — academic foundation
+    service.rollbackLast(); // 002 — business tables
     const names = (
       test.db.raw
         .prepare("SELECT name FROM sqlite_master WHERE type='table'")

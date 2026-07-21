@@ -27,8 +27,8 @@ describe('DatabaseHealthService', () => {
     expect(report.pageCount).toBeGreaterThan(0);
     expect(report.pageSize).toBeGreaterThan(0);
     expect(report.databaseSizeBytes).toBeGreaterThan(0);
-    // Reflects the latest registered migration version (currently 002).
-    expect(report.schemaVersion).toBe(2);
+    // Reflects the latest registered migration version (currently 003).
+    expect(report.schemaVersion).toBe(3);
   });
 
   it('full integrity check passes on a healthy database', () => {

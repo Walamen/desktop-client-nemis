@@ -4,6 +4,7 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { DatabaseManager } from './DatabaseManager';
 import { ConnectionError } from './errors/errors';
+import { migrations } from './migrations/registry';
 import { TableNames } from './schema/tableNames';
 import type { DeviceInfo } from './seed/initializeMetadata';
 
@@ -64,9 +65,9 @@ describe('DatabaseManager', () => {
       const history = second.connection
         .prepare(`SELECT COUNT(*) AS n FROM ${TableNames.schemaMigrations}`)
         .get() as { n: number };
-      // One history row per registered migration (currently 001 + 002);
-      // the assertion is "no duplicates on restart", not a fixed count.
-      expect(history.n).toBe(2);
+      // One history row per registered migration; the assertion is
+      // "no duplicates on restart", not a fixed count.
+      expect(history.n).toBe(migrations.length);
     } finally {
       second.shutdown();
     }
