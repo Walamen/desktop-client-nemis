@@ -1,50 +1,38 @@
-import type { PagedResult, StudentApplicationService, StudentSummaryOutput } from '@nemis-desktop/application';
+import type { ReportingApplicationService } from '@nemis-desktop/application';
 import { createStore } from 'zustand/vanilla';
 import { idleState, type AsyncState } from '../../core/async-state';
 import { trackQuery } from '../../core/async-runner';
+import { toDashboardSummaryView } from '../../mappers/reporting/dashboard-view-mapper';
+import { GetDashboardOverviewUiQuery } from '../../queries/reporting/get-dashboard-overview-ui-query';
 import type { NotificationStore } from '../../stores/notification-store';
-import type { DashboardStat, DashboardSummaryView } from './dashboard-views';
+import type { DashboardSummaryView } from './dashboard-views';
 
 export interface DashboardState {
   readonly summary: AsyncState<DashboardSummaryView>;
 }
 
 export interface DashboardViewModelDeps {
-  readonly students: StudentApplicationService;
+  readonly reporting: ReportingApplicationService;
   readonly notifications: NotificationStore;
 }
-
-/** We only read PagedResult.total (independent of limit); a real count/summary
- * query replaces this in the reporting phase. */
-const COUNT_PAGE: Readonly<{ limit: number; offset: number }> = { limit: 1000, offset: 0 };
-
-const PLACEHOLDER_STATS: readonly Omit<DashboardStat, 'placeholder'>[] = [
-  { key: 'total-teachers', label: 'Total Teachers', value: 0 },
-  { key: 'total-classes', label: 'Total Classes', value: 0 },
-  { key: 'avg-class-size', label: 'Avg Class Size', value: 0 },
-  { key: 'male-students', label: 'Male Students', value: 0 },
-  { key: 'female-students', label: 'Female Students', value: 0 },
-];
 
 export class DashboardViewModel {
   readonly store = createStore<DashboardState>(() => ({ summary: idleState() }));
 
-  constructor(private readonly deps: DashboardViewModelDeps) {}
+  private readonly overviewQuery: GetDashboardOverviewUiQuery;
 
-  async loadSummary(): Promise<void> {
-    await trackQuery<PagedResult<StudentSummaryOutput>, DashboardSummaryView>({
+  constructor(deps: DashboardViewModelDeps) {
+    this.overviewQuery = new GetDashboardOverviewUiQuery(deps.reporting);
+  }
+
+  async loadOverview(): Promise<void> {
+    await trackQuery({
       access: {
         get: () => this.store.getState().summary,
         set: (summary) => this.store.setState({ summary }),
       },
-      fetch: () => this.deps.students.list(COUNT_PAGE),
-      map: (page) => ({
-        totalStudents: page.total,
-        stats: [
-          { key: 'total-students', label: 'Total Students', value: page.total, placeholder: false },
-          ...PLACEHOLDER_STATS.map((s) => ({ ...s, placeholder: true })),
-        ],
-      }),
+      fetch: () => this.overviewQuery.execute(),
+      map: toDashboardSummaryView,
     });
   }
 }

@@ -53,6 +53,8 @@ export * from './queries/attendance/get-attendance-ui-query';
 export * from './queries/assessments/get-grades-by-student-ui-query';
 export * from './queries/settings/get-institution-profile-ui-query';
 export * from './queries/identity/get-user-by-id-ui-query';
+export * from './queries/reporting/get-dashboard-overview-ui-query';
+export * from './mappers/reporting/dashboard-view-mapper';
 export * from './view-models/students/students-views';
 export * from './view-models/students/students-view-model';
 export * from './view-models/class-roster/class-roster-views';

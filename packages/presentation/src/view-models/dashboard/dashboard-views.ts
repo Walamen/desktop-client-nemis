@@ -1,16 +1,13 @@
-/** A single dashboard statistic. `placeholder: true` means the value is NOT
- * backed by a real application use case yet (Phase 7 has no summary queries
- * beyond the student count). The UI marks placeholder tiles visibly. */
-export interface DashboardStat {
+/** A real dashboard statistic — every value is backed by a repository count.
+ * There are no placeholder/sample tiles: unbacked facts (teachers) are their
+ * own empty state in the UI, never a fabricated number here. */
+export interface DashboardStatView {
   readonly key: string;
   readonly label: string;
   readonly value: number;
-  readonly placeholder: boolean;
 }
 
 export interface DashboardSummaryView {
-  /** Real: from listStudents PagedResult.total. */
-  readonly totalStudents: number;
-  /** All tiles for the stat grid (totalStudents is real, the rest placeholder). */
-  readonly stats: readonly DashboardStat[];
+  readonly stats: readonly DashboardStatView[];
+  readonly attendanceToday: { readonly present: number; readonly total: number };
 }
