@@ -5,4 +5,8 @@ export * from './entities/subject';
 export * from './entities/class';
 export * from './entities/enrollment';
 export * from './events/enrollment-created';
+export * from './events/academic-year-created';
+export * from './events/term-created';
+export * from './events/class-created';
+export * from './events/subject-created';
 export * from './specifications/is-enrollment-open';
