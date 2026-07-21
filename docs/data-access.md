@@ -45,6 +45,101 @@ async boundary exactly where the process boundary is (IPC, sync worker).
 | `factories`               | `createDataLayer` — the composition root, called once from main.ts                           |
 | `errors`                  | `RepositoryError` taxonomy + `translateDatabaseError`                                        |
 | `testing`                 | `createTestContext` — real temp-file DB with migrations applied                              |
+| `repositories/sqlite/business` | Six real business adapters (students, classes, institutions, users, academicYears, attendance) |
+
+## Migrations
+
+**Migration 001 (create-platform-tables):** Infrastructure schema — devices,
+app_settings, sync_metadata, sync_queue, audit_log. Applied on every startup,
+idempotent. Created in Phase 1.5.
+
+**Migration 002 (create-business-tables):** Business domain schema — 7 tables
+housing the dashboard bootstrap data and Phase-9 CRUD/sync writes. Applied once,
+schema fixed. Created in Phase 8.
+
+| Table | Columns | Sync columns | Indexes | Purpose |
+| --- | --- | --- | --- | --- |
+| `institutions` | id, code, name, type, ownership, countyId, districtId, approvalStatus, street, communityTown, latitude, longitude, rejectionReason, profile | version, updatedAt, lastModifiedBy, deviceId | (none) | School profile; one per school instance |
+| `users` | id, firstName, middleName, lastName, email, isActive | version, updatedAt, lastModifiedBy, deviceId | (none) | Identity records; seeded with local user row |
+| `user_organizations` | id, userId, role, institutionId, countyId, districtId, isActive | (none) | idx_user_organizations_userId | User's role assignments (foreign key to users) |
+| `academic_years` | id, institutionId, code, startDate, endDate, isCurrent | version, updatedAt, lastModifiedBy, deviceId | idx_academic_years_institutionId, idx_academic_years_isCurrent | School years; `isCurrent=1` is the active year |
+| `classes` | id, institutionId, academicYearId, name, gradeLevel, capacity, isActive | version, updatedAt, lastModifiedBy, deviceId | idx_classes_institutionId, idx_classes_academicYearId | Classrooms |
+| `students` | id, institutionId, firstName, middleName, lastName, admissionNumber, dateOfBirth, gender, gradeLevel, isActive | version, updatedAt, lastModifiedBy, deviceId | idx_students_institutionId, idx_students_admission (UNIQUE) | Learners; admission number is school-scoped, unique |
+| `attendance` | id, studentId, classId, subjectId, date, status, recordedBy | version, updatedAt, lastModifiedBy, deviceId | idx_attendance_date, idx_attendance_class_date | Daily presence records |
+
+Every business table (except user_organizations, a junction) carries sync
+metadata (version, updatedAt, lastModifiedBy, deviceId) from creation. Unused
+by Phase 8 logic, these columns enable Phase-9 sync reconciliation without
+table rewrites.
+
+## Business adapters (Phase 8)
+
+Six real SQLite repository adapters wired in `createDataLayer.ts`:
+
+- `SqliteStudentRepository` (IStudentRepository) — `countAll()`, `findById()`, `save()`, `deactivate()`, `existsByAdmissionNumber()`.
+- `SqliteClassRepository` (IClassRepository) — `countAll()`, `findById()`, `save()`.
+- `SqliteInstitutionRepository` (IInstitutionRepository) — `findFirst()`, `findById()`, `save()`.
+- `SqliteUserRepository` (IUserRepository) — `findFirst()`, `findById()`, `save()`.
+- `SqliteAcademicYearRepository` (IAcademicYearRepository) — `findCurrent()`, `findById()`, `save()`.
+- `SqliteAttendanceRepository` (IAttendanceRepository) — `countByDate()`, `findByClassAndDate()`, `record()`.
+
+Each extends `BaseRepository<Entity, Row>` and implements a pure interface (no
+implementation details leak to callers). Repositories are created once in
+`createDataLayer` and passed to the `ApplicationLayer` via `createApplicationComposition`.
+
+A helper function `guarded()` wraps repository creation, validating the repository
+interface implementation at type-check time (unused at runtime, zero cost).
+
+## DataLayer composition
+
+`createDataLayer(manager, log)` returns:
+
+```ts
+interface DataLayer {
+  repositories: {
+    devices: IDeviceRepository;
+    appSettings: IAppSettingsRepository;
+    syncMetadata: ISyncMetadataRepository;
+    syncQueue: ISyncQueueRepository;
+    auditLog: IAuditLogRepository;
+    students: IStudentRepository;
+    institutions: IInstitutionRepository;
+    users: IUserRepository;
+    academicYears: IAcademicYearRepository;
+    classes: IClassRepository;
+    attendance: IAttendanceRepository;
+  };
+  services: {
+    device: DeviceService;
+    appSettings: AppSettingsService;
+    syncMetadata: SyncMetadataService;
+    syncQueue: SyncQueueService;
+    auditLog: AuditLogService;
+  };
+  transactions: TransactionRunner;
+}
+```
+
+Called once from `main.ts` after `DatabaseManager.initialize()`. Everything
+downstream (application layer, IPC handlers) receives only interfaces, never
+concrete classes. Platform services (device, appSettings, sync*) are stateless
+facades over platform repositories; business repositories are pure — no
+service wrappers (services live in the application layer).
+
+## Local user seeding
+
+`initializeLocalUser(db)` runs on every app startup. If no rows exist in the
+`users` table, it inserts a synthetic "Local User" row with:
+
+- `id`: UUID generated fresh
+- `firstName`: "Local"
+- `lastName`: "User"
+- `email`: "local@nemis.local"
+- `isActive`: 1
+
+If rows exist, it returns the first found. This guarantees the identity queries
+(GetCurrentUserUseCase) never throw "no user found" on a fresh install; the
+dashboard renders with "Local User" greeting and the app stays functional.
 
 ## Strategies
 

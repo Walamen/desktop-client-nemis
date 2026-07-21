@@ -149,9 +149,27 @@ methods throw `NotImplementedPresentationError`, documented in
 | `TeachersViewModel` (`view-models/teachers/teachers-view-model.ts`)    | The Teachers/Staff domain was not built in Phases 4–5 (no `@nemis-desktop/domain` slice, no application service). `loadTeachers()` throws until that domain ships.                                                                                                                                                               |
 | `SyncViewModel` (`view-models/sync/sync-view-model.ts`)                | Sync **state** is live today — it reads the shared `ConnectivityStore` (which a future sync worker will write) and exposes `statusPresentation()` via `presentSyncStatus`. Only the **action** is stubbed: `startSync()` throws `NotImplementedPresentationError` until the synchronization phase implements a real sync worker. |
 
-All ten ViewModels (7 implemented + 3 stubs) are wired in one composition root,
+All eleven ViewModels (9 implemented + 2 stubs) are wired in one composition root,
 `createPresentationLayer` (`factories/create-presentation-layer.ts`), and
-exposed on `PresentationLayer.viewModels`.
+exposed on `PresentationLayer.viewModels`. The BootstrapService wires the 5
+main queries (`device`, `user`, `school`, `academic-year`, `dashboard`) as
+parallel startup tasks in `create-presentation-layer.ts` lines 87–113.
+
+**Phase 8 view model additions:**
+
+- `DashboardViewModel.loadOverview()` (graduated from stub) — now calls a real
+  `GetDashboardOverviewUseCase` (no-arg) that computes total students, total
+  classes, and today's attendance counts. Store shape:
+  `{ summary: AsyncState<DashboardSummaryView> }`.
+- `AcademicYearViewModel` (new, Phase 8) — `loadCurrent()` calls
+  `GetCurrentAcademicYearUseCase` (no-arg) that reads the current academic year.
+  Store shape: `{ current: AsyncState<AcademicYearView> }`.
+- `CurrentUserViewModel.loadCurrentUser()` (graduated) — now has real backing
+  use case (no-arg `GetCurrentUserUseCase`).
+- `SettingsViewModel.loadCurrentSchool()` (new method, Phase 8) — calls
+  `GetCurrentSchoolUseCase` (no-arg) to read the active institution profile.
+- `DeviceViewModel.loadDeviceInfo()` (new method, Phase 8) — calls the no-arg
+  `GetDeviceInformationUseCase`.
 
 ## 5. Query & command pattern
 
@@ -228,6 +246,7 @@ an optional `cause` for logs. Seven kinds, one class per kind:
 | `operation-failed`    | `OperationFailedError`            | A business rule or workflow precondition rejected the action; message comes straight from the application layer (already renderer-safe). |
 | `loading`             | `LoadingError`                    | Default fallback for unrecognized errors surfaced by a **query**.                                                                        |
 | `network-unavailable` | `NetworkUnavailableError`         | Reserved for future IPC/REST transports — nothing in `toPresentationError` maps to it yet (see §13).                                     |
+| `database-unavailable` | `DatabaseUnavailableError`        | (Phase 8) Mapped from IPC `DATABASE_UNAVAILABLE` error code when SQLite is locked, corrupt, or shut down. UI renders full-screen error panel. |
 | `unexpected`          | `UnexpectedPresentationError`     | Default fallback for unrecognized errors surfaced by a **command**.                                                                      |
 | `not-implemented`     | `NotImplementedPresentationError` | Thrown directly (not via translation) by extension-stub ViewModel methods; message is `"${feature} is not available yet."`.              |
 

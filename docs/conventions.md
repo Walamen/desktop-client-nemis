@@ -258,3 +258,158 @@ migrating one means replacing that placeholder. Follow this recipe:
    `TITLES` map) already point at the route. Add both if the page is genuinely
    new — the sidebar link and the header/breadcrumb title are two separate
    places and both are required for a discoverable, correctly-labeled page.
+
+## Adding a no-arg current-X read query (Phase 8 pattern)
+
+When a bootstrap tile needs "the current school" or "the current user" (no
+arguments, single-install per-device semantics), follow this recipe. Example:
+adding `GetCurrentUserUseCase` to read the local user on startup.
+
+**1. Repository port & adapter method** — the adapter must already expose
+a "find first" or "find current" method. For identity: `IUserRepository.findFirst()`.
+No changes needed to the port.
+
+**2. Use case** (`packages/application/src/use-cases/<domain>/get-current-<entity>.ts`):
+
+```ts
+export class GetCurrentUserUseCase implements QueryHandler<
+  Record<string, never>,  // no input
+  ApplicationResponse<UserOutput | null>
+> {
+  constructor(private readonly deps: GetCurrentUserUseCaseDeps) {}
+  execute(_query: Record<string, never>): Promise<ApplicationResponse<UserOutput | null>> {
+    return invokeUseCase('GetCurrentUser', this.deps.logger, async () => {
+      const user = this.deps.users.findFirst();
+      return ok(user ? toUserOutput(user) : null);
+    });
+  }
+}
+```
+
+No preconditions (repos return `null` if no rows exist, never throw). Input is
+`Record<string, never>` (empty object).
+
+**3. Service method** — add to the domain's application service facade
+(e.g. `IdentityApplicationService`):
+
+```ts
+getCurrentUser(): Promise<ApplicationResponse<UserOutput | null>> {
+  return this.deps.getCurrentUser.execute({});
+}
+```
+
+Wire the use case into the service's deps at composition time.
+
+**4. IPC contract** (`packages/types/src/ipc.ts`):
+
+```ts
+interface IpcContract {
+  // ... existing entries ...
+  'identity:get-current-user': {
+    args: [];
+    result: UserOutput | null;
+  };
+}
+
+export const IpcChannels = {
+  // ... existing channels ...
+  IDENTITY_GET_CURRENT_USER: 'identity:get-current-user' as const,
+};
+```
+
+Add both the contract entry and the channel constant. The `assertNoArgs`
+validator will be used (see next step).
+
+**5. Validator** (`apps/desktop/electron/security/validateIpc.ts`) — no change
+needed if using the generic `assertNoArgs`:
+
+```ts
+export function assertNoArgs(args: readonly unknown[]): void {
+  if (args.length !== 0) throw new ValidationError('Expected no arguments');
+}
+```
+
+**6. IPC handler** (`apps/desktop/electron/ipc/handlers/<domain>.ts`):
+
+```ts
+export function registerIdentityHandlers(handle: IpcHandle, app: ApplicationLayer): void {
+  handle(IpcChannels.IDENTITY_GET_CURRENT_USER, assertNoArgs, async () => {
+    const res = await app.identity.getCurrentUser();
+    return res.data;
+  });
+}
+```
+
+One-liner: channel → validator → service call → unwrap `.data`. Errors are
+mapped by the registrar's wrapper.
+
+**7. Preload** (`apps/desktop/electron/preload/preload.ts` + `packages/types/src/api.ts`):
+
+Update `NemisApi` in `packages/types/src/api.ts`:
+
+```ts
+export interface NemisApi {
+  // ... existing methods ...
+  identity: {
+    getCurrentUser: () => Promise<UserOutput | null>;
+  };
+}
+```
+
+Implement in preload:
+
+```ts
+identity: {
+  getCurrentUser: () => invoke('identity:get-current-user'),
+},
+```
+
+**8. UI query** (`packages/presentation/src/queries/<domain>/get-current-<entity>-ui-query.ts`):
+
+```ts
+export class GetCurrentUserUiQuery {
+  constructor(private readonly identity: IdentityApplicationService) {}
+  execute(): Promise<ApplicationResponse<UserOutput | null>> {
+    return this.identity.getCurrentUser();
+  }
+}
+```
+
+**9. ViewModel method** — add a `loadCurrent()` method calling the query via
+`trackQuery` (no id parameter). Example in `CurrentUserViewModel`:
+
+```ts
+async loadCurrentUser(): Promise<void> {
+  await trackQuery({
+    access: {
+      get: () => this.store.getState().user,
+      set: (user) => this.store.setState({ user }),
+    },
+    fetch: () => this.currentUserQuery.execute(),
+    onData: (dto) => this.deps.session.setCurrentUser(dto.id),
+    map: toUserView,
+  });
+  if (this.store.getState().user.status === 'empty') {
+    this.deps.session.setCurrentUser(null);
+  }
+}
+```
+
+**10. Bootstrap wiring** — add the task to `create-presentation-layer.ts`:
+
+```ts
+const bootstrapService = new BootstrapService(bootstrap, [
+  // ... existing tasks ...
+  {
+    name: 'user',
+    run: () => viewModels.currentUser.loadCurrentUser(),
+    hasError: () => viewModels.currentUser.store.getState().user.status === 'error',
+  },
+  // ... other tasks ...
+]);
+```
+
+**Summary:** port adapter → use case → service → IPC channel/validator/handler
+→ preload → NemisApi → UI query → ViewModel method → bootstrap task. Five
+queries live in this pattern today (device, user, school, academic-year,
+dashboard); each addition follows the same steps.

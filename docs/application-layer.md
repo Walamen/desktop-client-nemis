@@ -257,26 +257,46 @@ like once that domain slice actually ships.
 
 ## 11. Catalog & status
 
-**Fully implemented (17), mock-tested against ports:**
+**Fully implemented (22), mock-tested against ports:**
 
-| Domain      | Commands                                                | Queries                              |
-| ----------- | ------------------------------------------------------- | ------------------------------------ |
-| Students    | CreateStudent, DeactivateStudent, LinkGuardianToStudent | GetStudentById, ListStudents (paged) |
-| Academics   | EnrollStudent, WithdrawEnrollment                       | GetClassRoster                       |
-| Attendance  | RecordAttendance                                        | GetAttendanceByClassAndDate          |
-| Assessments | CreateAssessment, RecordGrade, PublishGrade             | GetGradesByStudent                   |
-| Identity    | —                                                       | GetUserById                          |
-| Institution | UpdateGradingConfig                                     | GetInstitutionProfile                |
+| Domain      | Commands                                                | Queries                                      |
+| ----------- | ------------------------------------------------------- | -------------------------------------------- |
+| Students    | CreateStudent, DeactivateStudent, LinkGuardianToStudent | GetStudentById, ListStudents (paged)         |
+| Academics   | EnrollStudent, WithdrawEnrollment                       | GetClassRoster, GetCurrentAcademicYear       |
+| Attendance  | RecordAttendance                                        | GetAttendanceByClassAndDate                  |
+| Assessments | CreateAssessment, RecordGrade, PublishGrade             | GetGradesByStudent                           |
+| Identity    | —                                                       | GetUserById, GetCurrentUser                  |
+| Institution | UpdateGradingConfig                                     | GetInstitutionProfile, GetCurrentSchool      |
+| Reporting   | —                                                       | GetDashboardOverview (no-arg query)          |
 
 (Identity has no commands — per `CLAUDE.md`, Electron never owns
 authentication; that stays backend-owned.)
+
+**Five new no-arg queries** (Phase 8, dashboard bootstrap):
+
+- `GetCurrentUserUseCase` — reads `users.findFirst()`, used by CurrentUserViewModel
+  to greet the user. Returns `UserOutput | null`.
+- `GetCurrentAcademicYearUseCase` — reads `academicYears.findCurrent(isCurrent: 1)`,
+  used by AcademicYearViewModel to show the active year. Returns `AcademicYearOutput | null`.
+- `GetCurrentSchoolUseCase` — reads `institutions.findFirst()`, used by
+  SettingsViewModel to show the school profile. Returns `InstitutionProfileOutput | null`.
+- `GetDashboardOverviewUseCase` — queries `students.countAll()`, `classes.countAll()`,
+  `attendance.countByDate(today)` in one no-arg call. Returns `DashboardOverviewOutput`
+  (summary counts + attendance breakdown).
+- `GetDeviceInformationUseCase` (infra) — reads `deviceGateway.getCurrent()` →
+  `devices.findFirst()`. Returns `DeviceOutput | null`.
+
+All five return `ApplicationResponse<T | null>`, wrapped in `ReportingApplicationService`
+(for dashboard), or exposed directly through service facades
+(`InstitutionApplicationService.getCurrentSchool()`, etc.). These are wired
+as IPC no-arg channels in Phase 8; renderer bootstrap calls them in parallel.
 
 **Infra, wired end-to-end to the real Data Access Layer:** `RegisterDevice`
 and `UpdateSettings`, via `DeviceGatewayAdapter` and `SettingsGatewayAdapter`
 (`apps/desktop/electron/data/adapters/`), composed in
 `createApplicationComposition.ts` and covered by the SQLite-backed E2E test
-described in §9. These are the only two use cases that run against a real
-database today.
+described in §9. These are the first two use cases that ran against a real
+database (Phase 3.5). Phase 8 adds five query use cases above.
 
 **Not yet built — extension points only:** the six domains with no
 `@nemis-desktop/domain` entities (`geography`, `staff`, `finance`,
