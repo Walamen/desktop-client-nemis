@@ -90,25 +90,25 @@ export class Term extends AggregateRoot<string> {
     return this.#isCurrent;
   }
 
-  rename(name: string, by: string, at: string): void {
+  rename(name: string, by: string | undefined, at: string): void {
     const next = guard.againstEmpty(name, 'name');
     if (next === this.#name) return;
     this.#name = next;
     this.touch(by, at);
   }
 
-  reschedule(start: string, end: string, by: string, at: string): void {
+  reschedule(start: string, end: string, by: string | undefined, at: string): void {
     this.#period = DateRange.create({ start, end });
     this.touch(by, at);
   }
 
-  makeCurrent(by: string, at: string): void {
+  makeCurrent(by: string | undefined, at: string): void {
     if (this.#isCurrent) return;
     this.#isCurrent = true;
     this.touch(by, at);
   }
 
-  clearCurrent(by: string, at: string): void {
+  clearCurrent(by: string | undefined, at: string): void {
     if (!this.#isCurrent) return;
     this.#isCurrent = false;
     this.touch(by, at);

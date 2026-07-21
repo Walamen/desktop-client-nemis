@@ -1,5 +1,8 @@
 import type { AcademicYear } from '@nemis-desktop/domain';
-import type { AcademicYearOutput } from '../../dto/academics/academic-year-dto';
+import type {
+  AcademicYearListItemOutput,
+  AcademicYearOutput,
+} from '../../dto/academics/academic-year-dto';
 
 export function toAcademicYearOutput(year: AcademicYear): AcademicYearOutput {
   return {
@@ -9,5 +12,17 @@ export function toAcademicYearOutput(year: AcademicYear): AcademicYearOutput {
     startDate: year.period.start,
     endDate: year.period.end,
     isCurrent: year.isCurrent,
+  };
+}
+
+export function toAcademicYearListItemOutput(
+  year: AcademicYear,
+  counts: { termCount: number; classCount: number },
+): AcademicYearListItemOutput {
+  return {
+    ...toAcademicYearOutput(year),
+    status: year.status,
+    termCount: counts.termCount,
+    classCount: counts.classCount,
   };
 }

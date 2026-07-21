@@ -114,7 +114,7 @@ export class Subject extends AggregateRoot<string> {
     return this.#isActive;
   }
 
-  update(fields: UpdateSubjectFields, by: string, at: string): void {
+  update(fields: UpdateSubjectFields, by: string | undefined, at: string): void {
     if (fields.name !== undefined) this.#name = guard.againstEmpty(fields.name, 'name');
     if (fields.code !== undefined) this.#code = normalizeCode(fields.code);
     if (fields.description !== undefined) {
@@ -124,13 +124,13 @@ export class Subject extends AggregateRoot<string> {
     this.touch(by, at);
   }
 
-  deactivate(by: string, at: string): void {
+  deactivate(by: string | undefined, at: string): void {
     if (!this.#isActive) return;
     this.#isActive = false;
     this.touch(by, at);
   }
 
-  activate(by: string, at: string): void {
+  activate(by: string | undefined, at: string): void {
     if (this.#isActive) return;
     this.#isActive = true;
     this.touch(by, at);

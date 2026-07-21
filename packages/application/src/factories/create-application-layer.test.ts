@@ -13,6 +13,8 @@ import { InMemoryGuardianRepository } from '../testing/students/in-memory-guardi
 import { InMemoryEnrollmentRepository } from '../testing/academics/in-memory-enrollment-repository';
 import { InMemoryClassRepository } from '../testing/academics/in-memory-class-repository';
 import { InMemoryAcademicYearRepository } from '../testing/academics/in-memory-academic-year-repository';
+import { InMemoryTermRepository } from '../testing/academics/in-memory-term-repository';
+import { InMemorySubjectRepository } from '../testing/academics/in-memory-subject-repository';
 import { InMemoryAttendanceRepository } from '../testing/attendance/in-memory-attendance-repository';
 import { InMemoryAssessmentRepository } from '../testing/assessments/in-memory-assessment-repository';
 import { InMemoryGradeRepository } from '../testing/assessments/in-memory-grade-repository';
@@ -23,12 +25,18 @@ import { InMemoryDeviceGateway } from '../testing/infra/in-memory-device-gateway
 import { InMemorySettingsGateway } from '../testing/infra/in-memory-settings-gateway';
 
 function buildLayer() {
+  const subjects = new InMemorySubjectRepository();
+  const classes = new InMemoryClassRepository(subjects);
+  const terms = new InMemoryTermRepository();
+  const academicYears = new InMemoryAcademicYearRepository(terms, classes);
   return createApplicationLayer({
     students: new InMemoryStudentRepository(),
     guardians: new InMemoryGuardianRepository(),
     enrollments: new InMemoryEnrollmentRepository(),
-    classes: new InMemoryClassRepository(),
-    academicYears: new InMemoryAcademicYearRepository(),
+    classes,
+    academicYears,
+    terms,
+    subjects,
     attendance: new InMemoryAttendanceRepository(),
     assessments: new InMemoryAssessmentRepository(),
     grades: new InMemoryGradeRepository(),

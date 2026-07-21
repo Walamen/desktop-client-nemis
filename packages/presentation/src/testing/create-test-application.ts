@@ -13,6 +13,8 @@ import {
   InMemoryInstitutionRepository,
   InMemorySettingsGateway,
   InMemoryStudentRepository,
+  InMemorySubjectRepository,
+  InMemoryTermRepository,
   InMemoryUserRepository,
   PassthroughUnitOfWork,
   RecordingLogger,
@@ -28,6 +30,8 @@ export interface TestPorts {
   enrollments: InMemoryEnrollmentRepository;
   classes: InMemoryClassRepository;
   academicYears: InMemoryAcademicYearRepository;
+  terms: InMemoryTermRepository;
+  subjects: InMemorySubjectRepository;
   attendance: InMemoryAttendanceRepository;
   assessments: InMemoryAssessmentRepository;
   grades: InMemoryGradeRepository;
@@ -47,12 +51,18 @@ export interface TestPorts {
  * presentation tests exercise the full presentation→application path
  * without SQLite. */
 export function createTestApplication(): { app: ApplicationLayer; ports: TestPorts } {
+  const subjects = new InMemorySubjectRepository();
+  const classes = new InMemoryClassRepository(subjects);
+  const terms = new InMemoryTermRepository();
+  const academicYears = new InMemoryAcademicYearRepository(terms, classes);
   const ports: TestPorts = {
     students: new InMemoryStudentRepository(),
     guardians: new InMemoryGuardianRepository(),
     enrollments: new InMemoryEnrollmentRepository(),
-    classes: new InMemoryClassRepository(),
-    academicYears: new InMemoryAcademicYearRepository(),
+    classes,
+    academicYears,
+    terms,
+    subjects,
     attendance: new InMemoryAttendanceRepository(),
     assessments: new InMemoryAssessmentRepository(),
     grades: new InMemoryGradeRepository(),

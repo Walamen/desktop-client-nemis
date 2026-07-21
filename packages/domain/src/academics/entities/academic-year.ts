@@ -102,7 +102,7 @@ export class AcademicYear extends AggregateRoot<string> {
     return this.#status;
   }
 
-  rename(code: string, by: string, at: string): void {
+  rename(code: string, by: string | undefined, at: string): void {
     this.#requireActive('renamed');
     const next = AcademicYearCode.create(code);
     if (next.value === this.#code.value) return;
@@ -110,13 +110,13 @@ export class AcademicYear extends AggregateRoot<string> {
     this.touch(by, at);
   }
 
-  reschedule(start: string, end: string, by: string, at: string): void {
+  reschedule(start: string, end: string, by: string | undefined, at: string): void {
     this.#requireActive('rescheduled');
     this.#period = DateRange.create({ start, end });
     this.touch(by, at);
   }
 
-  makeCurrent(by: string, at: string): void {
+  makeCurrent(by: string | undefined, at: string): void {
     if (this.#status !== AcademicYearStatus.ACTIVE) {
       throw new BusinessRuleViolationException(
         `A ${this.#status.toLowerCase()} academic year cannot be made current.`,
@@ -127,13 +127,13 @@ export class AcademicYear extends AggregateRoot<string> {
     this.touch(by, at);
   }
 
-  clearCurrent(by: string, at: string): void {
+  clearCurrent(by: string | undefined, at: string): void {
     if (!this.#isCurrent) return;
     this.#isCurrent = false;
     this.touch(by, at);
   }
 
-  close(by: string, at: string): void {
+  close(by: string | undefined, at: string): void {
     if (this.#status !== AcademicYearStatus.ACTIVE) {
       throw new BusinessRuleViolationException('Only an active academic year can be closed.');
     }
@@ -142,14 +142,14 @@ export class AcademicYear extends AggregateRoot<string> {
     this.touch(by, at);
   }
 
-  archive(by: string, at: string): void {
+  archive(by: string | undefined, at: string): void {
     if (this.#status === AcademicYearStatus.ARCHIVED) return;
     this.#requireNotCurrent('archived');
     this.#status = AcademicYearStatus.ARCHIVED;
     this.touch(by, at);
   }
 
-  restore(by: string, at: string): void {
+  restore(by: string | undefined, at: string): void {
     if (this.#status === AcademicYearStatus.ACTIVE) return;
     this.#status = AcademicYearStatus.ACTIVE;
     this.touch(by, at);

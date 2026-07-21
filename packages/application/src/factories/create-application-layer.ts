@@ -3,6 +3,8 @@ import type { IGuardianRepository } from '../interfaces/students/guardian-reposi
 import type { IEnrollmentRepository } from '../interfaces/academics/enrollment-repository';
 import type { IClassRepository } from '../interfaces/academics/class-repository';
 import type { IAcademicYearRepository } from '../interfaces/academics/academic-year-repository';
+import type { ITermRepository } from '../interfaces/academics/term-repository';
+import type { ISubjectRepository } from '../interfaces/academics/subject-repository';
 import type { IAttendanceRepository } from '../interfaces/attendance/attendance-repository';
 import type { IAssessmentRepository } from '../interfaces/assessments/assessment-repository';
 import type { IGradeRepository } from '../interfaces/assessments/grade-repository';
@@ -27,6 +29,29 @@ import { StudentApplicationService } from '../services/student-application-servi
 import { EnrollStudentUseCase } from '../use-cases/academics/enroll-student';
 import { WithdrawEnrollmentUseCase } from '../use-cases/academics/withdraw-enrollment';
 import { GetClassRosterUseCase } from '../use-cases/academics/get-class-roster';
+import { ListAcademicYearsUseCase } from '../use-cases/academics/list-academic-years';
+import { CreateAcademicYearUseCase } from '../use-cases/academics/create-academic-year';
+import { UpdateAcademicYearUseCase } from '../use-cases/academics/update-academic-year';
+import { SetCurrentAcademicYearUseCase } from '../use-cases/academics/set-current-academic-year';
+import { SetAcademicYearStatusUseCase } from '../use-cases/academics/set-academic-year-status';
+import { ListTermsUseCase } from '../use-cases/academics/list-terms';
+import { GetCurrentTermUseCase } from '../use-cases/academics/get-current-term';
+import { CreateTermUseCase } from '../use-cases/academics/create-term';
+import { UpdateTermUseCase } from '../use-cases/academics/update-term';
+import { SetCurrentTermUseCase } from '../use-cases/academics/set-current-term';
+import { DeleteTermUseCase } from '../use-cases/academics/delete-term';
+import { ListClassesUseCase } from '../use-cases/academics/list-classes';
+import { CreateClassUseCase } from '../use-cases/academics/create-class';
+import { UpdateClassUseCase } from '../use-cases/academics/update-class';
+import { SetClassActiveUseCase } from '../use-cases/academics/set-class-active';
+import { GetGradeLevelCountsUseCase } from '../use-cases/academics/get-grade-level-counts';
+import { ListSubjectsUseCase } from '../use-cases/academics/list-subjects';
+import { CreateSubjectUseCase } from '../use-cases/academics/create-subject';
+import { UpdateSubjectUseCase } from '../use-cases/academics/update-subject';
+import { SetSubjectActiveUseCase } from '../use-cases/academics/set-subject-active';
+import { ListClassSubjectsUseCase } from '../use-cases/academics/list-class-subjects';
+import { AssignSubjectToClassUseCase } from '../use-cases/academics/assign-subject-to-class';
+import { UnassignSubjectFromClassUseCase } from '../use-cases/academics/unassign-subject-from-class';
 import { AcademicsApplicationService } from '../services/academics-application-service';
 
 import { RecordAttendanceUseCase } from '../use-cases/attendance/record-attendance';
@@ -63,6 +88,8 @@ export interface ApplicationPorts {
   enrollments: IEnrollmentRepository;
   classes: IClassRepository;
   academicYears: IAcademicYearRepository;
+  terms: ITermRepository;
+  subjects: ISubjectRepository;
   attendance: IAttendanceRepository;
   assessments: IAssessmentRepository;
   grades: IGradeRepository;
@@ -142,6 +169,99 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
     }),
     getClassRoster: new GetClassRosterUseCase({ enrollments: ports.enrollments, logger }),
     getCurrentAcademicYear: new GetCurrentAcademicYearUseCase({ academicYears: ports.academicYears, logger }),
+    listAcademicYears: new ListAcademicYearsUseCase({ academicYears: ports.academicYears, logger }),
+    createAcademicYear: new CreateAcademicYearUseCase({
+      academicYears: ports.academicYears,
+      institutions: ports.institutions,
+      unitOfWork,
+      clock,
+      ids,
+      events,
+      logger,
+    }),
+    updateAcademicYear: new UpdateAcademicYearUseCase({
+      academicYears: ports.academicYears,
+      unitOfWork,
+      clock,
+      logger,
+    }),
+    setCurrentAcademicYear: new SetCurrentAcademicYearUseCase({
+      academicYears: ports.academicYears,
+      unitOfWork,
+      clock,
+      logger,
+    }),
+    setAcademicYearStatus: new SetAcademicYearStatusUseCase({
+      academicYears: ports.academicYears,
+      unitOfWork,
+      clock,
+      logger,
+    }),
+    listTerms: new ListTermsUseCase({ terms: ports.terms, logger }),
+    getCurrentTerm: new GetCurrentTermUseCase({ terms: ports.terms, logger }),
+    createTerm: new CreateTermUseCase({
+      terms: ports.terms,
+      academicYears: ports.academicYears,
+      unitOfWork,
+      clock,
+      ids,
+      events,
+      logger,
+    }),
+    updateTerm: new UpdateTermUseCase({
+      terms: ports.terms,
+      academicYears: ports.academicYears,
+      unitOfWork,
+      clock,
+      logger,
+    }),
+    setCurrentTerm: new SetCurrentTermUseCase({ terms: ports.terms, unitOfWork, clock, logger }),
+    deleteTerm: new DeleteTermUseCase({ terms: ports.terms, unitOfWork, logger }),
+    listClasses: new ListClassesUseCase({ classes: ports.classes, logger }),
+    createClass: new CreateClassUseCase({
+      classes: ports.classes,
+      academicYears: ports.academicYears,
+      institutions: ports.institutions,
+      unitOfWork,
+      clock,
+      ids,
+      events,
+      logger,
+    }),
+    updateClass: new UpdateClassUseCase({ classes: ports.classes, unitOfWork, clock, logger }),
+    setClassActive: new SetClassActiveUseCase({ classes: ports.classes, unitOfWork, clock, logger }),
+    getGradeLevelCounts: new GetGradeLevelCountsUseCase({ classes: ports.classes, logger }),
+    listSubjects: new ListSubjectsUseCase({ subjects: ports.subjects, logger }),
+    createSubject: new CreateSubjectUseCase({
+      subjects: ports.subjects,
+      institutions: ports.institutions,
+      unitOfWork,
+      clock,
+      ids,
+      events,
+      logger,
+    }),
+    updateSubject: new UpdateSubjectUseCase({ subjects: ports.subjects, unitOfWork, clock, logger }),
+    setSubjectActive: new SetSubjectActiveUseCase({
+      subjects: ports.subjects,
+      unitOfWork,
+      clock,
+      logger,
+    }),
+    listClassSubjects: new ListClassSubjectsUseCase({ subjects: ports.subjects, logger }),
+    assignSubjectToClass: new AssignSubjectToClassUseCase({
+      classes: ports.classes,
+      subjects: ports.subjects,
+      unitOfWork,
+      clock,
+      ids,
+      logger,
+    }),
+    unassignSubjectFromClass: new UnassignSubjectFromClassUseCase({
+      subjects: ports.subjects,
+      unitOfWork,
+      logger,
+    }),
   });
 
   const attendance = new AttendanceApplicationService({
@@ -215,6 +335,7 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
     getDashboardOverview: new GetDashboardOverviewUseCase({
       students: ports.students,
       classes: ports.classes,
+      subjects: ports.subjects,
       attendance: ports.attendance,
       clock,
       logger,

@@ -12,6 +12,7 @@ import { FixedClock } from '../testing/fixed-clock';
 import { RecordingLogger } from '../testing/recording-logger';
 import { InMemoryStudentRepository } from '../testing/students/in-memory-student-repository';
 import { InMemoryClassRepository } from '../testing/academics/in-memory-class-repository';
+import { InMemorySubjectRepository } from '../testing/academics/in-memory-subject-repository';
 import { InMemoryAttendanceRepository } from '../testing/attendance/in-memory-attendance-repository';
 import { InMemoryAcademicYearRepository } from '../testing/academics/in-memory-academic-year-repository';
 import { InMemoryInstitutionRepository } from '../testing/institution/in-memory-institution-repository';
@@ -29,6 +30,7 @@ describe('dashboard query use cases', () => {
   it('GetDashboardOverview composes real counts and today attendance', async () => {
     const students = new InMemoryStudentRepository();
     const classes = new InMemoryClassRepository();
+    const subjects = new InMemorySubjectRepository();
     const attendance = new InMemoryAttendanceRepository();
     students.save(
       Student.create({
@@ -51,12 +53,13 @@ describe('dashboard query use cases', () => {
       }),
     );
     const useCase = new GetDashboardOverviewUseCase({
-      students, classes, attendance, clock: new FixedClock('2026-07-20T09:00:00.000Z'), logger,
+      students, classes, subjects, attendance, clock: new FixedClock('2026-07-20T09:00:00.000Z'), logger,
     });
     const res = await useCase.execute({});
     expect(res.data).toEqual({
       totalStudents: 1,
       totalClasses: 1,
+      totalSubjects: 0,
       attendanceToday: { present: 1, total: 1 },
     });
   });
@@ -65,12 +68,18 @@ describe('dashboard query use cases', () => {
     const useCase = new GetDashboardOverviewUseCase({
       students: new InMemoryStudentRepository(),
       classes: new InMemoryClassRepository(),
+      subjects: new InMemorySubjectRepository(),
       attendance: new InMemoryAttendanceRepository(),
       clock: new FixedClock('2026-07-20T09:00:00.000Z'),
       logger,
     });
     const res = await useCase.execute({});
-    expect(res.data).toEqual({ totalStudents: 0, totalClasses: 0, attendanceToday: { present: 0, total: 0 } });
+    expect(res.data).toEqual({
+      totalStudents: 0,
+      totalClasses: 0,
+      totalSubjects: 0,
+      attendanceToday: { present: 0, total: 0 },
+    });
   });
 
   it('GetCurrentAcademicYear returns null when none configured, DTO when current', async () => {
