@@ -37,4 +37,13 @@ describe('createPresentationLayer', () => {
       999,
     );
   });
+
+  it('exposes the bootstrap service and academic-year ViewModel and reaches ready', async () => {
+    const { app } = createTestApplication();
+    const presentation = createPresentationLayer(app);
+    expect(presentation.viewModels.academicYear).toBeDefined();
+    expect(presentation.bootstrap).toBeDefined();
+    await presentation.bootstrap.run();
+    expect(presentation.stores.bootstrap.store.getState().phase).toBe('ready');
+  });
 });
