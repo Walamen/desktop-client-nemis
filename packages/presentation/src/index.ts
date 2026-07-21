@@ -23,6 +23,8 @@ export * from './stores/session-store';
 export * from './stores/connectivity-store';
 export * from './stores/dialog-store';
 export * from './stores/navigation-store';
+export * from './stores/bootstrap-store';
+export * from './services/bootstrap-service';
 export * from './selectors/session-selectors';
 export * from './selectors/connectivity-selectors';
 export * from './selectors/students-selectors';
