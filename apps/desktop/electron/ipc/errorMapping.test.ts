@@ -8,7 +8,13 @@ import {
   TransactionFailureError,
   ValidationError,
 } from '../data/errors/repositoryErrors';
-import { ConnectionError, DatabaseError, MigrationError } from '../database/errors/errors';
+import { UnexpectedApplicationException } from '@nemis-desktop/application';
+import {
+  ConnectionError,
+  DatabaseError,
+  IntegrityError,
+  MigrationError,
+} from '../database/errors/errors';
 import { toIpcError } from './errorMapping';
 
 describe('toIpcError', () => {
@@ -32,8 +38,27 @@ describe('toIpcError', () => {
 
   it('maps the database taxonomy to availability codes', () => {
     expect(toIpcError(new ConnectionError('x')).code).toBe('DATABASE_UNAVAILABLE');
+    expect(toIpcError(new IntegrityError('x')).code).toBe('DATABASE_UNAVAILABLE');
     expect(toIpcError(new MigrationError('x')).code).toBe('MIGRATION_REQUIRED');
     expect(toIpcError(new DatabaseError('x')).code).toBe('UNEXPECTED_ERROR');
+  });
+
+  it('unwraps application-pipeline wrappers so DB failures surface as DATABASE_UNAVAILABLE', () => {
+    // invokeUseCase masks non-application errors exactly like this.
+    const wrapped = new UnexpectedApplicationException('An unexpected error occurred.', {
+      cause: new ConnectionError('SqliteStudentRepository.countAll: database operation failed (SQLITE_BUSY)'),
+    });
+    const payload = toIpcError(wrapped);
+    expect(payload.code).toBe('DATABASE_UNAVAILABLE');
+    expect(payload.message).toBe('The local database is currently unavailable.');
+  });
+
+  it('bounds cause-chain unwrapping so deep chains stay masked', () => {
+    let error: Error = new ConnectionError('deep');
+    for (let i = 0; i < 10; i += 1) {
+      error = new Error(`layer ${i}`, { cause: error });
+    }
+    expect(toIpcError(error).code).toBe('UNEXPECTED_ERROR');
   });
 
   it('keeps ApplicationError codes that are part of the contract', () => {
