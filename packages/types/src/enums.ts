@@ -75,6 +75,13 @@ export const ApprovalStatus = {
 } as const;
 export type ApprovalStatus = (typeof ApprovalStatus)[keyof typeof ApprovalStatus];
 
+export const AcademicYearStatus = {
+  ACTIVE: 'ACTIVE',
+  CLOSED: 'CLOSED',
+  ARCHIVED: 'ARCHIVED',
+} as const;
+export type AcademicYearStatus = (typeof AcademicYearStatus)[keyof typeof AcademicYearStatus];
+
 export const GradeLevel = {
   KG: 'KG',
   K1: 'K1',

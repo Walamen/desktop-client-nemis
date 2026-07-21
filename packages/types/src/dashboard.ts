@@ -7,6 +7,7 @@ import type { ApprovalStatus, InstitutionType, OwnershipType, SystemRole } from 
 export interface DashboardOverviewResult {
   totalStudents: number;
   totalClasses: number;
+  totalSubjects: number;
   attendanceToday: { present: number; total: number };
 }
 
