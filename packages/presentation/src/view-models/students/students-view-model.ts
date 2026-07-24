@@ -3,10 +3,18 @@ import type {
   DeactivateStudentDto,
   LinkGuardianDto,
   StudentApplicationService,
+  UpdateStudentDto,
+  SetStudentActiveDto,
+  CreateGuardianDto,
+  ListStudentsDto,
+  AcademicsApplicationService,
+  EnrollStudentDto,
+  EnrollmentOutput,
+  MoveEnrollmentClassDto,
 } from '@nemis-desktop/application';
 import { createStore } from 'zustand/vanilla';
 import { hasData, idleState, type AsyncState } from '../../core/async-state';
-import { trackQuery, type CommandOutcome } from '../../core/async-runner';
+import { executeCommand, trackQuery, type CommandOutcome } from '../../core/async-runner';
 import type { SubmissionStatus } from '../../core/submission';
 import { CreateStudentUiCommand } from '../../commands/students/create-student-ui-command';
 import { DeactivateStudentUiCommand } from '../../commands/students/deactivate-student-ui-command';
@@ -33,12 +41,15 @@ export interface StudentsState {
   readonly pagination: PaginationState;
   readonly search: SearchState;
   readonly submission: SubmissionStatus;
+  readonly filters: Omit<ListStudentsDto, 'limit' | 'offset'>;
+  readonly enrollments: AsyncState<readonly EnrollmentOutput[]>;
 }
 
 export interface StudentsViewModelDeps {
   readonly students: StudentApplicationService;
   readonly notifications: NotificationStore;
   readonly session: SessionStore;
+  readonly academics?: AcademicsApplicationService;
 }
 
 export class StudentsViewModel {
@@ -48,6 +59,8 @@ export class StudentsViewModel {
     pagination: createPagination(),
     search: createSearch(),
     submission: 'idle',
+    filters: {},
+    enrollments: idleState(),
   }));
 
   private readonly listQuery: ListStudentsUiQuery;
@@ -71,7 +84,11 @@ export class StudentsViewModel {
         get: () => this.store.getState().list,
         set: (list) => this.store.setState({ list }),
       },
-      fetch: () => this.listQuery.execute(toPageRequest(this.store.getState().pagination)),
+      fetch: () =>
+        this.listQuery.execute({
+          ...toPageRequest(this.store.getState().pagination),
+          ...this.store.getState().filters,
+        }),
       onData: (page) =>
         this.store.setState((s) => ({ pagination: withTotal(s.pagination, page.total) })),
       map: (page) => page.items.map(toStudentRowView),
@@ -90,7 +107,14 @@ export class StudentsViewModel {
   }
 
   setKeyword(keyword: string): void {
-    this.store.setState((s) => ({ search: withKeyword(s.search, keyword) }));
+    this.store.setState((s) => ({
+      search: withKeyword(s.search, keyword),
+      filters: { ...s.filters, keyword },
+      pagination: { ...s.pagination, page: 1 },
+    }));
+  }
+  setFilters(filters: Omit<ListStudentsDto, 'limit' | 'offset'>): void {
+    this.store.setState((s) => ({ filters, pagination: { ...s.pagination, page: 1 } }));
   }
 
   async selectStudent(studentId: string | null): Promise<void> {
@@ -140,6 +164,76 @@ export class StudentsViewModel {
       this.updateDetailsIfCurrent(outcome.data);
     }
     return outcome;
+  }
+  async updateStudent(dto: UpdateStudentDto): Promise<CommandOutcome<StudentDetailsView>> {
+    const outcome = await executeCommand({
+      run: () => this.deps.students.update(dto),
+      map: toStudentDetailsView,
+      notifications: this.deps.notifications,
+      successMessage: 'Student updated.',
+    });
+    if (outcome.ok) {
+      this.updateDetailsIfCurrent(outcome.data);
+      await this.loadStudents();
+    }
+    return outcome;
+  }
+  async setStudentActive(dto: SetStudentActiveDto): Promise<CommandOutcome<StudentDetailsView>> {
+    const outcome = await executeCommand({
+      run: () => this.deps.students.setActive(dto),
+      map: toStudentDetailsView,
+      notifications: this.deps.notifications,
+      successMessage: dto.isActive ? 'Student restored.' : 'Student archived.',
+    });
+    if (outcome.ok) {
+      this.updateDetailsIfCurrent(outcome.data);
+      await this.loadStudents();
+    }
+    return outcome;
+  }
+  async createGuardian(dto: CreateGuardianDto): Promise<CommandOutcome<StudentDetailsView>> {
+    const outcome = await executeCommand({
+      run: () => this.deps.students.createGuardian(dto),
+      map: toStudentDetailsView,
+      notifications: this.deps.notifications,
+      successMessage: 'Guardian added.',
+    });
+    if (outcome.ok) this.updateDetailsIfCurrent(outcome.data);
+    return outcome;
+  }
+  async enrollStudent(dto: EnrollStudentDto): Promise<CommandOutcome<EnrollmentOutput>> {
+    if (!this.deps.academics) throw new Error('academics service not configured');
+    return executeCommand({
+      run: () => this.deps.academics!.enroll(dto),
+      map: (value) => value,
+      notifications: this.deps.notifications,
+      successMessage: 'Student enrolled.',
+    });
+  }
+  async moveEnrollmentClass(
+    dto: MoveEnrollmentClassDto,
+    studentId: string,
+  ): Promise<CommandOutcome<EnrollmentOutput>> {
+    if (!this.deps.academics) throw new Error('academics service not configured');
+    const outcome = await executeCommand({
+      run: () => this.deps.academics!.moveEnrollmentClass(dto),
+      map: (value) => value,
+      notifications: this.deps.notifications,
+      successMessage: 'Student moved to the new class.',
+    });
+    if (outcome.ok) await this.loadEnrollments(studentId);
+    return outcome;
+  }
+  async loadEnrollments(studentId: string): Promise<void> {
+    await trackQuery({
+      access: {
+        get: () => this.store.getState().enrollments,
+        set: (enrollments) => this.store.setState({ enrollments }),
+      },
+      fetch: () => this.deps.students.listEnrollments(studentId),
+      map: (rows) => rows,
+      isEmpty: (rows) => rows.length === 0,
+    });
   }
 
   /** Refresh the open details panel only when it is showing the mutated

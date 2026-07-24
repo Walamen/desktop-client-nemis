@@ -6,9 +6,10 @@ import DashboardPage from './page';
 
 beforeEach(() => {
   (window as unknown as { nemis: unknown }).nemis = {
-    dashboard: { getOverview: vi.fn(async () => ({ totalStudents: 0, totalClasses: 0, attendanceToday: { present: 0, total: 0 } })) },
+    dashboard: { getOverview: vi.fn(async () => ({ totalStudents: 0, totalClasses: 0, totalSubjects: 0, attendanceToday: { present: 0, total: 0 }, studentsByGrade: [], recentlyEnrolled: [] })) },
     school: { getSummary: vi.fn(async () => null) },
     academicYear: { getCurrent: vi.fn(async () => null) },
+    term: { getCurrent: vi.fn(async () => null) },
     identity: { getCurrentUser: vi.fn(async () => null) },
     device: { getInfo: vi.fn(async () => null) },
   };
@@ -29,6 +30,7 @@ describe('School Admin dashboard (fresh install)', () => {
     await waitFor(() => expect(screen.getByText('Total Students')).toBeInTheDocument());
     expect(screen.getByText('School profile not set up yet')).toBeInTheDocument();
     expect(screen.getByText('No academic year configured')).toBeInTheDocument();
+    expect(screen.getByText('No current term configured')).toBeInTheDocument();
     expect(screen.getByText(/staff records not tracked yet/i)).toBeInTheDocument();
     // The old StatCard placeholder badge (exact text "sample") must be gone.
     // RecentActivityFeed's honest "Sample activity — live feed arrives with

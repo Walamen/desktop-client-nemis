@@ -60,6 +60,8 @@ describe('dashboard query use cases', () => {
       totalStudents: 1,
       totalClasses: 1,
       totalSubjects: 0,
+      studentsByGrade: [],
+      recentlyEnrolled: [{ id: 's-1', fullName: 'A B', admissionNumber: 'ADM-1', updatedAt: '2026-07-20T00:00:00.000Z' }],
       attendanceToday: { present: 1, total: 1 },
     });
   });
@@ -78,6 +80,8 @@ describe('dashboard query use cases', () => {
       totalStudents: 0,
       totalClasses: 0,
       totalSubjects: 0,
+      studentsByGrade: [],
+      recentlyEnrolled: [],
       attendanceToday: { present: 0, total: 0 },
     });
   });

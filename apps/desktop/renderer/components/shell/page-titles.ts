@@ -6,6 +6,9 @@ const TITLES: Readonly<Record<string, string>> = {
   [`${BASE}/teachers-staff`]: 'Teachers & Staff',
   [`${BASE}/parents-guardians`]: 'Parents & Guardians',
   [`${BASE}/classes`]: 'Classes Management',
+  [`${BASE}/academic-years`]: 'Academic Years',
+  [`${BASE}/terms`]: 'Terms',
+  [`${BASE}/grade-levels`]: 'Grade Levels',
   [`${BASE}/subjects`]: 'Subjects Management',
   [`${BASE}/attendance`]: 'Attendance Management',
   [`${BASE}/academic-grading`]: 'Academic & Grading',
@@ -17,6 +20,7 @@ const TITLES: Readonly<Record<string, string>> = {
   [`${BASE}/notifications`]: 'Notifications',
   [`${BASE}/messages`]: 'Messages',
   [`${BASE}/settings`]: 'School Settings',
+  [`${BASE}/school-profile`]: 'School Profile',
 };
 
 const titleCase = (s: string) => s.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());

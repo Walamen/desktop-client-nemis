@@ -1,5 +1,11 @@
 import type { Student } from '@nemis-desktop/domain';
-import type { PageRequest } from '../../core/pagination';
+import type { EnrollmentStatus, Gender, GradeLevel } from '@nemis-desktop/types';
+
+export interface StudentPageFilter {
+  limit: number; offset: number; keyword?: string; gender?: Gender; gradeLevel?: GradeLevel;
+  classId?: string; academicYearId?: string; enrollmentStatus?: EnrollmentStatus; isActive?: boolean;
+  sort?: 'name' | 'admissionNumber' | 'updatedAt';
+}
 
 /** Persistence port for the Student aggregate. Speaks in domain entities; the
  * SQLite adapter (Phase 6) maps entities to rows. */
@@ -7,9 +13,11 @@ export interface IStudentRepository {
   findById(id: string): Student | null;
   save(student: Student): void;
   exists(id: string): boolean;
-  existsByAdmissionNumber(institutionId: string, admissionNumber: string): boolean;
-  findPage(request: PageRequest): { items: Student[]; total: number };
+  existsByAdmissionNumber(institutionId: string, admissionNumber: string, excludeId?: string): boolean;
+  findPage(request: StudentPageFilter): { items: Student[]; total: number };
   findByClassId(classId: string): Student[];
   /** Real COUNT(*) — total students in this installation. */
   countAll(): number;
+  countByGradeLevel(): { gradeLevel: GradeLevel; studentCount: number }[];
+  findRecentlyUpdated(limit: number): Student[];
 }

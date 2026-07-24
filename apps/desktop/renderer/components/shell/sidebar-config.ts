@@ -1,5 +1,5 @@
 import {
-  LayoutDashboard, Map, School, CheckCircle, BookOpen, CalendarCheck, Users,
+  LayoutDashboard, Map, School, CheckCircle, BookOpen, CalendarCheck, Users, CalendarRange, CalendarClock, Layers3, Building2,
   FileText, UserPlus, CreditCard, Bell, MessageCircle, Settings2Icon, type LucideIcon,
 } from 'lucide-react';
 
@@ -17,6 +17,9 @@ export const SIDEBAR_NAV: readonly SidebarGroup[] = [
     { name: 'Parents & Guardians', href: '/government/school-admin/parents-guardians', icon: CheckCircle },
   ]},
   { label: 'ACADEMIC', items: [
+    { name: 'Academic Years', href: '/government/school-admin/academic-years', icon: CalendarRange },
+    { name: 'Terms', href: '/government/school-admin/terms', icon: CalendarClock },
+    { name: 'Grade Levels', href: '/government/school-admin/grade-levels', icon: Layers3 },
     { name: 'Classes Management', href: '/government/school-admin/classes', icon: BookOpen },
     { name: 'Subjects Management', href: '/government/school-admin/subjects', icon: BookOpen },
     { name: 'Attendence Management', href: '/government/school-admin/attendance', icon: CalendarCheck },
@@ -36,6 +39,7 @@ export const SIDEBAR_NAV: readonly SidebarGroup[] = [
     { name: 'Messages', href: '/government/school-admin/messages', icon: MessageCircle },
   ]},
   { label: 'SYSTEM', items: [
+    { name: 'School Profile', href: '/government/school-admin/school-profile', icon: Building2 },
     { name: 'School Settings', href: '/government/school-admin/settings', icon: Settings2Icon },
   ]},
 ];

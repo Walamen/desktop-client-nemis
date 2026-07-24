@@ -1,12 +1,39 @@
 import { describe, expect, it } from 'vitest';
-import { Class } from '@nemis-desktop/domain';
-import { Gender, GradeLevel } from '@nemis-desktop/types';
+import { AcademicYear, Class, Term } from '@nemis-desktop/domain';
+import { AcademicYearStatus, Gender, GradeLevel } from '@nemis-desktop/types';
 import { NotificationStore } from '../../stores/notification-store';
 import { createTestApplication } from '../../testing/create-test-application';
 import { ClassRosterViewModel } from './class-roster-view-model';
 
 async function build() {
   const { app, ports } = createTestApplication();
+  ports.academicYears.store.set(
+    'ay-1',
+    AcademicYear.reconstitute({
+      id: 'ay-1',
+      institutionId: 'inst-1',
+      code: '2025/2026',
+      start: '2025-09-01',
+      end: '2026-07-31',
+      isCurrent: true,
+      status: AcademicYearStatus.ACTIVE,
+      version: 1,
+      updatedAt: '2026-07-18T00:00:00.000Z',
+    }),
+  );
+  ports.terms.store.set(
+    'term-1',
+    Term.reconstitute({
+      id: 'term-1',
+      academicYearId: 'ay-1',
+      name: 'Term 1',
+      start: '2025-09-01',
+      end: '2025-12-19',
+      isCurrent: true,
+      version: 1,
+      updatedAt: '2026-07-18T00:00:00.000Z',
+    }),
+  );
   ports.classes.store.set(
     'cls-1',
     Class.reconstitute({

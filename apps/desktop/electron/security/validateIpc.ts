@@ -1,5 +1,5 @@
 import { IPCError } from '@nemis-desktop/shared';
-import { AcademicYearStatus, GradeLevel } from '@nemis-desktop/types';
+import { AcademicYearStatus, EnrollmentStatus, Gender, GradeLevel } from '@nemis-desktop/types';
 
 /** Rejects IPC calls that pass unexpected arguments. Never trust renderer input. */
 export function assertNoArgs(args: readonly unknown[]): void {
@@ -128,6 +128,134 @@ function assertOptionalInt(value: unknown, field: string, min: number, max: numb
 export function assertSingleIdArg(args: readonly unknown[]): void {
   assertArity(args, 1);
   assertString(args[0], 'id', ID_MAX_LENGTH);
+}
+
+// --- Student Management (Phase 10) --------------------------------------
+export function assertListStudentsArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [r] = args;
+  if (!isPlainObject(r)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(r, [
+    'limit',
+    'offset',
+    'keyword',
+    'gender',
+    'gradeLevel',
+    'classId',
+    'academicYearId',
+    'enrollmentStatus',
+    'isActive',
+    'sort',
+  ]);
+  assertOptionalInt(r.limit, 'limit', 1, 100);
+  assertOptionalInt(r.offset, 'offset', 0, 1_000_000);
+  assertOptionalString(r.keyword, 'keyword', KEYWORD_MAX_LENGTH);
+  assertOptionalEnumMember(r.gender, 'gender', Object.values(Gender));
+  assertOptionalEnumMember(r.gradeLevel, 'gradeLevel', Object.values(GradeLevel));
+  assertOptionalString(r.classId, 'classId', ID_MAX_LENGTH);
+  assertOptionalString(r.academicYearId, 'academicYearId', ID_MAX_LENGTH);
+  assertOptionalEnumMember(r.enrollmentStatus, 'enrollmentStatus', Object.values(EnrollmentStatus));
+  assertOptionalBoolean(r.isActive, 'isActive');
+  if (r.sort !== undefined)
+    assertEnumMember(r.sort, 'sort', ['name', 'admissionNumber', 'updatedAt']);
+}
+export function assertCreateStudentArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [r] = args;
+  if (!isPlainObject(r)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(r, [
+    'institutionId',
+    'firstName',
+    'middleName',
+    'lastName',
+    'admissionNumber',
+    'admissionDate',
+    'dateOfBirth',
+    'gender',
+    'gradeLevel',
+    'phoneNumber',
+    'email',
+    'address',
+  ]);
+  for (const k of ['institutionId', 'firstName', 'lastName', 'admissionNumber'] as const)
+    assertString(r[k], k, NAME_MAX_LENGTH);
+  assertIsoDate(r.dateOfBirth, 'dateOfBirth');
+  assertOptionalIsoDate(r.admissionDate, 'admissionDate');
+  assertEnumMember(r.gender, 'gender', Object.values(Gender));
+  assertOptionalEnumMember(r.gradeLevel, 'gradeLevel', Object.values(GradeLevel));
+  for (const k of ['middleName', 'phoneNumber', 'email', 'address'] as const)
+    assertOptionalString(r[k], k, k === 'address' ? 2000 : NAME_MAX_LENGTH);
+}
+export function assertUpdateStudentArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [r] = args;
+  if (!isPlainObject(r)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(r, [
+    'studentId',
+    'firstName',
+    'middleName',
+    'lastName',
+    'dateOfBirth',
+    'gender',
+    'gradeLevel',
+    'phoneNumber',
+    'email',
+    'address',
+  ]);
+  assertString(r.studentId, 'studentId', ID_MAX_LENGTH);
+  for (const k of [
+    'firstName',
+    'middleName',
+    'lastName',
+    'phoneNumber',
+    'email',
+    'address',
+  ] as const)
+    assertOptionalString(r[k], k, k === 'address' ? 2000 : NAME_MAX_LENGTH);
+  assertOptionalIsoDate(r.dateOfBirth, 'dateOfBirth');
+  assertOptionalEnumMember(r.gender, 'gender', Object.values(Gender));
+  assertOptionalEnumMember(r.gradeLevel, 'gradeLevel', Object.values(GradeLevel));
+}
+export function assertSetStudentActiveArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [r] = args;
+  if (!isPlainObject(r)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(r, ['studentId', 'isActive']);
+  assertString(r.studentId, 'studentId', ID_MAX_LENGTH);
+  assertBoolean(r.isActive, 'isActive');
+}
+export function assertCreateGuardianArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [r] = args;
+  if (!isPlainObject(r)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(r, [
+    'studentId',
+    'firstName',
+    'lastName',
+    'relationship',
+    'phoneNumber',
+    'isPrimary',
+  ]);
+  for (const k of ['studentId', 'firstName', 'lastName', 'relationship', 'phoneNumber'] as const)
+    assertString(r[k], k, NAME_MAX_LENGTH);
+  assertBoolean(r.isPrimary, 'isPrimary');
+}
+export function assertEnrollStudentArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [r] = args;
+  if (!isPlainObject(r)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(r, ['studentId', 'classId', 'academicYearId', 'termId', 'enrollmentDate']);
+  for (const k of ['studentId', 'classId', 'academicYearId', 'termId'] as const)
+    assertString(r[k], k, ID_MAX_LENGTH);
+  assertOptionalIsoDate(r.enrollmentDate, 'enrollmentDate');
+}
+export function assertMoveEnrollmentClassArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [request] = args;
+  if (!isPlainObject(request)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(request, ['enrollmentId', 'targetClassId']);
+  assertString(request.enrollmentId, 'enrollmentId', ID_MAX_LENGTH);
+  assertString(request.targetClassId, 'targetClassId', ID_MAX_LENGTH);
 }
 
 export function assertCreateAcademicYearArgs(args: readonly unknown[]): void {

@@ -7,6 +7,7 @@ import {
 import { Skeleton, ErrorState } from '@nemis-desktop/ui';
 import {
   useDashboardViewModel, useCurrentUserViewModel, useSettingsViewModel, useAcademicYearViewModel,
+  useAcademicFoundationViewModel,
 } from '@/lib/presentation/hooks';
 import { useViewModel } from '@/hooks/use-view-model';
 import { StatCard } from '@/components/dashboard/StatCard';
@@ -27,11 +28,13 @@ export default function DashboardPage() {
   const currentUser = useCurrentUserViewModel();
   const settings = useSettingsViewModel();
   const academicYear = useAcademicYearViewModel();
+  const academicFoundation = useAcademicFoundationViewModel();
 
   const summary = useViewModel(dashboard.store, (s) => s.summary);
   const user = useViewModel(currentUser.store, (s) => s.user);
   const profile = useViewModel(settings.store, (s) => s.profile);
   const year = useViewModel(academicYear.store, (s) => s.current);
+  const term = useViewModel(academicFoundation.store, (s) => s.currentTerm);
 
   // Bootstrap loads this on startup; only self-load if the store is still idle
   // (e.g. navigated here before bootstrap ran).
@@ -49,6 +52,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <InfoTile label="School" value={profile.status === 'success' ? profile.data.name : null} emptyText="School profile not set up yet" />
           <InfoTile label="Academic Year" value={year.status === 'success' ? year.data.code : null} emptyText="No academic year configured" />
+          <InfoTile label="Current Term" value={term.status === 'success' ? term.data.name : null} emptyText="No current term configured" />
         </div>
 
         {summary.status === 'error' && summary.error.kind === 'database-unavailable' ? (
@@ -87,6 +91,10 @@ export default function DashboardPage() {
           </div>
           <RecentActivityFeed />
         </div>
+
+        {(summary.status === 'success' || summary.status === 'refreshing') && <div className="grid grid-cols-1 lg:grid-cols-2 gap-6"><section className="bg-white border border-slate-300 rounded-card p-6"><h2 className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-4">Students by Grade</h2>{summary.data.studentsByGrade.length === 0 ? <p className="text-sm text-slate-500">No enrolled grade data available.</p> : summary.data.studentsByGrade.map(item => <div key={item.gradeLevel} className="flex justify-between border-b py-2 text-sm"><span>{item.gradeLevel.replaceAll('_',' ')}</span><strong>{item.studentCount}</strong></div>)}</section><section className="bg-white border border-slate-300 rounded-card p-6"><h2 className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-4">Recently Enrolled Students</h2>{summary.data.recentlyEnrolled.length === 0 ? <p className="text-sm text-slate-500">No students have been enrolled.</p> : summary.data.recentlyEnrolled.map(student => <a key={student.id} href={`/government/school-admin/students/profile?id=${student.id}`} className="flex justify-between border-b py-2 text-sm text-blue-700"><span>{student.fullName}</span><span>{student.admissionNumber}</span></a>)}</section></div>}
+
+        <div className="bg-white border border-slate-300 rounded-card p-6"><h2 className="text-xs font-semibold uppercase tracking-widest text-slate-400">Enrollment Trends</h2><p className="mt-2 text-sm text-slate-500">Trend analysis will appear after synchronized historical enrollment data is available.</p></div>
 
         <TeachersListSection />
       </div>

@@ -21,6 +21,10 @@ export function toStudentOutput(student: Student): StudentOutput {
     dateOfBirth: student.dateOfBirth.value,
     gender: student.gender,
     gradeLevel: student.gradeLevel,
+    admissionDate: student.admissionDate,
+    phoneNumber: student.phoneNumber,
+    email: student.email,
+    address: student.address,
     isActive: student.isActive,
     version: student.version,
     updatedAt: student.updatedAt,
@@ -35,5 +39,7 @@ export function toStudentSummary(student: Student): StudentSummaryOutput {
     admissionNumber: student.admissionNumber.value,
     gradeLevel: student.gradeLevel,
     isActive: student.isActive,
+    gender: student.gender,
+    updatedAt: student.updatedAt,
   };
 }

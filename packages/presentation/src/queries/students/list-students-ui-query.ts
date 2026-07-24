@@ -1,7 +1,7 @@
 import type {
   ApplicationResponse,
   PagedResult,
-  PageRequest,
+  ListStudentsDto,
   StudentApplicationService,
   StudentSummaryOutput,
 } from '@nemis-desktop/application';
@@ -11,7 +11,7 @@ import type {
 export class ListStudentsUiQuery {
   constructor(private readonly students: StudentApplicationService) {}
 
-  execute(page: PageRequest): Promise<ApplicationResponse<PagedResult<StudentSummaryOutput>>> {
+  execute(page: ListStudentsDto): Promise<ApplicationResponse<PagedResult<StudentSummaryOutput>>> {
     return this.students.list(page);
   }
 }

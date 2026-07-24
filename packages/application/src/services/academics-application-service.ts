@@ -16,6 +16,7 @@ import type {
   GradeLevelCountOutput,
   ListClassesDto,
   ListSubjectsDto,
+  MoveEnrollmentClassDto,
   ListTermsDto,
   SetClassActiveDto,
   SetCurrentTermDto,
@@ -36,6 +37,7 @@ import type {
 } from '../dto/academics/academic-year-dto';
 import type { EnrollStudentUseCase } from '../use-cases/academics/enroll-student';
 import type { WithdrawEnrollmentUseCase } from '../use-cases/academics/withdraw-enrollment';
+import type { MoveEnrollmentClassUseCase } from '../use-cases/academics/move-enrollment-class';
 import type { GetClassRosterUseCase } from '../use-cases/academics/get-class-roster';
 import type { GetCurrentAcademicYearUseCase } from '../use-cases/academics/get-current-academic-year';
 import type { ListAcademicYearsUseCase } from '../use-cases/academics/list-academic-years';
@@ -71,6 +73,7 @@ import type { UnassignSubjectFromClassUseCase } from '../use-cases/academics/una
 export interface AcademicsApplicationServiceDeps {
   enroll: EnrollStudentUseCase;
   withdraw: WithdrawEnrollmentUseCase;
+  moveEnrollmentClass: MoveEnrollmentClassUseCase;
   getClassRoster: GetClassRosterUseCase;
   getCurrentAcademicYear: GetCurrentAcademicYearUseCase;
   listAcademicYears: ListAcademicYearsUseCase;
@@ -106,6 +109,11 @@ export class AcademicsApplicationService {
   }
   withdraw(dto: WithdrawEnrollmentDto): Promise<ApplicationResponse<EnrollmentOutput>> {
     return this.deps.withdraw.execute(dto);
+  }
+  moveEnrollmentClass(
+    dto: MoveEnrollmentClassDto,
+  ): Promise<ApplicationResponse<EnrollmentOutput>> {
+    return this.deps.moveEnrollmentClass.execute(dto);
   }
   getClassRoster(dto: GetClassRosterDto): Promise<ApplicationResponse<ClassRosterOutput>> {
     return this.deps.getClassRoster.execute(dto);

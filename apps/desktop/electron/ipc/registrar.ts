@@ -13,6 +13,7 @@ import { registerClassHandlers } from '@app/ipc/handlers/classes';
 import { registerSubjectHandlers } from '@app/ipc/handlers/subject';
 import { registerIdentityHandlers } from '@app/ipc/handlers/identity';
 import { registerDeviceHandlers } from '@app/ipc/handlers/device';
+import { registerStudentHandlers } from '@app/ipc/handlers/students';
 import { toIpcError } from './errorMapping';
 
 export type IpcValidator = (args: readonly unknown[]) => void;
@@ -28,6 +29,7 @@ export function registerIpcHandlers(services: DataLayer['services'], app: Applic
   registerSubjectHandlers(handle, app);
   registerIdentityHandlers(handle, app);
   registerDeviceHandlers(handle, app);
+  registerStudentHandlers(handle, app);
 }
 
 /**

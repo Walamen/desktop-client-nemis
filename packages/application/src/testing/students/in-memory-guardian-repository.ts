@@ -9,4 +9,6 @@ export class InMemoryGuardianRepository implements IGuardianRepository {
   exists(id: string): boolean {
     return this.store.has(id);
   }
+  save(guardian: Guardian): void { this.store.set(guardian.id, guardian); }
+  findByStudentId(_studentId: string): Guardian[] { return []; }
 }

@@ -25,9 +25,14 @@ import { LinkGuardianToStudentUseCase } from '../use-cases/students/link-guardia
 import { GetStudentByIdUseCase } from '../use-cases/students/get-student-by-id';
 import { ListStudentsUseCase } from '../use-cases/students/list-students';
 import { StudentApplicationService } from '../services/student-application-service';
+import { UpdateStudentUseCase } from '../use-cases/students/update-student';
+import { SetStudentActiveUseCase } from '../use-cases/students/set-student-active';
+import { CreateGuardianUseCase } from '../use-cases/students/create-guardian';
+import { ListStudentEnrollmentsUseCase } from '../use-cases/students/list-student-enrollments';
 
 import { EnrollStudentUseCase } from '../use-cases/academics/enroll-student';
 import { WithdrawEnrollmentUseCase } from '../use-cases/academics/withdraw-enrollment';
+import { MoveEnrollmentClassUseCase } from '../use-cases/academics/move-enrollment-class';
 import { GetClassRosterUseCase } from '../use-cases/academics/get-class-roster';
 import { ListAcademicYearsUseCase } from '../use-cases/academics/list-academic-years';
 import { CreateAcademicYearUseCase } from '../use-cases/academics/create-academic-year';
@@ -148,6 +153,10 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
     }),
     getById: new GetStudentByIdUseCase({ students: ports.students, logger }),
     list: new ListStudentsUseCase({ students: ports.students, logger }),
+    update: new UpdateStudentUseCase({ students: ports.students, unitOfWork, clock, logger }),
+    setActive: new SetStudentActiveUseCase({ students: ports.students, unitOfWork, clock, logger }),
+    createGuardian: new CreateGuardianUseCase({ students: ports.students, guardians: ports.guardians, unitOfWork, clock, ids, logger }),
+    listEnrollments: new ListStudentEnrollmentsUseCase({ enrollments: ports.enrollments, logger }),
   });
 
   const academics = new AcademicsApplicationService({
@@ -155,6 +164,8 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
       enrollments: ports.enrollments,
       classes: ports.classes,
       students: ports.students,
+      academicYears: ports.academicYears,
+      terms: ports.terms,
       unitOfWork,
       clock,
       ids,
@@ -163,6 +174,13 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
     }),
     withdraw: new WithdrawEnrollmentUseCase({
       enrollments: ports.enrollments,
+      unitOfWork,
+      clock,
+      logger,
+    }),
+    moveEnrollmentClass: new MoveEnrollmentClassUseCase({
+      enrollments: ports.enrollments,
+      classes: ports.classes,
       unitOfWork,
       clock,
       logger,

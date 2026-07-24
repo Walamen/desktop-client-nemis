@@ -49,9 +49,9 @@ export function createApplicationComposition(
     terms: dataLayer.repositories.terms,
     subjects: dataLayer.repositories.subjects,
     attendance: dataLayer.repositories.attendance,
+    guardians: dataLayer.repositories.guardians,
+    enrollments: dataLayer.repositories.enrollments,
     // Not built yet — throw if used.
-    guardians: new Proxy({} as never, { get: () => () => notBuilt('Guardian') }),
-    enrollments: new Proxy({} as never, { get: () => () => notBuilt('Enrollment') }),
     assessments: new Proxy({} as never, { get: () => () => notBuilt('Assessment') }),
     grades: new Proxy({} as never, { get: () => () => notBuilt('Grade') }),
     gradingConfigs: new Proxy({} as never, { get: () => () => notBuilt('GradingConfig') }),

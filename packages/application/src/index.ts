@@ -33,6 +33,7 @@ export * from './use-cases/students/list-students';
 export * from './services/student-application-service';
 export * from './use-cases/academics/enroll-student';
 export * from './use-cases/academics/withdraw-enrollment';
+export * from './use-cases/academics/move-enrollment-class';
 export * from './use-cases/academics/get-class-roster';
 export * from './use-cases/academics/list-academic-years';
 export * from './use-cases/academics/create-academic-year';

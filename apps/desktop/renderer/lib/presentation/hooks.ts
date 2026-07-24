@@ -4,10 +4,16 @@ import { usePresentation } from './presentation-provider';
 
 export const useDashboardViewModel = () => usePresentation().viewModels.dashboard;
 export const useStudentsViewModel = () => usePresentation().viewModels.students;
+export const useStudentsListViewModel = () => usePresentation().viewModels.studentsList;
+export const useStudentProfileViewModel = () => usePresentation().viewModels.studentProfile;
+export const useEnrollmentViewModel = () => usePresentation().viewModels.enrollment;
+export const useStudentSearchViewModel = () => usePresentation().viewModels.studentSearch;
 export const useSettingsViewModel = () => usePresentation().viewModels.settings;
+export const useDeviceViewModel = () => usePresentation().viewModels.device;
 export const useCurrentUserViewModel = () => usePresentation().viewModels.currentUser;
 export const useSyncViewModel = () => usePresentation().viewModels.sync;
 export const useConnectivityStore = () => usePresentation().stores.connectivity;
 export const useNotificationStore = () => usePresentation().stores.notifications;
 export const useAcademicYearViewModel = () => usePresentation().viewModels.academicYear;
+export const useAcademicFoundationViewModel = () => usePresentation().viewModels.academicFoundation;
 export const useBootstrapStore = () => usePresentation().stores.bootstrap;

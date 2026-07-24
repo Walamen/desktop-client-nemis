@@ -28,6 +28,18 @@ import type {
   DeviceInfoResult,
   SchoolSummaryResult,
 } from './dashboard';
+import type {
+  CreateGuardianRequest,
+  CreateStudentRequest,
+  EnrollStudentRequest,
+  EnrollmentResult,
+  MoveEnrollmentClassRequest,
+  SetStudentActiveRequest,
+  StudentListRequest,
+  StudentPageResult,
+  StudentResult,
+  UpdateStudentRequest,
+} from './students';
 
 /**
  * Single source of truth for every IPC endpoint's request/response types.
@@ -76,6 +88,19 @@ export interface IpcContract {
   'class-subject:list': { args: [classId: string]; result: ClassSubjectResult[] };
   'class-subject:assign': { args: [request: ClassSubjectPairRequest]; result: ClassSubjectResult };
   'class-subject:unassign': { args: [request: ClassSubjectPairRequest]; result: DeletedResult };
+  // Student Management (Phase 10)
+  'student:list': { args: [request: StudentListRequest]; result: StudentPageResult };
+  'student:get': { args: [id: string]; result: StudentResult | null };
+  'student:create': { args: [request: CreateStudentRequest]; result: StudentResult };
+  'student:update': { args: [request: UpdateStudentRequest]; result: StudentResult };
+  'student:set-active': { args: [request: SetStudentActiveRequest]; result: StudentResult };
+  'student:create-guardian': { args: [request: CreateGuardianRequest]; result: StudentResult };
+  'student:enroll': { args: [request: EnrollStudentRequest]; result: EnrollmentResult };
+  'student:move-class': {
+    args: [request: MoveEnrollmentClassRequest];
+    result: EnrollmentResult;
+  };
+  'student:list-enrollments': { args: [id: string]; result: EnrollmentResult[] };
 }
 
 export type IpcChannel = keyof IpcContract;
@@ -111,6 +136,15 @@ export const IpcChannels = {
   CLASS_SUBJECT_LIST: 'class-subject:list',
   CLASS_SUBJECT_ASSIGN: 'class-subject:assign',
   CLASS_SUBJECT_UNASSIGN: 'class-subject:unassign',
+  STUDENT_LIST: 'student:list',
+  STUDENT_GET: 'student:get',
+  STUDENT_CREATE: 'student:create',
+  STUDENT_UPDATE: 'student:update',
+  STUDENT_SET_ACTIVE: 'student:set-active',
+  STUDENT_CREATE_GUARDIAN: 'student:create-guardian',
+  STUDENT_ENROLL: 'student:enroll',
+  STUDENT_MOVE_CLASS: 'student:move-class',
+  STUDENT_LIST_ENROLLMENTS: 'student:list-enrollments',
 } as const satisfies Record<string, IpcChannel>;
 
 // Compile-time exhaustiveness: adding a channel to IpcContract without

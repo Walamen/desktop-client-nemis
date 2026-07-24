@@ -5,6 +5,8 @@ import type { EnrollStudentDto, EnrollmentOutput } from '../../dto/academics/aca
 import type { IEnrollmentRepository } from '../../interfaces/academics/enrollment-repository';
 import type { IClassRepository } from '../../interfaces/academics/class-repository';
 import type { IStudentRepository } from '../../interfaces/students/student-repository';
+import type { IAcademicYearRepository } from '../../interfaces/academics/academic-year-repository';
+import type { ITermRepository } from '../../interfaces/academics/term-repository';
 import type { IUnitOfWork } from '../../interfaces/unit-of-work';
 import type { IClock } from '../../interfaces/clock';
 import type { IIdGenerator } from '../../interfaces/id-generator';
@@ -20,6 +22,8 @@ export interface EnrollStudentDeps {
   enrollments: IEnrollmentRepository;
   classes: IClassRepository;
   students: IStudentRepository;
+  academicYears?: IAcademicYearRepository;
+  terms?: ITermRepository;
   unitOfWork: IUnitOfWork;
   clock: IClock;
   ids: IIdGenerator;
@@ -42,9 +46,15 @@ export class EnrollStudentUseCase implements CommandHandler<
       if (!this.deps.classes.exists(command.classId)) {
         throw new WorkflowException(`Class ${command.classId} does not exist.`);
       }
-      if (this.deps.enrollments.hasActiveEnrollment(command.studentId, command.classId)) {
-        throw new WorkflowException('Student is already actively enrolled in this class.');
-      }
+      const student = this.deps.students.findById(command.studentId);
+      if (!student?.isActive) throw new WorkflowException('Archived students cannot be enrolled.');
+      const year = this.deps.academicYears?.findById(command.academicYearId);
+      if (this.deps.academicYears && (!year || !year.isCurrent || year.status !== 'ACTIVE')) throw new WorkflowException('Enrollment requires the current active academic year.');
+      const term = this.deps.terms?.findById(command.termId);
+      if (this.deps.terms && (!term || !year || term.academicYearId !== year.id)) throw new WorkflowException('The selected term does not belong to the academic year.');
+      const clazz = this.deps.classes.findById(command.classId);
+      if (!clazz || !clazz.isActive || (year && clazz.academicYearId !== year.id)) throw new WorkflowException('The selected class is not active in the academic year.');
+      if (this.deps.enrollments.hasEnrollmentForPeriod(command.studentId, command.academicYearId, command.termId)) throw new WorkflowException('Student already has an enrollment for this academic year and term.');
 
       const occurredAt = this.deps.clock.now();
       const enrollment = Enrollment.create({
@@ -54,6 +64,7 @@ export class EnrollStudentUseCase implements CommandHandler<
         academicYearId: command.academicYearId,
         termId: command.termId,
         occurredAt,
+        enrollmentDate: command.enrollmentDate,
       });
       this.deps.unitOfWork.run(() => this.deps.enrollments.save(enrollment));
 

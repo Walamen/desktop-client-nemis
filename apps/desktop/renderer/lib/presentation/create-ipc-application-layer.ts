@@ -2,6 +2,7 @@ import type {
   AcademicsApplicationService,
   ApplicationLayer,
   ApplicationResponse,
+  StudentApplicationService,
 } from '@nemis-desktop/application';
 import {
   DatabaseUnavailableError,
@@ -61,9 +62,9 @@ function group<T extends object>(name: string, methods: Partial<T>): T {
   });
 }
 
-/** THE Phase-8 SEAM (now live): an ApplicationLayer-shaped facade over the IPC
- * bridge. Only the five dashboard/bootstrap queries are wired; the rest throw
- * NotImplementedPresentationError until their feature phase. */
+/** The renderer's ApplicationLayer-shaped facade over the validated IPC bridge.
+ * Dashboard/bootstrap and Academic Foundation methods are live; later modules
+ * continue to fail explicitly until their own IPC endpoints are introduced. */
 export function createIpcApplicationLayer(): ApplicationLayer {
   const facade = {
     reporting: group('reporting', {
@@ -76,6 +77,8 @@ export function createIpcApplicationLayer(): ApplicationLayer {
       getCurrentUser: () => query(() => nemisBridge.getCurrentUser()),
     }),
     academics: group<AcademicsApplicationService>('academics', {
+      enroll: (dto) => query(() => nemisBridge.enrollStudent(dto)),
+      moveEnrollmentClass: (dto) => query(() => nemisBridge.moveEnrollmentClass(dto)),
       getCurrentAcademicYear: () => query(() => nemisBridge.getCurrentAcademicYear()),
       listAcademicYears: () => query(() => nemisBridge.listAcademicYears()),
       createAcademicYear: (dto) =>
@@ -195,7 +198,16 @@ export function createIpcApplicationLayer(): ApplicationLayer {
     infra: group('infra', {
       getDeviceInfo: () => query(() => nemisBridge.getDeviceInfo()),
     }),
-    students: group('students', {}),
+    students: group<StudentApplicationService>('students', {
+      list: (dto) => query(() => nemisBridge.listStudents(dto)),
+      getById: (dto) => query(() => nemisBridge.getStudent(dto.studentId)),
+      create: (dto) => query(() => nemisBridge.createStudent(dto)),
+      update: (dto) => query(() => nemisBridge.updateStudent(dto)),
+      setActive: (dto) => query(() => nemisBridge.setStudentActive(dto)),
+      deactivate: (dto) => query(() => nemisBridge.setStudentActive({ studentId: dto.studentId, isActive: false })),
+      createGuardian: (dto) => query(() => nemisBridge.createStudentGuardian(dto)),
+      listEnrollments: (id) => query(() => nemisBridge.listStudentEnrollments(id)),
+    }),
     attendance: group('attendance', {}),
     assessments: group('assessments', {}),
   };

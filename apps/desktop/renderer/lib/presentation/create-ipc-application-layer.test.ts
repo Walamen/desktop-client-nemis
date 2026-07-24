@@ -7,7 +7,7 @@ function fakeNemis(overrides: Record<string, unknown> = {}) {
     system: { getVersion: vi.fn(async () => '1.0.0') },
     settings: { get: vi.fn(async () => null) },
     dashboard: {
-      getOverview: vi.fn(async () => ({ totalStudents: 5, totalClasses: 2, attendanceToday: { present: 1, total: 5 } })),
+      getOverview: vi.fn(async () => ({ totalStudents: 5, totalClasses: 2, totalSubjects: 0, attendanceToday: { present: 1, total: 5 }, studentsByGrade: [], recentlyEnrolled: [] })),
     },
     school: { getSummary: vi.fn(async () => null) },
     academicYear: { getCurrent: vi.fn(async () => null) },
@@ -54,7 +54,8 @@ describe('createIpcApplicationLayer', () => {
   it('an unwired method throws NotImplementedPresentationError', async () => {
     const app = createIpcApplicationLayer();
     await expect(
-      (app.students as unknown as { list: () => Promise<unknown> }).list(),
+      (app.attendance as unknown as { getByClassAndDate: () => Promise<unknown> })
+        .getByClassAndDate(),
     ).rejects.toThrow(/not available yet/i);
   });
 });

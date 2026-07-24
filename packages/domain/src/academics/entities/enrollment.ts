@@ -9,6 +9,7 @@ interface EnrollmentState {
   academicYearId: string;
   termId: string;
   status: EnrollmentStatus;
+  enrollmentDate: string;
 }
 
 export interface CreateEnrollmentInput {
@@ -18,6 +19,7 @@ export interface CreateEnrollmentInput {
   academicYearId: string;
   termId: string;
   occurredAt: string;
+  enrollmentDate?: string;
 }
 
 export class Enrollment extends AggregateRoot<string> {
@@ -41,6 +43,7 @@ export class Enrollment extends AggregateRoot<string> {
         academicYearId: input.academicYearId,
         termId: input.termId,
         status: EnrollmentStatus.ACTIVE,
+        enrollmentDate: input.enrollmentDate ?? input.occurredAt,
       },
       { version: 1, updatedAt: input.occurredAt },
     );
@@ -60,6 +63,19 @@ export class Enrollment extends AggregateRoot<string> {
   }
   get classId(): string {
     return this.#state.classId;
+  }
+  get academicYearId(): string { return this.#state.academicYearId; }
+  get termId(): string { return this.#state.termId; }
+  get enrollmentDate(): string { return this.#state.enrollmentDate; }
+
+  static reconstitute(input: CreateEnrollmentInput & { status: EnrollmentStatus; version: number; updatedAt: string; lastModifiedBy?: string }): Enrollment {
+    return new Enrollment(input.id, { studentId: input.studentId, classId: input.classId, academicYearId: input.academicYearId, termId: input.termId, status: input.status, enrollmentDate: input.enrollmentDate ?? input.occurredAt }, { version: input.version, updatedAt: input.updatedAt, lastModifiedBy: input.lastModifiedBy });
+  }
+
+  moveToClass(classId: string, by: string, at: string): void {
+    if (this.#state.status !== EnrollmentStatus.ACTIVE) throw new InvalidStateException('Only active enrollments can move classes');
+    this.#state = { ...this.#state, classId };
+    this.touch(by, at);
   }
   get status(): EnrollmentStatus {
     return this.#state.status;

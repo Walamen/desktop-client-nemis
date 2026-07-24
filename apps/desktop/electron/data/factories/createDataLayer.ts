@@ -7,6 +7,8 @@ import type {
   ITermRepository,
   ISubjectRepository,
   IAttendanceRepository,
+  IGuardianRepository,
+  IEnrollmentRepository,
 } from '@nemis-desktop/application';
 import type { DatabaseLogger, DatabaseManager } from '../../database/DatabaseManager';
 import { translateDatabaseError } from '../errors/translateError';
@@ -24,6 +26,8 @@ import { SqliteSubjectRepository } from '../repositories/sqlite/business/SqliteS
 import { SqliteInstitutionRepository } from '../repositories/sqlite/business/SqliteInstitutionRepository';
 import { SqliteStudentRepository } from '../repositories/sqlite/business/SqliteStudentRepository';
 import { SqliteUserRepository } from '../repositories/sqlite/business/SqliteUserRepository';
+import { SqliteGuardianRepository } from '../repositories/sqlite/business/SqliteGuardianRepository';
+import { SqliteEnrollmentRepository } from '../repositories/sqlite/business/SqliteEnrollmentRepository';
 import { SqliteAppSettingsRepository } from '../repositories/sqlite/SqliteAppSettingsRepository';
 import { SqliteAuditLogRepository } from '../repositories/sqlite/SqliteAuditLogRepository';
 import { SqliteDeviceRepository } from '../repositories/sqlite/SqliteDeviceRepository';
@@ -51,6 +55,8 @@ export interface DataLayer {
     terms: ITermRepository;
     subjects: ISubjectRepository;
     attendance: IAttendanceRepository;
+    guardians: IGuardianRepository;
+    enrollments: IEnrollmentRepository;
   };
   services: {
     device: DeviceService;
@@ -83,6 +89,8 @@ export function createDataLayer(manager: DatabaseManager, log: DatabaseLogger): 
   const terms = new SqliteTermRepository(context);
   const subjects = new SqliteSubjectRepository(context);
   const attendanceRepo = new SqliteAttendanceRepository(context);
+  const guardians = new SqliteGuardianRepository(context);
+  const enrollments = new SqliteEnrollmentRepository(context);
 
   // Services see only the RepositoryError taxonomy: failures of the
   // transaction machinery itself (BEGIN/COMMIT, closed-connection errors)
@@ -122,6 +130,8 @@ export function createDataLayer(manager: DatabaseManager, log: DatabaseLogger): 
       terms,
       subjects,
       attendance: attendanceRepo,
+      guardians,
+      enrollments,
     },
     services: {
       device: new DeviceService({ devices }),

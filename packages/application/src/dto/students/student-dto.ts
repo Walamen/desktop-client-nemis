@@ -1,4 +1,4 @@
-import type { Gender, GradeLevel } from '@nemis-desktop/types';
+import type { EnrollmentStatus, Gender, GradeLevel } from '@nemis-desktop/types';
 
 export interface CreateStudentDto {
   institutionId: string;
@@ -9,6 +9,40 @@ export interface CreateStudentDto {
   dateOfBirth: string; // ISO date
   gender: Gender;
   gradeLevel?: GradeLevel;
+  admissionDate?: string;
+  phoneNumber?: string;
+  email?: string;
+  address?: string;
+}
+
+export interface UpdateStudentDto {
+  studentId: string;
+  firstName?: string;
+  middleName?: string;
+  lastName?: string;
+  dateOfBirth?: string;
+  gender?: Gender;
+  gradeLevel?: GradeLevel;
+  phoneNumber?: string;
+  email?: string;
+  address?: string;
+  actorId?: string;
+}
+
+export interface SetStudentActiveDto {
+  studentId: string;
+  isActive: boolean;
+  actorId?: string;
+}
+
+export interface CreateGuardianDto {
+  studentId: string;
+  firstName: string;
+  lastName: string;
+  relationship: string;
+  phoneNumber: string;
+  isPrimary: boolean;
+  actorId?: string;
 }
 
 export interface DeactivateStudentDto {
@@ -26,6 +60,14 @@ export interface LinkGuardianDto {
 export interface ListStudentsDto {
   limit?: number;
   offset?: number;
+  keyword?: string;
+  gender?: Gender;
+  gradeLevel?: GradeLevel;
+  classId?: string;
+  academicYearId?: string;
+  enrollmentStatus?: EnrollmentStatus;
+  isActive?: boolean;
+  sort?: 'name' | 'admissionNumber' | 'updatedAt';
 }
 
 export interface StudentGuardianOutput {
@@ -45,6 +87,10 @@ export interface StudentOutput {
   dateOfBirth: string;
   gender: Gender;
   gradeLevel?: GradeLevel;
+  admissionDate?: string;
+  phoneNumber?: string;
+  email?: string;
+  address?: string;
   isActive: boolean;
   version: number;
   updatedAt: string;
@@ -54,4 +100,4 @@ export interface StudentOutput {
 export type StudentSummaryOutput = Pick<
   StudentOutput,
   'id' | 'fullName' | 'admissionNumber' | 'gradeLevel' | 'isActive'
->;
+> & { gender: Gender; updatedAt: string };

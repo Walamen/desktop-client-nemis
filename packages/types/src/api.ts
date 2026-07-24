@@ -28,6 +28,18 @@ import type {
   DeviceInfoResult,
   SchoolSummaryResult,
 } from './dashboard';
+import type {
+  CreateGuardianRequest,
+  CreateStudentRequest,
+  EnrollStudentRequest,
+  EnrollmentResult,
+  MoveEnrollmentClassRequest,
+  SetStudentActiveRequest,
+  StudentListRequest,
+  StudentPageResult,
+  StudentResult,
+  UpdateStudentRequest,
+} from './students';
 
 export interface SystemApi {
   getVersion(): Promise<string>;
@@ -82,6 +94,17 @@ export interface IdentityApi {
 export interface DeviceApi {
   getInfo(): Promise<DeviceInfoResult | null>;
 }
+export interface StudentApi {
+  list(request: StudentListRequest): Promise<StudentPageResult>;
+  get(id: string): Promise<StudentResult | null>;
+  create(request: CreateStudentRequest): Promise<StudentResult>;
+  update(request: UpdateStudentRequest): Promise<StudentResult>;
+  setActive(request: SetStudentActiveRequest): Promise<StudentResult>;
+  createGuardian(request: CreateGuardianRequest): Promise<StudentResult>;
+  enroll(request: EnrollStudentRequest): Promise<EnrollmentResult>;
+  moveClass(request: MoveEnrollmentClassRequest): Promise<EnrollmentResult>;
+  listEnrollments(id: string): Promise<EnrollmentResult[]>;
+}
 
 export interface NemisApi {
   system: SystemApi;
@@ -94,4 +117,5 @@ export interface NemisApi {
   subject: SubjectApi;
   identity: IdentityApi;
   device: DeviceApi;
+  student: StudentApi;
 }

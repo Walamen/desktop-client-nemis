@@ -25,7 +25,18 @@ export class ListStudentsUseCase implements QueryHandler<
     return invokeUseCase('ListStudents', this.deps.logger, async () => {
       const limit = Math.min(Math.max(query.limit ?? DEFAULT_LIMIT, 1), MAX_LIMIT);
       const offset = Math.max(query.offset ?? 0, 0);
-      const { items, total } = this.deps.students.findPage({ limit, offset });
+      const { items, total } = this.deps.students.findPage({
+        limit,
+        offset,
+        keyword: query.keyword?.trim() || undefined,
+        gender: query.gender,
+        gradeLevel: query.gradeLevel,
+        classId: query.classId,
+        academicYearId: query.academicYearId,
+        enrollmentStatus: query.enrollmentStatus,
+        isActive: query.isActive,
+        sort: query.sort,
+      });
       return ok({ items: items.map(toStudentSummary), total, limit, offset });
     });
   }

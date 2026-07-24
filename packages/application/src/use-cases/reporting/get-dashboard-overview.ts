@@ -32,6 +32,8 @@ export class GetDashboardOverviewUseCase implements QueryHandler<
         totalClasses: this.deps.classes.countAll(),
         totalSubjects: this.deps.subjects.countAll(),
         attendanceToday: this.deps.attendance.countByDate(today),
+        studentsByGrade: this.deps.students.countByGradeLevel(),
+        recentlyEnrolled: this.deps.students.findRecentlyUpdated(5).map((student) => ({ id: student.id, fullName: student.name.full, admissionNumber: student.admissionNumber.value, updatedAt: student.updatedAt })),
       });
     });
   }

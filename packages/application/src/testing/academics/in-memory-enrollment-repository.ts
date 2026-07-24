@@ -25,4 +25,6 @@ export class InMemoryEnrollmentRepository implements IEnrollmentRepository {
   findByClassId(classId: string): Enrollment[] {
     return [...this.store.values()].filter((e) => e.classId === classId);
   }
+  findByStudentId(studentId: string): Enrollment[] { return [...this.store.values()].filter((e) => e.studentId === studentId); }
+  hasEnrollmentForPeriod(studentId: string, academicYearId: string, termId: string): boolean { return [...this.store.values()].some((e) => e.studentId === studentId && e.academicYearId === academicYearId && e.termId === termId); }
 }

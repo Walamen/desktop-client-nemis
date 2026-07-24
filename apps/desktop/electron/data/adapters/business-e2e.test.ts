@@ -34,6 +34,8 @@ describe('business application layer end-to-end against real SQLite', () => {
       totalStudents: 0,
       totalClasses: 0,
       totalSubjects: 0,
+      studentsByGrade: [],
+      recentlyEnrolled: [],
       attendanceToday: { present: 0, total: 0 },
     });
   });

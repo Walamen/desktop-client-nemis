@@ -1,6 +1,7 @@
 import type { ApplicationLayer } from '@nemis-desktop/application';
 import type { NotificationKind } from '../notifications/notification';
 import { AcademicYearViewModel } from '../view-models/academic-year/academic-year-view-model';
+import { AcademicFoundationViewModel } from '../view-models/academic-foundation/academic-foundation-view-model';
 import { BootstrapStore } from '../stores/bootstrap-store';
 import { BootstrapService } from '../services/bootstrap-service';
 import { ConnectivityStore } from '../stores/connectivity-store';
@@ -16,6 +17,12 @@ import { DashboardViewModel } from '../view-models/dashboard/dashboard-view-mode
 import { DeviceViewModel } from '../view-models/device/device-view-model';
 import { SettingsViewModel } from '../view-models/settings/settings-view-model';
 import { StudentsViewModel } from '../view-models/students/students-view-model';
+import {
+  EnrollmentViewModel,
+  StudentProfileViewModel,
+  StudentSearchViewModel,
+  StudentsListViewModel,
+} from '../view-models/students/focused-student-view-models';
 import { SyncViewModel } from '../view-models/sync/sync-view-model';
 import { TeachersViewModel } from '../view-models/teachers/teachers-view-model';
 
@@ -30,6 +37,10 @@ export interface PresentationStores {
 
 export interface PresentationViewModels {
   readonly students: StudentsViewModel;
+  readonly studentsList: StudentsListViewModel;
+  readonly studentProfile: StudentProfileViewModel;
+  readonly enrollment: EnrollmentViewModel;
+  readonly studentSearch: StudentSearchViewModel;
   readonly classRoster: ClassRosterViewModel;
   readonly attendance: AttendanceViewModel;
   readonly assessments: AssessmentsViewModel;
@@ -40,6 +51,7 @@ export interface PresentationViewModels {
   readonly teachers: TeachersViewModel;
   readonly sync: SyncViewModel;
   readonly academicYear: AcademicYearViewModel;
+  readonly academicFoundation: AcademicFoundationViewModel;
 }
 
 export interface PresentationLayer {
@@ -66,8 +78,18 @@ export function createPresentationLayer(
   const navigation = new NavigationStore();
   const bootstrap = new BootstrapStore();
 
+  const students = new StudentsViewModel({
+    students: app.students,
+    academics: app.academics,
+    notifications,
+    session,
+  });
   const viewModels: PresentationViewModels = {
-    students: new StudentsViewModel({ students: app.students, notifications, session }),
+    students,
+    studentsList: new StudentsListViewModel(students),
+    studentProfile: new StudentProfileViewModel(students),
+    enrollment: new EnrollmentViewModel(students),
+    studentSearch: new StudentSearchViewModel(students),
     classRoster: new ClassRosterViewModel({ academics: app.academics, notifications }),
     attendance: new AttendanceViewModel({ attendance: app.attendance, notifications }),
     assessments: new AssessmentsViewModel({ assessments: app.assessments, notifications }),
@@ -82,6 +104,10 @@ export function createPresentationLayer(
     teachers: new TeachersViewModel(),
     sync: new SyncViewModel(connectivity),
     academicYear: new AcademicYearViewModel({ academics: app.academics }),
+    academicFoundation: new AcademicFoundationViewModel({
+      academics: app.academics,
+      notifications,
+    }),
   };
 
   const bootstrapService = new BootstrapService(bootstrap, [
@@ -104,6 +130,11 @@ export function createPresentationLayer(
       name: 'academic-year',
       run: () => viewModels.academicYear.loadCurrent(),
       hasError: () => viewModels.academicYear.store.getState().current.status === 'error',
+    },
+    {
+      name: 'current-term',
+      run: () => viewModels.academicFoundation.loadCurrentTerm(),
+      hasError: () => viewModels.academicFoundation.store.getState().currentTerm.status === 'error',
     },
     {
       name: 'dashboard',

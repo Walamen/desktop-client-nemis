@@ -16,6 +16,10 @@ interface StudentState {
   dateOfBirth: DateOfBirth;
   gender: Gender;
   gradeLevel?: GradeLevel;
+  admissionDate?: string;
+  phoneNumber?: string;
+  email?: string;
+  address?: string;
   isActive: boolean;
   guardians: StudentGuardian[];
 }
@@ -30,6 +34,10 @@ export interface CreateStudentInput {
   dateOfBirth: string;
   gender: Gender;
   gradeLevel?: GradeLevel;
+  admissionDate?: string;
+  phoneNumber?: string;
+  email?: string;
+  address?: string;
   occurredAt: string;
 }
 
@@ -43,6 +51,10 @@ export interface ReconstituteStudentInput {
   dateOfBirth: string;
   gender: Gender;
   gradeLevel?: GradeLevel;
+  admissionDate?: string;
+  phoneNumber?: string;
+  email?: string;
+  address?: string;
   isActive: boolean;
   guardians: StudentGuardian[];
   version: number;
@@ -76,6 +88,10 @@ export class Student extends AggregateRoot<StudentId> {
         dateOfBirth: DateOfBirth.create(input.dateOfBirth),
         gender: input.gender,
         gradeLevel: input.gradeLevel,
+        admissionDate: input.admissionDate,
+        phoneNumber: input.phoneNumber,
+        email: input.email,
+        address: input.address,
         isActive: true,
         guardians: [],
       },
@@ -106,6 +122,10 @@ export class Student extends AggregateRoot<StudentId> {
         dateOfBirth: DateOfBirth.create(input.dateOfBirth),
         gender: input.gender,
         gradeLevel: input.gradeLevel,
+        admissionDate: input.admissionDate,
+        phoneNumber: input.phoneNumber,
+        email: input.email,
+        address: input.address,
         isActive: input.isActive,
         guardians: [...input.guardians],
       },
@@ -134,6 +154,25 @@ export class Student extends AggregateRoot<StudentId> {
   get isActive(): boolean {
     return this.#state.isActive;
   }
+  get admissionDate(): string | undefined { return this.#state.admissionDate; }
+  get phoneNumber(): string | undefined { return this.#state.phoneNumber; }
+  get email(): string | undefined { return this.#state.email; }
+  get address(): string | undefined { return this.#state.address; }
+
+  updateProfile(input: { firstName?: string; middleName?: string; lastName?: string; dateOfBirth?: string; gender?: Gender; gradeLevel?: GradeLevel; phoneNumber?: string; email?: string; address?: string }, by: string, at: string): void {
+    if (!this.#state.isActive) throw new BusinessRuleViolationException('Archived students cannot be modified');
+    this.#state = {
+      ...this.#state,
+      name: PersonName.create({ firstName: input.firstName ?? this.name.firstName, middleName: input.middleName ?? this.name.middleName, lastName: input.lastName ?? this.name.lastName }),
+      dateOfBirth: input.dateOfBirth ? DateOfBirth.create(input.dateOfBirth) : this.#state.dateOfBirth,
+      gender: input.gender ?? this.#state.gender,
+      gradeLevel: input.gradeLevel ?? this.#state.gradeLevel,
+      phoneNumber: input.phoneNumber ?? this.#state.phoneNumber,
+      email: input.email ?? this.#state.email,
+      address: input.address ?? this.#state.address,
+    };
+    this.touch(by, at);
+  }
   get guardians(): readonly StudentGuardian[] {
     return this.#state.guardians;
   }
@@ -149,6 +188,11 @@ export class Student extends AggregateRoot<StudentId> {
   deactivate(by: string, at: string): void {
     if (!this.#state.isActive) return;
     this.#state = { ...this.#state, isActive: false };
+    this.touch(by, at);
+  }
+  activate(by: string, at: string): void {
+    if (this.#state.isActive) return;
+    this.#state = { ...this.#state, isActive: true };
     this.touch(by, at);
   }
 }

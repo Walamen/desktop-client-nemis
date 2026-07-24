@@ -16,6 +16,7 @@ import {
   assertCreateSubjectArgs,
   assertUpdateSubjectArgs,
   assertClassSubjectPairArgs,
+  assertMoveEnrollmentClassArgs,
 } from './validateIpc';
 
 describe('assertNoArgs', () => {
@@ -181,5 +182,23 @@ describe('assertClassSubjectPairArgs', () => {
   it('requires both classId and subjectId', () => {
     expect(() => assertClassSubjectPairArgs([{ classId: 'c-1', subjectId: 's-1' }])).not.toThrow();
     expect(() => assertClassSubjectPairArgs([{ classId: 'c-1' }])).toThrow();
+  });
+});
+
+describe('assertMoveEnrollmentClassArgs', () => {
+  it('requires only bounded enrollment and target class ids', () => {
+    expect(() =>
+      assertMoveEnrollmentClassArgs([
+        { enrollmentId: 'enr-1', targetClassId: 'class-2' },
+      ]),
+    ).not.toThrow();
+    expect(() =>
+      assertMoveEnrollmentClassArgs([{ enrollmentId: 'enr-1' }]),
+    ).toThrow();
+    expect(() =>
+      assertMoveEnrollmentClassArgs([
+        { enrollmentId: 'enr-1', targetClassId: 'class-2', extra: true },
+      ]),
+    ).toThrow();
   });
 });

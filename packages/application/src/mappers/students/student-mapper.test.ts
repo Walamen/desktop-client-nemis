@@ -45,6 +45,8 @@ describe('student mapper', () => {
       admissionNumber: 'ADM-001',
       gradeLevel: GradeLevel.GRADE_1,
       isActive: true,
+      gender: Gender.FEMALE,
+      updatedAt: '2026-07-18T00:00:00.000Z',
     });
   });
 });

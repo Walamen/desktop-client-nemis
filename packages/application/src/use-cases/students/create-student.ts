@@ -59,6 +59,10 @@ export class CreateStudentUseCase implements CommandHandler<
         dateOfBirth: command.dateOfBirth,
         gender: command.gender,
         gradeLevel: command.gradeLevel,
+        admissionDate: command.admissionDate ?? occurredAt.slice(0, 10),
+        phoneNumber: command.phoneNumber,
+        email: command.email,
+        address: command.address,
         occurredAt,
       });
 

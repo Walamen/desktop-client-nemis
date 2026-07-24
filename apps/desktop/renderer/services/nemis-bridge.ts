@@ -25,6 +25,16 @@ import type {
   UpdateClassRequest,
   UpdateSubjectRequest,
   UpdateTermRequest,
+  CreateGuardianRequest,
+  CreateStudentRequest,
+  EnrollStudentRequest,
+  EnrollmentResult,
+  MoveEnrollmentClassRequest,
+  SetStudentActiveRequest,
+  StudentListRequest,
+  StudentPageResult,
+  StudentResult,
+  UpdateStudentRequest,
 } from '@nemis-desktop/types';
 
 function api() {
@@ -46,12 +56,10 @@ export const nemisBridge = {
   getDeviceInfo: (): Promise<DeviceInfoResult | null> => api().device.getInfo(),
 
   listAcademicYears: (): Promise<AcademicYearListItemResult[]> => api().academicYear.list(),
-  createAcademicYear: (
-    request: CreateAcademicYearRequest,
-  ): Promise<AcademicYearListItemResult> => api().academicYear.create(request),
-  updateAcademicYear: (
-    request: UpdateAcademicYearRequest,
-  ): Promise<AcademicYearListItemResult> => api().academicYear.update(request),
+  createAcademicYear: (request: CreateAcademicYearRequest): Promise<AcademicYearListItemResult> =>
+    api().academicYear.create(request),
+  updateAcademicYear: (request: UpdateAcademicYearRequest): Promise<AcademicYearListItemResult> =>
+    api().academicYear.update(request),
   setCurrentAcademicYear: (id: string): Promise<AcademicYearListItemResult> =>
     api().academicYear.setCurrent(id),
   setAcademicYearStatus: (
@@ -87,4 +95,21 @@ export const nemisBridge = {
     api().subject.update(request),
   setSubjectActive: (request: SetActiveRequest): Promise<SubjectResult> =>
     api().subject.setActive(request),
+  listStudents: (request: StudentListRequest): Promise<StudentPageResult> =>
+    api().student.list(request),
+  getStudent: (id: string): Promise<StudentResult | null> => api().student.get(id),
+  createStudent: (request: CreateStudentRequest): Promise<StudentResult> =>
+    api().student.create(request),
+  updateStudent: (request: UpdateStudentRequest): Promise<StudentResult> =>
+    api().student.update(request),
+  setStudentActive: (request: SetStudentActiveRequest): Promise<StudentResult> =>
+    api().student.setActive(request),
+  createStudentGuardian: (request: CreateGuardianRequest): Promise<StudentResult> =>
+    api().student.createGuardian(request),
+  enrollStudent: (request: EnrollStudentRequest): Promise<EnrollmentResult> =>
+    api().student.enroll(request),
+  moveEnrollmentClass: (request: MoveEnrollmentClassRequest): Promise<EnrollmentResult> =>
+    api().student.moveClass(request),
+  listStudentEnrollments: (id: string): Promise<EnrollmentResult[]> =>
+    api().student.listEnrollments(id),
 };

@@ -6,11 +6,18 @@ export interface EnrollStudentDto {
   academicYearId: string;
   termId: string;
   actorId?: string;
+  enrollmentDate?: string;
 }
 
 export interface WithdrawEnrollmentDto {
   enrollmentId: string;
   actorId: string;
+}
+
+export interface MoveEnrollmentClassDto {
+  enrollmentId: string;
+  targetClassId: string;
+  actorId?: string;
 }
 
 export interface GetClassRosterDto {
@@ -21,6 +28,9 @@ export interface EnrollmentOutput {
   id: string;
   studentId: string;
   classId: string;
+  academicYearId: string;
+  termId: string;
+  enrollmentDate: string;
   status: EnrollmentStatus;
   version: number;
   updatedAt: string;

@@ -13,6 +13,10 @@ export interface ReconstituteGuardianInput {
   lastModifiedBy?: string;
 }
 
+export interface CreateGuardianInput extends Omit<ReconstituteGuardianInput, 'version' | 'updatedAt'> {
+  occurredAt: string;
+}
+
 export class Guardian extends AggregateRoot<string> {
   #name: PersonName;
   #relationship: string;
@@ -39,6 +43,9 @@ export class Guardian extends AggregateRoot<string> {
       PhoneNumber.create(input.phoneNumber),
       { version: input.version, updatedAt: input.updatedAt, lastModifiedBy: input.lastModifiedBy },
     );
+  }
+  static create(input: CreateGuardianInput): Guardian {
+    return new Guardian(input.id, PersonName.create({ firstName: input.firstName, lastName: input.lastName }), guard.againstEmpty(input.relationship, 'relationship'), PhoneNumber.create(input.phoneNumber), { version: 1, updatedAt: input.occurredAt, lastModifiedBy: input.lastModifiedBy });
   }
 
   get name(): PersonName {

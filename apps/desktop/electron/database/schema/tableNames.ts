@@ -19,6 +19,10 @@ export const TableNames = {
   terms: 'terms',
   subjects: 'subjects',
   classSubjects: 'class_subjects',
+  // Student Management (Phase 10).
+  guardians: 'guardians',
+  studentGuardians: 'student_guardians',
+  enrollments: 'enrollments',
 } as const;
 
 export type TableName = (typeof TableNames)[keyof typeof TableNames];
