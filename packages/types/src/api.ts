@@ -47,6 +47,12 @@ import type {
   UpdateTeachingAssignmentRequest,
 } from './teachers';
 import type { AuthenticateRequest, ProvisioningStatus } from './provisioning';
+import type {
+  CopyTimetableRequest, CreateTimetableEntryRequest, PeriodResult,
+  ScheduleConflictResult, TimetableDashboardResult, TimetableEntryResult,
+  TimetableListRequest, TimetablePageResult, UpdateTimetableEntryRequest,
+  ValidateTimetableRequest,
+} from './timetables';
 
 export interface AuthenticationApi {
   getStatus(): Promise<ProvisioningStatus>;
@@ -134,6 +140,20 @@ export interface TeacherApi {
   removeAssignment(request: RemoveTeachingAssignmentRequest): Promise<{ id: string }>;
   getDashboard(): Promise<TeacherDashboardResult>;
 }
+export interface TimetableApi {
+  list(request: TimetableListRequest): Promise<TimetablePageResult>;
+  getClassSchedule(id: string): Promise<TimetablePageResult>;
+  getTeacherSchedule(id: string): Promise<TimetablePageResult>;
+  getSubjectSchedule(id: string): Promise<TimetablePageResult>;
+  create(request: CreateTimetableEntryRequest): Promise<TimetableEntryResult>;
+  update(request: UpdateTimetableEntryRequest): Promise<TimetableEntryResult>;
+  delete(id: string): Promise<{ id: string }>;
+  copy(request: CopyTimetableRequest): Promise<TimetableEntryResult[]>;
+  validate(request: ValidateTimetableRequest): Promise<ScheduleConflictResult[]>;
+  detectConflicts(request: TimetableListRequest): Promise<ScheduleConflictResult[]>;
+  periods(classId?: string): Promise<PeriodResult[]>;
+  dashboard(dayOfWeek: string): Promise<TimetableDashboardResult>;
+}
 
 export interface NemisApi {
   auth: AuthenticationApi;
@@ -150,4 +170,5 @@ export interface NemisApi {
   device: DeviceApi;
   student: StudentApi;
   teacher: TeacherApi;
+  timetable: TimetableApi;
 }

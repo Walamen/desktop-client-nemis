@@ -91,6 +91,7 @@ describe('003-create-academic-foundation-tables', () => {
 
   it('rolls back: down() drops the new tables and keeps 002 tables intact', () => {
     const service = new MigrationService(test.db.raw, migrations);
+    service.rollbackLast(); // 007 timetable management
     service.rollbackLast(); // 006 provisioning metadata
     service.rollbackLast(); // 005 — teacher management
     service.rollbackLast(); // 004 — student management

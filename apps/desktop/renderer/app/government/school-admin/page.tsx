@@ -9,6 +9,7 @@ import {
   useDashboardViewModel, useCurrentUserViewModel, useSettingsViewModel, useAcademicYearViewModel,
   useAcademicFoundationViewModel,
   useTeacherDashboardViewModel,
+  useTimetableDashboardViewModel,
 } from '@/lib/presentation/hooks';
 import { useViewModel } from '@/hooks/use-view-model';
 import { StatCard } from '@/components/dashboard/StatCard';
@@ -31,6 +32,7 @@ export default function DashboardPage() {
   const academicYear = useAcademicYearViewModel();
   const academicFoundation = useAcademicFoundationViewModel();
   const teacherDashboard = useTeacherDashboardViewModel();
+  const timetableDashboard = useTimetableDashboardViewModel();
 
   const summary = useViewModel(dashboard.store, (s) => s.summary);
   const user = useViewModel(currentUser.store, (s) => s.user);
@@ -38,12 +40,14 @@ export default function DashboardPage() {
   const year = useViewModel(academicYear.store, (s) => s.current);
   const term = useViewModel(academicFoundation.store, (s) => s.currentTerm);
   const teachers = useViewModel(teacherDashboard.store, (s) => s.dashboard);
+  const timetable = useViewModel(timetableDashboard.core.store, (s) => s.dashboard);
 
   // Bootstrap loads this on startup; only self-load if the store is still idle
   // (e.g. navigated here before bootstrap ran).
   useEffect(() => {
     if (summary.status === 'idle') void dashboard.loadOverview();
-  }, [dashboard, summary.status]);
+    if (timetable.status === 'idle') void timetableDashboard.load();
+  }, [dashboard, summary.status, timetable.status, timetableDashboard]);
 
   const name = user.status === 'success' ? user.data.fullName : 'Principal';
 
@@ -69,6 +73,10 @@ export default function DashboardPage() {
             ))}
             <InfoTile label="Attendance Today" value={`${summary.data.attendanceToday.present} / ${summary.data.attendanceToday.total}`} emptyText="No attendance recorded" />
             <InfoTile label="Total Teachers" value={teachers.status === 'success' || teachers.status === 'refreshing' ? String(teachers.data.totalTeachers) : null} emptyText="No teachers recorded" />
+            <InfoTile label="Total Timetable Entries" value={timetable.status === 'success' || timetable.status === 'refreshing' ? String(timetable.data.totalEntries) : null} emptyText="No timetable created" />
+            <InfoTile label="Today's Schedule" value={timetable.status === 'success' || timetable.status === 'refreshing' ? String(timetable.data.todayEntries) : null} emptyText="No classes scheduled today" />
+            <InfoTile label="Classes Scheduled Today" value={timetable.status === 'success' || timetable.status === 'refreshing' ? String(timetable.data.classesScheduledToday) : null} emptyText="No classes scheduled today" />
+            <InfoTile label="Schedule Conflicts" value={timetable.status === 'success' || timetable.status === 'refreshing' ? String(timetable.data.pendingConflicts) : null} emptyText="No conflicts detected" />
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">

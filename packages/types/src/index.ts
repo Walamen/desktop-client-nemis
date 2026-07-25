@@ -6,3 +6,4 @@ export * from './academics';
 export * from './students';
 export * from './teachers';
 export * from './provisioning';
+export * from './timetables';

@@ -25,6 +25,7 @@ import {
 } from '../view-models/students/focused-student-view-models';
 import { SyncViewModel } from '../view-models/sync/sync-view-model';
 import { TeacherDashboardViewModel, TeacherProfileViewModel, TeacherSearchViewModel, TeachersListViewModel, TeachersViewModel, TeachingAssignmentViewModel } from '../view-models/teachers/teachers-view-model';
+import { ClassScheduleViewModel, ConflictViewModel, SubjectScheduleViewModel, TeacherScheduleViewModel, TimetableDashboardViewModel, TimetableViewModel } from '../view-models/timetables/timetable-view-model';
 
 export interface PresentationStores {
   readonly notifications: NotificationStore;
@@ -57,6 +58,12 @@ export interface PresentationViewModels {
   readonly sync: SyncViewModel;
   readonly academicYear: AcademicYearViewModel;
   readonly academicFoundation: AcademicFoundationViewModel;
+  readonly timetable: TimetableViewModel;
+  readonly teacherSchedule: TeacherScheduleViewModel;
+  readonly classSchedule: ClassScheduleViewModel;
+  readonly subjectSchedule: SubjectScheduleViewModel;
+  readonly timetableConflicts: ConflictViewModel;
+  readonly timetableDashboard: TimetableDashboardViewModel;
 }
 
 export interface PresentationLayer {
@@ -90,6 +97,7 @@ export function createPresentationLayer(
     session,
   });
   const teachers = new TeachersViewModel({ teachers: app.teachers, notifications });
+  const timetable = new TimetableViewModel({ timetables: app.timetables, notifications });
   const viewModels: PresentationViewModels = {
     students,
     studentsList: new StudentsListViewModel(students),
@@ -119,6 +127,12 @@ export function createPresentationLayer(
       academics: app.academics,
       notifications,
     }),
+    timetable,
+    teacherSchedule: new TeacherScheduleViewModel(timetable),
+    classSchedule: new ClassScheduleViewModel(timetable),
+    subjectSchedule: new SubjectScheduleViewModel(timetable),
+    timetableConflicts: new ConflictViewModel(timetable),
+    timetableDashboard: new TimetableDashboardViewModel(timetable),
   };
 
   const bootstrapService = new BootstrapService(bootstrap, [

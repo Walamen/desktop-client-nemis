@@ -13,3 +13,4 @@ export * from './institution';
 export * from './infra';
 export * from './teachers';
 export * from './provisioning';
+export * from './timetables';

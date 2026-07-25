@@ -22,3 +22,9 @@ export const useTeacherProfileViewModel = () => usePresentation().viewModels.tea
 export const useTeacherSearchViewModel = () => usePresentation().viewModels.teacherSearch;
 export const useTeachingAssignmentViewModel = () => usePresentation().viewModels.teachingAssignments;
 export const useTeacherDashboardViewModel = () => usePresentation().viewModels.teacherDashboard;
+export const useTimetableViewModel = () => usePresentation().viewModels.timetable;
+export const useTeacherScheduleViewModel = () => usePresentation().viewModels.teacherSchedule;
+export const useClassScheduleViewModel = () => usePresentation().viewModels.classSchedule;
+export const useSubjectScheduleViewModel = () => usePresentation().viewModels.subjectSchedule;
+export const useTimetableConflictViewModel = () => usePresentation().viewModels.timetableConflicts;
+export const useTimetableDashboardViewModel = () => usePresentation().viewModels.timetableDashboard;

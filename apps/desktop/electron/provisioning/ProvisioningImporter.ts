@@ -36,6 +36,7 @@ const SPECS: Record<ProvisioningCollection, TableSpec> = {
   subjectTeachers: spec('subject_teachers', ['id','subjectId','staffId','assignedAt','version','updatedAt','lastModifiedBy']),
   classTeachers: spec('class_teachers', ['id','classId','staffId','isClassTeacher','assignedAt','version','updatedAt','lastModifiedBy']),
   classSubjectTeachers: spec('class_subject_teachers', ['id','classId','subjectId','staffId','assignedAt','version','updatedAt','lastModifiedBy']),
+  timetableEntries: spec('timetable_entries', ['id','institutionId','classId','subjectId','staffId','dayOfWeek','startTime','endTime','room','isBreak','assignmentId','createdAt','updatedAt','version','lastModifiedBy']),
 };
 
 const DELETE_ORDER = [...PROVISIONING_COLLECTIONS].reverse();

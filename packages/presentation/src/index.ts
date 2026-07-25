@@ -84,5 +84,6 @@ export * from './view-models/dashboard/dashboard-view-model';
 export * from './view-models/dashboard/dashboard-views';
 export * from './view-models/teachers/teachers-view-model';
 export * from './view-models/provisioning/provisioning-view-model';
+export * from './view-models/timetables/timetable-view-model';
 export * from './view-models/sync/sync-view-model';
 export * from './factories/create-presentation-layer';

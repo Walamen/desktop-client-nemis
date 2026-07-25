@@ -4,6 +4,7 @@ import type {
   ApplicationResponse,
   StudentApplicationService,
   TeacherApplicationService,
+  TimetableApplicationService,
 } from '@nemis-desktop/application';
 import {
   DatabaseUnavailableError,
@@ -220,6 +221,20 @@ export function createIpcApplicationLayer(): ApplicationLayer {
       updateAssignment: (dto) => query(() => nemisBridge.updateTeachingAssignment(dto)),
       removeAssignment: (dto) => query(() => nemisBridge.removeTeachingAssignment(dto)),
       dashboard: () => query(() => nemisBridge.getTeacherDashboard()),
+    }),
+    timetables: group<TimetableApplicationService>('timetables', {
+      list: (dto) => query(() => nemisBridge.listTimetables(dto)),
+      getClassSchedule: (id) => query(() => nemisBridge.getClassSchedule(id)),
+      getTeacherSchedule: (id) => query(() => nemisBridge.getTeacherSchedule(id)),
+      getSubjectSchedule: (id) => query(() => nemisBridge.getSubjectSchedule(id)),
+      create: (dto) => query(() => nemisBridge.createTimetableEntry(dto)),
+      update: (dto) => query(() => nemisBridge.updateTimetableEntry(dto)),
+      delete: (id) => query(() => nemisBridge.deleteTimetableEntry(id)),
+      copy: (dto) => query(() => nemisBridge.copyTimetable(dto)),
+      validate: (dto) => query(() => nemisBridge.validateTimetable(dto)),
+      detectConflicts: (dto) => query(() => nemisBridge.detectTimetableConflicts(dto ?? {})),
+      periods: (id) => query(() => nemisBridge.getTimetablePeriods(id)),
+      dashboard: (day) => query(() => nemisBridge.getTimetableDashboard(day)),
     }),
     attendance: group('attendance', {}),
     assessments: group('assessments', {}),

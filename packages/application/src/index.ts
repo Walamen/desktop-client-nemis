@@ -93,3 +93,5 @@ export * from './mappers/teachers/teacher-mapper';
 export * from './use-cases/teachers/teacher-use-cases';
 export * from './services/teacher-application-service';
 export * from './use-cases/provisioning/authentication';
+export * from './use-cases/timetables/timetable-use-cases';
+export * from './services/timetable-application-service';

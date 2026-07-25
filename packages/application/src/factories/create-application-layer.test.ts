@@ -7,6 +7,7 @@ import {
   PassthroughUnitOfWork,
   RecordingLogger,
   SequentialIdGenerator,
+  InMemoryTimetableRepository,
 } from '../testing';
 import { InMemoryStudentRepository } from '../testing/students/in-memory-student-repository';
 import { InMemoryGuardianRepository } from '../testing/students/in-memory-guardian-repository';
@@ -52,6 +53,7 @@ function buildLayer() {
     events: new CollectingEventPublisher(),
     logger: new RecordingLogger(),
     teachers: new InMemoryTeacherRepository(),
+    timetables: new InMemoryTimetableRepository(),
   });
 }
 

@@ -16,6 +16,7 @@ import { registerDeviceHandlers } from '@app/ipc/handlers/device';
 import { registerStudentHandlers } from '@app/ipc/handlers/students';
 import { registerTeacherHandlers } from '@app/ipc/handlers/teachers';
 import { registerProvisioningHandlers } from '@app/ipc/handlers/provisioning';
+import { registerTimetableHandlers } from '@app/ipc/handlers/timetables';
 import type { ProvisioningService } from '@app/provisioning/ProvisioningService';
 import { toIpcError } from './errorMapping';
 
@@ -39,6 +40,7 @@ export function registerIpcHandlers(
   registerDeviceHandlers(handle, app);
   registerStudentHandlers(handle, app);
   registerTeacherHandlers(handle, app);
+  registerTimetableHandlers(handle, app);
 }
 
 /**

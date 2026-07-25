@@ -37,6 +37,10 @@ import type {
   UpdateStudentRequest,
 } from '@nemis-desktop/types';
 import type {
+  CopyTimetableRequest, CreateTimetableEntryRequest, TimetableListRequest,
+  UpdateTimetableEntryRequest, ValidateTimetableRequest,
+} from '@nemis-desktop/types';
+import type {
   AssignTeacherRequest, CreateTeacherRequest, RemoveTeachingAssignmentRequest,
   SetTeacherActiveRequest, TeacherDashboardResult, TeacherListRequest, TeacherPageResult,
   TeacherProfileResult, TeachingAssignmentResult, UpdateTeacherRequest,
@@ -132,4 +136,16 @@ export const nemisBridge = {
   updateTeachingAssignment:(request:UpdateTeachingAssignmentRequest):Promise<TeachingAssignmentResult>=>api().teacher.updateAssignment(request),
   removeTeachingAssignment:(request:RemoveTeachingAssignmentRequest):Promise<{id:string}>=>api().teacher.removeAssignment(request),
   getTeacherDashboard:():Promise<TeacherDashboardResult>=>api().teacher.getDashboard(),
+  listTimetables: (request:TimetableListRequest) => api().timetable.list(request),
+  getClassSchedule: (id:string) => api().timetable.getClassSchedule(id),
+  getTeacherSchedule: (id:string) => api().timetable.getTeacherSchedule(id),
+  getSubjectSchedule: (id:string) => api().timetable.getSubjectSchedule(id),
+  createTimetableEntry: (request:CreateTimetableEntryRequest) => api().timetable.create(request),
+  updateTimetableEntry: (request:UpdateTimetableEntryRequest) => api().timetable.update(request),
+  deleteTimetableEntry: (id:string) => api().timetable.delete(id),
+  copyTimetable: (request:CopyTimetableRequest) => api().timetable.copy(request),
+  validateTimetable: (request:ValidateTimetableRequest) => api().timetable.validate(request),
+  detectTimetableConflicts: (request:TimetableListRequest) => api().timetable.detectConflicts(request),
+  getTimetablePeriods: (classId?:string) => api().timetable.periods(classId),
+  getTimetableDashboard: (dayOfWeek:string) => api().timetable.dashboard(dayOfWeek),
 };

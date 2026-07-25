@@ -29,6 +29,7 @@ export const TableNames = {
   classTeachers: 'class_teachers',
   classSubjectTeachers: 'class_subject_teachers',
   provisioningMetadata: 'provisioning_metadata',
+  timetableEntries: 'timetable_entries',
 } as const;
 
 export type TableName = (typeof TableNames)[keyof typeof TableNames];

@@ -1,5 +1,5 @@
 import { IPCError } from '@nemis-desktop/shared';
-import { AcademicYearStatus, EmploymentType, EnrollmentStatus, Gender, GradeLevel, StaffPosition } from '@nemis-desktop/types';
+import { AcademicYearStatus, DayOfWeek, EmploymentType, EnrollmentStatus, Gender, GradeLevel, StaffPosition } from '@nemis-desktop/types';
 
 /** Rejects IPC calls that pass unexpected arguments. Never trust renderer input. */
 export function assertNoArgs(args: readonly unknown[]): void {
@@ -320,6 +320,59 @@ export function assertUpdateTeachingAssignmentArgs(args:readonly unknown[]):void
 export function assertRemoveTeachingAssignmentArgs(args:readonly unknown[]):void{
   assertArity(args,1);const[r]=args;if(!isPlainObject(r))throw new IPCError('Expected a request object.');
   assertKnownKeys(r,['assignmentId']);assertString(r.assignmentId,'assignmentId',ID_MAX_LENGTH);
+}
+
+// --- Timetable Management (Phase 13) -----------------------------------
+const TIMETABLE_FIELDS = [
+  'institutionId','classId','subjectId','staffId','assignmentId','dayOfWeek',
+  'startTime','endTime','room','isBreak',
+] as const;
+function assertTime(value:unknown,name:string):void{
+  assertString(value,name,5);
+  if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(value as string))throw new IPCError(`Expected "${name}" in HH:MM format.`);
+}
+function assertTimetableEntry(r:Record<string,unknown>,update=false):void{
+  assertKnownKeys(r,update?['id',...TIMETABLE_FIELDS.filter(k=>k!=='institutionId')]:TIMETABLE_FIELDS);
+  if(update)assertString(r.id,'id',ID_MAX_LENGTH);
+  else assertString(r.institutionId,'institutionId',ID_MAX_LENGTH);
+  if(update)assertOptionalString(r.classId,'classId',ID_MAX_LENGTH);else assertString(r.classId,'classId',ID_MAX_LENGTH);
+  for(const k of ['subjectId','staffId','assignmentId'] as const)assertOptionalString(r[k],k,ID_MAX_LENGTH);
+  if(update)assertOptionalEnumMember(r.dayOfWeek,'dayOfWeek',Object.values(DayOfWeek));else assertEnumMember(r.dayOfWeek,'dayOfWeek',Object.values(DayOfWeek));
+  if(update){if(r.startTime!==undefined)assertTime(r.startTime,'startTime');if(r.endTime!==undefined)assertTime(r.endTime,'endTime');}
+  else{assertTime(r.startTime,'startTime');assertTime(r.endTime,'endTime');}
+  assertOptionalString(r.room,'room',NAME_MAX_LENGTH);assertOptionalBoolean(r.isBreak,'isBreak');
+}
+export function assertListTimetablesArgs(args:readonly unknown[]):void{
+  assertArity(args,1);const[r]=args;if(!isPlainObject(r))throw new IPCError('Expected a request object.');
+  assertKnownKeys(r,['limit','offset','keyword','academicYearId','classId','teacherId','subjectId','gradeLevel','dayOfWeek','sort']);
+  assertOptionalInt(r.limit,'limit',1,MAX_LIMIT);assertOptionalInt(r.offset,'offset',0,1_000_000);
+  assertOptionalString(r.keyword,'keyword',KEYWORD_MAX_LENGTH);
+  for(const k of ['academicYearId','classId','teacherId','subjectId'] as const)assertOptionalString(r[k],k,ID_MAX_LENGTH);
+  assertOptionalEnumMember(r.gradeLevel,'gradeLevel',Object.values(GradeLevel));
+  assertOptionalEnumMember(r.dayOfWeek,'dayOfWeek',Object.values(DayOfWeek));
+  assertOptionalEnumMember(r.sort,'sort',['day','time','class','teacher','subject','updatedAt']);
+}
+export function assertCreateTimetableArgs(args:readonly unknown[]):void{
+  assertArity(args,1);const[r]=args;if(!isPlainObject(r))throw new IPCError('Expected a request object.');assertTimetableEntry(r);
+}
+export function assertUpdateTimetableArgs(args:readonly unknown[]):void{
+  assertArity(args,1);const[r]=args;if(!isPlainObject(r))throw new IPCError('Expected a request object.');assertTimetableEntry(r,true);
+}
+export function assertCopyTimetableArgs(args:readonly unknown[]):void{
+  assertArity(args,1);const[r]=args;if(!isPlainObject(r))throw new IPCError('Expected a request object.');
+  assertKnownKeys(r,['sourceClassId','targetClassId']);assertString(r.sourceClassId,'sourceClassId',ID_MAX_LENGTH);assertString(r.targetClassId,'targetClassId',ID_MAX_LENGTH);
+}
+export function assertValidateTimetableArgs(args:readonly unknown[]):void{
+  assertArity(args,1);const[r]=args;if(!isPlainObject(r))throw new IPCError('Expected a request object.');
+  assertKnownKeys(r,['entry','excludeId']);if(!isPlainObject(r.entry))throw new IPCError('Expected "entry" to be an object.');
+  assertTimetableEntry(r.entry);assertOptionalString(r.excludeId,'excludeId',ID_MAX_LENGTH);
+}
+export function assertOptionalIdArgs(args:readonly unknown[]):void{
+  if(args.length===0)return;if(args.length!==1)throw new IPCError('Expected zero or one argument.');
+  if(args[0]!==undefined)assertString(args[0],'id',ID_MAX_LENGTH);
+}
+export function assertDayOfWeekArg(args:readonly unknown[]):void{
+  assertArity(args,1);assertEnumMember(args[0],'dayOfWeek',Object.values(DayOfWeek));
 }
 
 export function assertCreateAcademicYearArgs(args: readonly unknown[]): void {

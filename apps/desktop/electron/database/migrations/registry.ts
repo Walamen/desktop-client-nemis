@@ -5,6 +5,7 @@ import { createAcademicFoundationTables } from './003-create-academic-foundation
 import { createStudentManagementTables } from './004-create-student-management-tables';
 import { createTeacherManagementTables } from './005-create-teacher-management-tables';
 import { createProvisioningMetadata } from './006-create-provisioning-metadata';
+import { createTimetableManagementTables } from './007-create-timetable-management-tables';
 
 /**
  * Every migration, ascending by version. Append only — never edit or reorder
@@ -17,4 +18,5 @@ export const migrations: readonly Migration[] = [
   createStudentManagementTables,
   createTeacherManagementTables,
   createProvisioningMetadata,
+  createTimetableManagementTables,
 ];

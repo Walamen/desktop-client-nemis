@@ -10,6 +10,7 @@ import type {
   IGuardianRepository,
   IEnrollmentRepository,
   ITeacherRepository,
+  ITimetableRepository,
 } from '@nemis-desktop/application';
 import type { DatabaseLogger, DatabaseManager } from '../../database/DatabaseManager';
 import { translateDatabaseError } from '../errors/translateError';
@@ -30,6 +31,7 @@ import { SqliteUserRepository } from '../repositories/sqlite/business/SqliteUser
 import { SqliteGuardianRepository } from '../repositories/sqlite/business/SqliteGuardianRepository';
 import { SqliteEnrollmentRepository } from '../repositories/sqlite/business/SqliteEnrollmentRepository';
 import { SqliteTeacherRepository } from '../repositories/sqlite/business/SqliteTeacherRepository';
+import { SqliteTimetableRepository } from '../repositories/sqlite/business/SqliteTimetableRepository';
 import { SqliteAppSettingsRepository } from '../repositories/sqlite/SqliteAppSettingsRepository';
 import { SqliteAuditLogRepository } from '../repositories/sqlite/SqliteAuditLogRepository';
 import { SqliteDeviceRepository } from '../repositories/sqlite/SqliteDeviceRepository';
@@ -60,6 +62,7 @@ export interface DataLayer {
     guardians: IGuardianRepository;
     enrollments: IEnrollmentRepository;
     teachers: ITeacherRepository;
+    timetables: ITimetableRepository;
   };
   services: {
     device: DeviceService;
@@ -95,6 +98,7 @@ export function createDataLayer(manager: DatabaseManager, log: DatabaseLogger): 
   const guardians = new SqliteGuardianRepository(context);
   const enrollments = new SqliteEnrollmentRepository(context);
   const teachers = new SqliteTeacherRepository(context);
+  const timetables = new SqliteTimetableRepository(context);
 
   // Services see only the RepositoryError taxonomy: failures of the
   // transaction machinery itself (BEGIN/COMMIT, closed-connection errors)
@@ -137,6 +141,7 @@ export function createDataLayer(manager: DatabaseManager, log: DatabaseLogger): 
       guardians,
       enrollments,
       teachers,
+      timetables,
     },
     services: {
       device: new DeviceService({ devices }),

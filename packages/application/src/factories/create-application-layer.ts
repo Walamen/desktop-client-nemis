@@ -19,6 +19,7 @@ import type { IIdGenerator } from '../interfaces/id-generator';
 import type { IEventPublisher } from '../interfaces/event-publisher';
 import type { IAppLogger } from '../interfaces/app-logger';
 import type { ITeacherRepository } from '../interfaces/teachers';
+import type { ITimetableRepository } from '../interfaces/timetables';
 
 import { CreateStudentUseCase } from '../use-cases/students/create-student';
 import { DeactivateStudentUseCase } from '../use-cases/students/deactivate-student';
@@ -102,6 +103,18 @@ import {
   UpdateTeacherUseCase,
 } from '../use-cases/teachers/teacher-use-cases';
 import { TeacherApplicationService } from '../services/teacher-application-service';
+import {
+  CopyTimetable,
+  CreateTimetable,
+  DeleteTimetable,
+  DetectScheduleConflicts,
+  GetTimetableDashboard,
+  GetTimetablePeriods,
+  SearchTimetables,
+  UpdateTimetable,
+  ValidateTimetable,
+} from '../use-cases/timetables/timetable-use-cases';
+import { TimetableApplicationService } from '../services/timetable-application-service';
 
 export interface ApplicationPorts {
   students: IStudentRepository;
@@ -125,6 +138,7 @@ export interface ApplicationPorts {
   events: IEventPublisher;
   logger: IAppLogger;
   teachers: ITeacherRepository;
+  timetables: ITimetableRepository;
 }
 
 export interface ApplicationLayer {
@@ -137,6 +151,7 @@ export interface ApplicationLayer {
   infra: InfraApplicationService;
   reporting: ReportingApplicationService;
   teachers: TeacherApplicationService;
+  timetables: TimetableApplicationService;
 }
 
 /** Composition root: constructs every use case from injected ports and groups
@@ -394,5 +409,18 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
     dashboard: new GetTeacherDashboardUseCase({ teachers: ports.teachers, logger }),
   });
 
-  return { students, academics, attendance, assessments, identity, institution, infra, reporting, teachers };
+  const timetableDeps = { timetables: ports.timetables, clock, ids, logger };
+  const timetables = new TimetableApplicationService({
+    create: new CreateTimetable(timetableDeps),
+    update: new UpdateTimetable(timetableDeps),
+    delete: new DeleteTimetable({ timetables: ports.timetables, logger }),
+    copy: new CopyTimetable(timetableDeps),
+    search: new SearchTimetables({ timetables: ports.timetables, logger }),
+    validate: new ValidateTimetable(timetableDeps),
+    conflicts: new DetectScheduleConflicts({ timetables: ports.timetables, logger }),
+    periods: new GetTimetablePeriods({ timetables: ports.timetables, logger }),
+    dashboard: new GetTimetableDashboard({ timetables: ports.timetables, clock, logger }),
+  });
+
+  return { students, academics, attendance, assessments, identity, institution, infra, reporting, teachers, timetables };
 }

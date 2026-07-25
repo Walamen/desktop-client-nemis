@@ -8,3 +8,4 @@ export * from './academics';
 export * from './attendance';
 export * from './assessments';
 export * from './teachers';
+export * from './timetables';

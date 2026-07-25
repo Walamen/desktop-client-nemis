@@ -47,6 +47,12 @@ import type {
   UpdateTeachingAssignmentRequest,
 } from './teachers';
 import type { AuthenticateRequest, ProvisioningStatus } from './provisioning';
+import type {
+  CopyTimetableRequest, CreateTimetableEntryRequest, PeriodResult,
+  ScheduleConflictResult, TimetableDashboardResult, TimetableEntryResult,
+  TimetableListRequest, TimetablePageResult, UpdateTimetableEntryRequest,
+  ValidateTimetableRequest,
+} from './timetables';
 
 /**
  * Single source of truth for every IPC endpoint's request/response types.
@@ -123,6 +129,19 @@ export interface IpcContract {
   'teacher:update-assignment': { args: [request: UpdateTeachingAssignmentRequest]; result: TeachingAssignmentResult };
   'teacher:remove-assignment': { args: [request: RemoveTeachingAssignmentRequest]; result: { id: string } };
   'teacher:get-dashboard': { args: []; result: TeacherDashboardResult };
+  // Timetable Management (Phase 13)
+  'timetable:list': { args: [request: TimetableListRequest]; result: TimetablePageResult };
+  'timetable:class': { args: [id: string]; result: TimetablePageResult };
+  'timetable:teacher': { args: [id: string]; result: TimetablePageResult };
+  'timetable:subject': { args: [id: string]; result: TimetablePageResult };
+  'timetable:create': { args: [request: CreateTimetableEntryRequest]; result: TimetableEntryResult };
+  'timetable:update': { args: [request: UpdateTimetableEntryRequest]; result: TimetableEntryResult };
+  'timetable:delete': { args: [id: string]; result: { id: string } };
+  'timetable:copy': { args: [request: CopyTimetableRequest]; result: TimetableEntryResult[] };
+  'timetable:validate': { args: [request: ValidateTimetableRequest]; result: ScheduleConflictResult[] };
+  'timetable:conflicts': { args: [request: TimetableListRequest]; result: ScheduleConflictResult[] };
+  'timetable:periods': { args: [classId?: string]; result: PeriodResult[] };
+  'timetable:dashboard': { args: [dayOfWeek: string]; result: TimetableDashboardResult };
 }
 
 export type IpcChannel = keyof IpcContract;
@@ -181,6 +200,18 @@ export const IpcChannels = {
   TEACHER_UPDATE_ASSIGNMENT: 'teacher:update-assignment',
   TEACHER_REMOVE_ASSIGNMENT: 'teacher:remove-assignment',
   TEACHER_GET_DASHBOARD: 'teacher:get-dashboard',
+  TIMETABLE_LIST: 'timetable:list',
+  TIMETABLE_CLASS: 'timetable:class',
+  TIMETABLE_TEACHER: 'timetable:teacher',
+  TIMETABLE_SUBJECT: 'timetable:subject',
+  TIMETABLE_CREATE: 'timetable:create',
+  TIMETABLE_UPDATE: 'timetable:update',
+  TIMETABLE_DELETE: 'timetable:delete',
+  TIMETABLE_COPY: 'timetable:copy',
+  TIMETABLE_VALIDATE: 'timetable:validate',
+  TIMETABLE_CONFLICTS: 'timetable:conflicts',
+  TIMETABLE_PERIODS: 'timetable:periods',
+  TIMETABLE_DASHBOARD: 'timetable:dashboard',
 } as const satisfies Record<string, IpcChannel>;
 
 // Compile-time exhaustiveness: adding a channel to IpcContract without

@@ -68,6 +68,7 @@ export const PROVISIONING_COLLECTIONS = [
   'classes', 'subjects', 'classSubjects', 'students', 'guardians',
   'studentGuardians', 'enrollments', 'staff', 'subjectTeachers',
   'classTeachers', 'classSubjectTeachers',
+  'timetableEntries',
 ] as const;
 
 export type ProvisioningCollection = (typeof PROVISIONING_COLLECTIONS)[number];
