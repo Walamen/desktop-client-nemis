@@ -14,11 +14,19 @@ import { registerSubjectHandlers } from '@app/ipc/handlers/subject';
 import { registerIdentityHandlers } from '@app/ipc/handlers/identity';
 import { registerDeviceHandlers } from '@app/ipc/handlers/device';
 import { registerStudentHandlers } from '@app/ipc/handlers/students';
+import { registerTeacherHandlers } from '@app/ipc/handlers/teachers';
+import { registerProvisioningHandlers } from '@app/ipc/handlers/provisioning';
+import type { ProvisioningService } from '@app/provisioning/ProvisioningService';
 import { toIpcError } from './errorMapping';
 
 export type IpcValidator = (args: readonly unknown[]) => void;
 
-export function registerIpcHandlers(services: DataLayer['services'], app: ApplicationLayer): void {
+export function registerIpcHandlers(
+  services: DataLayer['services'],
+  app: ApplicationLayer,
+  provisioning: ProvisioningService,
+): void {
+  registerProvisioningHandlers(handle, provisioning);
   registerSystemHandlers(handle);
   registerSettingsHandlers(handle, services.appSettings);
   registerDashboardHandlers(handle, app);
@@ -30,6 +38,7 @@ export function registerIpcHandlers(services: DataLayer['services'], app: Applic
   registerIdentityHandlers(handle, app);
   registerDeviceHandlers(handle, app);
   registerStudentHandlers(handle, app);
+  registerTeacherHandlers(handle, app);
 }
 
 /**

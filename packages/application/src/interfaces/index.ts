@@ -11,3 +11,5 @@ export * from './assessments';
 export * from './identity';
 export * from './institution';
 export * from './infra';
+export * from './teachers';
+export * from './provisioning';

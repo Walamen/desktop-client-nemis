@@ -18,6 +18,7 @@ import type { IClock } from '../interfaces/clock';
 import type { IIdGenerator } from '../interfaces/id-generator';
 import type { IEventPublisher } from '../interfaces/event-publisher';
 import type { IAppLogger } from '../interfaces/app-logger';
+import type { ITeacherRepository } from '../interfaces/teachers';
 
 import { CreateStudentUseCase } from '../use-cases/students/create-student';
 import { DeactivateStudentUseCase } from '../use-cases/students/deactivate-student';
@@ -86,6 +87,21 @@ import { InfraApplicationService } from '../services/infra-application-service';
 import { GetCurrentAcademicYearUseCase } from '../use-cases/academics/get-current-academic-year';
 import { GetDashboardOverviewUseCase } from '../use-cases/reporting/get-dashboard-overview';
 import { ReportingApplicationService } from '../services/reporting-application-service';
+import {
+  ArchiveTeacherUseCase,
+  AssignTeacherUseCase,
+  CreateTeacherUseCase,
+  GetTeacherDashboardUseCase,
+  GetTeacherProfileUseCase,
+  GetTeachingAssignmentsUseCase,
+  RemoveAssignmentUseCase,
+  RestoreTeacherUseCase,
+  SearchTeachersUseCase,
+  SetTeacherActiveUseCase,
+  UpdateAssignmentUseCase,
+  UpdateTeacherUseCase,
+} from '../use-cases/teachers/teacher-use-cases';
+import { TeacherApplicationService } from '../services/teacher-application-service';
 
 export interface ApplicationPorts {
   students: IStudentRepository;
@@ -108,6 +124,7 @@ export interface ApplicationPorts {
   ids: IIdGenerator;
   events: IEventPublisher;
   logger: IAppLogger;
+  teachers: ITeacherRepository;
 }
 
 export interface ApplicationLayer {
@@ -119,6 +136,7 @@ export interface ApplicationLayer {
   institution: InstitutionApplicationService;
   infra: InfraApplicationService;
   reporting: ReportingApplicationService;
+  teachers: TeacherApplicationService;
 }
 
 /** Composition root: constructs every use case from injected ports and groups
@@ -360,5 +378,21 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
     }),
   });
 
-  return { students, academics, attendance, assessments, identity, institution, infra, reporting };
+  const teacherDeps = { teachers: ports.teachers, clock, logger };
+  const archiveTeacher = new ArchiveTeacherUseCase(teacherDeps);
+  const restoreTeacher = new RestoreTeacherUseCase(teacherDeps);
+  const teachers = new TeacherApplicationService({
+    create: new CreateTeacherUseCase({ ...teacherDeps, ids }),
+    update: new UpdateTeacherUseCase(teacherDeps),
+    setActive: new SetTeacherActiveUseCase(archiveTeacher, restoreTeacher),
+    search: new SearchTeachersUseCase({ teachers: ports.teachers, logger }),
+    getProfile: new GetTeacherProfileUseCase({ teachers: ports.teachers, logger }),
+    getAssignments: new GetTeachingAssignmentsUseCase({ teachers: ports.teachers, logger }),
+    assign: new AssignTeacherUseCase({ ...teacherDeps, ids, classes: ports.classes, subjects: ports.subjects }),
+    updateAssignment: new UpdateAssignmentUseCase({ ...teacherDeps, subjects: ports.subjects }),
+    removeAssignment: new RemoveAssignmentUseCase({ teachers: ports.teachers, logger }),
+    dashboard: new GetTeacherDashboardUseCase({ teachers: ports.teachers, logger }),
+  });
+
+  return { students, academics, attendance, assessments, identity, institution, infra, reporting, teachers };
 }

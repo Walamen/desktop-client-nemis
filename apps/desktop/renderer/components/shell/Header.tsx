@@ -7,9 +7,12 @@ import { Avatar, Breadcrumbs, Dropdown, DropdownItem } from '@nemis-desktop/ui';
 import { useCurrentUserViewModel, useNotificationStore } from '../../lib/presentation/hooks';
 import { useViewModel } from '../../hooks/use-view-model';
 import { resolvePageTitle } from './page-titles';
+import { nemisBridge } from '@/services/nemis-bridge';
+import { useRouter } from 'next/navigation';
 
 export function Header() {
   const pathname = usePathname();
+  const router = useRouter();
   const { title, segments } = resolvePageTitle(pathname);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -75,8 +78,11 @@ export function Header() {
               Settings (coming soon)
             </DropdownItem>
             <div className="h-px bg-gray-200" />
-            <DropdownItem icon={<LogOut className="w-4 h-4 text-gray-600" />} onSelect={() => setMenuOpen(false)} disabled>
-              Sign Out (coming soon)
+            <DropdownItem icon={<LogOut className="w-4 h-4 text-gray-600" />} onSelect={() => {
+              setMenuOpen(false);
+              void nemisBridge.logout().finally(() => router.replace('/'));
+            }}>
+              Sign Out
             </DropdownItem>
           </Dropdown>
         </div>

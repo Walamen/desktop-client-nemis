@@ -40,6 +40,13 @@ import type {
   StudentResult,
   UpdateStudentRequest,
 } from './students';
+import type {
+  AssignTeacherRequest, CreateTeacherRequest, RemoveTeachingAssignmentRequest,
+  SetTeacherActiveRequest, TeacherDashboardResult, TeacherListRequest, TeacherPageResult,
+  TeacherProfileResult, TeachingAssignmentResult, UpdateTeacherRequest,
+  UpdateTeachingAssignmentRequest,
+} from './teachers';
+import type { AuthenticateRequest, ProvisioningStatus } from './provisioning';
 
 /**
  * Single source of truth for every IPC endpoint's request/response types.
@@ -48,6 +55,10 @@ import type {
  * Channel naming convention: `domain:action`.
  */
 export interface IpcContract {
+  'auth:get-status': { args: []; result: ProvisioningStatus };
+  'auth:login': { args: [request: AuthenticateRequest]; result: ProvisioningStatus };
+  'auth:logout': { args: []; result: ProvisioningStatus };
+  'provisioning:start': { args: []; result: ProvisioningStatus };
   'system:get-version': { args: []; result: string };
   'settings:get': { args: [key: string]; result: unknown };
   'dashboard:get-overview': { args: []; result: DashboardOverviewResult };
@@ -101,11 +112,26 @@ export interface IpcContract {
     result: EnrollmentResult;
   };
   'student:list-enrollments': { args: [id: string]; result: EnrollmentResult[] };
+  // Teacher Management (Phase 11)
+  'teacher:list': { args: [request: TeacherListRequest]; result: TeacherPageResult };
+  'teacher:get-profile': { args: [id: string]; result: TeacherProfileResult | null };
+  'teacher:create': { args: [request: CreateTeacherRequest]; result: TeacherProfileResult };
+  'teacher:update': { args: [request: UpdateTeacherRequest]; result: TeacherProfileResult };
+  'teacher:set-active': { args: [request: SetTeacherActiveRequest]; result: TeacherProfileResult };
+  'teacher:list-assignments': { args: [id: string]; result: TeachingAssignmentResult[] };
+  'teacher:assign': { args: [request: AssignTeacherRequest]; result: TeachingAssignmentResult };
+  'teacher:update-assignment': { args: [request: UpdateTeachingAssignmentRequest]; result: TeachingAssignmentResult };
+  'teacher:remove-assignment': { args: [request: RemoveTeachingAssignmentRequest]; result: { id: string } };
+  'teacher:get-dashboard': { args: []; result: TeacherDashboardResult };
 }
 
 export type IpcChannel = keyof IpcContract;
 
 export const IpcChannels = {
+  AUTH_GET_STATUS: 'auth:get-status',
+  AUTH_LOGIN: 'auth:login',
+  AUTH_LOGOUT: 'auth:logout',
+  PROVISIONING_START: 'provisioning:start',
   SYSTEM_GET_VERSION: 'system:get-version',
   SETTINGS_GET: 'settings:get',
   DASHBOARD_GET_OVERVIEW: 'dashboard:get-overview',
@@ -145,6 +171,16 @@ export const IpcChannels = {
   STUDENT_ENROLL: 'student:enroll',
   STUDENT_MOVE_CLASS: 'student:move-class',
   STUDENT_LIST_ENROLLMENTS: 'student:list-enrollments',
+  TEACHER_LIST: 'teacher:list',
+  TEACHER_GET_PROFILE: 'teacher:get-profile',
+  TEACHER_CREATE: 'teacher:create',
+  TEACHER_UPDATE: 'teacher:update',
+  TEACHER_SET_ACTIVE: 'teacher:set-active',
+  TEACHER_LIST_ASSIGNMENTS: 'teacher:list-assignments',
+  TEACHER_ASSIGN: 'teacher:assign',
+  TEACHER_UPDATE_ASSIGNMENT: 'teacher:update-assignment',
+  TEACHER_REMOVE_ASSIGNMENT: 'teacher:remove-assignment',
+  TEACHER_GET_DASHBOARD: 'teacher:get-dashboard',
 } as const satisfies Record<string, IpcChannel>;
 
 // Compile-time exhaustiveness: adding a channel to IpcContract without

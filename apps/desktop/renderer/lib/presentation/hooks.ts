@@ -17,3 +17,8 @@ export const useNotificationStore = () => usePresentation().stores.notifications
 export const useAcademicYearViewModel = () => usePresentation().viewModels.academicYear;
 export const useAcademicFoundationViewModel = () => usePresentation().viewModels.academicFoundation;
 export const useBootstrapStore = () => usePresentation().stores.bootstrap;
+export const useTeachersListViewModel = () => usePresentation().viewModels.teachersList;
+export const useTeacherProfileViewModel = () => usePresentation().viewModels.teacherProfile;
+export const useTeacherSearchViewModel = () => usePresentation().viewModels.teacherSearch;
+export const useTeachingAssignmentViewModel = () => usePresentation().viewModels.teachingAssignments;
+export const useTeacherDashboardViewModel = () => usePresentation().viewModels.teacherDashboard;

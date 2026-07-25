@@ -17,7 +17,21 @@ import {
   assertUpdateSubjectArgs,
   assertClassSubjectPairArgs,
   assertMoveEnrollmentClassArgs,
+  assertAuthenticateArgs,
 } from './validateIpc';
+
+describe('assertAuthenticateArgs', () => {
+  it('accepts only a bounded email/password object', () => {
+    expect(() =>
+      assertAuthenticateArgs([{ email: 'admin@school.edu', password: 'secret' }]),
+    ).not.toThrow();
+    expect(() => assertAuthenticateArgs([{ email: 'not-an-email', password: 'secret' }])).toThrow();
+    expect(() => assertAuthenticateArgs([{ email: 'admin@school.edu' }])).toThrow();
+    expect(() =>
+      assertAuthenticateArgs([{ email: 'admin@school.edu', password: 'secret', token: 'nope' }]),
+    ).toThrow();
+  });
+});
 
 describe('assertNoArgs', () => {
   it('passes empty args and rejects extras', () => {

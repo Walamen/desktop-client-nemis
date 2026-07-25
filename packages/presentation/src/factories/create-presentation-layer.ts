@@ -24,7 +24,7 @@ import {
   StudentsListViewModel,
 } from '../view-models/students/focused-student-view-models';
 import { SyncViewModel } from '../view-models/sync/sync-view-model';
-import { TeachersViewModel } from '../view-models/teachers/teachers-view-model';
+import { TeacherDashboardViewModel, TeacherProfileViewModel, TeacherSearchViewModel, TeachersListViewModel, TeachersViewModel, TeachingAssignmentViewModel } from '../view-models/teachers/teachers-view-model';
 
 export interface PresentationStores {
   readonly notifications: NotificationStore;
@@ -49,6 +49,11 @@ export interface PresentationViewModels {
   readonly currentUser: CurrentUserViewModel;
   readonly dashboard: DashboardViewModel;
   readonly teachers: TeachersViewModel;
+  readonly teachersList: TeachersListViewModel;
+  readonly teacherProfile: TeacherProfileViewModel;
+  readonly teacherSearch: TeacherSearchViewModel;
+  readonly teachingAssignments: TeachingAssignmentViewModel;
+  readonly teacherDashboard: TeacherDashboardViewModel;
   readonly sync: SyncViewModel;
   readonly academicYear: AcademicYearViewModel;
   readonly academicFoundation: AcademicFoundationViewModel;
@@ -84,6 +89,7 @@ export function createPresentationLayer(
     notifications,
     session,
   });
+  const teachers = new TeachersViewModel({ teachers: app.teachers, notifications });
   const viewModels: PresentationViewModels = {
     students,
     studentsList: new StudentsListViewModel(students),
@@ -101,7 +107,12 @@ export function createPresentationLayer(
     device: new DeviceViewModel({ infra: app.infra, notifications, session }),
     currentUser: new CurrentUserViewModel({ identity: app.identity, session }),
     dashboard: new DashboardViewModel({ reporting: app.reporting, notifications }),
-    teachers: new TeachersViewModel(),
+    teachers,
+    teachersList: new TeachersListViewModel(teachers),
+    teacherProfile: new TeacherProfileViewModel(teachers),
+    teacherSearch: new TeacherSearchViewModel(teachers),
+    teachingAssignments: new TeachingAssignmentViewModel(teachers),
+    teacherDashboard: new TeacherDashboardViewModel(teachers),
     sync: new SyncViewModel(connectivity),
     academicYear: new AcademicYearViewModel({ academics: app.academics }),
     academicFoundation: new AcademicFoundationViewModel({

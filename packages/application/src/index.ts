@@ -88,3 +88,8 @@ export * from './use-cases/identity/get-current-user';
 export * from './use-cases/institution/get-current-school';
 export * from './use-cases/infra/get-device-information';
 export * from './factories';
+export * from './dto/teachers/teacher-dto';
+export * from './mappers/teachers/teacher-mapper';
+export * from './use-cases/teachers/teacher-use-cases';
+export * from './services/teacher-application-service';
+export * from './use-cases/provisioning/authentication';

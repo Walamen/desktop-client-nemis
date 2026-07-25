@@ -12,6 +12,7 @@ beforeEach(() => {
     term: { getCurrent: vi.fn(async () => null) },
     identity: { getCurrentUser: vi.fn(async () => null) },
     device: { getInfo: vi.fn(async () => null) },
+    teacher: { getDashboard: vi.fn(async () => ({ totalTeachers: 0, bySubject: [], byGrade: [], byEmploymentStatus: [], recentlyAdded: [], totalAssignments: 0, unassignedTeachers: 0 })) },
   };
 });
 afterEach(() => {
@@ -31,7 +32,7 @@ describe('School Admin dashboard (fresh install)', () => {
     expect(screen.getByText('School profile not set up yet')).toBeInTheDocument();
     expect(screen.getByText('No academic year configured')).toBeInTheDocument();
     expect(screen.getByText('No current term configured')).toBeInTheDocument();
-    expect(screen.getByText(/staff records not tracked yet/i)).toBeInTheDocument();
+    expect((await screen.findAllByText('No teachers found.')).length).toBeGreaterThan(0);
     // The old StatCard placeholder badge (exact text "sample") must be gone.
     // RecentActivityFeed's honest "Sample activity — live feed arrives with
     // sync" copy legitimately remains and is out of scope for this assertion.

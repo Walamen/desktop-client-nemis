@@ -1,9 +1,17 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
+import { nemisBridge } from '@/services/nemis-bridge';
 
-/** Seam for the authentication phase. Today the mocked user is always present,
- * so this renders children unconditionally. Auth redirects land here. */
 export function RouteGuard({ children }: { children: ReactNode }) {
-  return <>{children}</>;
+  const router = useRouter();
+  const [allowed, setAllowed] = useState(false);
+  useEffect(() => {
+    void nemisBridge.getProvisioningStatus().then((status) => {
+      if (status.isProvisioned && status.authentication === 'authenticated') setAllowed(true);
+      else router.replace('/');
+    });
+  }, [router]);
+  return allowed ? <>{children}</> : null;
 }

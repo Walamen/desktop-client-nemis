@@ -2,7 +2,10 @@ import { render, screen } from '@testing-library/react';
 import { createStore } from 'zustand/vanilla';
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('next/navigation', () => ({ usePathname: () => '/government/school-admin/students' }));
+vi.mock('next/navigation', () => ({
+  usePathname: () => '/government/school-admin/students',
+  useRouter: () => ({ replace: vi.fn() }),
+}));
 
 const notificationStore = createStore(() => ({ notifications: [{ id: 'n1', kind: 'info', message: 'x', autoDismissMs: null, createdAt: 0 }] }));
 const currentUserStore = createStore(() => ({ user: { status: 'success', data: { fullName: 'Joseph Boakai', roleLabels: ['Institution admin'] } } }));

@@ -8,6 +8,7 @@ export interface AppConfig {
   readonly isDev: boolean;
   readonly rendererDevUrl: string;
   readonly logLevel: LogLevel;
+  readonly apiBaseUrl: string;
 }
 
 /**
@@ -21,10 +22,28 @@ export function parseConfig(env: NodeJS.ProcessEnv, isDev: boolean): AppConfig {
       `Invalid NEMIS_LOG_LEVEL "${logLevel}". Expected one of: ${LOG_LEVELS.join(', ')}.`,
     );
   }
+  const configuredApiUrl = env.NEMIS_API_URL;
+  if (!isDev && !configuredApiUrl) {
+    throw new ConfigurationError('NEMIS_API_URL is required in production.');
+  }
+  const apiBaseUrl = configuredApiUrl ?? 'http://localhost:3001';
+  let parsedApiUrl: URL;
+  try {
+    parsedApiUrl = new URL(apiBaseUrl);
+  } catch {
+    throw new ConfigurationError('NEMIS_API_URL must be an absolute HTTP(S) URL.');
+  }
+  if (!['http:', 'https:'].includes(parsedApiUrl.protocol)) {
+    throw new ConfigurationError('NEMIS_API_URL must use HTTP or HTTPS.');
+  }
+  if (!isDev && parsedApiUrl.protocol !== 'https:') {
+    throw new ConfigurationError('NEMIS_API_URL must use HTTPS in production.');
+  }
   return {
     isDev,
     rendererDevUrl: env.NEMIS_RENDERER_DEV_URL ?? 'http://localhost:3010',
     logLevel,
+    apiBaseUrl: parsedApiUrl.href,
   };
 }
 

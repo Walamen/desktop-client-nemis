@@ -8,11 +8,12 @@ describe('parseConfig', () => {
       isDev: true,
       rendererDevUrl: 'http://localhost:3010',
       logLevel: 'debug',
+      apiBaseUrl: 'http://localhost:3001/',
     });
   });
 
   it('defaults to info logging in production', () => {
-    expect(parseConfig({}, false).logLevel).toBe('info');
+    expect(parseConfig({ NEMIS_API_URL: 'https://nemis.example' }, false).logLevel).toBe('info');
   });
 
   it('honors NEMIS_LOG_LEVEL override', () => {

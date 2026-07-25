@@ -69,6 +69,8 @@ describe('002-create-business-tables', () => {
 
   it('down() removes every business table (rollback through 002)', () => {
     const service = new MigrationService(test.db.raw, migrations);
+    service.rollbackLast(); // 006 provisioning metadata
+    service.rollbackLast(); // 005 — teacher management
     service.rollbackLast(); // 004 — student management
     service.rollbackLast(); // 003 — academic foundation
     service.rollbackLast(); // 002 — business tables

@@ -9,6 +9,7 @@ import type {
   IAttendanceRepository,
   IGuardianRepository,
   IEnrollmentRepository,
+  ITeacherRepository,
 } from '@nemis-desktop/application';
 import type { DatabaseLogger, DatabaseManager } from '../../database/DatabaseManager';
 import { translateDatabaseError } from '../errors/translateError';
@@ -28,6 +29,7 @@ import { SqliteStudentRepository } from '../repositories/sqlite/business/SqliteS
 import { SqliteUserRepository } from '../repositories/sqlite/business/SqliteUserRepository';
 import { SqliteGuardianRepository } from '../repositories/sqlite/business/SqliteGuardianRepository';
 import { SqliteEnrollmentRepository } from '../repositories/sqlite/business/SqliteEnrollmentRepository';
+import { SqliteTeacherRepository } from '../repositories/sqlite/business/SqliteTeacherRepository';
 import { SqliteAppSettingsRepository } from '../repositories/sqlite/SqliteAppSettingsRepository';
 import { SqliteAuditLogRepository } from '../repositories/sqlite/SqliteAuditLogRepository';
 import { SqliteDeviceRepository } from '../repositories/sqlite/SqliteDeviceRepository';
@@ -57,6 +59,7 @@ export interface DataLayer {
     attendance: IAttendanceRepository;
     guardians: IGuardianRepository;
     enrollments: IEnrollmentRepository;
+    teachers: ITeacherRepository;
   };
   services: {
     device: DeviceService;
@@ -91,6 +94,7 @@ export function createDataLayer(manager: DatabaseManager, log: DatabaseLogger): 
   const attendanceRepo = new SqliteAttendanceRepository(context);
   const guardians = new SqliteGuardianRepository(context);
   const enrollments = new SqliteEnrollmentRepository(context);
+  const teachers = new SqliteTeacherRepository(context);
 
   // Services see only the RepositoryError taxonomy: failures of the
   // transaction machinery itself (BEGIN/COMMIT, closed-connection errors)
@@ -132,6 +136,7 @@ export function createDataLayer(manager: DatabaseManager, log: DatabaseLogger): 
       attendance: attendanceRepo,
       guardians,
       enrollments,
+      teachers,
     },
     services: {
       device: new DeviceService({ devices }),

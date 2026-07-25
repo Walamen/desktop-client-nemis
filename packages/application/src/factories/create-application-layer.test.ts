@@ -23,6 +23,7 @@ import { InMemoryInstitutionRepository } from '../testing/institution/in-memory-
 import { InMemoryGradingConfigRepository } from '../testing/institution/in-memory-grading-config-repository';
 import { InMemoryDeviceGateway } from '../testing/infra/in-memory-device-gateway';
 import { InMemorySettingsGateway } from '../testing/infra/in-memory-settings-gateway';
+import { InMemoryTeacherRepository } from '../testing/teachers/in-memory-teacher-repository';
 
 function buildLayer() {
   const subjects = new InMemorySubjectRepository();
@@ -50,6 +51,7 @@ function buildLayer() {
     ids: new SequentialIdGenerator('stu'),
     events: new CollectingEventPublisher(),
     logger: new RecordingLogger(),
+    teachers: new InMemoryTeacherRepository(),
   });
 }
 

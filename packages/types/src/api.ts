@@ -40,6 +40,23 @@ import type {
   StudentResult,
   UpdateStudentRequest,
 } from './students';
+import type {
+  AssignTeacherRequest, CreateTeacherRequest, RemoveTeachingAssignmentRequest,
+  SetTeacherActiveRequest, TeacherDashboardResult, TeacherListRequest, TeacherPageResult,
+  TeacherProfileResult, TeachingAssignmentResult, UpdateTeacherRequest,
+  UpdateTeachingAssignmentRequest,
+} from './teachers';
+import type { AuthenticateRequest, ProvisioningStatus } from './provisioning';
+
+export interface AuthenticationApi {
+  getStatus(): Promise<ProvisioningStatus>;
+  login(request: AuthenticateRequest): Promise<ProvisioningStatus>;
+  logout(): Promise<ProvisioningStatus>;
+}
+
+export interface ProvisioningApi {
+  start(): Promise<ProvisioningStatus>;
+}
 
 export interface SystemApi {
   getVersion(): Promise<string>;
@@ -105,8 +122,22 @@ export interface StudentApi {
   moveClass(request: MoveEnrollmentClassRequest): Promise<EnrollmentResult>;
   listEnrollments(id: string): Promise<EnrollmentResult[]>;
 }
+export interface TeacherApi {
+  list(request: TeacherListRequest): Promise<TeacherPageResult>;
+  getProfile(id: string): Promise<TeacherProfileResult | null>;
+  create(request: CreateTeacherRequest): Promise<TeacherProfileResult>;
+  update(request: UpdateTeacherRequest): Promise<TeacherProfileResult>;
+  setActive(request: SetTeacherActiveRequest): Promise<TeacherProfileResult>;
+  listAssignments(id: string): Promise<TeachingAssignmentResult[]>;
+  assign(request: AssignTeacherRequest): Promise<TeachingAssignmentResult>;
+  updateAssignment(request: UpdateTeachingAssignmentRequest): Promise<TeachingAssignmentResult>;
+  removeAssignment(request: RemoveTeachingAssignmentRequest): Promise<{ id: string }>;
+  getDashboard(): Promise<TeacherDashboardResult>;
+}
 
 export interface NemisApi {
+  auth: AuthenticationApi;
+  provisioning: ProvisioningApi;
   system: SystemApi;
   settings: SettingsApi;
   dashboard: DashboardApi;
@@ -118,4 +149,5 @@ export interface NemisApi {
   identity: IdentityApi;
   device: DeviceApi;
   student: StudentApi;
+  teacher: TeacherApi;
 }

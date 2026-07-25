@@ -36,6 +36,12 @@ import type {
   StudentResult,
   UpdateStudentRequest,
 } from '@nemis-desktop/types';
+import type {
+  AssignTeacherRequest, CreateTeacherRequest, RemoveTeachingAssignmentRequest,
+  SetTeacherActiveRequest, TeacherDashboardResult, TeacherListRequest, TeacherPageResult,
+  TeacherProfileResult, TeachingAssignmentResult, UpdateTeacherRequest,
+  UpdateTeachingAssignmentRequest,
+} from '@nemis-desktop/types';
 
 function api() {
   if (typeof window === 'undefined' || !window.nemis) {
@@ -49,6 +55,10 @@ function api() {
  * touch window.nemis). Returns raw wire results; error translation happens
  * in the ApplicationLayer facade. */
 export const nemisBridge = {
+  getProvisioningStatus: () => api().auth.getStatus(),
+  authenticate: (email: string, password: string) => api().auth.login({ email, password }),
+  logout: () => api().auth.logout(),
+  startProvisioning: () => api().provisioning.start(),
   getDashboardOverview: (): Promise<DashboardOverviewResult> => api().dashboard.getOverview(),
   getSchoolSummary: (): Promise<SchoolSummaryResult | null> => api().school.getSummary(),
   getCurrentAcademicYear: (): Promise<AcademicYearResult | null> => api().academicYear.getCurrent(),
@@ -112,4 +122,14 @@ export const nemisBridge = {
     api().student.moveClass(request),
   listStudentEnrollments: (id: string): Promise<EnrollmentResult[]> =>
     api().student.listEnrollments(id),
+  listTeachers: (request: TeacherListRequest): Promise<TeacherPageResult> => api().teacher.list(request),
+  getTeacherProfile: (id: string): Promise<TeacherProfileResult|null> => api().teacher.getProfile(id),
+  createTeacher: (request: CreateTeacherRequest): Promise<TeacherProfileResult> => api().teacher.create(request),
+  updateTeacher: (request: UpdateTeacherRequest): Promise<TeacherProfileResult> => api().teacher.update(request),
+  setTeacherActive: (request: SetTeacherActiveRequest): Promise<TeacherProfileResult> => api().teacher.setActive(request),
+  listTeachingAssignments: (id:string):Promise<TeachingAssignmentResult[]> => api().teacher.listAssignments(id),
+  assignTeacher: (request:AssignTeacherRequest):Promise<TeachingAssignmentResult> => api().teacher.assign(request),
+  updateTeachingAssignment:(request:UpdateTeachingAssignmentRequest):Promise<TeachingAssignmentResult>=>api().teacher.updateAssignment(request),
+  removeTeachingAssignment:(request:RemoveTeachingAssignmentRequest):Promise<{id:string}>=>api().teacher.removeAssignment(request),
+  getTeacherDashboard:():Promise<TeacherDashboardResult>=>api().teacher.getDashboard(),
 };

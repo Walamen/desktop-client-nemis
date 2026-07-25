@@ -14,6 +14,13 @@ import { loadOrCreateDatabaseKey } from '@app/security/databaseKey';
 import { installProcessSafetyNets } from '@app/main/safetyNets';
 import { createMainWindow, RENDERER_ORIGIN } from '@app/windows/mainWindow';
 import { registerAppProtocolScheme, registerAppProtocolHandler } from '@app/main/appProtocol';
+import { AuthenticateUser, Logout, RestoreSession } from '@nemis-desktop/application';
+import { BackendAuthenticationGateway } from '@app/provisioning/BackendAuthenticationGateway';
+import { EncryptedSessionRepository } from '@app/provisioning/EncryptedSessionRepository';
+import { ProvisioningService } from '@app/provisioning/ProvisioningService';
+import { loadDeviceIdentity } from '@app/provisioning/deviceIdentity';
+import { BackendProvisioningGateway } from '@app/provisioning/BackendProvisioningGateway';
+import { ProvisioningImporter } from '@app/provisioning/ProvisioningImporter';
 
 // Squirrel.Windows shortcut events during install/update: quit immediately.
 if (started) {
@@ -84,6 +91,21 @@ function bootstrap(): void {
       databaseManager.initialize();
       const dataLayer = createDataLayer(databaseManager, databaseLog);
       const application = createApplicationComposition(dataLayer);
+      const sessionRepository = new EncryptedSessionRepository(app.getPath('userData'));
+      const authenticationGateway = new BackendAuthenticationGateway(config.apiBaseUrl);
+      const backendProvisioning = new BackendProvisioningGateway(
+        config.apiBaseUrl,
+        authenticationGateway,
+        sessionRepository,
+      );
+      const provisioning = new ProvisioningService(
+        new AuthenticateUser(authenticationGateway, sessionRepository),
+        new RestoreSession(authenticationGateway, sessionRepository),
+        new Logout(authenticationGateway, sessionRepository),
+        backendProvisioning,
+        new ProvisioningImporter(databaseManager),
+        loadDeviceIdentity(app.getPath('userData')),
+      );
 
       denyPermissionRequests();
       denyPermissionChecks();
@@ -92,7 +114,7 @@ function bootstrap(): void {
         registerAppProtocolHandler();
       }
 
-      registerIpcHandlers(dataLayer.services, application);
+      registerIpcHandlers(dataLayer.services, application, provisioning);
 
       mainWindow = createHardenedWindow();
 

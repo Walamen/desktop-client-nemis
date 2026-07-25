@@ -28,7 +28,13 @@ export class ForbiddenError extends ApplicationError {
   }
 }
 
-const APPLICATION_CODES = new Set<IpcErrorCode>(['FORBIDDEN', 'IPC_ERROR']);
+export class UnauthorizedError extends ApplicationError {
+  constructor(message = 'The email or password is incorrect.', options?: { cause?: unknown }) {
+    super('UNAUTHORIZED', message, options);
+  }
+}
+
+const APPLICATION_CODES = new Set<IpcErrorCode>(['FORBIDDEN', 'UNAUTHORIZED', 'IPC_ERROR']);
 
 function narrowApplicationCode(code: string): IpcErrorCode {
   return APPLICATION_CODES.has(code as IpcErrorCode) ? (code as IpcErrorCode) : 'UNEXPECTED_ERROR';

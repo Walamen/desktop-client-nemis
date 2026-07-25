@@ -16,6 +16,7 @@ import {
   InMemorySubjectRepository,
   InMemoryTermRepository,
   InMemoryUserRepository,
+  InMemoryTeacherRepository,
   PassthroughUnitOfWork,
   RecordingLogger,
   SequentialIdGenerator,
@@ -45,6 +46,7 @@ export interface TestPorts {
   ids: SequentialIdGenerator;
   events: CollectingEventPublisher;
   logger: RecordingLogger;
+  teachers: InMemoryTeacherRepository;
 }
 
 /** Builds the REAL Phase-5 application layer over in-memory fakes so
@@ -76,6 +78,7 @@ export function createTestApplication(): { app: ApplicationLayer; ports: TestPor
     ids: new SequentialIdGenerator(),
     events: new CollectingEventPublisher(),
     logger: new RecordingLogger(),
+    teachers: new InMemoryTeacherRepository(),
   };
   return { app: createApplicationLayer(ports), ports };
 }

@@ -3,6 +3,7 @@ import type {
   ApplicationLayer,
   ApplicationResponse,
   StudentApplicationService,
+  TeacherApplicationService,
 } from '@nemis-desktop/application';
 import {
   DatabaseUnavailableError,
@@ -207,6 +208,18 @@ export function createIpcApplicationLayer(): ApplicationLayer {
       deactivate: (dto) => query(() => nemisBridge.setStudentActive({ studentId: dto.studentId, isActive: false })),
       createGuardian: (dto) => query(() => nemisBridge.createStudentGuardian(dto)),
       listEnrollments: (id) => query(() => nemisBridge.listStudentEnrollments(id)),
+    }),
+    teachers: group<TeacherApplicationService>('teachers', {
+      list: (dto) => query(() => nemisBridge.listTeachers(dto)),
+      getProfile: (id) => query(() => nemisBridge.getTeacherProfile(id)),
+      create: (dto) => query(() => nemisBridge.createTeacher(dto)),
+      update: (dto) => query(() => nemisBridge.updateTeacher(dto)),
+      setActive: (dto) => query(() => nemisBridge.setTeacherActive(dto)),
+      getAssignments: (id) => query(() => nemisBridge.listTeachingAssignments(id)),
+      assign: (dto) => query(() => nemisBridge.assignTeacher(dto)),
+      updateAssignment: (dto) => query(() => nemisBridge.updateTeachingAssignment(dto)),
+      removeAssignment: (dto) => query(() => nemisBridge.removeTeachingAssignment(dto)),
+      dashboard: () => query(() => nemisBridge.getTeacherDashboard()),
     }),
     attendance: group('attendance', {}),
     assessments: group('assessments', {}),

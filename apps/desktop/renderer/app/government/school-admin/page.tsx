@@ -8,6 +8,7 @@ import { Skeleton, ErrorState } from '@nemis-desktop/ui';
 import {
   useDashboardViewModel, useCurrentUserViewModel, useSettingsViewModel, useAcademicYearViewModel,
   useAcademicFoundationViewModel,
+  useTeacherDashboardViewModel,
 } from '@/lib/presentation/hooks';
 import { useViewModel } from '@/hooks/use-view-model';
 import { StatCard } from '@/components/dashboard/StatCard';
@@ -29,12 +30,14 @@ export default function DashboardPage() {
   const settings = useSettingsViewModel();
   const academicYear = useAcademicYearViewModel();
   const academicFoundation = useAcademicFoundationViewModel();
+  const teacherDashboard = useTeacherDashboardViewModel();
 
   const summary = useViewModel(dashboard.store, (s) => s.summary);
   const user = useViewModel(currentUser.store, (s) => s.user);
   const profile = useViewModel(settings.store, (s) => s.profile);
   const year = useViewModel(academicYear.store, (s) => s.current);
   const term = useViewModel(academicFoundation.store, (s) => s.currentTerm);
+  const teachers = useViewModel(teacherDashboard.store, (s) => s.dashboard);
 
   // Bootstrap loads this on startup; only self-load if the store is still idle
   // (e.g. navigated here before bootstrap ran).
@@ -65,7 +68,7 @@ export default function DashboardPage() {
               <StatCard key={stat.key} stat={stat} icon={STAT_ICONS[stat.key] ?? Users} />
             ))}
             <InfoTile label="Attendance Today" value={`${summary.data.attendanceToday.present} / ${summary.data.attendanceToday.total}`} emptyText="No attendance recorded" />
-            <InfoTile label="Total Teachers" value={null} emptyText="Staff records not tracked yet" />
+            <InfoTile label="Total Teachers" value={teachers.status === 'success' || teachers.status === 'refreshing' ? String(teachers.data.totalTeachers) : null} emptyText="No teachers recorded" />
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">

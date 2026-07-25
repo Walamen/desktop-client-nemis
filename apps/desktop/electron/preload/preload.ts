@@ -16,6 +16,14 @@ async function invoke<C extends IpcChannel>(
 }
 
 const nemisApi: NemisApi = {
+  auth: {
+    getStatus: () => invoke(IpcChannels.AUTH_GET_STATUS),
+    login: (request) => invoke(IpcChannels.AUTH_LOGIN, request),
+    logout: () => invoke(IpcChannels.AUTH_LOGOUT),
+  },
+  provisioning: {
+    start: () => invoke(IpcChannels.PROVISIONING_START),
+  },
   system: {
     getVersion: () => invoke(IpcChannels.SYSTEM_GET_VERSION),
   },
@@ -73,6 +81,18 @@ const nemisApi: NemisApi = {
     enroll: (request) => invoke(IpcChannels.STUDENT_ENROLL,request),
     moveClass: (request) => invoke(IpcChannels.STUDENT_MOVE_CLASS, request),
     listEnrollments: (id) => invoke(IpcChannels.STUDENT_LIST_ENROLLMENTS,id),
+  },
+  teacher: {
+    list: (request) => invoke(IpcChannels.TEACHER_LIST, request),
+    getProfile: (id) => invoke(IpcChannels.TEACHER_GET_PROFILE, id),
+    create: (request) => invoke(IpcChannels.TEACHER_CREATE, request),
+    update: (request) => invoke(IpcChannels.TEACHER_UPDATE, request),
+    setActive: (request) => invoke(IpcChannels.TEACHER_SET_ACTIVE, request),
+    listAssignments: (id) => invoke(IpcChannels.TEACHER_LIST_ASSIGNMENTS, id),
+    assign: (request) => invoke(IpcChannels.TEACHER_ASSIGN, request),
+    updateAssignment: (request) => invoke(IpcChannels.TEACHER_UPDATE_ASSIGNMENT, request),
+    removeAssignment: (request) => invoke(IpcChannels.TEACHER_REMOVE_ASSIGNMENT, request),
+    getDashboard: () => invoke(IpcChannels.TEACHER_GET_DASHBOARD),
   },
 };
 
