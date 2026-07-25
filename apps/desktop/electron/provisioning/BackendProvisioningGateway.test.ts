@@ -11,7 +11,9 @@ import { BackendProvisioningGateway } from './BackendProvisioningGateway';
 const session: AuthenticatedSession = {
   user: {
     id: 'user-1', email: 'admin@school.edu', firstName: 'School', lastName: 'Admin',
-    role: 'INSTITUTION_ADMIN', institutionId: 'school-1',
+    role: 'INSTITUTION_ADMIN',
+    scope: { type: 'INSTITUTION', scopeId: 'school-1', institutionId: 'school-1' },
+    institutionId: 'school-1',
   },
   sessionSecret: JSON.stringify({ cookies: 'sid=session; access_token=access' }),
 };
@@ -22,7 +24,8 @@ describe('BackendProvisioningGateway', () => {
   it('registers through the protected backend contract without exposing cookies', async () => {
     const fetchMock = vi.fn(async () => response({
       id: 'device-1', installationId: '11111111-1111-4111-8111-111111111111',
-      fingerprint: 'a'.repeat(64), institutionId: 'school-1', status: 'ACTIVE',
+      fingerprint: 'a'.repeat(64), userId: 'user-1', role: 'INSTITUTION_ADMIN',
+      scopeType: 'INSTITUTION', scopeId: 'school-1', institutionId: 'school-1', status: 'ACTIVE',
       registeredAt: '2026-01-01', lastSeenAt: '2026-01-01',
     }));
     vi.stubGlobal('fetch', fetchMock);
@@ -46,7 +49,9 @@ describe('BackendProvisioningGateway', () => {
     manifest.students = 1;
     vi.stubGlobal('fetch', vi.fn(async () => response({
       contractVersion: 1, snapshotId: 'snapshot-1', generatedAt: '2026-01-01',
-      institutionId: 'school-1', deviceId: 'device-1', checksumAlgorithm: 'sha256',
+      userId: 'user-1', role: 'INSTITUTION_ADMIN', scopeType: 'INSTITUTION',
+      scopeId: 'school-1', institutionId: 'school-1', deviceId: 'device-1',
+      checksumAlgorithm: 'sha256',
       checksum: 'a'.repeat(64), manifest, data,
     })));
     await expect(buildGateway().downloadSnapshot('device-1')).rejects.toThrow(/manifest/i);

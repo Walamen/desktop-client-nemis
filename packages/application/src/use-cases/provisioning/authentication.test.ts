@@ -14,9 +14,11 @@ const valid: AuthenticatedSession = {
     firstName: 'School',
     lastName: 'Admin',
     role: 'INSTITUTION_ADMIN',
+    scope: { type: 'INSTITUTION', scopeId: 'school-1', institutionId: 'school-1' },
     institutionId: 'school-1',
   },
   sessionSecret: 'opaque',
+  offlineAccessExpiresAt: '2999-01-01T00:00:00.000Z',
 };
 
 class Sessions implements SessionRepository {
@@ -72,6 +74,17 @@ describe('provisioning authentication use cases', () => {
     const auth = gateway();
     auth.logout = async () => { throw new Error('offline'); };
     await expect(new Logout(auth, sessions).execute()).rejects.toThrow('offline');
+    expect(sessions.value).toBeNull();
+  });
+
+  it('refuses an expired offline lease', async () => {
+    const sessions = new Sessions();
+    sessions.value = { ...valid, offlineAccessExpiresAt: '2000-01-01T00:00:00.000Z' };
+    const auth = gateway();
+    auth.restore = async () => {
+      throw new AuthenticationUnavailableError('offline');
+    };
+    await expect(new RestoreSession(auth, sessions).execute()).resolves.toBeNull();
     expect(sessions.value).toBeNull();
   });
 });

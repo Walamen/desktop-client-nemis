@@ -2,16 +2,36 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
+import {
+  desktopPortalRoute,
+  roleCanAccessRoute,
+  type DesktopPortalRole,
+} from '@nemis-desktop/types';
 import { nemisBridge } from '@/services/nemis-bridge';
 
-export function RouteGuard({ children }: { children: ReactNode }) {
+export function RouteGuard({
+  children,
+  requiredRole,
+}: {
+  children: ReactNode;
+  requiredRole?: DesktopPortalRole;
+}) {
   const router = useRouter();
   const [allowed, setAllowed] = useState(false);
   useEffect(() => {
     void nemisBridge.getProvisioningStatus().then((status) => {
-      if (status.isProvisioned && status.authentication === 'authenticated') setAllowed(true);
-      else router.replace('/');
+      if (!status.isProvisioned || status.authentication !== 'authenticated' || !status.user) {
+        router.replace('/');
+        return;
+      }
+      const route = desktopPortalRoute(status.user.role);
+      if (!route || (requiredRole && status.user.role !== requiredRole)) {
+        router.replace(route ?? '/');
+        return;
+      }
+      if (roleCanAccessRoute(status.user.role, window.location.pathname)) setAllowed(true);
+      else router.replace(route);
     });
-  }, [router]);
+  }, [requiredRole, router]);
   return allowed ? <>{children}</> : null;
 }

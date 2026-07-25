@@ -1,12 +1,22 @@
 export type AuthenticationStatus = 'anonymous' | 'authenticated' | 'expired';
 
+import type {
+  DesktopPortalRole,
+  DesktopScopeType,
+  DesktopUserScope,
+} from './desktop-portals';
+
 export interface ProvisioningUser {
   readonly id: string;
   readonly email: string;
   readonly firstName: string;
   readonly lastName: string;
-  readonly role: string;
-  readonly institutionId: string;
+  readonly role: DesktopPortalRole;
+  readonly scope: DesktopUserScope;
+  readonly institutionId?: string;
+  readonly countyId?: string;
+  readonly districtId?: string;
+  readonly staffId?: string;
   readonly institutionName?: string;
 }
 
@@ -57,7 +67,11 @@ export interface RegisteredDevice {
   readonly id: string;
   readonly installationId: string;
   readonly fingerprint: string;
-  readonly institutionId: string;
+  readonly userId: string;
+  readonly role: DesktopPortalRole;
+  readonly scopeType: DesktopScopeType;
+  readonly scopeId: string;
+  readonly institutionId?: string;
   readonly status: 'ACTIVE' | 'PENDING' | 'REVOKED';
   readonly registeredAt: string;
   readonly lastSeenAt: string;
@@ -66,9 +80,16 @@ export interface RegisteredDevice {
 export const PROVISIONING_COLLECTIONS = [
   'institutions', 'users', 'userOrganizations', 'academicYears', 'terms',
   'classes', 'subjects', 'classSubjects', 'students', 'guardians',
-  'studentGuardians', 'enrollments', 'staff', 'subjectTeachers',
+  'studentGuardians', 'enrollments', 'attendance', 'staff', 'subjectTeachers',
   'classTeachers', 'classSubjectTeachers',
   'timetableEntries',
+  'studentTransfers',
+  'institutionGradingConfigs', 'gradingPeriods', 'gradeEntryWindows',
+  'gradeEntryWindowClasses', 'grades',
+  'feeRules', 'feeObligations', 'feePayments',
+  'announcements', 'conversations', 'messages', 'userNotifications',
+  'reports', 'alerts',
+  'assignments', 'assignmentSubmissions', 'classResources',
 ] as const;
 
 export type ProvisioningCollection = (typeof PROVISIONING_COLLECTIONS)[number];
@@ -79,7 +100,11 @@ export interface ProvisioningSnapshot {
   readonly contractVersion: 1;
   readonly snapshotId: string;
   readonly generatedAt: string;
-  readonly institutionId: string;
+  readonly userId: string;
+  readonly role: DesktopPortalRole;
+  readonly scopeType: DesktopScopeType;
+  readonly scopeId: string;
+  readonly institutionId?: string;
   readonly deviceId: string;
   readonly checksumAlgorithm: 'sha256';
   readonly checksum: string;

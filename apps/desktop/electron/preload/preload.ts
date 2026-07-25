@@ -24,6 +24,12 @@ const nemisApi: NemisApi = {
   provisioning: {
     start: () => invoke(IpcChannels.PROVISIONING_START),
   },
+  sync: {
+    run: () => invoke(IpcChannels.SYNC_RUN),
+    getStatus: () => invoke(IpcChannels.SYNC_GET_STATUS),
+    listConflicts: () => invoke(IpcChannels.SYNC_LIST_CONFLICTS),
+    resolveConflict: (request) => invoke(IpcChannels.SYNC_RESOLVE_CONFLICT, request),
+  },
   system: {
     getVersion: () => invoke(IpcChannels.SYSTEM_GET_VERSION),
   },
@@ -107,6 +113,15 @@ const nemisApi: NemisApi = {
     detectConflicts: (request) => invoke(IpcChannels.TIMETABLE_CONFLICTS, request),
     periods: (classId) => invoke(IpcChannels.TIMETABLE_PERIODS, classId),
     dashboard: (dayOfWeek) => invoke(IpcChannels.TIMETABLE_DASHBOARD, dayOfWeek),
+  },
+  attendance: {
+    list: (request) => invoke(IpcChannels.ATTENDANCE_LIST, request),
+    record: (request) => invoke(IpcChannels.ATTENDANCE_RECORD, request),
+  },
+  schoolAdmin: {
+    list: (request) => invoke(IpcChannels.SCHOOL_ADMIN_LIST, request),
+    save: (request) => invoke(IpcChannels.SCHOOL_ADMIN_SAVE, request),
+    delete: (request) => invoke(IpcChannels.SCHOOL_ADMIN_DELETE, request),
   },
 };
 

@@ -4,6 +4,8 @@ export interface AuthenticatedSession {
   readonly user: ProvisioningUser;
   /** Opaque cookie material. It must only be persisted by a protected store. */
   readonly sessionSecret: string;
+  /** Bounded server-verified lease for reopening this workspace without a network. */
+  readonly offlineAccessExpiresAt?: string;
 }
 
 export interface AuthenticationGateway {

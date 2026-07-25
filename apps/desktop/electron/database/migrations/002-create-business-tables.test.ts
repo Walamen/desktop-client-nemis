@@ -4,12 +4,14 @@ import { TableNames } from '../schema/tableNames';
 import { createTestDatabase, type TestDatabase } from '../testing/createTestDatabase';
 import { migrations } from './registry';
 
+const migrationsThroughTimetable = migrations.filter((migration) => migration.version <= 7);
+
 describe('002-create-business-tables', () => {
   let test: TestDatabase;
 
   beforeEach(() => {
     test = createTestDatabase();
-    new MigrationService(test.db.raw, migrations).migrateToLatest();
+    new MigrationService(test.db.raw, migrationsThroughTimetable).migrateToLatest();
   });
 
   afterEach(() => {
@@ -68,7 +70,7 @@ describe('002-create-business-tables', () => {
   });
 
   it('down() removes every business table (rollback through 002)', () => {
-    const service = new MigrationService(test.db.raw, migrations);
+    const service = new MigrationService(test.db.raw, migrationsThroughTimetable);
     service.rollbackLast(); // 007 timetable management
     service.rollbackLast(); // 006 provisioning metadata
     service.rollbackLast(); // 005 — teacher management

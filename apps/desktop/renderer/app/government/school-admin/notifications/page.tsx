@@ -1,6 +1,7 @@
-import { ComingSoon } from '@/components/shell/ComingSoon';
-import { resolvePageTitle } from '@/components/shell/page-titles';
+import { SchoolAdminCollectionPage } from '@/components/school-admin/SchoolAdminModulePages';
 
 export default function Page() {
-  return <ComingSoon title={resolvePageTitle('/government/school-admin/notifications').title} />;
+  return <SchoolAdminCollectionPage title="Notifications" description="Server-issued notifications for this signed-in administrator." sections={[
+    { collection: 'user_notifications', label: 'Notifications', columns: ['type', 'title', 'message', 'isRead', 'createdAt'] },
+  ]} />;
 }

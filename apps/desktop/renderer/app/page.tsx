@@ -12,7 +12,7 @@ import {
   ShieldCheck,
   Wifi,
 } from 'lucide-react';
-import type { ProvisioningStatus } from '@nemis-desktop/types';
+import { desktopPortalRoute, type ProvisioningStatus } from '@nemis-desktop/types';
 import { nemisBridge } from '@/services/nemis-bridge';
 
 export default function ProvisioningPage() {
@@ -30,7 +30,9 @@ export default function ProvisioningPage() {
       .then((next) => {
         setStatus(next);
         setShowLogin(next.authentication !== 'authenticated');
-        if (next.isProvisioned) router.replace('/government/school-admin');
+        if (next.isProvisioned && next.user) {
+          router.replace(desktopPortalRoute(next.user.role) ?? '/');
+        }
       })
       .catch(() => setError('The secure desktop service could not be initialized. Restart NEMIS Desktop.'));
   }, [router]);
@@ -67,7 +69,9 @@ export default function ProvisioningPage() {
     try {
       const next = await nemisBridge.startProvisioning();
       setStatus(next);
-      if (next.isProvisioned) router.replace('/government/school-admin');
+      if (next.isProvisioned && next.user) {
+        router.replace(desktopPortalRoute(next.user.role) ?? '/');
+      }
     } catch {
       const latest = await nemisBridge.getProvisioningStatus().catch(() => null);
       if (latest) setStatus(latest);

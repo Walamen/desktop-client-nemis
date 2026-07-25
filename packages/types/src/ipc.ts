@@ -41,18 +41,44 @@ import type {
   UpdateStudentRequest,
 } from './students';
 import type {
-  AssignTeacherRequest, CreateTeacherRequest, RemoveTeachingAssignmentRequest,
-  SetTeacherActiveRequest, TeacherDashboardResult, TeacherListRequest, TeacherPageResult,
-  TeacherProfileResult, TeachingAssignmentResult, UpdateTeacherRequest,
+  AssignTeacherRequest,
+  CreateTeacherRequest,
+  RemoveTeachingAssignmentRequest,
+  SetTeacherActiveRequest,
+  TeacherDashboardResult,
+  TeacherListRequest,
+  TeacherPageResult,
+  TeacherProfileResult,
+  TeachingAssignmentResult,
+  UpdateTeacherRequest,
   UpdateTeachingAssignmentRequest,
 } from './teachers';
 import type { AuthenticateRequest, ProvisioningStatus } from './provisioning';
 import type {
-  CopyTimetableRequest, CreateTimetableEntryRequest, PeriodResult,
-  ScheduleConflictResult, TimetableDashboardResult, TimetableEntryResult,
-  TimetableListRequest, TimetablePageResult, UpdateTimetableEntryRequest,
+  CopyTimetableRequest,
+  CreateTimetableEntryRequest,
+  PeriodResult,
+  ScheduleConflictResult,
+  TimetableDashboardResult,
+  TimetableEntryResult,
+  TimetableListRequest,
+  TimetablePageResult,
+  UpdateTimetableEntryRequest,
   ValidateTimetableRequest,
 } from './timetables';
+import type {
+  AttendanceListRequest,
+  AttendanceResult,
+  RecordAttendanceRequest,
+} from './attendance';
+import type { DesktopSyncStatus, ResolveSyncConflictRequest, SyncConflictResult } from './sync';
+import type {
+  SchoolAdminDeleteRequest,
+  SchoolAdminListRequest,
+  SchoolAdminListResult,
+  SchoolAdminRecord,
+  SchoolAdminSaveRequest,
+} from './school-admin';
 
 /**
  * Single source of truth for every IPC endpoint's request/response types.
@@ -65,6 +91,13 @@ export interface IpcContract {
   'auth:login': { args: [request: AuthenticateRequest]; result: ProvisioningStatus };
   'auth:logout': { args: []; result: ProvisioningStatus };
   'provisioning:start': { args: []; result: ProvisioningStatus };
+  'sync:run': { args: []; result: DesktopSyncStatus };
+  'sync:get-status': { args: []; result: DesktopSyncStatus };
+  'sync:list-conflicts': { args: []; result: SyncConflictResult[] };
+  'sync:resolve-conflict': {
+    args: [request: ResolveSyncConflictRequest];
+    result: SyncConflictResult;
+  };
   'system:get-version': { args: []; result: string };
   'settings:get': { args: [key: string]; result: unknown };
   'dashboard:get-overview': { args: []; result: DashboardOverviewResult };
@@ -126,22 +159,54 @@ export interface IpcContract {
   'teacher:set-active': { args: [request: SetTeacherActiveRequest]; result: TeacherProfileResult };
   'teacher:list-assignments': { args: [id: string]; result: TeachingAssignmentResult[] };
   'teacher:assign': { args: [request: AssignTeacherRequest]; result: TeachingAssignmentResult };
-  'teacher:update-assignment': { args: [request: UpdateTeachingAssignmentRequest]; result: TeachingAssignmentResult };
-  'teacher:remove-assignment': { args: [request: RemoveTeachingAssignmentRequest]; result: { id: string } };
+  'teacher:update-assignment': {
+    args: [request: UpdateTeachingAssignmentRequest];
+    result: TeachingAssignmentResult;
+  };
+  'teacher:remove-assignment': {
+    args: [request: RemoveTeachingAssignmentRequest];
+    result: { id: string };
+  };
   'teacher:get-dashboard': { args: []; result: TeacherDashboardResult };
   // Timetable Management (Phase 13)
   'timetable:list': { args: [request: TimetableListRequest]; result: TimetablePageResult };
   'timetable:class': { args: [id: string]; result: TimetablePageResult };
   'timetable:teacher': { args: [id: string]; result: TimetablePageResult };
   'timetable:subject': { args: [id: string]; result: TimetablePageResult };
-  'timetable:create': { args: [request: CreateTimetableEntryRequest]; result: TimetableEntryResult };
-  'timetable:update': { args: [request: UpdateTimetableEntryRequest]; result: TimetableEntryResult };
+  'timetable:create': {
+    args: [request: CreateTimetableEntryRequest];
+    result: TimetableEntryResult;
+  };
+  'timetable:update': {
+    args: [request: UpdateTimetableEntryRequest];
+    result: TimetableEntryResult;
+  };
   'timetable:delete': { args: [id: string]; result: { id: string } };
   'timetable:copy': { args: [request: CopyTimetableRequest]; result: TimetableEntryResult[] };
-  'timetable:validate': { args: [request: ValidateTimetableRequest]; result: ScheduleConflictResult[] };
-  'timetable:conflicts': { args: [request: TimetableListRequest]; result: ScheduleConflictResult[] };
+  'timetable:validate': {
+    args: [request: ValidateTimetableRequest];
+    result: ScheduleConflictResult[];
+  };
+  'timetable:conflicts': {
+    args: [request: TimetableListRequest];
+    result: ScheduleConflictResult[];
+  };
   'timetable:periods': { args: [classId?: string]; result: PeriodResult[] };
   'timetable:dashboard': { args: [dayOfWeek: string]; result: TimetableDashboardResult };
+  'attendance:list': { args: [request: AttendanceListRequest]; result: AttendanceResult[] };
+  'attendance:record': { args: [request: RecordAttendanceRequest]; result: AttendanceResult };
+  'school-admin:list': {
+    args: [request: SchoolAdminListRequest];
+    result: SchoolAdminListResult;
+  };
+  'school-admin:save': {
+    args: [request: SchoolAdminSaveRequest];
+    result: SchoolAdminRecord;
+  };
+  'school-admin:delete': {
+    args: [request: SchoolAdminDeleteRequest];
+    result: { id: string };
+  };
 }
 
 export type IpcChannel = keyof IpcContract;
@@ -151,6 +216,10 @@ export const IpcChannels = {
   AUTH_LOGIN: 'auth:login',
   AUTH_LOGOUT: 'auth:logout',
   PROVISIONING_START: 'provisioning:start',
+  SYNC_RUN: 'sync:run',
+  SYNC_GET_STATUS: 'sync:get-status',
+  SYNC_LIST_CONFLICTS: 'sync:list-conflicts',
+  SYNC_RESOLVE_CONFLICT: 'sync:resolve-conflict',
   SYSTEM_GET_VERSION: 'system:get-version',
   SETTINGS_GET: 'settings:get',
   DASHBOARD_GET_OVERVIEW: 'dashboard:get-overview',
@@ -212,6 +281,11 @@ export const IpcChannels = {
   TIMETABLE_CONFLICTS: 'timetable:conflicts',
   TIMETABLE_PERIODS: 'timetable:periods',
   TIMETABLE_DASHBOARD: 'timetable:dashboard',
+  ATTENDANCE_LIST: 'attendance:list',
+  ATTENDANCE_RECORD: 'attendance:record',
+  SCHOOL_ADMIN_LIST: 'school-admin:list',
+  SCHOOL_ADMIN_SAVE: 'school-admin:save',
+  SCHOOL_ADMIN_DELETE: 'school-admin:delete',
 } as const satisfies Record<string, IpcChannel>;
 
 // Compile-time exhaustiveness: adding a channel to IpcContract without

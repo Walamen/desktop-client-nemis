@@ -37,6 +37,10 @@ describe('DatabaseManager', () => {
         .prepare(`SELECT event FROM ${TableNames.auditLog} WHERE category = 'database'`)
         .all() as Array<{ event: string }>;
       expect(audit.map((a) => a.event)).toContain('database.started');
+      const businessRows = manager.connection
+        .prepare(`SELECT COUNT(*) AS count FROM ${TableNames.users}`)
+        .get() as { count: number };
+      expect(businessRows.count).toBe(0);
     } finally {
       manager.shutdown();
     }

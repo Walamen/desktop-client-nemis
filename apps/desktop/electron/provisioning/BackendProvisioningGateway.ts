@@ -9,6 +9,8 @@ import {
   type DeviceIdentity,
   type ProvisioningSnapshot,
   type RegisteredDevice,
+  type DesktopSyncOperation,
+  type DesktopSyncPushResult,
 } from '@nemis-desktop/types';
 import { ForbiddenError, UnauthorizedError } from '@nemis-desktop/shared';
 
@@ -42,6 +44,20 @@ export class BackendProvisioningGateway {
       `/desktop/provisioning/snapshot?deviceId=${encodeURIComponent(deviceId)}`,
       {},
       validateSnapshot,
+    );
+  }
+
+  async pushChanges(
+    deviceId: string,
+    operations: readonly DesktopSyncOperation[],
+  ): Promise<DesktopSyncPushResult> {
+    return this.authorized(
+      '/desktop/sync/push',
+      {
+        method: 'POST',
+        body: JSON.stringify({ deviceId, operations }),
+      },
+      validateSyncResult,
     );
   }
 
@@ -89,7 +105,10 @@ export class BackendProvisioningGateway {
 
 function validateDevice(value: unknown): RegisteredDevice {
   const row = object(value);
-  for (const key of ['id', 'installationId', 'fingerprint', 'institutionId', 'status', 'registeredAt', 'lastSeenAt']) {
+  for (const key of [
+    'id', 'installationId', 'fingerprint', 'userId', 'role', 'scopeType',
+    'scopeId', 'status', 'registeredAt', 'lastSeenAt',
+  ]) {
     if (typeof row[key] !== 'string' || row[key].length === 0) {
       throw new Error('Device registration response is invalid.');
     }
@@ -105,7 +124,10 @@ function validateSnapshot(value: unknown): ProvisioningSnapshot {
   if (snapshot.contractVersion !== 1 || snapshot.checksumAlgorithm !== 'sha256') {
     throw new Error('Unsupported provisioning snapshot contract.');
   }
-  for (const key of ['snapshotId', 'generatedAt', 'institutionId', 'deviceId', 'checksum']) {
+  for (const key of [
+    'snapshotId', 'generatedAt', 'userId', 'role', 'scopeType', 'scopeId',
+    'deviceId', 'checksum',
+  ]) {
     if (typeof snapshot[key] !== 'string' || snapshot[key].length === 0) {
       throw new Error(`Provisioning snapshot is missing ${key}.`);
     }
@@ -128,6 +150,25 @@ function validateSnapshot(value: unknown): ProvisioningSnapshot {
     }
   }
   return snapshot as unknown as ProvisioningSnapshot;
+}
+
+function validateSyncResult(value: unknown): DesktopSyncPushResult {
+  const result = object(value);
+  if (typeof result.processedAt !== 'string' || !Array.isArray(result.results)) {
+    throw new Error('Desktop sync response is invalid.');
+  }
+  for (const entry of result.results) {
+    const row = object(entry);
+    if (
+      typeof row.operationId !== 'string' ||
+      typeof row.entityType !== 'string' ||
+      typeof row.entityId !== 'string' ||
+      !['accepted', 'conflict'].includes(String(row.status))
+    ) {
+      throw new Error('Desktop sync operation result is invalid.');
+    }
+  }
+  return result as unknown as DesktopSyncPushResult;
 }
 
 function object(value: unknown): Record<string, unknown> {

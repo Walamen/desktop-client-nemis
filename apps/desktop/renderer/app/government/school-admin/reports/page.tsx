@@ -1,6 +1,7 @@
-import { ComingSoon } from '@/components/shell/ComingSoon';
-import { resolvePageTitle } from '@/components/shell/page-titles';
+import { SchoolAdminCollectionPage } from '@/components/school-admin/SchoolAdminModulePages';
 
 export default function Page() {
-  return <ComingSoon title={resolvePageTitle('/government/school-admin/reports').title} />;
+  return <SchoolAdminCollectionPage title="Reports" description="Draft, submitted, and reviewed school reports in the active workspace." sections={[
+    { collection: 'reports', label: 'Reports', columns: ['title', 'type', 'status', 'submittedAt', 'reviewedAt', 'updatedAt'] },
+  ]} />;
 }

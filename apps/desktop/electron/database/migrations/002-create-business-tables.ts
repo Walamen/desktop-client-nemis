@@ -2,8 +2,8 @@ import type { Database as SqliteDatabase } from 'better-sqlite3';
 import type { Migration } from './types';
 
 /**
- * Business tables. Created empty — no rows are seeded except one local user
- * (see seed/initializeLocalUser). Populated by import/sync in later phases.
+ * Business tables. Created empty and populated only by authenticated
+ * provisioning and later synchronization.
  *
  * Conventions (same as 001): TEXT UUID PKs, ISO-8601 UTC TEXT timestamps,
  * booleans stored as INTEGER 0/1. Every row carries sync/conflict metadata

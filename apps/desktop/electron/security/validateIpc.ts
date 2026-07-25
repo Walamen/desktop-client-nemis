@@ -1,5 +1,15 @@
 import { IPCError } from '@nemis-desktop/shared';
-import { AcademicYearStatus, DayOfWeek, EmploymentType, EnrollmentStatus, Gender, GradeLevel, StaffPosition } from '@nemis-desktop/types';
+import {
+  AcademicYearStatus,
+  AttendanceStatus,
+  DayOfWeek,
+  EmploymentType,
+  EnrollmentStatus,
+  Gender,
+  GradeLevel,
+  SCHOOL_ADMIN_COLLECTIONS,
+  StaffPosition,
+} from '@nemis-desktop/types';
 
 /** Rejects IPC calls that pass unexpected arguments. Never trust renderer input. */
 export function assertNoArgs(args: readonly unknown[]): void {
@@ -273,106 +283,342 @@ export function assertAuthenticateArgs(args: readonly unknown[]): void {
 }
 
 // --- Teacher Management (Phase 11) -------------------------------------
-const TEACHER_FIELDS = ['institutionId','firstName','middleName','lastName','dateOfBirth','gender','nationalId','phoneNumber','email','address','employeeNumber','position','employmentType','dateOfJoining','qualifications','photoUrl'] as const;
+const TEACHER_FIELDS = [
+  'institutionId',
+  'firstName',
+  'middleName',
+  'lastName',
+  'dateOfBirth',
+  'gender',
+  'nationalId',
+  'phoneNumber',
+  'email',
+  'address',
+  'employeeNumber',
+  'position',
+  'employmentType',
+  'dateOfJoining',
+  'qualifications',
+  'photoUrl',
+] as const;
 export function assertListTeachersArgs(args: readonly unknown[]): void {
-  assertArity(args,1); const [r]=args; if(!isPlainObject(r))throw new IPCError('Expected a request object.');
-  assertKnownKeys(r,['limit','offset','keyword','employmentType','position','isActive','subjectId','gradeLevel','classId','academicYearId','sort']);
-  assertOptionalInt(r.limit,'limit',1,MAX_LIMIT); assertOptionalInt(r.offset,'offset',0,1_000_000);
-  assertOptionalString(r.keyword,'keyword',KEYWORD_MAX_LENGTH); assertOptionalEnumMember(r.employmentType,'employmentType',Object.values(EmploymentType));
-  assertOptionalEnumMember(r.position,'position',Object.values(StaffPosition)); assertOptionalBoolean(r.isActive,'isActive');
-  for(const k of ['subjectId','classId','academicYearId'] as const)assertOptionalString(r[k],k,ID_MAX_LENGTH);
-  assertOptionalEnumMember(r.gradeLevel,'gradeLevel',Object.values(GradeLevel));
-  assertOptionalEnumMember(r.sort,'sort',['name','employeeNumber','dateOfJoining','updatedAt']);
+  assertArity(args, 1);
+  const [r] = args;
+  if (!isPlainObject(r)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(r, [
+    'limit',
+    'offset',
+    'keyword',
+    'employmentType',
+    'position',
+    'isActive',
+    'subjectId',
+    'gradeLevel',
+    'classId',
+    'academicYearId',
+    'sort',
+  ]);
+  assertOptionalInt(r.limit, 'limit', 1, MAX_LIMIT);
+  assertOptionalInt(r.offset, 'offset', 0, 1_000_000);
+  assertOptionalString(r.keyword, 'keyword', KEYWORD_MAX_LENGTH);
+  assertOptionalEnumMember(r.employmentType, 'employmentType', Object.values(EmploymentType));
+  assertOptionalEnumMember(r.position, 'position', Object.values(StaffPosition));
+  assertOptionalBoolean(r.isActive, 'isActive');
+  for (const k of ['subjectId', 'classId', 'academicYearId'] as const)
+    assertOptionalString(r[k], k, ID_MAX_LENGTH);
+  assertOptionalEnumMember(r.gradeLevel, 'gradeLevel', Object.values(GradeLevel));
+  assertOptionalEnumMember(r.sort, 'sort', [
+    'name',
+    'employeeNumber',
+    'dateOfJoining',
+    'updatedAt',
+  ]);
 }
 export function assertCreateTeacherArgs(args: readonly unknown[]): void {
-  assertArity(args,1); const [r]=args; if(!isPlainObject(r))throw new IPCError('Expected a request object.');
-  assertKnownKeys(r,TEACHER_FIELDS);
-  for(const k of ['institutionId','firstName','lastName','phoneNumber','employeeNumber'] as const)assertString(r[k],k,NAME_MAX_LENGTH);
-  assertIsoDate(r.dateOfBirth,'dateOfBirth'); assertIsoDate(r.dateOfJoining,'dateOfJoining');
-  assertEnumMember(r.gender,'gender',Object.values(Gender)); assertEnumMember(r.position,'position',Object.values(StaffPosition));
-  assertEnumMember(r.employmentType,'employmentType',Object.values(EmploymentType));
-  for(const k of ['middleName','nationalId','email','address','photoUrl'] as const)assertOptionalString(r[k],k,k==='address'?DESCRIPTION_MAX_LENGTH:NAME_MAX_LENGTH);
-  if(r.qualifications!==undefined&&!isPlainObject(r.qualifications))throw new IPCError('Expected "qualifications" to be an object.');
+  assertArity(args, 1);
+  const [r] = args;
+  if (!isPlainObject(r)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(r, TEACHER_FIELDS);
+  for (const k of [
+    'institutionId',
+    'firstName',
+    'lastName',
+    'phoneNumber',
+    'employeeNumber',
+  ] as const)
+    assertString(r[k], k, NAME_MAX_LENGTH);
+  assertIsoDate(r.dateOfBirth, 'dateOfBirth');
+  assertIsoDate(r.dateOfJoining, 'dateOfJoining');
+  assertEnumMember(r.gender, 'gender', Object.values(Gender));
+  assertEnumMember(r.position, 'position', Object.values(StaffPosition));
+  assertEnumMember(r.employmentType, 'employmentType', Object.values(EmploymentType));
+  for (const k of ['middleName', 'nationalId', 'email', 'address', 'photoUrl'] as const)
+    assertOptionalString(r[k], k, k === 'address' ? DESCRIPTION_MAX_LENGTH : NAME_MAX_LENGTH);
+  if (r.qualifications !== undefined && !isPlainObject(r.qualifications))
+    throw new IPCError('Expected "qualifications" to be an object.');
 }
 export function assertUpdateTeacherArgs(args: readonly unknown[]): void {
-  assertArity(args,1); const [r]=args; if(!isPlainObject(r))throw new IPCError('Expected a request object.');
-  assertKnownKeys(r,['teacherId',...TEACHER_FIELDS.filter(k=>k!=='institutionId')]); assertString(r.teacherId,'teacherId',ID_MAX_LENGTH);
-  for(const k of ['firstName','middleName','lastName','nationalId','phoneNumber','email','address','employeeNumber','photoUrl'] as const)assertOptionalString(r[k],k,k==='address'?DESCRIPTION_MAX_LENGTH:NAME_MAX_LENGTH);
-  assertOptionalIsoDate(r.dateOfBirth,'dateOfBirth'); assertOptionalIsoDate(r.dateOfJoining,'dateOfJoining');
-  assertOptionalEnumMember(r.gender,'gender',Object.values(Gender)); assertOptionalEnumMember(r.position,'position',Object.values(StaffPosition));
-  assertOptionalEnumMember(r.employmentType,'employmentType',Object.values(EmploymentType));
-  if(r.qualifications!==undefined&&!isPlainObject(r.qualifications))throw new IPCError('Expected "qualifications" to be an object.');
+  assertArity(args, 1);
+  const [r] = args;
+  if (!isPlainObject(r)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(r, ['teacherId', ...TEACHER_FIELDS.filter((k) => k !== 'institutionId')]);
+  assertString(r.teacherId, 'teacherId', ID_MAX_LENGTH);
+  for (const k of [
+    'firstName',
+    'middleName',
+    'lastName',
+    'nationalId',
+    'phoneNumber',
+    'email',
+    'address',
+    'employeeNumber',
+    'photoUrl',
+  ] as const)
+    assertOptionalString(r[k], k, k === 'address' ? DESCRIPTION_MAX_LENGTH : NAME_MAX_LENGTH);
+  assertOptionalIsoDate(r.dateOfBirth, 'dateOfBirth');
+  assertOptionalIsoDate(r.dateOfJoining, 'dateOfJoining');
+  assertOptionalEnumMember(r.gender, 'gender', Object.values(Gender));
+  assertOptionalEnumMember(r.position, 'position', Object.values(StaffPosition));
+  assertOptionalEnumMember(r.employmentType, 'employmentType', Object.values(EmploymentType));
+  if (r.qualifications !== undefined && !isPlainObject(r.qualifications))
+    throw new IPCError('Expected "qualifications" to be an object.');
 }
-export function assertSetTeacherActiveArgs(args: readonly unknown[]):void{
-  assertArity(args,1);const[r]=args;if(!isPlainObject(r))throw new IPCError('Expected a request object.');
-  assertKnownKeys(r,['teacherId','isActive']);assertString(r.teacherId,'teacherId',ID_MAX_LENGTH);assertBoolean(r.isActive,'isActive');
+export function assertSetTeacherActiveArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [r] = args;
+  if (!isPlainObject(r)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(r, ['teacherId', 'isActive']);
+  assertString(r.teacherId, 'teacherId', ID_MAX_LENGTH);
+  assertBoolean(r.isActive, 'isActive');
 }
-export function assertAssignTeacherArgs(args:readonly unknown[]):void{
-  assertArity(args,1);const[r]=args;if(!isPlainObject(r))throw new IPCError('Expected a request object.');
-  assertKnownKeys(r,['teacherId','classId','subjectId','isClassTeacher']);assertString(r.teacherId,'teacherId',ID_MAX_LENGTH);assertString(r.classId,'classId',ID_MAX_LENGTH);
-  assertString(r.subjectId,'subjectId',ID_MAX_LENGTH);assertOptionalBoolean(r.isClassTeacher,'isClassTeacher');
+export function assertAssignTeacherArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [r] = args;
+  if (!isPlainObject(r)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(r, ['teacherId', 'classId', 'subjectId', 'isClassTeacher']);
+  assertString(r.teacherId, 'teacherId', ID_MAX_LENGTH);
+  assertString(r.classId, 'classId', ID_MAX_LENGTH);
+  assertString(r.subjectId, 'subjectId', ID_MAX_LENGTH);
+  assertOptionalBoolean(r.isClassTeacher, 'isClassTeacher');
 }
-export function assertUpdateTeachingAssignmentArgs(args:readonly unknown[]):void{
-  assertArity(args,1);const[r]=args;if(!isPlainObject(r))throw new IPCError('Expected a request object.');
-  assertKnownKeys(r,['assignmentId','subjectId','isClassTeacher']);assertString(r.assignmentId,'assignmentId',ID_MAX_LENGTH);
-  assertOptionalString(r.subjectId,'subjectId',ID_MAX_LENGTH);assertOptionalBoolean(r.isClassTeacher,'isClassTeacher');
+export function assertUpdateTeachingAssignmentArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [r] = args;
+  if (!isPlainObject(r)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(r, ['assignmentId', 'subjectId', 'isClassTeacher']);
+  assertString(r.assignmentId, 'assignmentId', ID_MAX_LENGTH);
+  assertOptionalString(r.subjectId, 'subjectId', ID_MAX_LENGTH);
+  assertOptionalBoolean(r.isClassTeacher, 'isClassTeacher');
 }
-export function assertRemoveTeachingAssignmentArgs(args:readonly unknown[]):void{
-  assertArity(args,1);const[r]=args;if(!isPlainObject(r))throw new IPCError('Expected a request object.');
-  assertKnownKeys(r,['assignmentId']);assertString(r.assignmentId,'assignmentId',ID_MAX_LENGTH);
+export function assertRemoveTeachingAssignmentArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [r] = args;
+  if (!isPlainObject(r)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(r, ['assignmentId']);
+  assertString(r.assignmentId, 'assignmentId', ID_MAX_LENGTH);
 }
 
 // --- Timetable Management (Phase 13) -----------------------------------
 const TIMETABLE_FIELDS = [
-  'institutionId','classId','subjectId','staffId','assignmentId','dayOfWeek',
-  'startTime','endTime','room','isBreak',
+  'institutionId',
+  'classId',
+  'subjectId',
+  'staffId',
+  'assignmentId',
+  'dayOfWeek',
+  'startTime',
+  'endTime',
+  'room',
+  'isBreak',
 ] as const;
-function assertTime(value:unknown,name:string):void{
-  assertString(value,name,5);
-  if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(value as string))throw new IPCError(`Expected "${name}" in HH:MM format.`);
+function assertTime(value: unknown, name: string): void {
+  assertString(value, name, 5);
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(value as string))
+    throw new IPCError(`Expected "${name}" in HH:MM format.`);
 }
-function assertTimetableEntry(r:Record<string,unknown>,update=false):void{
-  assertKnownKeys(r,update?['id',...TIMETABLE_FIELDS.filter(k=>k!=='institutionId')]:TIMETABLE_FIELDS);
-  if(update)assertString(r.id,'id',ID_MAX_LENGTH);
-  else assertString(r.institutionId,'institutionId',ID_MAX_LENGTH);
-  if(update)assertOptionalString(r.classId,'classId',ID_MAX_LENGTH);else assertString(r.classId,'classId',ID_MAX_LENGTH);
-  for(const k of ['subjectId','staffId','assignmentId'] as const)assertOptionalString(r[k],k,ID_MAX_LENGTH);
-  if(update)assertOptionalEnumMember(r.dayOfWeek,'dayOfWeek',Object.values(DayOfWeek));else assertEnumMember(r.dayOfWeek,'dayOfWeek',Object.values(DayOfWeek));
-  if(update){if(r.startTime!==undefined)assertTime(r.startTime,'startTime');if(r.endTime!==undefined)assertTime(r.endTime,'endTime');}
-  else{assertTime(r.startTime,'startTime');assertTime(r.endTime,'endTime');}
-  assertOptionalString(r.room,'room',NAME_MAX_LENGTH);assertOptionalBoolean(r.isBreak,'isBreak');
+function assertTimetableEntry(r: Record<string, unknown>, update = false): void {
+  assertKnownKeys(
+    r,
+    update ? ['id', ...TIMETABLE_FIELDS.filter((k) => k !== 'institutionId')] : TIMETABLE_FIELDS,
+  );
+  if (update) assertString(r.id, 'id', ID_MAX_LENGTH);
+  else assertString(r.institutionId, 'institutionId', ID_MAX_LENGTH);
+  if (update) assertOptionalString(r.classId, 'classId', ID_MAX_LENGTH);
+  else assertString(r.classId, 'classId', ID_MAX_LENGTH);
+  for (const k of ['subjectId', 'staffId', 'assignmentId'] as const)
+    assertOptionalString(r[k], k, ID_MAX_LENGTH);
+  if (update) assertOptionalEnumMember(r.dayOfWeek, 'dayOfWeek', Object.values(DayOfWeek));
+  else assertEnumMember(r.dayOfWeek, 'dayOfWeek', Object.values(DayOfWeek));
+  if (update) {
+    if (r.startTime !== undefined) assertTime(r.startTime, 'startTime');
+    if (r.endTime !== undefined) assertTime(r.endTime, 'endTime');
+  } else {
+    assertTime(r.startTime, 'startTime');
+    assertTime(r.endTime, 'endTime');
+  }
+  assertOptionalString(r.room, 'room', NAME_MAX_LENGTH);
+  assertOptionalBoolean(r.isBreak, 'isBreak');
 }
-export function assertListTimetablesArgs(args:readonly unknown[]):void{
-  assertArity(args,1);const[r]=args;if(!isPlainObject(r))throw new IPCError('Expected a request object.');
-  assertKnownKeys(r,['limit','offset','keyword','academicYearId','classId','teacherId','subjectId','gradeLevel','dayOfWeek','sort']);
-  assertOptionalInt(r.limit,'limit',1,MAX_LIMIT);assertOptionalInt(r.offset,'offset',0,1_000_000);
-  assertOptionalString(r.keyword,'keyword',KEYWORD_MAX_LENGTH);
-  for(const k of ['academicYearId','classId','teacherId','subjectId'] as const)assertOptionalString(r[k],k,ID_MAX_LENGTH);
-  assertOptionalEnumMember(r.gradeLevel,'gradeLevel',Object.values(GradeLevel));
-  assertOptionalEnumMember(r.dayOfWeek,'dayOfWeek',Object.values(DayOfWeek));
-  assertOptionalEnumMember(r.sort,'sort',['day','time','class','teacher','subject','updatedAt']);
+export function assertListTimetablesArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [r] = args;
+  if (!isPlainObject(r)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(r, [
+    'limit',
+    'offset',
+    'keyword',
+    'academicYearId',
+    'classId',
+    'teacherId',
+    'subjectId',
+    'gradeLevel',
+    'dayOfWeek',
+    'sort',
+  ]);
+  assertOptionalInt(r.limit, 'limit', 1, MAX_LIMIT);
+  assertOptionalInt(r.offset, 'offset', 0, 1_000_000);
+  assertOptionalString(r.keyword, 'keyword', KEYWORD_MAX_LENGTH);
+  for (const k of ['academicYearId', 'classId', 'teacherId', 'subjectId'] as const)
+    assertOptionalString(r[k], k, ID_MAX_LENGTH);
+  assertOptionalEnumMember(r.gradeLevel, 'gradeLevel', Object.values(GradeLevel));
+  assertOptionalEnumMember(r.dayOfWeek, 'dayOfWeek', Object.values(DayOfWeek));
+  assertOptionalEnumMember(r.sort, 'sort', [
+    'day',
+    'time',
+    'class',
+    'teacher',
+    'subject',
+    'updatedAt',
+  ]);
 }
-export function assertCreateTimetableArgs(args:readonly unknown[]):void{
-  assertArity(args,1);const[r]=args;if(!isPlainObject(r))throw new IPCError('Expected a request object.');assertTimetableEntry(r);
+export function assertCreateTimetableArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [r] = args;
+  if (!isPlainObject(r)) throw new IPCError('Expected a request object.');
+  assertTimetableEntry(r);
 }
-export function assertUpdateTimetableArgs(args:readonly unknown[]):void{
-  assertArity(args,1);const[r]=args;if(!isPlainObject(r))throw new IPCError('Expected a request object.');assertTimetableEntry(r,true);
+export function assertUpdateTimetableArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [r] = args;
+  if (!isPlainObject(r)) throw new IPCError('Expected a request object.');
+  assertTimetableEntry(r, true);
 }
-export function assertCopyTimetableArgs(args:readonly unknown[]):void{
-  assertArity(args,1);const[r]=args;if(!isPlainObject(r))throw new IPCError('Expected a request object.');
-  assertKnownKeys(r,['sourceClassId','targetClassId']);assertString(r.sourceClassId,'sourceClassId',ID_MAX_LENGTH);assertString(r.targetClassId,'targetClassId',ID_MAX_LENGTH);
+export function assertCopyTimetableArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [r] = args;
+  if (!isPlainObject(r)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(r, ['sourceClassId', 'targetClassId']);
+  assertString(r.sourceClassId, 'sourceClassId', ID_MAX_LENGTH);
+  assertString(r.targetClassId, 'targetClassId', ID_MAX_LENGTH);
 }
-export function assertValidateTimetableArgs(args:readonly unknown[]):void{
-  assertArity(args,1);const[r]=args;if(!isPlainObject(r))throw new IPCError('Expected a request object.');
-  assertKnownKeys(r,['entry','excludeId']);if(!isPlainObject(r.entry))throw new IPCError('Expected "entry" to be an object.');
-  assertTimetableEntry(r.entry);assertOptionalString(r.excludeId,'excludeId',ID_MAX_LENGTH);
+export function assertValidateTimetableArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [r] = args;
+  if (!isPlainObject(r)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(r, ['entry', 'excludeId']);
+  if (!isPlainObject(r.entry)) throw new IPCError('Expected "entry" to be an object.');
+  assertTimetableEntry(r.entry);
+  assertOptionalString(r.excludeId, 'excludeId', ID_MAX_LENGTH);
 }
-export function assertOptionalIdArgs(args:readonly unknown[]):void{
-  if(args.length===0)return;if(args.length!==1)throw new IPCError('Expected zero or one argument.');
-  if(args[0]!==undefined)assertString(args[0],'id',ID_MAX_LENGTH);
+export function assertOptionalIdArgs(args: readonly unknown[]): void {
+  if (args.length === 0) return;
+  if (args.length !== 1) throw new IPCError('Expected zero or one argument.');
+  if (args[0] !== undefined) assertString(args[0], 'id', ID_MAX_LENGTH);
 }
-export function assertDayOfWeekArg(args:readonly unknown[]):void{
-  assertArity(args,1);assertEnumMember(args[0],'dayOfWeek',Object.values(DayOfWeek));
+export function assertDayOfWeekArg(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  assertEnumMember(args[0], 'dayOfWeek', Object.values(DayOfWeek));
+}
+
+export function assertSchoolAdminListArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const request = args[0];
+  if (!isPlainObject(request)) throw new IPCError('Expected a school-admin list request.');
+  assertKnownKeys(request, ['collection', 'limit', 'offset']);
+  assertSchoolAdminCollection(request.collection);
+  for (const key of ['limit', 'offset'] as const) {
+    const value = request[key];
+    if (
+      value !== undefined &&
+      (!Number.isInteger(value) || Number(value) < 0 || Number(value) > 10000)
+    ) {
+      throw new IPCError(`Expected a bounded non-negative integer for "${key}".`);
+    }
+  }
+}
+
+export function assertSchoolAdminSaveArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const request = args[0];
+  if (!isPlainObject(request)) throw new IPCError('Expected a school-admin save request.');
+  assertKnownKeys(request, ['collection', 'record']);
+  assertSchoolAdminCollection(request.collection);
+  if (!isPlainObject(request.record) || Object.keys(request.record).length > 40) {
+    throw new IPCError('Expected a bounded school-admin record.');
+  }
+  for (const [key, value] of Object.entries(request.record)) {
+    if (!/^[A-Za-z][A-Za-z0-9]*$/.test(key)) throw new IPCError(`Invalid record field "${key}".`);
+    if (
+      value !== null &&
+      typeof value !== 'string' &&
+      typeof value !== 'number' &&
+      typeof value !== 'boolean'
+    ) {
+      throw new IPCError(`Invalid scalar value for "${key}".`);
+    }
+    if (typeof value === 'string' && value.length > 100_000) {
+      throw new IPCError(`Value for "${key}" is too large.`);
+    }
+  }
+}
+
+export function assertSchoolAdminDeleteArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const request = args[0];
+  if (!isPlainObject(request)) throw new IPCError('Expected a school-admin delete request.');
+  assertKnownKeys(request, ['collection', 'id']);
+  assertSchoolAdminCollection(request.collection);
+  assertString(request.id, 'id', ID_MAX_LENGTH);
+}
+
+function assertSchoolAdminCollection(value: unknown): void {
+  if (
+    typeof value !== 'string' ||
+    !(SCHOOL_ADMIN_COLLECTIONS as readonly string[]).includes(value)
+  ) {
+    throw new IPCError('Unknown school-admin collection.');
+  }
+}
+
+export function assertResolveSyncConflictArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [request] = args;
+  if (!isPlainObject(request)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(request, ['conflictId', 'resolution']);
+  assertString(request.conflictId, 'conflictId', ID_MAX_LENGTH);
+  assertEnumMember(request.resolution, 'resolution', ['keep_local', 'accept_remote']);
+}
+
+export function assertAttendanceListArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [request] = args;
+  if (!isPlainObject(request)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(request, ['classId', 'date']);
+  assertString(request.classId, 'classId', ID_MAX_LENGTH);
+  assertIsoDate(request.date, 'date');
+}
+
+export function assertRecordAttendanceArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [request] = args;
+  if (!isPlainObject(request)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(request, ['studentId', 'classId', 'subjectId', 'date', 'status', 'recordedBy']);
+  assertString(request.studentId, 'studentId', ID_MAX_LENGTH);
+  assertString(request.classId, 'classId', ID_MAX_LENGTH);
+  assertOptionalString(request.subjectId, 'subjectId', ID_MAX_LENGTH);
+  assertIsoDate(request.date, 'date');
+  assertEnumMember(request.status, 'status', Object.values(AttendanceStatus));
+  assertOptionalString(request.recordedBy, 'recordedBy', ID_MAX_LENGTH);
 }
 
 export function assertCreateAcademicYearArgs(args: readonly unknown[]): void {

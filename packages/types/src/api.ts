@@ -41,18 +41,44 @@ import type {
   UpdateStudentRequest,
 } from './students';
 import type {
-  AssignTeacherRequest, CreateTeacherRequest, RemoveTeachingAssignmentRequest,
-  SetTeacherActiveRequest, TeacherDashboardResult, TeacherListRequest, TeacherPageResult,
-  TeacherProfileResult, TeachingAssignmentResult, UpdateTeacherRequest,
+  AssignTeacherRequest,
+  CreateTeacherRequest,
+  RemoveTeachingAssignmentRequest,
+  SetTeacherActiveRequest,
+  TeacherDashboardResult,
+  TeacherListRequest,
+  TeacherPageResult,
+  TeacherProfileResult,
+  TeachingAssignmentResult,
+  UpdateTeacherRequest,
   UpdateTeachingAssignmentRequest,
 } from './teachers';
 import type { AuthenticateRequest, ProvisioningStatus } from './provisioning';
 import type {
-  CopyTimetableRequest, CreateTimetableEntryRequest, PeriodResult,
-  ScheduleConflictResult, TimetableDashboardResult, TimetableEntryResult,
-  TimetableListRequest, TimetablePageResult, UpdateTimetableEntryRequest,
+  SchoolAdminDeleteRequest,
+  SchoolAdminListRequest,
+  SchoolAdminListResult,
+  SchoolAdminRecord,
+  SchoolAdminSaveRequest,
+} from './school-admin';
+import type {
+  CopyTimetableRequest,
+  CreateTimetableEntryRequest,
+  PeriodResult,
+  ScheduleConflictResult,
+  TimetableDashboardResult,
+  TimetableEntryResult,
+  TimetableListRequest,
+  TimetablePageResult,
+  UpdateTimetableEntryRequest,
   ValidateTimetableRequest,
 } from './timetables';
+import type {
+  AttendanceListRequest,
+  AttendanceResult,
+  RecordAttendanceRequest,
+} from './attendance';
+import type { DesktopSyncStatus, ResolveSyncConflictRequest, SyncConflictResult } from './sync';
 
 export interface AuthenticationApi {
   getStatus(): Promise<ProvisioningStatus>;
@@ -154,10 +180,26 @@ export interface TimetableApi {
   periods(classId?: string): Promise<PeriodResult[]>;
   dashboard(dayOfWeek: string): Promise<TimetableDashboardResult>;
 }
+export interface SyncApi {
+  run(): Promise<DesktopSyncStatus>;
+  getStatus(): Promise<DesktopSyncStatus>;
+  listConflicts(): Promise<SyncConflictResult[]>;
+  resolveConflict(request: ResolveSyncConflictRequest): Promise<SyncConflictResult>;
+}
+export interface AttendanceApi {
+  list(request: AttendanceListRequest): Promise<AttendanceResult[]>;
+  record(request: RecordAttendanceRequest): Promise<AttendanceResult>;
+}
+export interface SchoolAdminApi {
+  list(request: SchoolAdminListRequest): Promise<SchoolAdminListResult>;
+  save(request: SchoolAdminSaveRequest): Promise<SchoolAdminRecord>;
+  delete(request: SchoolAdminDeleteRequest): Promise<{ id: string }>;
+}
 
 export interface NemisApi {
   auth: AuthenticationApi;
   provisioning: ProvisioningApi;
+  sync: SyncApi;
   system: SystemApi;
   settings: SettingsApi;
   dashboard: DashboardApi;
@@ -171,4 +213,6 @@ export interface NemisApi {
   student: StudentApi;
   teacher: TeacherApi;
   timetable: TimetableApi;
+  attendance: AttendanceApi;
+  schoolAdmin: SchoolAdminApi;
 }

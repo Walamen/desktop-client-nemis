@@ -1,6 +1,5 @@
-import { ComingSoon } from '@/components/shell/ComingSoon';
-import { resolvePageTitle } from '@/components/shell/page-titles';
+import { RecordPaymentPage } from '@/components/school-admin/SchoolAdminModulePages';
 
 export default function Page() {
-  return <ComingSoon title={resolvePageTitle('/government/school-admin/financial/record-payment').title} />;
+  return <RecordPaymentPage />;
 }

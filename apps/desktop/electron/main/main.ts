@@ -2,10 +2,7 @@ import os from 'node:os';
 import { app, BrowserWindow, dialog } from 'electron';
 import started from 'electron-squirrel-startup';
 import { loadConfig } from '@app/config/env';
-import { DatabaseManager } from '@app/database/DatabaseManager';
 import { DatabaseError } from '@app/database/errors/errors';
-import { createDataLayer } from '@app/data/factories/createDataLayer';
-import { createApplicationComposition } from '@app/data/adapters/createApplicationComposition';
 import { registerIpcHandlers } from '@app/ipc/registrar';
 import { initLogger, logger } from '@app/services/logger';
 import { hardenWebContents } from '@app/security/hardenWindow';
@@ -21,6 +18,11 @@ import { ProvisioningService } from '@app/provisioning/ProvisioningService';
 import { loadDeviceIdentity } from '@app/provisioning/deviceIdentity';
 import { BackendProvisioningGateway } from '@app/provisioning/BackendProvisioningGateway';
 import { ProvisioningImporter } from '@app/provisioning/ProvisioningImporter';
+import { WorkspaceManager } from '@app/workspace/WorkspaceManager';
+import type { ApplicationLayer } from '@nemis-desktop/application';
+import type { DataLayer } from '@app/data/factories/createDataLayer';
+import { DesktopSyncWorker } from '@app/sync/DesktopSyncWorker';
+import { SchoolAdminModuleService } from '@app/data/services/SchoolAdminModuleService';
 
 // Squirrel.Windows shortcut events during install/update: quit immediately.
 if (started) {
@@ -42,7 +44,7 @@ function bootstrap(): void {
   }
 
   let mainWindow: BrowserWindow | null = null;
-  let databaseManager: DatabaseManager | null = null;
+  let workspaces: WorkspaceManager | null = null;
   const allowedOrigins = config.isDev ? [config.rendererDevUrl] : [RENDERER_ORIGIN];
 
   const createHardenedWindow = (): BrowserWindow => {
@@ -77,20 +79,22 @@ function bootstrap(): void {
         error: (message: string, error?: unknown) => logger.error(message, error),
       };
       const encryptionKey = loadOrCreateDatabaseKey(app.getPath('userData'));
-      databaseManager = new DatabaseManager({
+      const deviceInfo = {
+        deviceName: os.hostname(),
+        platform: process.platform,
+        osVersion: os.release(),
+        appVersion: app.getVersion(),
+      };
+      workspaces = new WorkspaceManager({
         userDataDir: app.getPath('userData'),
-        encryptionKey,
-        device: {
-          deviceName: os.hostname(),
-          platform: process.platform,
-          osVersion: os.release(),
-          appVersion: app.getVersion(),
-        },
+        masterKey: encryptionKey,
+        device: deviceInfo,
         log: databaseLog,
       });
-      databaseManager.initialize();
-      const dataLayer = createDataLayer(databaseManager, databaseLog);
-      const application = createApplicationComposition(dataLayer);
+      const application = deferredApplication(() => workspaces!.active.application);
+      const services = {
+        appSettings: deferredMember(() => workspaces!.active.data.services, 'appSettings'),
+      } as DataLayer['services'];
       const sessionRepository = new EncryptedSessionRepository(app.getPath('userData'));
       const authenticationGateway = new BackendAuthenticationGateway(config.apiBaseUrl);
       const backendProvisioning = new BackendProvisioningGateway(
@@ -103,9 +107,15 @@ function bootstrap(): void {
         new RestoreSession(authenticationGateway, sessionRepository),
         new Logout(authenticationGateway, sessionRepository),
         backendProvisioning,
-        new ProvisioningImporter(databaseManager),
+        new ProvisioningImporter(() => workspaces!.active.database),
         loadDeviceIdentity(app.getPath('userData')),
+        workspaces,
       );
+      const syncWorker = new DesktopSyncWorker(workspaces, backendProvisioning);
+      const schoolAdmin = new SchoolAdminModuleService(workspaces);
+      const syncTimer = setInterval(() => {
+        void syncWorker.syncActive().catch((error) => logger.warn(`Background sync deferred: ${String(error)}`));
+      }, 30_000);
 
       denyPermissionRequests();
       denyPermissionChecks();
@@ -114,15 +124,17 @@ function bootstrap(): void {
         registerAppProtocolHandler();
       }
 
-      registerIpcHandlers(dataLayer.services, application, provisioning);
+      registerIpcHandlers(services, application, provisioning, syncWorker, schoolAdmin, workspaces);
 
       mainWindow = createHardenedWindow();
+      void syncWorker.syncActive().catch(() => undefined);
 
       app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) {
           mainWindow = createHardenedWindow();
         }
       });
+      app.once('will-quit', () => clearInterval(syncTimer));
     })
     .catch((error: unknown) => {
       logger.error('Fatal startup failure:', error);
@@ -144,9 +156,37 @@ function bootstrap(): void {
 
   app.on('will-quit', () => {
     try {
-      databaseManager?.shutdown();
+      workspaces?.close();
     } catch (error) {
       logger.error('Database shutdown failed:', error);
     }
   });
+}
+
+function deferredApplication(get: () => ApplicationLayer): ApplicationLayer {
+  return {
+    students: deferredMember(get, 'students'),
+    academics: deferredMember(get, 'academics'),
+    attendance: deferredMember(get, 'attendance'),
+    assessments: deferredMember(get, 'assessments'),
+    identity: deferredMember(get, 'identity'),
+    institution: deferredMember(get, 'institution'),
+    infra: deferredMember(get, 'infra'),
+    reporting: deferredMember(get, 'reporting'),
+    teachers: deferredMember(get, 'teachers'),
+    timetables: deferredMember(get, 'timetables'),
+  };
+}
+
+function deferredMember<T extends object, K extends keyof T>(
+  get: () => T,
+  key: K,
+): T[K] {
+  return new Proxy({} as object, {
+    get(_target, property) {
+      const member = get()[key] as object;
+      const value = Reflect.get(member, property);
+      return typeof value === 'function' ? value.bind(member) : value;
+    },
+  }) as T[K];
 }

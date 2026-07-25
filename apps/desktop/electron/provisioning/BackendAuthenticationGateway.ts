@@ -3,7 +3,14 @@ import type {
   AuthenticationGateway,
 } from '@nemis-desktop/application';
 import { AuthenticationUnavailableError } from '@nemis-desktop/application';
-import type { ProvisioningUser } from '@nemis-desktop/types';
+import {
+  DESKTOP_PORTALS,
+  DesktopScopeType,
+  isDesktopPortalRole,
+  type DesktopPortalRole,
+  type DesktopUserScope,
+  type ProvisioningUser,
+} from '@nemis-desktop/types';
 import { ForbiddenError, UnauthorizedError } from '@nemis-desktop/shared';
 
 interface BackendUser {
@@ -12,9 +19,14 @@ interface BackendUser {
   firstName: string;
   lastName: string;
   role: string;
+  countyId?: string | null;
+  districtId?: string | null;
   institutionId?: string | null;
+  staffId?: string | null;
   institution?: { name?: string } | null;
 }
+
+const OFFLINE_LEASE_MS = 7 * 24 * 60 * 60 * 1000;
 
 export class BackendAuthenticationGateway implements AuthenticationGateway {
   constructor(private readonly baseUrl: string) {}
@@ -26,7 +38,7 @@ export class BackendAuthenticationGateway implements AuthenticationGateway {
     });
     const secret = extractAuthCookies(response);
     const user = readUser(await response.json());
-    return { user: toProvisioningUser(user), sessionSecret: secret };
+    return onlineSession(user, secret);
   }
 
   async restore(sessionSecret: string): Promise<AuthenticatedSession> {
@@ -41,7 +53,7 @@ export class BackendAuthenticationGateway implements AuthenticationGateway {
       response = await this.request('/auth/me', { headers: { cookie: cookies } });
     }
     const user = readUser(await response.json());
-    return { user: toProvisioningUser(user), sessionSecret: JSON.stringify({ cookies }) };
+    return onlineSession(user, JSON.stringify({ cookies }));
   }
 
   async logout(sessionSecret: string): Promise<void> {
@@ -83,6 +95,14 @@ export class BackendAuthenticationGateway implements AuthenticationGateway {
   }
 }
 
+function onlineSession(user: BackendUser, sessionSecret: string): AuthenticatedSession {
+  return {
+    user: toProvisioningUser(user),
+    sessionSecret,
+    offlineAccessExpiresAt: new Date(Date.now() + OFFLINE_LEASE_MS).toISOString(),
+  };
+}
+
 function readUser(payload: unknown): BackendUser {
   const root = asObject(payload);
   const firstData = asObject(root.data);
@@ -97,18 +117,55 @@ function readUser(payload: unknown): BackendUser {
 }
 
 function toProvisioningUser(user: BackendUser): ProvisioningUser {
-  if (!user.institutionId) {
-    throw new ForbiddenError('This account is not assigned to a school.');
+  if (!isDesktopPortalRole(user.role)) {
+    throw new ForbiddenError('This account role is not supported by NEMIS Desktop.');
   }
+  const scope = resolveScope(user.role, user);
   return {
     id: user.id,
     email: user.email,
     firstName: user.firstName,
     lastName: user.lastName,
     role: user.role,
-    institutionId: user.institutionId,
+    scope,
+    institutionId: user.institutionId ?? undefined,
+    countyId: user.countyId ?? undefined,
+    districtId: user.districtId ?? undefined,
+    staffId: user.staffId ?? undefined,
     institutionName: user.institution?.name,
   };
+}
+
+function resolveScope(role: DesktopPortalRole, user: BackendUser): DesktopUserScope {
+  const scopeType = DESKTOP_PORTALS[role].scopeType;
+  if (scopeType === DesktopScopeType.NATIONAL) {
+    return { type: scopeType, scopeId: 'national' };
+  }
+  if (scopeType === DesktopScopeType.COUNTY && user.countyId) {
+    return { type: scopeType, scopeId: user.countyId, countyId: user.countyId };
+  }
+  if (scopeType === DesktopScopeType.DISTRICT && user.districtId) {
+    return {
+      type: scopeType,
+      scopeId: user.districtId,
+      countyId: user.countyId ?? undefined,
+      districtId: user.districtId,
+    };
+  }
+  if (
+    (scopeType === DesktopScopeType.INSTITUTION || scopeType === DesktopScopeType.TEACHER) &&
+    user.institutionId
+  ) {
+    return {
+      type: scopeType,
+      scopeId: scopeType === DesktopScopeType.TEACHER ? user.id : user.institutionId,
+      countyId: user.countyId ?? undefined,
+      districtId: user.districtId ?? undefined,
+      institutionId: user.institutionId,
+      staffId: user.staffId ?? undefined,
+    };
+  }
+  throw new ForbiddenError(`This ${role} account has no active ${scopeType.toLowerCase()} assignment.`);
 }
 
 function asObject(value: unknown): Record<string, unknown> {

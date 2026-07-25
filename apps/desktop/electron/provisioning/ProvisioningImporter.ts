@@ -9,9 +9,17 @@ import {
 } from '@nemis-desktop/types';
 
 interface ImportContext {
-  institutionId: string;
   userId: string;
+  role: string;
+  scopeType: string;
+  scopeId: string;
+  institutionId?: string;
   serverDeviceId: string;
+}
+
+interface ImportOptions {
+  /** Keep durable conflict evidence while replacing server-owned rows after sync. */
+  preserveConflicts?: boolean;
 }
 
 interface TableSpec {
@@ -32,40 +40,91 @@ const SPECS: Record<ProvisioningCollection, TableSpec> = {
   guardians: spec('guardians', ['id','firstName','lastName','relationship','phoneNumber','email','address','occupation','isEmergencyContact','version','updatedAt','lastModifiedBy']),
   studentGuardians: spec('student_guardians', ['id','studentId','guardianId','isPrimary','createdAt']),
   enrollments: spec('enrollments', ['id','studentId','classId','academicYearId','termId','enrollmentDate','status','version','updatedAt','lastModifiedBy']),
+  attendance: spec('attendance', ['id','studentId','classId','subjectId','date','status','recordedBy','version','updatedAt','lastModifiedBy']),
   staff: spec('staff', ['id','institutionId','userId','firstName','lastName','middleName','dateOfBirth','gender','nationalId','phoneNumber','email','address','employeeNumber','position','employmentType','dateOfJoining','dateOfLeaving','qualifications','isActive','photoUrl','approvalStatus','approvedBy','approvedAt','approvalNotes','createdAt','updatedAt','version','lastModifiedBy']),
   subjectTeachers: spec('subject_teachers', ['id','subjectId','staffId','assignedAt','version','updatedAt','lastModifiedBy']),
   classTeachers: spec('class_teachers', ['id','classId','staffId','isClassTeacher','assignedAt','version','updatedAt','lastModifiedBy']),
   classSubjectTeachers: spec('class_subject_teachers', ['id','classId','subjectId','staffId','assignedAt','version','updatedAt','lastModifiedBy']),
   timetableEntries: spec('timetable_entries', ['id','institutionId','classId','subjectId','staffId','dayOfWeek','startTime','endTime','room','isBreak','assignmentId','createdAt','updatedAt','version','lastModifiedBy']),
+  studentTransfers: spec('student_transfers', ['id','studentId','fromInstitutionId','toInstitutionId','requestedBy','reason','status','reviewedBy','reviewedAt','reviewNotes','requestedDate','toGradeLevel','createdAt','updatedAt']),
+  institutionGradingConfigs: spec('institution_grading_configs', ['id','institutionId','maxMarks','passingMarks','periodsPerTerm','termsPerYear','hasExams','calculationMethod','gradeScale','allowLateSubmission','lateSubmissionPenalty','requireAdminApproval','createdAt','updatedAt']),
+  gradingPeriods: spec('grading_periods', ['id','institutionId','academicYearId','termId','name','code','periodType','sequence','maxMarks','passingMarks','weight','startDate','endDate','isActive','createdAt','updatedAt']),
+  gradeEntryWindows: spec('grade_entry_windows', ['id','institutionId','gradingPeriodId','name','description','openDate','closeDate','status','allowedRoles','openedBy','openedAt','closedBy','closedAt','publishedBy','publishedAt','createdAt','updatedAt']),
+  gradeEntryWindowClasses: spec('grade_entry_window_classes', ['id','windowId','classId','status','openedBy','openedAt','closedBy','closedAt','createdAt','updatedAt']),
+  grades: spec('grades', ['id','studentId','subjectId','assessmentId','marksObtained','examScore','remarks','assessmentScore','finalGrade','testScore','classId','enteredBy','gradePoint','gradingPeriodId','isPublished','lastModifiedBy','letterGrade','maxMarks','percentage','publishedAt','status','createdAt','updatedAt']),
+  feeRules: spec('fee_rules', ['id','institutionId','name','description','category','amount','currency','applicableLevels','isMandatory','isActive','createdBy','createdAt','updatedAt']),
+  feeObligations: spec('fee_obligations', ['id','studentId','feeRuleId','institutionId','academicYearId','termId','requiredAmount','totalPaid','status','dueDate','notes','createdBy','createdAt','updatedAt']),
+  feePayments: spec('fee_payments', ['id','obligationId','studentId','institutionId','amount','method','reference','notes','receiptNumber','recordedBy','isReversed','paidAt','createdAt','updatedAt']),
+  announcements: spec('announcements', ['id','institutionId','title','content','author','authorRole','priority','targetAudience','publishedAt','expiresAt','createdAt','updatedAt']),
+  conversations: spec('conversations', ['id','studentId','teacherId','subject','lastMessageAt','createdAt','updatedAt']),
+  messages: spec('messages', ['id','conversationId','senderId','senderRole','content','isRead','readAt','createdAt','updatedAt']),
+  userNotifications: spec('user_notifications', ['id','recipientId','type','title','message','isRead','metadata','link','createdAt','updatedAt']),
+  reports: spec('reports', ['id','type','title','description','data','status','comments','schoolId','districtId','countyId','submittedById','reviewedById','submittedAt','reviewedAt','createdAt','updatedAt']),
+  alerts: spec('alerts', ['id','countyId','districtId','institutionId','type','severity','title','description','isResolved','resolvedAt','resolvedBy','metadata','createdAt','updatedAt']),
+  assignments: spec('assignments', ['id','classId','subjectId','teacherId','title','type','status','description','instructions','dueDate','totalMarks','attachmentUrl','attachmentName','createdAt','updatedAt']),
+  assignmentSubmissions: spec('assignment_submissions', ['id','assignmentId','studentId','status','submittedAt','response','fileUrl','fileName','grade','feedback','createdAt','updatedAt']),
+  classResources: spec('class_resources', ['id','institutionId','classId','subjectId','staffId','title','description','type','fileUrl','linkUrl','fileSize','fileType','category','isVisible','createdAt','updatedAt']),
 };
 
 const DELETE_ORDER = [...PROVISIONING_COLLECTIONS].reverse();
 
 export class ProvisioningImporter {
-  constructor(private readonly manager: DatabaseManager) {}
+  constructor(private readonly managerSource: DatabaseManager | (() => DatabaseManager)) {}
 
-  getCompletion(): { completedAt: string; institutionId: string; userId: string } | null {
+  private get manager(): DatabaseManager {
+    return typeof this.managerSource === 'function' ? this.managerSource() : this.managerSource;
+  }
+
+  getCompletion(): {
+    completedAt: string;
+    institutionId: string | null;
+    userId: string;
+    role: string;
+    scopeType: string;
+    scopeId: string;
+  } | null {
     const row = this.manager.connection
-      .prepare(`SELECT completedAt, institutionId, userId FROM provisioning_metadata WHERE id='singleton' AND status='complete'`)
-      .get() as { completedAt: string; institutionId: string; userId: string } | undefined;
+      .prepare(`SELECT completedAt,institutionId,userId,role,scopeType,scopeId
+        FROM provisioning_metadata WHERE id='singleton' AND status='complete'`)
+      .get() as {
+        completedAt: string; institutionId: string | null; userId: string;
+        role: string; scopeType: string; scopeId: string;
+      } | undefined;
     return row ?? null;
   }
 
-  import(snapshot: ProvisioningSnapshot, context: ImportContext): void {
+  import(
+    snapshot: ProvisioningSnapshot,
+    context: ImportContext,
+    options: ImportOptions = {},
+  ): void {
     validateEnvelope(snapshot, context);
     const db = this.manager.connection;
     const startedAt = new Date().toISOString();
     db.prepare(`
       INSERT INTO provisioning_metadata
-        (id,status,institutionId,userId,serverDeviceId,startedAt,updatedAt,lastError)
-      VALUES ('singleton','in_progress',?,?,?,?,?,NULL)
+        (id,status,institutionId,userId,role,scopeType,scopeId,serverDeviceId,startedAt,updatedAt,lastError)
+      VALUES ('singleton','in_progress',?,?,?,?,?,?,?,?,NULL)
       ON CONFLICT(id) DO UPDATE SET status='in_progress',institutionId=excluded.institutionId,
-        userId=excluded.userId,serverDeviceId=excluded.serverDeviceId,
+        userId=excluded.userId,role=excluded.role,scopeType=excluded.scopeType,
+        scopeId=excluded.scopeId,serverDeviceId=excluded.serverDeviceId,
         startedAt=excluded.startedAt,updatedAt=excluded.updatedAt,lastError=NULL
-    `).run(context.institutionId, context.userId, context.serverDeviceId, startedAt, startedAt);
+    `).run(
+      context.institutionId ?? null, context.userId, context.role, context.scopeType,
+      context.scopeId, context.serverDeviceId, startedAt, startedAt,
+    );
 
     try {
       this.manager.transactions.runImmediate(() => {
+        if (options.preserveConflicts) {
+          const active = db.prepare(
+            `SELECT COUNT(*) count FROM sync_queue WHERE status IN ('pending','in_flight')`,
+          ).get() as { count: number };
+          if (active.count > 0) {
+            throw new Error('Cannot reconcile a snapshot while local changes are pending.');
+          }
+        }
+        db.prepare(`UPDATE sync_runtime SET captureEnabled=0 WHERE id='singleton'`).run();
         for (const collection of DELETE_ORDER) {
           db.prepare(`DELETE FROM ${SPECS[collection].table}`).run();
         }
@@ -73,6 +132,14 @@ export class ProvisioningImporter {
           insertRows(db, SPECS[collection], snapshot.data[collection]);
         }
         verifyDatabase(db, snapshot);
+        if (options.preserveConflicts) {
+          db.prepare(`DELETE FROM sync_queue WHERE status='completed'`).run();
+        } else {
+          db.prepare(`DELETE FROM sync_queue`).run();
+        }
+        db.prepare(`DELETE FROM sync_errors`).run();
+        if (!options.preserveConflicts) db.prepare(`DELETE FROM sync_conflicts`).run();
+        db.prepare(`UPDATE sync_runtime SET captureEnabled=1 WHERE id='singleton'`).run();
         const completedAt = new Date().toISOString();
         db.prepare(`
           UPDATE provisioning_metadata SET status='complete',snapshotId=?,checksum=?,
@@ -102,7 +169,14 @@ function validateEnvelope(snapshot: ProvisioningSnapshot, context: ImportContext
   if (snapshot.contractVersion !== 1 || snapshot.checksumAlgorithm !== 'sha256') {
     throw new Error('Unsupported provisioning snapshot.');
   }
-  if (snapshot.institutionId !== context.institutionId || snapshot.deviceId !== context.serverDeviceId) {
+  if (
+    snapshot.userId !== context.userId ||
+    snapshot.role !== context.role ||
+    snapshot.scopeType !== context.scopeType ||
+    snapshot.scopeId !== context.scopeId ||
+    snapshot.institutionId !== context.institutionId ||
+    snapshot.deviceId !== context.serverDeviceId
+  ) {
     throw new Error('Provisioning snapshot authorization scope does not match this session.');
   }
   const actual = createHash('sha256').update(JSON.stringify(snapshot.data)).digest('hex');
@@ -154,6 +228,8 @@ function verifyDatabase(db: SqliteDatabase, snapshot: ProvisioningSnapshot): voi
     ['enrollments', 'classId', 'classes'],
     ['enrollments', 'academicYearId', 'academic_years'],
     ['enrollments', 'termId', 'terms'],
+    ['attendance', 'studentId', 'students'],
+    ['attendance', 'classId', 'classes'],
   ] as const;
   for (const [child, foreignKey, parent] of dependencies) {
     const missing = db.prepare(

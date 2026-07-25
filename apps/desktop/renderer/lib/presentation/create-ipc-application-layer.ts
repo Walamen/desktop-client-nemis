@@ -2,6 +2,7 @@ import type {
   AcademicsApplicationService,
   ApplicationLayer,
   ApplicationResponse,
+  AttendanceApplicationService,
   StudentApplicationService,
   TeacherApplicationService,
   TimetableApplicationService,
@@ -236,7 +237,10 @@ export function createIpcApplicationLayer(): ApplicationLayer {
       periods: (id) => query(() => nemisBridge.getTimetablePeriods(id)),
       dashboard: (day) => query(() => nemisBridge.getTimetableDashboard(day)),
     }),
-    attendance: group('attendance', {}),
+    attendance: group<AttendanceApplicationService>('attendance', {
+      getByClassAndDate: (dto) => query(() => nemisBridge.listAttendance(dto)),
+      record: (dto) => query(() => nemisBridge.recordAttendance(dto)),
+    }),
     assessments: group('assessments', {}),
   };
   // Private class fields prevent structural typing; this cast is intentional.

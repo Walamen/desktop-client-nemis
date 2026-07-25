@@ -53,6 +53,32 @@ describe('BackendAuthenticationGateway', () => {
     expect(result.sessionSecret).toContain('new-refresh');
     expect(result.user.id).toBe('user-1');
   });
+
+  it.each([
+    ['MINISTRY_ADMIN', {}, 'NATIONAL', 'national'],
+    ['COUNTY_ADMIN', { countyId: 'county-1' }, 'COUNTY', 'county-1'],
+    ['DEO', { countyId: 'county-1', districtId: 'district-1' }, 'DISTRICT', 'district-1'],
+    ['TEACHER', { institutionId: 'school-1', staffId: 'staff-1' }, 'TEACHER', 'user-1'],
+  ])('derives the authorized desktop scope for %s', async (
+    role,
+    identifiers,
+    scopeType,
+    scopeId,
+  ) => {
+    const response = jsonResponse({
+      success: true,
+      data: { user: { ...backendUser, institutionId: undefined, role, ...identifiers } },
+    });
+    setCookies(response, ['sid=session; HttpOnly']);
+    vi.stubGlobal('fetch', vi.fn(async () => response));
+
+    const result = await new BackendAuthenticationGateway('https://nemis.example').authenticate(
+      'user@nemis.gov.lr',
+      'password',
+    );
+
+    expect(result.user.scope).toMatchObject({ type: scopeType, scopeId });
+  });
 });
 
 function jsonResponse(body: unknown): Response {

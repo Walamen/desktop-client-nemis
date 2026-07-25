@@ -16,6 +16,7 @@ const authenticated: ProvisioningStatus = {
     firstName: 'School',
     lastName: 'Admin',
     role: 'INSTITUTION_ADMIN',
+    scope: { type: 'INSTITUTION', scopeId: 'school-1', institutionId: 'school-1' },
     institutionId: 'school-1',
   },
   device: {

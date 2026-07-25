@@ -7,7 +7,6 @@ import { newId } from './helpers/ids';
 import { nowIso } from './helpers/time';
 import { migrations } from './migrations/registry';
 import { TableNames } from './schema/tableNames';
-import { initializeLocalUser } from './seed/initializeLocalUser';
 import { initializeMetadata, type DeviceInfo } from './seed/initializeMetadata';
 import { MigrationService } from './services/MigrationService';
 import { TransactionManager } from './transaction/TransactionManager';
@@ -22,6 +21,8 @@ export type DatabaseState = 'idle' | 'ready' | 'closed' | 'failed';
 
 export interface DatabaseManagerOptions {
   userDataDir: string;
+  /** Optional isolated root. Defaults to userDataDir for backwards compatibility. */
+  workspaceDir?: string;
   device: DeviceInfo;
   log?: DatabaseLogger;
   /** 64-char hex; provided by main via safeStorage-backed key store. */
@@ -50,7 +51,7 @@ export class DatabaseManager {
 
   constructor(options: DatabaseManagerOptions) {
     this.#options = options;
-    this.#paths = resolveDatabasePaths(options.userDataDir);
+    this.#paths = resolveDatabasePaths(options.workspaceDir ?? options.userDataDir);
     this.#log = options.log ?? silentLogger;
   }
 
@@ -79,7 +80,6 @@ export class DatabaseManager {
         migrationService.currentVersion(),
       );
       this.#deviceId = seeded.deviceId;
-      const localUser = initializeLocalUser(this.#db.raw);
       this.#transactions = new TransactionManager(this.#db.raw);
 
       if (this.#db.wasEncryptedInPlace) {
@@ -91,7 +91,6 @@ export class DatabaseManager {
         schemaVersion: migrationService.currentVersion(),
         migrationsApplied: applied.length,
         deviceCreated: seeded.deviceCreated,
-        localUserCreated: localUser.userCreated,
       });
       this.#state = 'ready';
       this.#log.info('Database ready');

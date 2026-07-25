@@ -1,0 +1,52 @@
+export const SCHOOL_ADMIN_COLLECTIONS = [
+  'institutions',
+  'students',
+  'staff',
+  'classes',
+  'subjects',
+  'timetable_entries',
+  'guardians',
+  'student_guardians',
+  'student_transfers',
+  'institution_grading_configs',
+  'grading_periods',
+  'grade_entry_windows',
+  'grade_entry_window_classes',
+  'grades',
+  'fee_rules',
+  'fee_obligations',
+  'fee_payments',
+  'announcements',
+  'conversations',
+  'messages',
+  'user_notifications',
+  'reports',
+  'alerts',
+  'assignments',
+  'assignment_submissions',
+  'class_resources',
+] as const;
+
+export type SchoolAdminCollection = (typeof SCHOOL_ADMIN_COLLECTIONS)[number];
+export type SchoolAdminRecord = Record<string, string | number | boolean | null>;
+
+export interface SchoolAdminListRequest {
+  collection: SchoolAdminCollection;
+  limit?: number;
+  offset?: number;
+}
+
+export interface SchoolAdminListResult {
+  items: SchoolAdminRecord[];
+  total: number;
+}
+
+export interface SchoolAdminSaveRequest {
+  collection: SchoolAdminCollection;
+  record: SchoolAdminRecord;
+}
+
+export interface SchoolAdminDeleteRequest {
+  collection: SchoolAdminCollection;
+  id: string;
+}

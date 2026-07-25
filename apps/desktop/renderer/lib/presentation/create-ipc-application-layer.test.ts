@@ -54,8 +54,8 @@ describe('createIpcApplicationLayer', () => {
   it('an unwired method throws NotImplementedPresentationError', async () => {
     const app = createIpcApplicationLayer();
     await expect(
-      (app.attendance as unknown as { getByClassAndDate: () => Promise<unknown> })
-        .getByClassAndDate(),
+      (app.assessments as unknown as { createAssessment: () => Promise<unknown> })
+        .createAssessment(),
     ).rejects.toThrow(/not available yet/i);
   });
 });

@@ -40,9 +40,9 @@ describe('business application layer end-to-end against real SQLite', () => {
     });
   });
 
-  it('current user is the seeded Local Admin; school and academic year are null', async () => {
+  it('has no user, school, or academic year before authenticated provisioning', async () => {
     const app = createApplicationComposition(dataLayer, silent);
-    expect((await app.identity.getCurrentUser()).data?.fullName).toBe('Local Admin');
+    expect((await app.identity.getCurrentUser()).data).toBeNull();
     expect((await app.institution.getCurrentSchool()).data).toBeNull();
     expect((await app.academics.getCurrentAcademicYear()).data).toBeNull();
   });

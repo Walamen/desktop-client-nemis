@@ -1,5 +1,5 @@
 import type { AuthenticateUser, Logout, RestoreSession } from '@nemis-desktop/application';
-import type { DeviceIdentity, ProvisioningStatus } from '@nemis-desktop/types';
+import type { DeviceIdentity, ProvisioningStatus, ProvisioningUser } from '@nemis-desktop/types';
 import type { BackendProvisioningGateway } from './BackendProvisioningGateway';
 import type { ProvisioningImporter } from './ProvisioningImporter';
 
@@ -14,6 +14,10 @@ export class ProvisioningService {
     private readonly gateway: BackendProvisioningGateway,
     private readonly importer: ProvisioningImporter,
     device: DeviceIdentity,
+    private readonly workspaces?: {
+      activate(user: ProvisioningUser): unknown;
+      close(): void;
+    },
   ) {
     this.status = anonymousStatus(device);
   }
@@ -23,9 +27,13 @@ export class ProvisioningService {
       this.restored = true;
       const session = await this.restoreSession.execute();
       if (session) {
+        this.workspaces?.activate(session.user);
         const storedCompletion = this.importer.getCompletion();
         const completion =
-          storedCompletion?.institutionId === session.user.institutionId
+          storedCompletion?.userId === session.user.id &&
+          storedCompletion.role === session.user.role &&
+          storedCompletion.scopeType === session.user.scope.type &&
+          storedCompletion.scopeId === session.user.scope.scopeId
             ? storedCompletion
             : null;
         this.status = completion
@@ -53,10 +61,14 @@ export class ProvisioningService {
 
   async login(email: string, password: string): Promise<ProvisioningStatus> {
     const session = await this.authenticateUser.execute(email, password);
+    this.workspaces?.activate(session.user);
     this.restored = true;
     const storedCompletion = this.importer.getCompletion();
     const completion =
-      storedCompletion?.institutionId === session.user.institutionId
+      storedCompletion?.userId === session.user.id &&
+      storedCompletion.role === session.user.role &&
+      storedCompletion.scopeType === session.user.scope.type &&
+      storedCompletion.scopeId === session.user.scope.scopeId
         ? storedCompletion
         : null;
     this.status = {
@@ -73,9 +85,13 @@ export class ProvisioningService {
   }
 
   async logout(): Promise<ProvisioningStatus> {
-    await this.logoutUser.execute();
-    this.restored = true;
-    this.status = anonymousStatus(this.status.device);
+    try {
+      await this.logoutUser.execute();
+    } finally {
+      this.workspaces?.close();
+      this.restored = true;
+      this.status = anonymousStatus(this.status.device);
+    }
     return this.status;
   }
 
@@ -92,13 +108,16 @@ export class ProvisioningService {
       const verified = await this.gateway.verifyDevice(registered.id);
       if (verified.status !== 'ACTIVE') throw new Error(`Device is ${verified.status.toLowerCase()}.`);
 
-      this.advance('downloading', 35, 'Downloading the verified school snapshot…');
+      this.advance('downloading', 35, 'Downloading your authorized NEMIS workspace…');
       const snapshot = await this.gateway.downloadSnapshot(registered.id);
 
       this.advance('initializing', 65, 'Initializing the encrypted offline database…');
       this.importer.import(snapshot, {
-        institutionId: user.institutionId,
         userId: user.id,
+        role: user.role,
+        scopeType: user.scope.type,
+        scopeId: user.scope.scopeId,
+        institutionId: user.institutionId,
         serverDeviceId: registered.id,
       });
 

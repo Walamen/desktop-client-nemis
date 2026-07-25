@@ -46,6 +46,15 @@ export class SqliteAttendanceRepository implements IAttendanceRepository {
 
   save(attendance: Attendance): void {
     guarded('SqliteAttendanceRepository.save', () => {
+      // Class attendance is one current record per student and day. Replace
+      // the previous record inside the use case's unit-of-work transaction so
+      // repeated saves cannot inflate reports with duplicate rows.
+      this.#statements
+        .get(
+          `DELETE FROM ${TableNames.attendance}
+           WHERE studentId = ? AND classId = ? AND date = ? AND subjectId IS NULL`,
+        )
+        .run(attendance.studentId, attendance.classId, attendance.date);
       this.#statements
         .get(
           `INSERT INTO ${TableNames.attendance}

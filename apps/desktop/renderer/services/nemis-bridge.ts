@@ -35,6 +35,12 @@ import type {
   StudentPageResult,
   StudentResult,
   UpdateStudentRequest,
+  AttendanceListRequest,
+  AttendanceResult,
+  RecordAttendanceRequest,
+  SchoolAdminDeleteRequest,
+  SchoolAdminListRequest,
+  SchoolAdminSaveRequest,
 } from '@nemis-desktop/types';
 import type {
   CopyTimetableRequest, CreateTimetableEntryRequest, TimetableListRequest,
@@ -63,6 +69,11 @@ export const nemisBridge = {
   authenticate: (email: string, password: string) => api().auth.login({ email, password }),
   logout: () => api().auth.logout(),
   startProvisioning: () => api().provisioning.start(),
+  runSync: () => api().sync.run(),
+  getSyncStatus: () => api().sync.getStatus(),
+  listSyncConflicts: () => api().sync.listConflicts(),
+  resolveSyncConflict: (conflictId: string, resolution: 'keep_local' | 'accept_remote') =>
+    api().sync.resolveConflict({ conflictId, resolution }),
   getDashboardOverview: (): Promise<DashboardOverviewResult> => api().dashboard.getOverview(),
   getSchoolSummary: (): Promise<SchoolSummaryResult | null> => api().school.getSummary(),
   getCurrentAcademicYear: (): Promise<AcademicYearResult | null> => api().academicYear.getCurrent(),
@@ -148,4 +159,14 @@ export const nemisBridge = {
   detectTimetableConflicts: (request:TimetableListRequest) => api().timetable.detectConflicts(request),
   getTimetablePeriods: (classId?:string) => api().timetable.periods(classId),
   getTimetableDashboard: (dayOfWeek:string) => api().timetable.dashboard(dayOfWeek),
+  listAttendance: (request: AttendanceListRequest): Promise<AttendanceResult[]> =>
+    api().attendance.list(request),
+  recordAttendance: (request: RecordAttendanceRequest): Promise<AttendanceResult> =>
+    api().attendance.record(request),
+  listSchoolAdminRecords: (request: SchoolAdminListRequest) =>
+    api().schoolAdmin.list(request),
+  saveSchoolAdminRecord: (request: SchoolAdminSaveRequest) =>
+    api().schoolAdmin.save(request),
+  deleteSchoolAdminRecord: (request: SchoolAdminDeleteRequest) =>
+    api().schoolAdmin.delete(request),
 };

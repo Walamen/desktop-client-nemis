@@ -30,6 +30,9 @@ describe('ProvisioningImporter', () => {
     importer.import(snapshot, {
       institutionId: 'school-1',
       userId: 'user-1',
+      role: 'INSTITUTION_ADMIN',
+      scopeType: 'INSTITUTION',
+      scopeId: 'school-1',
       serverDeviceId: 'server-device-1',
     });
     expect(importer.getCompletion()).toMatchObject({
@@ -47,6 +50,9 @@ describe('ProvisioningImporter', () => {
     importer.import(snapshot, {
       institutionId: 'school-1',
       userId: 'user-1',
+      role: 'INSTITUTION_ADMIN',
+      scopeType: 'INSTITUTION',
+      scopeId: 'school-1',
       serverDeviceId: 'server-device-1',
     });
     const corrupt = { ...snapshot, checksum: '0'.repeat(64) };
@@ -54,6 +60,9 @@ describe('ProvisioningImporter', () => {
       importer.import(corrupt, {
         institutionId: 'school-1',
         userId: 'user-1',
+        role: 'INSTITUTION_ADMIN',
+        scopeType: 'INSTITUTION',
+        scopeId: 'school-1',
         serverDeviceId: 'server-device-1',
       }),
     ).toThrow(/checksum/i);
@@ -91,6 +100,10 @@ function makeSnapshot(): ProvisioningSnapshot {
     contractVersion: 1,
     snapshotId: 'snapshot-1',
     generatedAt: '2026-01-01T00:00:00.000Z',
+    userId: 'user-1',
+    role: 'INSTITUTION_ADMIN',
+    scopeType: 'INSTITUTION',
+    scopeId: 'school-1',
     institutionId: 'school-1',
     deviceId: 'server-device-1',
     checksumAlgorithm: 'sha256',

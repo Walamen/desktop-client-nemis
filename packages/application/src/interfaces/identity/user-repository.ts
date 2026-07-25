@@ -2,6 +2,6 @@ import type { User } from '@nemis-desktop/domain';
 
 export interface IUserRepository {
   findById(id: string): User | null;
-  /** The single local user, or null before the first-run seed. */
+  /** The provisioned user for this installation, or null before authentication/import. */
   findFirst(): User | null;
 }

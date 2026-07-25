@@ -6,6 +6,8 @@ export const TableNames = {
   syncMetadata: 'sync_metadata',
   syncQueue: 'sync_queue',
   syncErrors: 'sync_errors',
+  syncRuntime: 'sync_runtime',
+  syncConflicts: 'sync_conflicts',
   auditLog: 'audit_log',
   // Business tables (Phase 8). Created empty; populated by sync/import in later phases.
   institutions: 'institutions',
@@ -30,6 +32,24 @@ export const TableNames = {
   classSubjectTeachers: 'class_subject_teachers',
   provisioningMetadata: 'provisioning_metadata',
   timetableEntries: 'timetable_entries',
+  studentTransfers: 'student_transfers',
+  institutionGradingConfigs: 'institution_grading_configs',
+  gradingPeriods: 'grading_periods',
+  gradeEntryWindows: 'grade_entry_windows',
+  gradeEntryWindowClasses: 'grade_entry_window_classes',
+  grades: 'grades',
+  feeRules: 'fee_rules',
+  feeObligations: 'fee_obligations',
+  feePayments: 'fee_payments',
+  announcements: 'announcements',
+  conversations: 'conversations',
+  messages: 'messages',
+  userNotifications: 'user_notifications',
+  reports: 'reports',
+  alerts: 'alerts',
+  assignments: 'assignments',
+  assignmentSubmissions: 'assignment_submissions',
+  classResources: 'class_resources',
 } as const;
 
 export type TableName = (typeof TableNames)[keyof typeof TableNames];

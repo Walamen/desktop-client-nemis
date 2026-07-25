@@ -5,13 +5,14 @@ import { createTestDatabase, type TestDatabase } from '../testing/createTestData
 import { migrations } from './registry';
 
 const NOW = '2026-07-21T00:00:00.000Z';
+const migrationsThroughTimetable = migrations.filter((migration) => migration.version <= 7);
 
 describe('003-create-academic-foundation-tables', () => {
   let test: TestDatabase;
 
   beforeEach(() => {
     test = createTestDatabase();
-    new MigrationService(test.db.raw, migrations).migrateToLatest();
+    new MigrationService(test.db.raw, migrationsThroughTimetable).migrateToLatest();
   });
 
   afterEach(() => {
@@ -90,7 +91,7 @@ describe('003-create-academic-foundation-tables', () => {
   });
 
   it('rolls back: down() drops the new tables and keeps 002 tables intact', () => {
-    const service = new MigrationService(test.db.raw, migrations);
+    const service = new MigrationService(test.db.raw, migrationsThroughTimetable);
     service.rollbackLast(); // 007 timetable management
     service.rollbackLast(); // 006 provisioning metadata
     service.rollbackLast(); // 005 — teacher management

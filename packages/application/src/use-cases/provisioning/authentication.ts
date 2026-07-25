@@ -4,8 +4,7 @@ import type {
   SessionRepository,
 } from '../../interfaces/provisioning';
 import { AuthenticationUnavailableError } from '../../interfaces/provisioning';
-
-const REQUIRED_ROLE = 'INSTITUTION_ADMIN';
+import { isDesktopPortalRole } from '@nemis-desktop/types';
 
 export class AuthenticateUser {
   constructor(
@@ -15,7 +14,7 @@ export class AuthenticateUser {
 
   async execute(email: string, password: string): Promise<AuthenticatedSession> {
     const session = await this.gateway.authenticate(email.trim().toLowerCase(), password);
-    assertSchoolAdministrator(session);
+    assertDesktopUser(session);
     await this.sessions.save(session);
     return session;
   }
@@ -32,11 +31,20 @@ export class RestoreSession {
     if (!stored) return null;
     try {
       const restored = await this.gateway.restore(stored.sessionSecret);
-      assertSchoolAdministrator(restored);
+      assertDesktopUser(restored);
       await this.sessions.save(restored);
       return restored;
     } catch (error) {
-      if (error instanceof AuthenticationUnavailableError) return stored;
+      if (error instanceof AuthenticationUnavailableError) {
+        if (
+          stored.offlineAccessExpiresAt &&
+          new Date(stored.offlineAccessExpiresAt).valueOf() > Date.now()
+        ) {
+          return stored;
+        }
+        await this.sessions.clear();
+        return null;
+      }
       await this.sessions.clear();
       return null;
     }
@@ -59,8 +67,8 @@ export class Logout {
   }
 }
 
-function assertSchoolAdministrator(session: AuthenticatedSession): void {
-  if (session.user.role !== REQUIRED_ROLE || !session.user.institutionId) {
-    throw new Error('Only an active Institution Administrator assigned to a school can provision.');
+function assertDesktopUser(session: AuthenticatedSession): void {
+  if (!isDesktopPortalRole(session.user.role) || !session.user.scope.scopeId) {
+    throw new Error('This account does not have a supported NEMIS Desktop role and scope.');
   }
 }

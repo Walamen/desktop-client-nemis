@@ -7,3 +7,7 @@ export * from './students';
 export * from './teachers';
 export * from './provisioning';
 export * from './timetables';
+export * from './attendance';
+export * from './desktop-portals';
+export * from './sync';
+export * from './school-admin';

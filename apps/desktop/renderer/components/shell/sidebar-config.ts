@@ -13,6 +13,7 @@ export const SIDEBAR_DASHBOARD_ITEM: SidebarNavItem = {
 export const SIDEBAR_NAV: readonly SidebarGroup[] = [
   { label: 'User Management', items: [
     { name: 'Students', href: '/government/school-admin/students', icon: Map },
+    { name: 'Student Transfers', href: '/government/school-admin/students/inter-school-transfer', icon: Map },
     { name: 'Teachers & Staff', href: '/government/school-admin/teachers-staff', icon: School },
     { name: 'Parents & Guardians', href: '/government/school-admin/parents-guardians', icon: CheckCircle },
   ]},
@@ -26,10 +27,13 @@ export const SIDEBAR_NAV: readonly SidebarGroup[] = [
     { name: 'Academic & Grading', href: '/government/school-admin/academic-grading', icon: Users },
     { name: 'General Schedule Management', href: '/government/school-admin/timetable', icon: BookOpen },
     { name: 'Grade Windows', href: '/government/school-admin/academic-grading/windows', icon: FileText },
+    { name: 'Grading Periods', href: '/government/school-admin/academic-grading/periods', icon: CalendarRange },
+    { name: 'Infrastructure', href: '/government/school-admin/infrastructure', icon: Building2 },
   ]},
   { label: 'FINANCIAL', items: [
     { name: 'Financial / Fees', href: '/government/school-admin/financial', icon: UserPlus },
     { name: 'Record Payment', href: '/government/school-admin/financial/record-payment', icon: CreditCard },
+    { name: 'Fee Rules', href: '/government/school-admin/financial/fee-rules', icon: FileText },
   ]},
   { label: 'REPORTS', items: [
     { name: 'Reports', href: '/government/school-admin/reports', icon: FileText },
