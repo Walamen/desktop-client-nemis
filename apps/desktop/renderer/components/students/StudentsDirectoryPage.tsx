@@ -58,6 +58,11 @@ export function StudentsDirectoryPage() {
   const selectedIds = useViewModel(vm.selection, (s) => s.selectedIds);
   const keywordDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
+    return () => {
+      if (keywordDebounce.current) clearTimeout(keywordDebounce.current);
+    };
+  }, []);
+  useEffect(() => {
     void vm.setPageSize(12);
     void stats.loadStatistics();
   }, [stats, vm]);
