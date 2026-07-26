@@ -87,6 +87,7 @@ const nemisApi: NemisApi = {
     enroll: (request) => invoke(IpcChannels.STUDENT_ENROLL,request),
     moveClass: (request) => invoke(IpcChannels.STUDENT_MOVE_CLASS, request),
     listEnrollments: (id) => invoke(IpcChannels.STUDENT_LIST_ENROLLMENTS,id),
+    getStatistics: () => invoke(IpcChannels.STUDENT_GET_STATISTICS),
   },
   teacher: {
     list: (request) => invoke(IpcChannels.TEACHER_LIST, request),

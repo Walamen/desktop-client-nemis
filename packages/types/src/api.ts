@@ -38,6 +38,7 @@ import type {
   StudentListRequest,
   StudentPageResult,
   StudentResult,
+  StudentStatisticsResult,
   UpdateStudentRequest,
 } from './students';
 import type {
@@ -153,6 +154,7 @@ export interface StudentApi {
   enroll(request: EnrollStudentRequest): Promise<EnrollmentResult>;
   moveClass(request: MoveEnrollmentClassRequest): Promise<EnrollmentResult>;
   listEnrollments(id: string): Promise<EnrollmentResult[]>;
+  getStatistics(): Promise<StudentStatisticsResult>;
 }
 export interface TeacherApi {
   list(request: TeacherListRequest): Promise<TeacherPageResult>;

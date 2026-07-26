@@ -38,6 +38,7 @@ import type {
   StudentListRequest,
   StudentPageResult,
   StudentResult,
+  StudentStatisticsResult,
   UpdateStudentRequest,
 } from './students';
 import type {
@@ -151,6 +152,7 @@ export interface IpcContract {
     result: EnrollmentResult;
   };
   'student:list-enrollments': { args: [id: string]; result: EnrollmentResult[] };
+  'student:get-statistics': { args: []; result: StudentStatisticsResult };
   // Teacher Management (Phase 11)
   'teacher:list': { args: [request: TeacherListRequest]; result: TeacherPageResult };
   'teacher:get-profile': { args: [id: string]; result: TeacherProfileResult | null };
@@ -259,6 +261,7 @@ export const IpcChannels = {
   STUDENT_ENROLL: 'student:enroll',
   STUDENT_MOVE_CLASS: 'student:move-class',
   STUDENT_LIST_ENROLLMENTS: 'student:list-enrollments',
+  STUDENT_GET_STATISTICS: 'student:get-statistics',
   TEACHER_LIST: 'teacher:list',
   TEACHER_GET_PROFILE: 'teacher:get-profile',
   TEACHER_CREATE: 'teacher:create',

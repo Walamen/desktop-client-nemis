@@ -10,6 +10,7 @@ import {
   assertCreateGuardianArgs,
   assertEnrollStudentArgs,
   assertMoveEnrollmentClassArgs,
+  assertNoArgs,
 } from '@app/security/validateIpc';
 export function registerStudentHandlers(handle: IpcHandle, app: ApplicationLayer): void {
   handle(
@@ -56,5 +57,10 @@ export function registerStudentHandlers(handle: IpcHandle, app: ApplicationLayer
     IpcChannels.STUDENT_LIST_ENROLLMENTS,
     assertSingleIdArg,
     async (id) => (await app.students.listEnrollments(id)).data,
+  );
+  handle(
+    IpcChannels.STUDENT_GET_STATISTICS,
+    assertNoArgs,
+    async () => (await app.reporting.getStudentStatistics()).data,
   );
 }

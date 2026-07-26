@@ -103,3 +103,10 @@ export interface EnrollmentResult {
   updatedAt: string;
 }
 export type StudentPageResult = PagedListResult<StudentListItemResult>;
+
+export interface StudentStatisticsResult {
+  totalStudents: number;
+  maleStudents: number;
+  femaleStudents: number;
+  recentEnrollments: number;
+}
