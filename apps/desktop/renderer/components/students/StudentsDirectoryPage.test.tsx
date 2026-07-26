@@ -76,3 +76,36 @@ describe('StudentsDirectoryPage filters', () => {
     vi.useRealTimers();
   });
 });
+
+describe('StudentsDirectoryPage view toggle', () => {
+  it('switches between table and grid without refetching', async () => {
+    (window as unknown as { nemis: unknown }).nemis = {
+      student: {
+        list: vi.fn(async () => ({
+          items: [
+            { id: 's-1', fullName: 'Grace Toe', admissionNumber: 'ADM-1', gradeLevel: 'Grade 1', gender: 'Female', isActive: true, updatedAt: '2026-07-01' },
+          ],
+          total: 1, limit: 12, offset: 0,
+        })),
+        getStatistics: vi.fn(async () => ({ totalStudents: 1, maleStudents: 0, femaleStudents: 1, recentEnrollments: 1 })),
+      },
+      school: { getSummary: vi.fn(async () => null) },
+      academicYear: { getCurrent: vi.fn(async () => null), list: vi.fn(async () => []) },
+      term: { getCurrent: vi.fn(async () => null) },
+      classes: { list: vi.fn(async () => ({ data: [], total: 0, page: 1, pageSize: 20, totalPages: 0 })) },
+    };
+    const layer = createRendererPresentation();
+    const { default: userEvent } = await import('@testing-library/user-event');
+    const user = userEvent.setup();
+    render(
+      <PresentationProvider layer={layer}>
+        <StudentsDirectoryPage />
+      </PresentationProvider>,
+    );
+    await waitFor(() => expect(screen.getByText('Grace Toe')).toBeInTheDocument());
+    expect(screen.getByRole('table')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /grid view/i }));
+    expect(screen.queryByRole('table')).toBeNull();
+    expect(screen.getByText('Grace Toe')).toBeInTheDocument();
+  });
+});
