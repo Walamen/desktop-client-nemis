@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { createStore } from 'zustand/vanilla';
 import { describe, expect, it, vi } from 'vitest';
 import { SystemRole } from '@nemis-desktop/types';
@@ -19,6 +19,7 @@ vi.mock('../../lib/presentation/hooks', () => ({
 vi.mock('@/services/nemis-bridge', () => ({ nemisBridge: { logout: vi.fn().mockResolvedValue(undefined) } }));
 
 import { Sidebar } from './Sidebar';
+import { nemisBridge } from '@/services/nemis-bridge';
 
 describe('Sidebar', () => {
   it('renders school-admin nav groups and items with correct hrefs', () => {
@@ -41,5 +42,16 @@ describe('Sidebar', () => {
     expect(screen.getByText('CEO PANEL')).toBeInTheDocument();
     expect(screen.getByText('Districts').closest('a')).toHaveAttribute('href', '/government/county/districts');
     expect(screen.getByText('Audit Trail').closest('a')).toHaveAttribute('href', '/government/county/audit');
+  });
+
+  it('calls nemisBridge.logout() when the Logout button is clicked', () => {
+    render(<Sidebar role={SystemRole.INSTITUTION_ADMIN} institutionName="X" />);
+    fireEvent.click(screen.getByText('Logout'));
+    expect(nemisBridge.logout).toHaveBeenCalled();
+  });
+
+  it('renders a role with no dashboardItem without crashing', () => {
+    render(<Sidebar role={SystemRole.DEO} />);
+    expect(screen.getByText('Schools').closest('a')).toHaveAttribute('href', '/government/deo/schools');
   });
 });

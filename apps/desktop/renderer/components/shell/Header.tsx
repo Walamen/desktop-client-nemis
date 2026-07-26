@@ -64,6 +64,9 @@ export function Header({ role }: { role: DesktopPortalRole }) {
             onOpenChange={setMenuOpen}
             trigger={
               <>
+                {/* avatarRole picks the per-role fallback image, but it's only reached when there's
+                    no src AND no computable initials; since fullName always yields initials here,
+                    this plumbing is correct but currently dormant — the initials branch always wins. */}
                 <Avatar firstName={fullName.split(' ')[0]} lastName={fullName.split(' ')[1]} role={headerConfigs[role].avatarRole} size="md" className="border border-gray-200" alt={fullName} />
                 <div className="hidden sm:flex flex-col items-start leading-tight">
                   <span className="text-sm font-semibold text-gray-900">{fullName}</span>

@@ -5,7 +5,7 @@ import {
   GraduationCap, ArrowRightLeft, UserCircle2, AlertTriangle, FileBarChart,
   type LucideIcon,
 } from 'lucide-react';
-import { SystemRole, type DesktopPortalRole } from '@nemis-desktop/types';
+import { DESKTOP_PORTALS, SystemRole, type DesktopPortalRole } from '@nemis-desktop/types';
 import type { AvatarRole } from '@nemis-desktop/ui';
 
 export type SidebarBadge = 'notifications';
@@ -89,7 +89,7 @@ export const sidebarConfigs: Record<DesktopPortalRole, SidebarConfig> = {
       {
         label: 'COMMUNICATION',
         items: [
-          { name: 'Notifications', href: '/government/school-admin/notifications', icon: Bell, badge: 'notifications' },
+          { name: 'Notifications', href: '/government/school-admin/notifications', icon: Bell },
           { name: 'Messages', href: '/government/school-admin/messages', icon: MessageCircle },
         ],
       },
@@ -143,7 +143,7 @@ export const sidebarConfigs: Record<DesktopPortalRole, SidebarConfig> = {
         label: 'COMMUNICATION',
         items: [
           { name: 'Messages', href: '/government/county/messages', icon: MessageSquare },
-          { name: 'Notifications', href: '/government/county/notifications', icon: Bell, badge: 'notifications' },
+          { name: 'Notifications', href: '/government/county/notifications', icon: Bell },
           { name: 'Alerts', href: '/government/county/alerts', icon: AlertTriangle },
         ],
       },
@@ -186,7 +186,7 @@ export const sidebarConfigs: Record<DesktopPortalRole, SidebarConfig> = {
         label: 'COMMUNICATION',
         items: [
           { name: 'Messaging', href: '/government/deo/messages', icon: MessageSquare },
-          { name: 'Notifications', href: '/government/deo/notifications', icon: Bell, badge: 'notifications' },
+          { name: 'Notifications', href: '/government/deo/notifications', icon: Bell },
           { name: 'Alerts', href: '/government/deo/alerts', icon: AlertTriangle },
         ],
       },
@@ -234,7 +234,7 @@ export const sidebarConfigs: Record<DesktopPortalRole, SidebarConfig> = {
         label: 'COMMUNICATION',
         items: [
           { name: 'Messages', href: '/government/ministry-portal/messages', icon: MessageSquare },
-          { name: 'Notifications', href: '/government/ministry-portal/notifications', icon: Bell, badge: 'notifications' },
+          { name: 'Notifications', href: '/government/ministry-portal/notifications', icon: Bell },
           { name: 'Alerts', href: '/government/ministry-portal/alerts', icon: AlertTriangle },
         ],
       },
@@ -277,67 +277,48 @@ export const sidebarConfigs: Record<DesktopPortalRole, SidebarConfig> = {
         label: 'COMMUNICATION',
         items: [
           { name: 'Messaging', href: '/government/teacher/messages', icon: MessageCircle },
-          { name: 'Notifications', href: '/government/teacher/notifications', icon: Bell, badge: 'notifications' },
+          { name: 'Notifications', href: '/government/teacher/notifications', icon: Bell },
         ],
       },
     ],
   },
 };
 
-/** Legacy explicit titles for school-admin's nested pages that are not themselves sidebar
- * items (e.g. a sub-page reached only from within another page). Preserved verbatim from the
- * pre-unification `page-titles.ts` so existing behavior/tests don't change. */
+/** Explicit overrides for the two school-admin routes whose header title genuinely differs
+ * from the corresponding sidebar item's `name` (dashboard root, and the sidebar's
+ * "Attendence" typo on the attendance route). All other routes resolve their title from the
+ * sidebar config directly via `sidebarItemName` in `page-titles.ts`, so this map is
+ * intentionally NOT a full mirror of `sidebarConfigs` — adding a redundant entry here would
+ * just be duplicate, drift-prone state. */
 const SCHOOL_ADMIN_PAGE_TITLES: Record<string, string> = {
   '/government/school-admin': 'Dashboard Overview',
-  '/government/school-admin/students': 'Students',
-  '/government/school-admin/students/inter-school-transfer': 'Student Transfers',
-  '/government/school-admin/teachers-staff': 'Teachers & Staff',
-  '/government/school-admin/parents-guardians': 'Parents & Guardians',
-  '/government/school-admin/classes': 'Classes Management',
-  '/government/school-admin/academic-years': 'Academic Years',
-  '/government/school-admin/terms': 'Terms',
-  '/government/school-admin/grade-levels': 'Grade Levels',
-  '/government/school-admin/subjects': 'Subjects Management',
   '/government/school-admin/attendance': 'Attendance Management',
-  '/government/school-admin/academic-grading': 'Academic & Grading',
-  '/government/school-admin/academic-grading/windows': 'Grade Windows',
-  '/government/school-admin/academic-grading/periods': 'Grading Periods',
-  '/government/school-admin/infrastructure': 'Infrastructure',
-  '/government/school-admin/timetable': 'General Schedule Management',
-  '/government/school-admin/financial': 'Financial / Fees',
-  '/government/school-admin/financial/record-payment': 'Record Payment',
-  '/government/school-admin/financial/fee-rules': 'Fee Rules',
-  '/government/school-admin/reports': 'Reports',
-  '/government/school-admin/notifications': 'Notifications',
-  '/government/school-admin/messages': 'Messages',
-  '/government/school-admin/settings': 'School Settings',
-  '/government/school-admin/school-profile': 'School Profile',
 };
 
 export const headerConfigs: Record<DesktopPortalRole, HeaderConfig> = {
   [SystemRole.INSTITUTION_ADMIN]: {
-    basePath: '/government/school-admin',
+    basePath: DESKTOP_PORTALS[SystemRole.INSTITUTION_ADMIN].route,
     avatarRole: 'generic',
     breadcrumbRoot: 'School Admin',
     pageTitles: SCHOOL_ADMIN_PAGE_TITLES,
   },
   [SystemRole.COUNTY_ADMIN]: {
-    basePath: '/government/county',
+    basePath: DESKTOP_PORTALS[SystemRole.COUNTY_ADMIN].route,
     avatarRole: 'generic',
     breadcrumbRoot: 'County',
   },
   [SystemRole.DEO]: {
-    basePath: '/government/deo',
+    basePath: DESKTOP_PORTALS[SystemRole.DEO].route,
     avatarRole: 'deo',
     breadcrumbRoot: 'DEO',
   },
   [SystemRole.MINISTRY_ADMIN]: {
-    basePath: '/government/ministry-portal',
+    basePath: DESKTOP_PORTALS[SystemRole.MINISTRY_ADMIN].route,
     avatarRole: 'generic',
     breadcrumbRoot: 'Ministry',
   },
   [SystemRole.TEACHER]: {
-    basePath: '/government/teacher',
+    basePath: DESKTOP_PORTALS[SystemRole.TEACHER].route,
     avatarRole: 'teacher',
     breadcrumbRoot: 'Teacher',
   },

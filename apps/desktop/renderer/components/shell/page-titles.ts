@@ -24,7 +24,7 @@ export function resolvePageTitle(
     sidebarItemName(pathname, role) ??
     titleCase(lastSegment);
   const segments = pathname
-    .replace(header.basePath, '')
+    .slice(header.basePath.length)
     .split('/')
     .filter(Boolean)
     .map(titleCase);
