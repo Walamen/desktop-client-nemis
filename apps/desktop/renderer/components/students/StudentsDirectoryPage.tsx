@@ -8,18 +8,57 @@ import {
   type GradeLevel as GradeLevelValue,
 } from '@nemis-desktop/types';
 import { Badge, Button, EmptyState, ErrorState, Input, Select, Skeleton } from '@nemis-desktop/ui';
+import { totalPages } from '@nemis-desktop/presentation';
 import { useViewModel } from '@/hooks/use-view-model';
 import {
   useAcademicFoundationViewModel,
   useStudentSearchViewModel,
   useStudentsListViewModel,
+  useStudentStatisticsViewModel,
 } from '@/lib/presentation/hooks';
 import { genders, grades, human, Page } from './shared';
+
+function StatCards({ stats }: { stats: ReturnType<typeof useStudentStatisticsViewModel> }) {
+  const state = useViewModel(stats.store, (s) => s.stats);
+  const value = (n: number) => n.toLocaleString();
+  const data = state.status === 'success' || state.status === 'refreshing' ? state.data : null;
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="bg-white border border-slate-300 rounded-card p-4">
+        <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">
+          Total Students
+        </p>
+        <p className="text-4xl font-bold text-slate-900 mt-2">{value(data?.totalStudents ?? 0)}</p>
+        <p className="text-xs text-slate-400 mt-1">Registered in school</p>
+      </div>
+      <div className="bg-white border border-slate-300 rounded-card p-4">
+        <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">Male</p>
+        <p className="text-4xl font-bold text-sky-600 mt-2">{value(data?.maleStudents ?? 0)}</p>
+        <p className="text-xs text-slate-400 mt-1">Male students</p>
+      </div>
+      <div className="bg-white border border-slate-300 rounded-card p-4">
+        <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">Female</p>
+        <p className="text-4xl font-bold text-pink-500 mt-2">{value(data?.femaleStudents ?? 0)}</p>
+        <p className="text-xs text-slate-400 mt-1">Female students</p>
+      </div>
+      <div className="bg-white border border-slate-300 rounded-card p-4">
+        <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">
+          New This Quarter
+        </p>
+        <p className="text-4xl font-bold text-emerald-600 mt-2">
+          {value(data?.recentEnrollments ?? 0)}
+        </p>
+        <p className="text-xs text-slate-400 mt-1">Recent enrollments</p>
+      </div>
+    </div>
+  );
+}
 
 export function StudentsDirectoryPage() {
   const vm = useStudentsListViewModel();
   const search = useStudentSearchViewModel();
   const foundation = useAcademicFoundationViewModel();
+  const stats = useStudentStatisticsViewModel();
   const list = useViewModel(vm.store, (s) => s.list);
   const p = useViewModel(vm.store, (s) => s.pagination);
   const filters = useViewModel(vm.store, (s) => s.filters);
@@ -33,10 +72,12 @@ export function StudentsDirectoryPage() {
   const classRows =
     classes.status === 'success' || classes.status === 'refreshing' ? classes.data : [];
   useEffect(() => {
+    void vm.setPageSize(12);
     void vm.loadStudents();
+    void stats.loadStatistics();
     void foundation.loadAcademicYears();
     void foundation.loadClasses();
-  }, [foundation, vm]);
+  }, [foundation, stats, vm]);
   const set = (next: typeof filters) => search.setFilters(next);
   const setAcademicYear = (academicYearId: string) => {
     set({
@@ -56,6 +97,7 @@ export function StudentsDirectoryPage() {
         </Link>
       }
     >
+      <StatCards stats={stats} />
       <div className="bg-white border rounded-card p-4 grid grid-cols-1 md:grid-cols-4 gap-3">
         <Input
           placeholder="Name or student number"
@@ -229,7 +271,7 @@ export function StudentsDirectoryPage() {
               </tbody>
             </table>
           </div>
-          <div className="flex justify-between">
+          <div className="flex justify-between items-center">
             <div className="flex items-center gap-3 text-sm text-slate-500">
               <span>{p.totalCount} students</span>
               {selectedIds.size > 0 && (
@@ -241,23 +283,18 @@ export function StudentsDirectoryPage() {
                 </>
               )}
             </div>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="secondary"
-                disabled={p.page <= 1}
-                onClick={() => void vm.goToPage(p.page - 1)}
-              >
-                Previous
-              </Button>
-              <Button
-                size="sm"
-                variant="secondary"
-                disabled={p.page * p.pageSize >= p.totalCount}
-                onClick={() => void vm.goToPage(p.page + 1)}
-              >
-                Next
-              </Button>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: Math.max(1, totalPages(p)) }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  onClick={() => void vm.goToPage(page)}
+                  className={`w-8 h-8 text-xs font-medium rounded-lg transition-colors ${
+                    p.page === page ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
             </div>
           </div>
         </>
