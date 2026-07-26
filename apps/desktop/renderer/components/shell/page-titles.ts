@@ -1,36 +1,32 @@
-const BASE = '/government/school-admin';
-
-const TITLES: Readonly<Record<string, string>> = {
-  [BASE]: 'Dashboard Overview',
-  [`${BASE}/students`]: 'Students',
-  [`${BASE}/students/inter-school-transfer`]: 'Student Transfers',
-  [`${BASE}/teachers-staff`]: 'Teachers & Staff',
-  [`${BASE}/parents-guardians`]: 'Parents & Guardians',
-  [`${BASE}/classes`]: 'Classes Management',
-  [`${BASE}/academic-years`]: 'Academic Years',
-  [`${BASE}/terms`]: 'Terms',
-  [`${BASE}/grade-levels`]: 'Grade Levels',
-  [`${BASE}/subjects`]: 'Subjects Management',
-  [`${BASE}/attendance`]: 'Attendance Management',
-  [`${BASE}/academic-grading`]: 'Academic & Grading',
-  [`${BASE}/academic-grading/windows`]: 'Grade Windows',
-  [`${BASE}/academic-grading/periods`]: 'Grading Periods',
-  [`${BASE}/infrastructure`]: 'Infrastructure',
-  [`${BASE}/timetable`]: 'General Schedule Management',
-  [`${BASE}/financial`]: 'Financial / Fees',
-  [`${BASE}/financial/record-payment`]: 'Record Payment',
-  [`${BASE}/financial/fee-rules`]: 'Fee Rules',
-  [`${BASE}/reports`]: 'Reports',
-  [`${BASE}/notifications`]: 'Notifications',
-  [`${BASE}/messages`]: 'Messages',
-  [`${BASE}/settings`]: 'School Settings',
-  [`${BASE}/school-profile`]: 'School Profile',
-};
+import type { DesktopPortalRole } from '@nemis-desktop/types';
+import { headerConfigs, sidebarConfigs } from './sidebarConfig';
 
 const titleCase = (s: string) => s.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
-export function resolvePageTitle(pathname: string): { title: string; segments: string[] } {
-  const title = TITLES[pathname] ?? 'School Admin';
-  const segments = pathname.replace(BASE, '').split('/').filter(Boolean).map(titleCase);
-  return { title, segments: ['School Admin', ...segments] };
+function sidebarItemName(pathname: string, role: DesktopPortalRole): string | undefined {
+  const config = sidebarConfigs[role];
+  if (config.dashboardItem?.href === pathname) return config.dashboardItem.name;
+  for (const group of config.navGroups) {
+    const match = group.items.find((item) => item.href === pathname);
+    if (match) return match.name;
+  }
+  return undefined;
+}
+
+export function resolvePageTitle(
+  pathname: string,
+  role: DesktopPortalRole,
+): { title: string; segments: string[] } {
+  const header = headerConfigs[role];
+  const lastSegment = pathname.split('/').filter(Boolean).at(-1) ?? '';
+  const title =
+    header.pageTitles?.[pathname] ??
+    sidebarItemName(pathname, role) ??
+    titleCase(lastSegment);
+  const segments = pathname
+    .replace(header.basePath, '')
+    .split('/')
+    .filter(Boolean)
+    .map(titleCase);
+  return { title, segments: [header.breadcrumbRoot, ...segments] };
 }
