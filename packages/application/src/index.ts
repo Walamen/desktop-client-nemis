@@ -82,6 +82,7 @@ export * from './use-cases/infra/register-device';
 export * from './use-cases/infra/update-settings';
 export * from './services/infra-application-service';
 export * from './use-cases/reporting/get-dashboard-overview';
+export * from './use-cases/reporting/get-student-statistics';
 export * from './services/reporting-application-service';
 export * from './use-cases/academics/get-current-academic-year';
 export * from './use-cases/identity/get-current-user';

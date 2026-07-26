@@ -87,6 +87,7 @@ import { InfraApplicationService } from '../services/infra-application-service';
 
 import { GetCurrentAcademicYearUseCase } from '../use-cases/academics/get-current-academic-year';
 import { GetDashboardOverviewUseCase } from '../use-cases/reporting/get-dashboard-overview';
+import { GetStudentStatisticsUseCase } from '../use-cases/reporting/get-student-statistics';
 import { ReportingApplicationService } from '../services/reporting-application-service';
 import {
   ArchiveTeacherUseCase,
@@ -388,6 +389,11 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
       classes: ports.classes,
       subjects: ports.subjects,
       attendance: ports.attendance,
+      clock,
+      logger,
+    }),
+    getStudentStatistics: new GetStudentStatisticsUseCase({
+      students: ports.students,
       clock,
       logger,
     }),

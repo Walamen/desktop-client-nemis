@@ -6,3 +6,10 @@ export interface DashboardOverviewOutput {
   studentsByGrade: { gradeLevel: string; studentCount: number }[];
   recentlyEnrolled: { id: string; fullName: string; admissionNumber: string; updatedAt: string }[];
 }
+
+export interface StudentStatisticsOutput {
+  totalStudents: number;
+  maleStudents: number;
+  femaleStudents: number;
+  recentEnrollments: number;
+}
