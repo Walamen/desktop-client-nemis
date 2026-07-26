@@ -17,6 +17,26 @@ function newStudent(id: string, admission: string): Student {
   });
 }
 
+function newStudentWith(
+  id: string,
+  admission: string,
+  overrides: { gender?: Gender; admissionDate?: string; isActive?: boolean } = {},
+): Student {
+  const student = Student.create({
+    id,
+    institutionId: 'inst-1',
+    firstName: 'Grace',
+    lastName: 'Toe',
+    admissionNumber: admission,
+    dateOfBirth: '2015-01-01',
+    gender: overrides.gender ?? Gender.FEMALE,
+    admissionDate: overrides.admissionDate,
+    occurredAt: '2026-07-20T00:00:00.000Z',
+  });
+  if (overrides.isActive === false) student.deactivate('tester', '2026-07-20T00:00:00.000Z');
+  return student;
+}
+
 describe('SqliteStudentRepository', () => {
   let test: TestContext;
   let repo: SqliteStudentRepository;
@@ -60,5 +80,27 @@ describe('SqliteStudentRepository', () => {
     repo.save(s);
     repo.save(s); // same id — must not throw or duplicate
     expect(repo.countAll()).toBe(1);
+  });
+
+  it('countByGender counts only active students, grouped by gender', () => {
+    repo.save(newStudentWith('s-1', 'ADM-1', { gender: Gender.MALE }));
+    repo.save(newStudentWith('s-2', 'ADM-2', { gender: Gender.MALE }));
+    repo.save(newStudentWith('s-3', 'ADM-3', { gender: Gender.FEMALE }));
+    repo.save(newStudentWith('s-4', 'ADM-4', { gender: Gender.FEMALE, isActive: false }));
+    const counts = repo.countByGender();
+    expect(counts).toEqual(
+      expect.arrayContaining([
+        { gender: Gender.MALE, studentCount: 2 },
+        { gender: Gender.FEMALE, studentCount: 1 },
+      ]),
+    );
+    expect(counts).toHaveLength(2);
+  });
+
+  it('countRecentAdmissions counts active students admitted on/after the given date', () => {
+    repo.save(newStudentWith('s-1', 'ADM-1', { admissionDate: '2026-07-01' }));
+    repo.save(newStudentWith('s-2', 'ADM-2', { admissionDate: '2026-01-01' }));
+    repo.save(newStudentWith('s-3', 'ADM-3', { admissionDate: '2026-07-15', isActive: false }));
+    expect(repo.countRecentAdmissions('2026-04-20')).toBe(1);
   });
 });

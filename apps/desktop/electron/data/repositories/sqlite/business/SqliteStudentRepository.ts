@@ -182,6 +182,15 @@ export class SqliteStudentRepository implements IStudentRepository {
   countByGradeLevel(): { gradeLevel: GradeLevel; studentCount: number }[] {
     return guarded('SqliteStudentRepository.countByGradeLevel', () => this.#statements.get(`SELECT gradeLevel, COUNT(*) AS studentCount FROM ${TableNames.students} WHERE isActive = 1 AND gradeLevel IS NOT NULL GROUP BY gradeLevel`).all() as { gradeLevel: GradeLevel; studentCount: number }[]);
   }
+  countByGender(): { gender: Gender; studentCount: number }[] {
+    return guarded('SqliteStudentRepository.countByGender', () => this.#statements.get(`SELECT gender, COUNT(*) AS studentCount FROM ${TableNames.students} WHERE isActive = 1 GROUP BY gender`).all() as { gender: Gender; studentCount: number }[]);
+  }
+  countRecentAdmissions(sinceDate: string): number {
+    return guarded('SqliteStudentRepository.countRecentAdmissions', () => {
+      const row = this.#statements.get(`SELECT COUNT(*) AS n FROM ${TableNames.students} WHERE isActive = 1 AND admissionDate >= ?`).get(sinceDate) as { n: number };
+      return row.n;
+    });
+  }
   findRecentlyUpdated(limit: number): Student[] {
     return guarded('SqliteStudentRepository.findRecentlyUpdated', () => (this.#statements.get(`SELECT ${COLUMNS} FROM ${TableNames.students} ORDER BY updatedAt DESC LIMIT ?`).all(limit) as StudentRow[]).map(toStudent));
   }

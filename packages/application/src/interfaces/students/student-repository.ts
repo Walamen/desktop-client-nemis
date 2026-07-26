@@ -19,5 +19,9 @@ export interface IStudentRepository {
   /** Real COUNT(*) — total students in this installation. */
   countAll(): number;
   countByGradeLevel(): { gradeLevel: GradeLevel; studentCount: number }[];
+  /** Active-student counts grouped by gender, for stat tiles. */
+  countByGender(): { gender: Gender; studentCount: number }[];
+  /** Active students with admissionDate on/after `sinceDate` (YYYY-MM-DD). */
+  countRecentAdmissions(sinceDate: string): number;
   findRecentlyUpdated(limit: number): Student[];
 }
