@@ -3,6 +3,7 @@
 import { usePresentation } from './presentation-provider';
 
 export const useDashboardViewModel = () => usePresentation().viewModels.dashboard;
+export const useStudentStatisticsViewModel = () => usePresentation().viewModels.studentStatistics;
 export const useStudentsViewModel = () => usePresentation().viewModels.students;
 export const useStudentsListViewModel = () => usePresentation().viewModels.studentsList;
 export const useStudentProfileViewModel = () => usePresentation().viewModels.studentProfile;

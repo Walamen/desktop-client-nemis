@@ -17,6 +17,7 @@ import { DashboardViewModel } from '../view-models/dashboard/dashboard-view-mode
 import { DeviceViewModel } from '../view-models/device/device-view-model';
 import { SettingsViewModel } from '../view-models/settings/settings-view-model';
 import { StudentsViewModel } from '../view-models/students/students-view-model';
+import { StudentStatisticsViewModel } from '../view-models/students/student-statistics-view-model';
 import {
   EnrollmentViewModel,
   StudentProfileViewModel,
@@ -49,6 +50,7 @@ export interface PresentationViewModels {
   readonly device: DeviceViewModel;
   readonly currentUser: CurrentUserViewModel;
   readonly dashboard: DashboardViewModel;
+  readonly studentStatistics: StudentStatisticsViewModel;
   readonly teachers: TeachersViewModel;
   readonly teachersList: TeachersListViewModel;
   readonly teacherProfile: TeacherProfileViewModel;
@@ -115,6 +117,7 @@ export function createPresentationLayer(
     device: new DeviceViewModel({ infra: app.infra, notifications, session }),
     currentUser: new CurrentUserViewModel({ identity: app.identity, session }),
     dashboard: new DashboardViewModel({ reporting: app.reporting, notifications }),
+    studentStatistics: new StudentStatisticsViewModel({ reporting: app.reporting, notifications }),
     teachers,
     teachersList: new TeachersListViewModel(teachers),
     teacherProfile: new TeacherProfileViewModel(teachers),
