@@ -1,2 +1,2 @@
-import { EnrollmentPage } from '@/components/students/StudentManagementPages';
+import { EnrollmentPage } from '@/components/students/EnrollmentPage';
 export default EnrollmentPage;

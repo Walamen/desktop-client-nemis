@@ -1,2 +1,2 @@
-import { StudentProfilePage } from '@/components/students/StudentManagementPages';
+import { StudentProfilePage } from '@/components/students/StudentProfilePage';
 export default StudentProfilePage;
