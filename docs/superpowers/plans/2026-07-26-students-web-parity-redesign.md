@@ -1037,7 +1037,7 @@ Create `apps/desktop/renderer/components/students/StudentFormPage.tsx` with the 
 
 - [ ] **Step 5: Move `StudentsDirectoryPage` verbatim (redesign happens in Task 7–10)**
 
-Create `apps/desktop/renderer/components/students/StudentsDirectoryPage.tsx` with the current body of `StudentsDirectoryPage` and its `StudentCard` helper (`StudentManagementPages.tsx` lines 62–310 and 696–779 — note `StudentCard` is currently unused dead code from an earlier design; keep it as-is for now, Task 9 replaces it), updating imports to use `./shared`.
+Create `apps/desktop/renderer/components/students/StudentsDirectoryPage.tsx` with the current body of `StudentsDirectoryPage` (`StudentManagementPages.tsx` lines 62–310 only), updating imports to use `./shared`. Do **not** move the `StudentCard` helper (lines 696–779) — it is unused dead code from an earlier design (it references a `Student`/`getEnrolledClass` shape that doesn't exist in this codebase) with no live call site anywhere in `StudentManagementPages.tsx` today; drop it here rather than carrying it forward. Task 9 adds a new `StudentCard` built on the real `StudentRowView` type.
 
 - [ ] **Step 6: Delete the old combined file**
 
@@ -1457,7 +1457,7 @@ git commit -m "feat(students): trim list filters to Search/Grade/Status with aut
 
 **Interfaces:**
 - Consumes: `useSettingsViewModel()` (school name for the header band), `@nemis-desktop/ui`'s `Avatar`/`Badge`/`Card`.
-- Produces: a local `StudentCard` component (replacing the dead-code one moved in Task 6) rendered when `viewMode === 'grid'`.
+- Produces: a new local `StudentCard` component (this file had a dead-code `StudentCard` referencing a nonexistent shape before Task 6 deleted it as unused; this task adds the real one) rendered when `viewMode === 'grid'`.
 
 - [ ] **Step 1: Write the failing test for the view toggle**
 
@@ -1602,7 +1602,7 @@ Wrap the existing `<table>` block so it only renders `viewMode === 'table'`, and
       )}
 ```
 
-Replace the dead-code `StudentCard` (moved verbatim in Task 6, still referencing the web's `Student`/`getEnrolledClass` shape that doesn't exist here) with one built on `StudentRowView`:
+Add a new `StudentCard` built on `StudentRowView` (Task 6 deleted the old dead-code one that referenced the web's `Student`/`getEnrolledClass` shape, which doesn't exist here):
 
 ```tsx
 function StudentCard({ student }: { student: StudentRowView }) {
