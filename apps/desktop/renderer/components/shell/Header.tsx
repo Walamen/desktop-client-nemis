@@ -6,14 +6,16 @@ import { Search, ChevronDown, Bell, LogOut, User2, Settings } from 'lucide-react
 import { Avatar, Breadcrumbs, Dropdown, DropdownItem } from '@nemis-desktop/ui';
 import { useCurrentUserViewModel, useNotificationStore } from '../../lib/presentation/hooks';
 import { useViewModel } from '../../hooks/use-view-model';
+import type { DesktopPortalRole } from '@nemis-desktop/types';
 import { resolvePageTitle } from './page-titles';
+import { headerConfigs } from './sidebarConfig';
 import { nemisBridge } from '@/services/nemis-bridge';
 import { useRouter } from 'next/navigation';
 
-export function Header() {
+export function Header({ role }: { role: DesktopPortalRole }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { title, segments } = resolvePageTitle(pathname);
+  const { title, segments } = resolvePageTitle(pathname, role);
   const [menuOpen, setMenuOpen] = useState(false);
 
   const currentUser = useCurrentUserViewModel();
@@ -62,7 +64,7 @@ export function Header() {
             onOpenChange={setMenuOpen}
             trigger={
               <>
-                <Avatar firstName={fullName.split(' ')[0]} lastName={fullName.split(' ')[1]} role="generic" size="md" className="border border-gray-200" alt={fullName} />
+                <Avatar firstName={fullName.split(' ')[0]} lastName={fullName.split(' ')[1]} role={headerConfigs[role].avatarRole} size="md" className="border border-gray-200" alt={fullName} />
                 <div className="hidden sm:flex flex-col items-start leading-tight">
                   <span className="text-sm font-semibold text-gray-900">{fullName}</span>
                   <span className="text-sm font-semibold text-gray-600">{roleLabel}</span>

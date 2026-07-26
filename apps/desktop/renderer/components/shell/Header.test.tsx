@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { createStore } from 'zustand/vanilla';
 import { describe, expect, it, vi } from 'vitest';
+import { SystemRole } from '@nemis-desktop/types';
 
 vi.mock('next/navigation', () => ({
   usePathname: () => '/government/school-admin/students',
@@ -19,7 +20,7 @@ import { Header } from './Header';
 
 describe('Header', () => {
   it('shows the resolved title, breadcrumb, user, and notification count', () => {
-    render(<Header />);
+    render(<Header role={SystemRole.INSTITUTION_ADMIN} />);
     expect(screen.getByText('Students')).toBeInTheDocument();
     expect(screen.getByText(/Home \/ School Admin \/ Students/)).toBeInTheDocument();
     expect(screen.getByText('Joseph Boakai')).toBeInTheDocument();
