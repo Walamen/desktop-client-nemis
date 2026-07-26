@@ -22,3 +22,5 @@ Thumbs.db
 
 # SDD scratch
 .superpowers/
+
+.worktrees/
