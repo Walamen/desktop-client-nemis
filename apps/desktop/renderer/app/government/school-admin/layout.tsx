@@ -20,9 +20,9 @@ export default function SchoolAdminLayout({ children }: { children: ReactNode })
     <RouteGuard requiredRole={SystemRole.INSTITUTION_ADMIN}>
       <div className="flex h-screen overflow-hidden bg-gray-50">
         <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-2 focus:bg-white">Skip to content</a>
-        <Sidebar institutionName={institutionName} />
+        <Sidebar role={SystemRole.INSTITUTION_ADMIN} institutionName={institutionName} />
         <div className="flex-1 flex flex-col overflow-hidden">
-          <Header />
+          <Header role={SystemRole.INSTITUTION_ADMIN} />
           <main id="main-content" className="flex-1 overflow-y-auto">{children}</main>
           <StatusBar />
         </div>
