@@ -72,6 +72,7 @@ export function createIpcApplicationLayer(): ApplicationLayer {
   const facade = {
     reporting: group('reporting', {
       getDashboardOverview: () => query(() => nemisBridge.getDashboardOverview()),
+      getStudentStatistics: () => query(() => nemisBridge.getStudentStatistics()),
     }),
     institution: group('institution', {
       getCurrentSchool: () => query(() => nemisBridge.getSchoolSummary()),

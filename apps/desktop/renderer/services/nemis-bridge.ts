@@ -34,6 +34,7 @@ import type {
   StudentListRequest,
   StudentPageResult,
   StudentResult,
+  StudentStatisticsResult,
   UpdateStudentRequest,
   AttendanceListRequest,
   AttendanceResult,
@@ -137,6 +138,7 @@ export const nemisBridge = {
     api().student.moveClass(request),
   listStudentEnrollments: (id: string): Promise<EnrollmentResult[]> =>
     api().student.listEnrollments(id),
+  getStudentStatistics: (): Promise<StudentStatisticsResult> => api().student.getStatistics(),
   listTeachers: (request: TeacherListRequest): Promise<TeacherPageResult> => api().teacher.list(request),
   getTeacherProfile: (id: string): Promise<TeacherProfileResult|null> => api().teacher.getProfile(id),
   createTeacher: (request: CreateTeacherRequest): Promise<TeacherProfileResult> => api().teacher.create(request),
