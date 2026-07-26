@@ -1,22 +1,16 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import Link from 'next/link';
-import {
-  EnrollmentStatus,
-  type EnrollmentStatus as EnrollmentStatusValue,
-  type Gender as GenderValue,
-  type GradeLevel as GradeLevelValue,
-} from '@nemis-desktop/types';
+import { type GradeLevel as GradeLevelValue } from '@nemis-desktop/types';
 import { Badge, Button, EmptyState, ErrorState, Input, Select, Skeleton } from '@nemis-desktop/ui';
 import { totalPages } from '@nemis-desktop/presentation';
 import { useViewModel } from '@/hooks/use-view-model';
 import {
-  useAcademicFoundationViewModel,
   useStudentSearchViewModel,
   useStudentsListViewModel,
   useStudentStatisticsViewModel,
 } from '@/lib/presentation/hooks';
-import { genders, grades, human, Page } from './shared';
+import { grades, human, Page } from './shared';
 
 function StatCards({ stats }: { stats: ReturnType<typeof useStudentStatisticsViewModel> }) {
   const state = useViewModel(stats.store, (s) => s.stats);
@@ -57,37 +51,16 @@ function StatCards({ stats }: { stats: ReturnType<typeof useStudentStatisticsVie
 export function StudentsDirectoryPage() {
   const vm = useStudentsListViewModel();
   const search = useStudentSearchViewModel();
-  const foundation = useAcademicFoundationViewModel();
   const stats = useStudentStatisticsViewModel();
   const list = useViewModel(vm.store, (s) => s.list);
   const p = useViewModel(vm.store, (s) => s.pagination);
   const filters = useViewModel(vm.store, (s) => s.filters);
   const selectedIds = useViewModel(vm.selection, (s) => s.selectedIds);
-  const academicYears = useViewModel(foundation.store, (s) => s.academicYears);
-  const classes = useViewModel(foundation.store, (s) => s.classes);
-  const yearRows =
-    academicYears.status === 'success' || academicYears.status === 'refreshing'
-      ? academicYears.data
-      : [];
-  const classRows =
-    classes.status === 'success' || classes.status === 'refreshing' ? classes.data : [];
+  const keywordDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     void vm.setPageSize(12);
-    void vm.loadStudents();
     void stats.loadStatistics();
-    void foundation.loadAcademicYears();
-    void foundation.loadClasses();
-  }, [foundation, stats, vm]);
-  const set = (next: typeof filters) => search.setFilters(next);
-  const setAcademicYear = (academicYearId: string) => {
-    set({
-      ...filters,
-      academicYearId: academicYearId || undefined,
-      classId: undefined,
-    });
-    foundation.setClassFilters({ academicYearId: academicYearId || undefined });
-    void foundation.loadClasses();
-  };
+  }, [stats, vm]);
   return (
     <Page
       title="Students"
@@ -98,90 +71,71 @@ export function StudentsDirectoryPage() {
       }
     >
       <StatCards stats={stats} />
-      <div className="bg-white border rounded-card p-4 grid grid-cols-1 md:grid-cols-4 gap-3">
-        <Input
-          placeholder="Name or student number"
-          value={filters.keyword ?? ''}
-          onChange={(e) => set({ ...filters, keyword: e.target.value })}
-        />
-        <Select
-          options={genders.map((v) => ({ value: v, label: human(v) }))}
-          placeholder="All genders"
-          value={filters.gender ?? ''}
-          onChange={(e) =>
-            set({ ...filters, gender: (e.target.value || undefined) as GenderValue | undefined })
-          }
-        />
-        <Select
-          options={grades.map((v) => ({ value: v, label: human(v) }))}
-          placeholder="All grades"
-          value={filters.gradeLevel ?? ''}
-          onChange={(e) =>
-            set({
-              ...filters,
-              gradeLevel: (e.target.value || undefined) as GradeLevelValue | undefined,
-            })
-          }
-        />
-        <Select
-          options={[
-            { value: 'active', label: 'Active' },
-            { value: 'archived', label: 'Archived' },
-          ]}
-          placeholder="All statuses"
-          value={filters.isActive === undefined ? '' : filters.isActive ? 'active' : 'archived'}
-          onChange={(e) =>
-            set({
-              ...filters,
-              isActive: e.target.value === '' ? undefined : e.target.value === 'active',
-            })
-          }
-        />
-        <Select
-          options={yearRows.map((year) => ({ value: year.id, label: year.code }))}
-          placeholder="All academic years"
-          value={filters.academicYearId ?? ''}
-          onChange={(e) => setAcademicYear(e.target.value)}
-        />
-        <Select
-          options={classRows.map((schoolClass) => ({
-            value: schoolClass.id,
-            label: schoolClass.name,
-          }))}
-          placeholder="All classes"
-          value={filters.classId ?? ''}
-          onChange={(e) => set({ ...filters, classId: e.target.value || undefined })}
-        />
-        <Select
-          options={Object.values(EnrollmentStatus).map((status) => ({
-            value: status,
-            label: human(status),
-          }))}
-          placeholder="All enrollment statuses"
-          value={filters.enrollmentStatus ?? ''}
-          onChange={(e) =>
-            set({
-              ...filters,
-              enrollmentStatus: (e.target.value || undefined) as EnrollmentStatusValue | undefined,
-            })
-          }
-        />
-        <Select
-          options={[
-            { value: 'name', label: 'Name' },
-            { value: 'admissionNumber', label: 'Student number' },
-            { value: 'updatedAt', label: 'Recently updated' },
-          ]}
-          placeholder="Sort by"
-          value={filters.sort ?? ''}
-          onChange={(e) =>
-            set({
-              ...filters,
-              sort: (e.target.value || undefined) as typeof filters.sort,
-            })
-          }
-        />
-        <Button onClick={() => void search.search()}>Search</Button>
+      <div className="bg-white border border-slate-300 p-5 space-y-5">
+        <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">Filters</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-widest text-slate-400 mb-2">
+              Search
+            </label>
+            <Input
+              placeholder="Name or student number"
+              defaultValue={filters.keyword ?? ''}
+              onChange={(e) => {
+                const keyword = e.target.value;
+                search.setFilters({ ...filters, keyword: keyword || undefined });
+                if (keywordDebounce.current) clearTimeout(keywordDebounce.current);
+                keywordDebounce.current = setTimeout(() => void search.search(), 300);
+              }}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-widest text-slate-400 mb-2">
+              Grade Level
+            </label>
+            <Select
+              options={grades.map((v) => ({ value: v, label: human(v) }))}
+              placeholder="All Grades"
+              value={filters.gradeLevel ?? ''}
+              onChange={(e) => {
+                search.setFilters({
+                  ...filters,
+                  gradeLevel: (e.target.value || undefined) as GradeLevelValue | undefined,
+                });
+                void search.search();
+              }}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-widest text-slate-400 mb-2">
+              Status
+            </label>
+            <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-0.5">
+              {(['all', 'active', 'inactive'] as const).map((s) => {
+                const active =
+                  s === 'all' ? filters.isActive === undefined : filters.isActive === (s === 'active');
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => {
+                      search.setFilters({
+                        ...filters,
+                        isActive: s === 'all' ? undefined : s === 'active',
+                      });
+                      void search.search();
+                    }}
+                    className={`flex-1 px-2 py-1.5 text-xs font-medium rounded-md transition-colors capitalize ${
+                      active ? 'bg-slate-900 text-white' : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    {s === 'all' ? 'All' : s}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
       </div>
       {(list.status === 'loading' || list.status === 'idle') && (
         <Skeleton className="h-56 w-full" />
