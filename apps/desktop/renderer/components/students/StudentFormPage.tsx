@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
+import { Check } from 'lucide-react';
 import {
   Gender,
   type Gender as GenderValue,
@@ -14,6 +15,14 @@ import {
   useStudentsListViewModel,
 } from '@/lib/presentation/hooks';
 import { genders, grades, human, Page, queryId } from './shared';
+
+interface GuardianDraft {
+  firstName: string;
+  lastName: string;
+  relationship: string;
+  phoneNumber: string;
+  isPrimary: boolean;
+}
 
 export function StudentFormPage({ edit = false }: { edit?: boolean }) {
   const listVm = useStudentsListViewModel();
@@ -37,6 +46,19 @@ export function StudentFormPage({ edit = false }: { edit?: boolean }) {
   // `if (edit) return` branch below, which simply doesn't use these.
   const [currentStep, setCurrentStep] = useState(1);
   const [stepError, setStepError] = useState('');
+  const [guardians, setGuardians] = useState<GuardianDraft[]>([
+    { firstName: '', lastName: '', relationship: '', phoneNumber: '', isPrimary: true },
+  ]);
+  const [createdStudentId, setCreatedStudentId] = useState<string | null>(null);
+  const updateGuardian = (index: number, field: keyof GuardianDraft, value: string | boolean) => {
+    setGuardians((prev) => prev.map((g, i) => (i === index ? { ...g, [field]: value } : g)));
+  };
+  const addGuardian = () =>
+    setGuardians((prev) => [
+      ...prev,
+      { firstName: '', lastName: '', relationship: '', phoneNumber: '', isPrimary: false },
+    ]);
+  const removeGuardian = (index: number) => setGuardians((prev) => prev.filter((_, i) => i !== index));
   useEffect(() => {
     void settings.loadCurrentSchool();
     const value = queryId();
@@ -74,22 +96,37 @@ export function StudentFormPage({ edit = false }: { edit?: boolean }) {
         address: address || undefined,
       });
       if (r.ok) window.location.href = `/government/school-admin/students/profile?id=${id}`;
-    } else if (profile.status === 'success' || profile.status === 'refreshing') {
-      const r = await listVm.createStudent({
-        institutionId: profile.data.id,
-        firstName,
-        middleName: middleName || undefined,
-        lastName,
-        admissionNumber: number,
-        dateOfBirth: dob,
-        gender,
-        gradeLevel: grade || undefined,
-        phoneNumber: phone || undefined,
-        email: email || undefined,
-        address: address || undefined,
-      });
-      if (r.ok) window.location.href = `/government/school-admin/students/profile?id=${r.data.id}`;
     }
+  };
+  const submitCreate = async () => {
+    if (profile.status !== 'success' && profile.status !== 'refreshing') return;
+    const r = await listVm.createStudent({
+      institutionId: profile.data.id,
+      firstName,
+      middleName: middleName || undefined,
+      lastName,
+      admissionNumber: number,
+      dateOfBirth: dob,
+      gender,
+      gradeLevel: grade || undefined,
+      phoneNumber: phone || undefined,
+      email: email || undefined,
+      address: address || undefined,
+    });
+    if (!r.ok) return;
+    for (const g of guardians.filter(
+      (guardian) => guardian.firstName && guardian.lastName && guardian.phoneNumber,
+    )) {
+      await profileVm.createGuardian({
+        studentId: r.data.id,
+        firstName: g.firstName,
+        lastName: g.lastName,
+        relationship: g.relationship,
+        phoneNumber: g.phoneNumber,
+        isPrimary: g.isPrimary,
+      });
+    }
+    setCreatedStudentId(r.data.id);
   };
   if (edit) {
     return (
@@ -165,6 +202,32 @@ export function StudentFormPage({ edit = false }: { edit?: boolean }) {
           </div>
         </form>
       </Page>
+    );
+  }
+
+  if (createdStudentId) {
+    return (
+      <div className="p-6 max-w-2xl mx-auto space-y-5">
+        <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-2xl px-5 py-4">
+          <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+            <Check className="w-5 h-5 text-green-600" />
+          </div>
+          <div>
+            <p className="font-semibold text-green-800 text-sm">Student created successfully</p>
+            <p className="text-xs text-green-700 mt-0.5">
+              {firstName} {lastName} has been added to your school.
+            </p>
+          </div>
+        </div>
+        <div className="flex gap-3">
+          <Link href={`/government/school-admin/students/profile?id=${createdStudentId}`}>
+            <Button>Go to student profile</Button>
+          </Link>
+          <Link href="/government/school-admin/students">
+            <Button variant="secondary">Back to students list</Button>
+          </Link>
+        </div>
+      </div>
     );
   }
 
@@ -262,7 +325,14 @@ export function StudentFormPage({ edit = false }: { edit?: boolean }) {
               </div>
             </div>
           )}
-          {currentStep === 2 && <GuardianStep />}
+          {currentStep === 2 && (
+            <GuardianStep
+              guardians={guardians}
+              updateGuardian={updateGuardian}
+              addGuardian={addGuardian}
+              removeGuardian={removeGuardian}
+            />
+          )}
           {currentStep === 3 && (
             <div className="bg-white rounded-2xl border border-gray-200 p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-2">Grade Level</h2>
@@ -285,7 +355,18 @@ export function StudentFormPage({ edit = false }: { edit?: boolean }) {
               </div>
             </div>
           )}
-          {currentStep === 4 && <ReviewStep profileMissing={profile.status === 'empty'} />}
+          {currentStep === 4 && (
+            <ReviewStep
+              firstName={firstName}
+              middleName={middleName}
+              lastName={lastName}
+              number={number}
+              dob={dob}
+              grade={grade}
+              guardians={guardians}
+              profileMissing={profile.status === 'empty'}
+            />
+          )}
           <div className="flex justify-between">
             <div>
               {currentStep > 1 && (
@@ -305,7 +386,7 @@ export function StudentFormPage({ edit = false }: { edit?: boolean }) {
                   Next
                 </Button>
               ) : (
-                <Button type="button" onClick={() => void submit()}>
+                <Button type="button" onClick={() => void submitCreate()}>
                   Create student
                 </Button>
               )}
@@ -317,21 +398,130 @@ export function StudentFormPage({ edit = false }: { edit?: boolean }) {
   );
 }
 
-function GuardianStep() {
+function GuardianStep({
+  guardians,
+  updateGuardian,
+  addGuardian,
+  removeGuardian,
+}: {
+  guardians: GuardianDraft[];
+  updateGuardian: (index: number, field: keyof GuardianDraft, value: string | boolean) => void;
+  addGuardian: () => void;
+  removeGuardian: (index: number) => void;
+}) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 p-6">
-      <h2 className="text-xl font-semibold text-gray-900 mb-6">Guardian Information</h2>
-      <p className="text-sm text-slate-500">Guardian fields are added in the next task.</p>
+    <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
+      <h2 className="text-xl font-semibold text-gray-900">Guardian Information</h2>
+      {guardians.map((g, index) => (
+        <div key={index} className="border border-gray-200 rounded-lg p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="font-medium text-gray-900">
+              Guardian {index + 1} {g.isPrimary && <span className="text-xs text-sky-700">(Primary)</span>}
+            </h3>
+            {guardians.length > 1 && (
+              <button type="button" className="text-red-600 text-sm" onClick={() => removeGuardian(index)}>
+                Remove
+              </button>
+            )}
+          </div>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <Input
+              label="Guardian first name"
+              value={g.firstName}
+              onChange={(e) => updateGuardian(index, 'firstName', e.target.value)}
+            />
+            <Input
+              label="Guardian last name"
+              value={g.lastName}
+              onChange={(e) => updateGuardian(index, 'lastName', e.target.value)}
+            />
+            <Input
+              label="Relationship"
+              value={g.relationship}
+              onChange={(e) => updateGuardian(index, 'relationship', e.target.value)}
+            />
+            <Input
+              label="Guardian phone"
+              value={g.phoneNumber}
+              onChange={(e) => updateGuardian(index, 'phoneNumber', e.target.value)}
+            />
+          </div>
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={g.isPrimary}
+              onChange={(e) => updateGuardian(index, 'isPrimary', e.target.checked)}
+            />
+            Primary contact
+          </label>
+        </div>
+      ))}
+      <Button type="button" variant="secondary" fullWidth onClick={addGuardian}>
+        Add another guardian
+      </Button>
     </div>
   );
 }
-function ReviewStep({ profileMissing }: { profileMissing: boolean }) {
+function ReviewStep({
+  firstName,
+  middleName,
+  lastName,
+  number,
+  dob,
+  grade,
+  guardians,
+  profileMissing,
+}: {
+  firstName: string;
+  middleName: string;
+  lastName: string;
+  number: string;
+  dob: string;
+  grade: GradeLevelValue | '';
+  guardians: GuardianDraft[];
+  profileMissing: boolean;
+}) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 p-6">
-      <h2 className="text-xl font-semibold text-gray-900 mb-6">Review & Submit</h2>
-      <p className="text-sm text-slate-500">Review summary is added in the next task.</p>
+    <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-6">
+      <h2 className="text-xl font-semibold text-gray-900">Review & Submit</h2>
+      <div className="bg-gray-50 rounded-lg p-4">
+        <h3 className="font-medium text-gray-900 mb-3">Student Information</h3>
+        <dl className="grid grid-cols-2 gap-3 text-sm">
+          <div>
+            <dt className="text-gray-600">Name</dt>
+            <dd className="font-medium">
+              {firstName} {middleName} {lastName}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-gray-600">Student number</dt>
+            <dd className="font-medium">{number}</dd>
+          </div>
+          <div>
+            <dt className="text-gray-600">Date of birth</dt>
+            <dd className="font-medium">{dob}</dd>
+          </div>
+          <div>
+            <dt className="text-gray-600">Grade</dt>
+            <dd className="font-medium">{grade ? human(grade) : 'Not selected'}</dd>
+          </div>
+        </dl>
+      </div>
+      <div className="bg-gray-50 rounded-lg p-4">
+        <h3 className="font-medium text-gray-900 mb-3">Guardian Information</h3>
+        {guardians.filter((g) => g.firstName && g.lastName).length === 0 && (
+          <p className="text-sm text-gray-600">No guardians added.</p>
+        )}
+        {guardians
+          .filter((g) => g.firstName && g.lastName)
+          .map((g, i) => (
+            <p key={i} className="text-sm text-gray-700">
+              {g.firstName} {g.lastName} — {g.relationship} {g.isPrimary && '(Primary)'}
+            </p>
+          ))}
+      </div>
       {profileMissing && (
-        <p className="text-sm text-red-700 mt-4">
+        <p className="text-sm text-red-700">
           A school profile must be provisioned before students can be created.
         </p>
       )}
