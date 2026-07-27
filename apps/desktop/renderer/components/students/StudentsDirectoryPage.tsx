@@ -104,6 +104,10 @@ export function StudentsDirectoryPage() {
     setEditingId(id);
     void profileVm.loadDetails(id);
   };
+  const detailsReady =
+    editingId !== null &&
+    (details.status === 'success' || details.status === 'refreshing') &&
+    details.data.id === editingId;
   useEffect(() => {
     if (
       editingId &&
@@ -392,7 +396,7 @@ export function StudentsDirectoryPage() {
           </>
         }
       >
-        {details.status === 'loading' || details.status === 'idle' ? (
+        {!detailsReady ? (
           <Skeleton className="h-64 w-full" />
         ) : (
           <form id="edit-student-form" onSubmit={(e) => void submitEdit(e)} className="space-y-4">

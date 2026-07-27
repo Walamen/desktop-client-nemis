@@ -207,4 +207,158 @@ describe('StudentsDirectoryPage edit drawer', () => {
     await waitFor(() => expect(getMock).toHaveBeenCalledWith('s-1'));
     await waitFor(() => expect(screen.getByDisplayValue('Grace')).toBeInTheDocument());
   });
+
+  it('submits changes via updateStudent, closes the drawer, and refetches the list', async () => {
+    const listMock = vi.fn(async () => ({
+      items: [
+        {
+          id: 's-1',
+          fullName: 'Grace Toe',
+          admissionNumber: 'ADM-1',
+          gradeLevel: 'Grade 1',
+          gender: 'Female',
+          isActive: true,
+          updatedAt: '2026-07-01',
+        },
+      ],
+      total: 1,
+      limit: 12,
+      offset: 0,
+    }));
+    const getMock = vi.fn(async () => ({
+      id: 's-1',
+      institutionId: 'inst-1',
+      firstName: 'Grace',
+      lastName: 'Toe',
+      fullName: 'Grace Toe',
+      admissionNumber: 'ADM-1',
+      dateOfBirth: '2015-01-01T00:00:00.000Z',
+      gender: 'FEMALE',
+      isActive: true,
+      version: 1,
+      updatedAt: '2026-07-01T00:00:00.000Z',
+      guardians: [],
+    }));
+    const updateMock = vi.fn(async (req: { firstName?: string; lastName?: string }) => ({
+      id: 's-1',
+      institutionId: 'inst-1',
+      firstName: req.firstName ?? 'Grace',
+      lastName: req.lastName ?? 'Toe',
+      fullName: `${req.firstName ?? 'Grace'} ${req.lastName ?? 'Toe'}`,
+      admissionNumber: 'ADM-1',
+      dateOfBirth: '2015-01-01T00:00:00.000Z',
+      gender: 'FEMALE',
+      isActive: true,
+      version: 2,
+      updatedAt: '2026-07-02T00:00:00.000Z',
+      guardians: [],
+    }));
+    (window as unknown as { nemis: unknown }).nemis = {
+      student: {
+        list: listMock,
+        get: getMock,
+        update: updateMock,
+        getStatistics: vi.fn(async () => ({
+          totalStudents: 1,
+          maleStudents: 0,
+          femaleStudents: 1,
+          recentEnrollments: 1,
+        })),
+      },
+      school: { getSummary: vi.fn(async () => null) },
+      academicYear: { getCurrent: vi.fn(async () => null), list: vi.fn(async () => []) },
+      term: { getCurrent: vi.fn(async () => null) },
+      classes: {
+        list: vi.fn(async () => ({ data: [], total: 0, page: 1, pageSize: 20, totalPages: 0 })),
+      },
+    };
+    const layer = createRendererPresentation();
+    const { default: userEvent } = await import('@testing-library/user-event');
+    const user = userEvent.setup();
+    render(
+      <PresentationProvider layer={layer}>
+        <StudentsDirectoryPage />
+      </PresentationProvider>,
+    );
+    await waitFor(() => expect(screen.getByText('Grace Toe')).toBeInTheDocument());
+    await waitFor(() => expect(listMock).toHaveBeenCalledTimes(1));
+    await user.click(screen.getByRole('button', { name: /^edit$/i }));
+    const firstNameInput = await screen.findByDisplayValue('Grace');
+    await user.clear(firstNameInput);
+    await user.type(firstNameInput, 'Amara');
+    await user.click(screen.getByRole('button', { name: /save changes/i }));
+    await waitFor(() =>
+      expect(updateMock).toHaveBeenCalledWith(
+        expect.objectContaining({ studentId: 's-1', firstName: 'Amara' }),
+      ),
+    );
+    await waitFor(() => expect(screen.queryByText('Edit Student')).toBeNull());
+    await waitFor(() => expect(listMock.mock.calls.length).toBeGreaterThan(1));
+  });
+
+  it('closes the drawer on Cancel without calling updateStudent', async () => {
+    const getMock = vi.fn(async () => ({
+      id: 's-1',
+      institutionId: 'inst-1',
+      firstName: 'Grace',
+      lastName: 'Toe',
+      fullName: 'Grace Toe',
+      admissionNumber: 'ADM-1',
+      dateOfBirth: '2015-01-01T00:00:00.000Z',
+      gender: 'FEMALE',
+      isActive: true,
+      version: 1,
+      updatedAt: '2026-07-01T00:00:00.000Z',
+      guardians: [],
+    }));
+    const updateMock = vi.fn();
+    (window as unknown as { nemis: unknown }).nemis = {
+      student: {
+        list: vi.fn(async () => ({
+          items: [
+            {
+              id: 's-1',
+              fullName: 'Grace Toe',
+              admissionNumber: 'ADM-1',
+              gradeLevel: 'Grade 1',
+              gender: 'Female',
+              isActive: true,
+              updatedAt: '2026-07-01',
+            },
+          ],
+          total: 1,
+          limit: 12,
+          offset: 0,
+        })),
+        get: getMock,
+        update: updateMock,
+        getStatistics: vi.fn(async () => ({
+          totalStudents: 1,
+          maleStudents: 0,
+          femaleStudents: 1,
+          recentEnrollments: 1,
+        })),
+      },
+      school: { getSummary: vi.fn(async () => null) },
+      academicYear: { getCurrent: vi.fn(async () => null), list: vi.fn(async () => []) },
+      term: { getCurrent: vi.fn(async () => null) },
+      classes: {
+        list: vi.fn(async () => ({ data: [], total: 0, page: 1, pageSize: 20, totalPages: 0 })),
+      },
+    };
+    const layer = createRendererPresentation();
+    const { default: userEvent } = await import('@testing-library/user-event');
+    const user = userEvent.setup();
+    render(
+      <PresentationProvider layer={layer}>
+        <StudentsDirectoryPage />
+      </PresentationProvider>,
+    );
+    await waitFor(() => expect(screen.getByText('Grace Toe')).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: /^edit$/i }));
+    await screen.findByDisplayValue('Grace');
+    await user.click(screen.getByRole('button', { name: /^cancel$/i }));
+    await waitFor(() => expect(screen.queryByText('Edit Student')).toBeNull());
+    expect(updateMock).not.toHaveBeenCalled();
+  });
 });
