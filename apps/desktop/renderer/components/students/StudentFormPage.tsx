@@ -509,11 +509,11 @@ function ReviewStep({
       </div>
       <div className="bg-gray-50 rounded-lg p-4">
         <h3 className="font-medium text-gray-900 mb-3">Guardian Information</h3>
-        {guardians.filter((g) => g.firstName && g.lastName).length === 0 && (
+        {guardians.filter((g) => g.firstName && g.lastName && g.phoneNumber).length === 0 && (
           <p className="text-sm text-gray-600">No guardians added.</p>
         )}
         {guardians
-          .filter((g) => g.firstName && g.lastName)
+          .filter((g) => g.firstName && g.lastName && g.phoneNumber)
           .map((g, i) => (
             <p key={i} className="text-sm text-gray-700">
               {g.firstName} {g.lastName} — {g.relationship} {g.isPrimary && '(Primary)'}
