@@ -19,8 +19,12 @@ function stubNemis() {
     'academic-year': undefined,
     academicYear: { getCurrent: vi.fn(async () => null), list: vi.fn(async () => []) },
     term: { getCurrent: vi.fn(async () => null) },
-    class: { list: vi.fn(async () => ({ data: [], total: 0, page: 1, pageSize: 20, totalPages: 0 })) },
-    classes: { list: vi.fn(async () => ({ data: [], total: 0, page: 1, pageSize: 20, totalPages: 0 })) },
+    class: {
+      list: vi.fn(async () => ({ data: [], total: 0, page: 1, pageSize: 20, totalPages: 0 })),
+    },
+    classes: {
+      list: vi.fn(async () => ({ data: [], total: 0, page: 1, pageSize: 20, totalPages: 0 })),
+    },
   };
 }
 
@@ -47,16 +51,29 @@ describe('StudentsDirectoryPage stat cards', () => {
 describe('StudentsDirectoryPage filters', () => {
   it('debounces the keyword filter and refetches without a Search button', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
-    const listMock = vi.fn(async () => ({ data: [], total: 0, page: 1, pageSize: 12, totalPages: 0 }));
+    const listMock = vi.fn(async () => ({
+      data: [],
+      total: 0,
+      page: 1,
+      pageSize: 12,
+      totalPages: 0,
+    }));
     (window as unknown as { nemis: unknown }).nemis = {
       student: {
         list: listMock,
-        getStatistics: vi.fn(async () => ({ totalStudents: 0, maleStudents: 0, femaleStudents: 0, recentEnrollments: 0 })),
+        getStatistics: vi.fn(async () => ({
+          totalStudents: 0,
+          maleStudents: 0,
+          femaleStudents: 0,
+          recentEnrollments: 0,
+        })),
       },
       school: { getSummary: vi.fn(async () => null) },
       academicYear: { getCurrent: vi.fn(async () => null), list: vi.fn(async () => []) },
       term: { getCurrent: vi.fn(async () => null) },
-      classes: { list: vi.fn(async () => ({ data: [], total: 0, page: 1, pageSize: 20, totalPages: 0 })) },
+      classes: {
+        list: vi.fn(async () => ({ data: [], total: 0, page: 1, pageSize: 20, totalPages: 0 })),
+      },
     };
     const layer = createRendererPresentation();
     const { default: userEvent } = await import('@testing-library/user-event');
@@ -83,16 +100,33 @@ describe('StudentsDirectoryPage view toggle', () => {
       student: {
         list: vi.fn(async () => ({
           items: [
-            { id: 's-1', fullName: 'Grace Toe', admissionNumber: 'ADM-1', gradeLevel: 'Grade 1', gender: 'Female', isActive: true, updatedAt: '2026-07-01' },
+            {
+              id: 's-1',
+              fullName: 'Grace Toe',
+              admissionNumber: 'ADM-1',
+              gradeLevel: 'Grade 1',
+              gender: 'Female',
+              isActive: true,
+              updatedAt: '2026-07-01',
+            },
           ],
-          total: 1, limit: 12, offset: 0,
+          total: 1,
+          limit: 12,
+          offset: 0,
         })),
-        getStatistics: vi.fn(async () => ({ totalStudents: 1, maleStudents: 0, femaleStudents: 1, recentEnrollments: 1 })),
+        getStatistics: vi.fn(async () => ({
+          totalStudents: 1,
+          maleStudents: 0,
+          femaleStudents: 1,
+          recentEnrollments: 1,
+        })),
       },
       school: { getSummary: vi.fn(async () => null) },
       academicYear: { getCurrent: vi.fn(async () => null), list: vi.fn(async () => []) },
       term: { getCurrent: vi.fn(async () => null) },
-      classes: { list: vi.fn(async () => ({ data: [], total: 0, page: 1, pageSize: 20, totalPages: 0 })) },
+      classes: {
+        list: vi.fn(async () => ({ data: [], total: 0, page: 1, pageSize: 20, totalPages: 0 })),
+      },
     };
     const layer = createRendererPresentation();
     const { default: userEvent } = await import('@testing-library/user-event');
@@ -113,23 +147,51 @@ describe('StudentsDirectoryPage view toggle', () => {
 describe('StudentsDirectoryPage edit drawer', () => {
   it('opens a drawer with the student loaded, not a route navigation', async () => {
     const getMock = vi.fn(async () => ({
-      id: 's-1', institutionId: 'inst-1', firstName: 'Grace', lastName: 'Toe', fullName: 'Grace Toe',
-      admissionNumber: 'ADM-1', dateOfBirth: '2015-01-01T00:00:00.000Z', gender: 'FEMALE',
-      isActive: true, version: 1, updatedAt: '2026-07-01T00:00:00.000Z', guardians: [],
+      id: 's-1',
+      institutionId: 'inst-1',
+      firstName: 'Grace',
+      lastName: 'Toe',
+      fullName: 'Grace Toe',
+      admissionNumber: 'ADM-1',
+      dateOfBirth: '2015-01-01T00:00:00.000Z',
+      gender: 'FEMALE',
+      isActive: true,
+      version: 1,
+      updatedAt: '2026-07-01T00:00:00.000Z',
+      guardians: [],
     }));
     (window as unknown as { nemis: unknown }).nemis = {
       student: {
         list: vi.fn(async () => ({
-          items: [{ id: 's-1', fullName: 'Grace Toe', admissionNumber: 'ADM-1', gradeLevel: 'Grade 1', gender: 'Female', isActive: true, updatedAt: '2026-07-01' }],
-          total: 1, limit: 12, offset: 0,
+          items: [
+            {
+              id: 's-1',
+              fullName: 'Grace Toe',
+              admissionNumber: 'ADM-1',
+              gradeLevel: 'Grade 1',
+              gender: 'Female',
+              isActive: true,
+              updatedAt: '2026-07-01',
+            },
+          ],
+          total: 1,
+          limit: 12,
+          offset: 0,
         })),
         get: getMock,
-        getStatistics: vi.fn(async () => ({ totalStudents: 1, maleStudents: 0, femaleStudents: 1, recentEnrollments: 1 })),
+        getStatistics: vi.fn(async () => ({
+          totalStudents: 1,
+          maleStudents: 0,
+          femaleStudents: 1,
+          recentEnrollments: 1,
+        })),
       },
       school: { getSummary: vi.fn(async () => null) },
       academicYear: { getCurrent: vi.fn(async () => null), list: vi.fn(async () => []) },
       term: { getCurrent: vi.fn(async () => null) },
-      classes: { list: vi.fn(async () => ({ data: [], total: 0, page: 1, pageSize: 20, totalPages: 0 })) },
+      classes: {
+        list: vi.fn(async () => ({ data: [], total: 0, page: 1, pageSize: 20, totalPages: 0 })),
+      },
     };
     const layer = createRendererPresentation();
     const { default: userEvent } = await import('@testing-library/user-event');
