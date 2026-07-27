@@ -3,6 +3,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { EnrollmentStatus } from '@nemis-desktop/types';
 import {
+  Avatar,
   Badge,
   Button,
   EmptyState,
@@ -115,36 +116,66 @@ export function StudentProfilePage() {
         </div>
       }
     >
-      <div className="grid lg:grid-cols-3 gap-4">
-        <section className="lg:col-span-2 bg-white border rounded-card p-6 grid sm:grid-cols-2 gap-4">
-          <Fact label="Student number" value={d.admissionNumber} />
-          <Fact label="Date of birth" value={d.dateOfBirth} />
-          <Fact label="Gender" value={d.gender} />
-          <Fact label="Grade" value={d.gradeLevel} />
-          <Fact label="Phone" value={d.phoneNumber ?? '—'} />
-          <Fact label="Email" value={d.email ?? '—'} />
-          <Fact label="Address" value={d.address ?? '—'} />
-          <Fact label="Status" value={d.status.label} />
-        </section>
-        <section className="bg-white border rounded-card p-6">
-          <div className="flex justify-between">
-            <h2 className="font-semibold">Guardians</h2>
-            <Button size="sm" onClick={() => setGuardianOpen(true)}>
-              Add
-            </Button>
+      <div className="bg-white border border-slate-300 rounded-card p-6">
+        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
+          <Avatar
+            firstName={d.fullName.split(' ')[0]}
+            lastName={d.fullName.split(' ').slice(1).join(' ')}
+            role="student"
+            size="xl"
+          />
+          <div className="flex-1 text-center sm:text-left">
+            <h1 className="text-2xl font-bold text-gray-900">{d.fullName}</h1>
+            <p className="text-gray-500 text-sm mt-1">
+              Admission No: <span className="font-mono font-medium text-gray-700">{d.admissionNumber}</span>
+            </p>
+            <div className="flex flex-wrap justify-center sm:justify-start gap-2 mt-3">
+              <Badge variant={d.status.label === 'Active' ? 'success' : 'neutral'} size="sm">
+                {d.status.label}
+              </Badge>
+              <Badge variant="neutral" size="sm">{d.gender}</Badge>
+              {d.gradeLevel && <Badge variant="neutral" size="sm">{d.gradeLevel}</Badge>}
+            </div>
           </div>
-          {d.guardians.length === 0 ? (
-            <p className="text-sm text-slate-500 mt-4">No guardians assigned.</p>
-          ) : (
-            d.guardians.map((g) => (
-              <p className="text-sm mt-3" key={g.id}>
-                Guardian record {g.guardianId.slice(0, 8)}{' '}
-                {g.isPrimary && <Badge size="sm">Primary</Badge>}
-              </p>
-            ))
-          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <section className="bg-white border border-slate-300 rounded-card p-6">
+          <h2 className="text-base font-semibold text-gray-900 mb-4">Personal Information</h2>
+          <div className="space-y-4">
+            <DetailRow label="Grade" value={d.gradeLevel} />
+            <DetailRow label="Date of birth" value={d.dateOfBirth} />
+          </div>
+        </section>
+        <section className="bg-white border border-slate-300 rounded-card p-6">
+          <h2 className="text-base font-semibold text-gray-900 mb-4">Contact Information</h2>
+          <div className="space-y-4">
+            <DetailRow label="Phone" value={d.phoneNumber ?? '—'} />
+            <DetailRow label="Email" value={d.email ?? '—'} />
+            <DetailRow label="Address" value={d.address ?? '—'} />
+          </div>
         </section>
       </div>
+
+      <section className="bg-white border rounded-card p-6">
+        <div className="flex justify-between">
+          <h2 className="font-semibold">Guardians</h2>
+          <Button size="sm" onClick={() => setGuardianOpen(true)}>
+            Add
+          </Button>
+        </div>
+        {d.guardians.length === 0 ? (
+          <p className="text-sm text-slate-500 mt-4">No guardians assigned.</p>
+        ) : (
+          d.guardians.map((g) => (
+            <p className="text-sm mt-3" key={g.id}>
+              Guardian record {g.guardianId.slice(0, 8)}{' '}
+              {g.isPrimary && <Badge size="sm">Primary</Badge>}
+            </p>
+          ))
+        )}
+      </section>
       <section className="bg-white border rounded-card p-6">
         <h2 className="font-semibold mb-3">Enrollment History</h2>
         {enrollments.status === 'empty' ? (
@@ -265,11 +296,11 @@ export function StudentProfilePage() {
     </Page>
   );
 }
-function Fact({ label, value }: { label: string; value: string }) {
+function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <p className="text-xs uppercase tracking-wider text-slate-400">{label}</p>
-      <p className="mt-1">{value}</p>
+      <p className="mt-1 text-sm text-gray-900">{value}</p>
     </div>
   );
 }
