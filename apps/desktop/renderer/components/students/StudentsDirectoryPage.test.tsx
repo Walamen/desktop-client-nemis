@@ -109,3 +109,40 @@ describe('StudentsDirectoryPage view toggle', () => {
     expect(screen.getByText('Grace Toe')).toBeInTheDocument();
   });
 });
+
+describe('StudentsDirectoryPage edit drawer', () => {
+  it('opens a drawer with the student loaded, not a route navigation', async () => {
+    const getMock = vi.fn(async () => ({
+      id: 's-1', institutionId: 'inst-1', firstName: 'Grace', lastName: 'Toe', fullName: 'Grace Toe',
+      admissionNumber: 'ADM-1', dateOfBirth: '2015-01-01T00:00:00.000Z', gender: 'FEMALE',
+      isActive: true, version: 1, updatedAt: '2026-07-01T00:00:00.000Z', guardians: [],
+    }));
+    (window as unknown as { nemis: unknown }).nemis = {
+      student: {
+        list: vi.fn(async () => ({
+          items: [{ id: 's-1', fullName: 'Grace Toe', admissionNumber: 'ADM-1', gradeLevel: 'Grade 1', gender: 'Female', isActive: true, updatedAt: '2026-07-01' }],
+          total: 1, limit: 12, offset: 0,
+        })),
+        get: getMock,
+        getStatistics: vi.fn(async () => ({ totalStudents: 1, maleStudents: 0, femaleStudents: 1, recentEnrollments: 1 })),
+      },
+      school: { getSummary: vi.fn(async () => null) },
+      academicYear: { getCurrent: vi.fn(async () => null), list: vi.fn(async () => []) },
+      term: { getCurrent: vi.fn(async () => null) },
+      classes: { list: vi.fn(async () => ({ data: [], total: 0, page: 1, pageSize: 20, totalPages: 0 })) },
+    };
+    const layer = createRendererPresentation();
+    const { default: userEvent } = await import('@testing-library/user-event');
+    const user = userEvent.setup();
+    render(
+      <PresentationProvider layer={layer}>
+        <StudentsDirectoryPage />
+      </PresentationProvider>,
+    );
+    await waitFor(() => expect(screen.getByText('Grace Toe')).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: /^edit$/i }));
+    expect(screen.getByText('Edit Student')).toBeInTheDocument();
+    await waitFor(() => expect(getMock).toHaveBeenCalledWith('s-1'));
+    await waitFor(() => expect(screen.getByDisplayValue('Grace')).toBeInTheDocument());
+  });
+});

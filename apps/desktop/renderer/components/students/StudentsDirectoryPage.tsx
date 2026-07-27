@@ -1,18 +1,19 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { List, LayoutGrid } from 'lucide-react';
-import { type GradeLevel as GradeLevelValue } from '@nemis-desktop/types';
-import { Avatar, Badge, Button, Card, EmptyState, ErrorState, Input, Select, Skeleton } from '@nemis-desktop/ui';
+import { Gender, type Gender as GenderValue, type GradeLevel as GradeLevelValue } from '@nemis-desktop/types';
+import { Avatar, Badge, Button, Card, Drawer, EmptyState, ErrorState, Input, Select, Skeleton } from '@nemis-desktop/ui';
 import { totalPages, type StudentRowView } from '@nemis-desktop/presentation';
 import { useViewModel } from '@/hooks/use-view-model';
 import {
   useSettingsViewModel,
+  useStudentProfileViewModel,
   useStudentSearchViewModel,
   useStudentsListViewModel,
   useStudentStatisticsViewModel,
 } from '@/lib/presentation/hooks';
-import { grades, human } from './shared';
+import { genders, grades, human } from './shared';
 
 function StatCards({ stats }: { stats: ReturnType<typeof useStudentStatisticsViewModel> }) {
   const state = useViewModel(stats.store, (s) => s.stats);
@@ -55,13 +56,24 @@ export function StudentsDirectoryPage() {
   const search = useStudentSearchViewModel();
   const stats = useStudentStatisticsViewModel();
   const settings = useSettingsViewModel();
+  const profileVm = useStudentProfileViewModel();
   const list = useViewModel(vm.store, (s) => s.list);
   const p = useViewModel(vm.store, (s) => s.pagination);
   const filters = useViewModel(vm.store, (s) => s.filters);
   const selectedIds = useViewModel(vm.selection, (s) => s.selectedIds);
   const profile = useViewModel(settings.store, (s) => s.profile);
+  const details = useViewModel(profileVm.store, (s) => s.details);
   const schoolName = profile.status === 'success' || profile.status === 'refreshing' ? profile.data.name : 'School';
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editFirst, setEditFirst] = useState('');
+  const [editMiddle, setEditMiddle] = useState('');
+  const [editLast, setEditLast] = useState('');
+  const [editDob, setEditDob] = useState('');
+  const [editGender, setEditGender] = useState<GenderValue>(Gender.FEMALE);
+  const [editPhone, setEditPhone] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editAddress, setEditAddress] = useState('');
   const keywordDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     return () => {
@@ -72,7 +84,47 @@ export function StudentsDirectoryPage() {
     void vm.setPageSize(12);
     void stats.loadStatistics();
   }, [stats, vm]);
+  const openEdit = (id: string) => {
+    setEditingId(id);
+    void profileVm.loadDetails(id);
+  };
+  useEffect(() => {
+    if (
+      editingId &&
+      (details.status === 'success' || details.status === 'refreshing') &&
+      details.data.id === editingId
+    ) {
+      setEditFirst(details.data.firstName);
+      setEditMiddle(details.data.middleName ?? '');
+      setEditLast(details.data.lastName);
+      setEditDob(details.data.rawDateOfBirth.slice(0, 10));
+      setEditGender(details.data.rawGender as GenderValue);
+      setEditPhone(details.data.phoneNumber ?? '');
+      setEditEmail(details.data.email ?? '');
+      setEditAddress(details.data.address ?? '');
+    }
+  }, [details, editingId]);
+  const submitEdit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!editingId) return;
+    const r = await profileVm.updateStudent({
+      studentId: editingId,
+      firstName: editFirst,
+      middleName: editMiddle || undefined,
+      lastName: editLast,
+      dateOfBirth: editDob,
+      gender: editGender,
+      phoneNumber: editPhone || undefined,
+      email: editEmail || undefined,
+      address: editAddress || undefined,
+    });
+    if (r.ok) {
+      setEditingId(null);
+      void vm.loadStudents();
+    }
+  };
   return (
+    <>
     <div className="p-6 space-y-5">
       <div className="bg-slate-900 text-white px-6 py-5 flex items-center justify-between rounded-card">
         <div>
@@ -260,12 +312,9 @@ export function StudentsDirectoryPage() {
                         >
                           View
                         </Link>
-                        <Link
-                          className="text-blue-700"
-                          href={`/government/school-admin/students/edit?id=${s.id}`}
-                        >
+                        <button className="text-blue-700" onClick={() => openEdit(s.id)}>
                           Edit
-                        </Link>
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -275,7 +324,7 @@ export function StudentsDirectoryPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {list.data.map((s) => (
-                <StudentCard key={s.id} student={s} />
+                <StudentCard key={s.id} student={s} onEdit={() => openEdit(s.id)} />
               ))}
             </div>
           )}
@@ -308,10 +357,60 @@ export function StudentsDirectoryPage() {
         </>
       )}
     </div>
+    <Drawer
+      isOpen={editingId !== null}
+      onClose={() => setEditingId(null)}
+      title="Edit Student"
+      footer={
+        <>
+          <Button type="button" variant="secondary" onClick={() => setEditingId(null)}>
+            Cancel
+          </Button>
+          <Button type="submit" form="edit-student-form">
+            Save changes
+          </Button>
+        </>
+      }
+    >
+      {details.status === 'loading' || details.status === 'idle' ? (
+        <Skeleton className="h-64 w-full" />
+      ) : (
+        <form id="edit-student-form" onSubmit={(e) => void submitEdit(e)} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="First name" required value={editFirst} onChange={(e) => setEditFirst(e.target.value)} />
+            <Input label="Last name" required value={editLast} onChange={(e) => setEditLast(e.target.value)} />
+            <Input label="Middle name" value={editMiddle} onChange={(e) => setEditMiddle(e.target.value)} />
+            <Input
+              label="Date of birth"
+              type="date"
+              required
+              value={editDob}
+              onChange={(e) => setEditDob(e.target.value)}
+            />
+            <Select
+              label="Gender"
+              required
+              options={genders.map((v) => ({ value: v, label: human(v) }))}
+              value={editGender}
+              onChange={(e) => setEditGender(e.target.value as GenderValue)}
+            />
+            <Input label="Phone" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
+            <Input
+              label="Email"
+              type="email"
+              value={editEmail}
+              onChange={(e) => setEditEmail(e.target.value)}
+            />
+          </div>
+          <Input label="Address" value={editAddress} onChange={(e) => setEditAddress(e.target.value)} />
+        </form>
+      )}
+    </Drawer>
+    </>
   );
 }
 
-function StudentCard({ student }: { student: StudentRowView }) {
+function StudentCard({ student, onEdit }: { student: StudentRowView; onEdit: () => void }) {
   return (
     <Card hoverable bordered={false}>
       <div className="flex items-start justify-between gap-2">
@@ -347,9 +446,9 @@ function StudentCard({ student }: { student: StudentRowView }) {
         <Link className="text-blue-700" href={`/government/school-admin/students/profile?id=${student.id}`}>
           View
         </Link>
-        <Link className="text-blue-700" href={`/government/school-admin/students/edit?id=${student.id}`}>
+        <button className="text-blue-700" onClick={onEdit}>
           Edit
-        </Link>
+        </button>
       </div>
     </Card>
   );
