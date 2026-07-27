@@ -67,5 +67,24 @@ describe('StudentFormPage create wizard', () => {
     await waitFor(() =>
       expect(screen.getByRole('heading', { name: 'Grade Level', level: 2 })).toBeInTheDocument(),
     );
+
+    // Step 3 validation: no grade selected yet, Next must not advance.
+    await user.click(screen.getByRole('button', { name: /next/i }));
+    expect(screen.getByRole('heading', { name: 'Grade Level', level: 2 })).toBeInTheDocument();
+
+    // Select a grade, then Next should advance to the final step.
+    await user.click(screen.getByRole('button', { name: 'GRADE 1' }));
+    await user.click(screen.getByRole('button', { name: /next/i }));
+    await waitFor(() =>
+      expect(
+        screen.getByRole('heading', { name: 'Review & Submit', level: 2 }),
+      ).toBeInTheDocument(),
+    );
+
+    // Back navigation returns to the previous step (Grade Level).
+    await user.click(screen.getByRole('button', { name: /back/i }));
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'Grade Level', level: 2 })).toBeInTheDocument(),
+    );
   });
 });

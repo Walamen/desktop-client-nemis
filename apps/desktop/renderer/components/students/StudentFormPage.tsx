@@ -155,11 +155,6 @@ export function StudentFormPage({ edit = false }: { edit?: boolean }) {
             />
           </div>
           <Input label="Address" value={address} onChange={(e) => setAddress(e.target.value)} />
-          {profile.status === 'empty' && !edit && (
-            <p className="text-sm text-red-700">
-              A school profile must be provisioned before students can be created.
-            </p>
-          )}
           <div className="flex gap-2">
             <Button type="submit">{edit ? 'Save changes' : 'Create student'}</Button>
             <Link href="/government/school-admin/students">
@@ -290,7 +285,7 @@ export function StudentFormPage({ edit = false }: { edit?: boolean }) {
               </div>
             </div>
           )}
-          {currentStep === 4 && <ReviewStep />}
+          {currentStep === 4 && <ReviewStep profileMissing={profile.status === 'empty'} />}
           <div className="flex justify-between">
             <div>
               {currentStep > 1 && (
@@ -330,11 +325,16 @@ function GuardianStep() {
     </div>
   );
 }
-function ReviewStep() {
+function ReviewStep({ profileMissing }: { profileMissing: boolean }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-200 p-6">
       <h2 className="text-xl font-semibold text-gray-900 mb-6">Review & Submit</h2>
       <p className="text-sm text-slate-500">Review summary is added in the next task.</p>
+      {profileMissing && (
+        <p className="text-sm text-red-700 mt-4">
+          A school profile must be provisioned before students can be created.
+        </p>
+      )}
     </div>
   );
 }
