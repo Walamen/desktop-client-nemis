@@ -30,7 +30,9 @@ describe('StudentProfilePage', () => {
         <StudentProfilePage />
       </PresentationProvider>,
     );
-    await waitFor(() => expect(screen.getByText('Grace Toe')).toBeInTheDocument());
+    // "Grace Toe" appears twice: once in the shared `Page` header (out of
+    // scope for this task) and once in the new profile header card below it.
+    await waitFor(() => expect(screen.getAllByText('Grace Toe').length).toBeGreaterThan(0));
     expect(screen.getByText('Personal Information')).toBeInTheDocument();
     expect(screen.getByText('Contact Information')).toBeInTheDocument();
     expect(screen.getByText('Active')).toBeInTheDocument();
