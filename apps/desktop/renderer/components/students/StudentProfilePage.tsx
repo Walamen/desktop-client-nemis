@@ -158,15 +158,15 @@ export function StudentProfilePage() {
         </section>
       </div>
 
-      <section className="bg-white border rounded-card p-6">
-        <div className="flex justify-between">
-          <h2 className="font-semibold">Guardians</h2>
+      <section className="bg-white border border-slate-300 rounded-card p-6">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-base font-semibold text-gray-900">Guardians</h2>
           <Button size="sm" onClick={() => setGuardianOpen(true)}>
             Add
           </Button>
         </div>
         {d.guardians.length === 0 ? (
-          <p className="text-sm text-slate-500 mt-4">No guardians assigned.</p>
+          <p className="text-sm text-slate-500">No guardians assigned.</p>
         ) : (
           d.guardians.map((g) => (
             <p className="text-sm mt-3" key={g.id}>
@@ -176,8 +176,8 @@ export function StudentProfilePage() {
           ))
         )}
       </section>
-      <section className="bg-white border rounded-card p-6">
-        <h2 className="font-semibold mb-3">Enrollment History</h2>
+      <section className="bg-white border border-slate-300 rounded-card p-6">
+        <h2 className="text-base font-semibold text-gray-900 mb-4">Enrollment History</h2>
         {enrollments.status === 'empty' ? (
           <p className="text-sm text-slate-500">No enrollment history available.</p>
         ) : enrollments.status === 'success' || enrollments.status === 'refreshing' ? (

@@ -38,3 +38,30 @@ describe('StudentProfilePage', () => {
     expect(screen.getByText('Active')).toBeInTheDocument();
   });
 });
+
+describe('StudentProfilePage enrollment/guardians', () => {
+  it('shows titled Enrollment History and Guardians cards matching the personal-info card style', async () => {
+    window.history.pushState({}, '', '/government/school-admin/students/profile?id=s-1');
+    (window as unknown as { nemis: unknown }).nemis = {
+      student: {
+        get: vi.fn(async () => ({
+          id: 's-1', institutionId: 'inst-1', firstName: 'Grace', lastName: 'Toe', fullName: 'Grace Toe',
+          admissionNumber: 'ADM-1', dateOfBirth: '2015-01-01T00:00:00.000Z', gender: 'FEMALE',
+          isActive: true, version: 1, updatedAt: '2026-07-01T00:00:00.000Z', guardians: [],
+        })),
+        listEnrollments: vi.fn(async () => []),
+      },
+    };
+    const layer = createRendererPresentation();
+    render(
+      <PresentationProvider layer={layer}>
+        <StudentProfilePage />
+      </PresentationProvider>,
+    );
+    await waitFor(() => expect(screen.getAllByText('Grace Toe').length).toBeGreaterThan(0));
+    expect(screen.getByText('Enrollment History')).toBeInTheDocument();
+    expect(screen.getByText('Guardians')).toBeInTheDocument();
+    expect(screen.getByText('No enrollment history available.')).toBeInTheDocument();
+    expect(screen.getByText('No guardians assigned.')).toBeInTheDocument();
+  });
+});
