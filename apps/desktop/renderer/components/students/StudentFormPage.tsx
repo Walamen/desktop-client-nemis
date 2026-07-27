@@ -32,6 +32,11 @@ export function StudentFormPage({ edit = false }: { edit?: boolean }) {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
+  // Wizard-only state (create mode). Declared unconditionally, alongside the
+  // other hooks, so hook order stays stable regardless of `edit` — see the
+  // `if (edit) return` branch below, which simply doesn't use these.
+  const [currentStep, setCurrentStep] = useState(1);
+  const [stepError, setStepError] = useState('');
   useEffect(() => {
     void settings.loadCurrentSchool();
     const value = queryId();
@@ -174,8 +179,6 @@ export function StudentFormPage({ edit = false }: { edit?: boolean }) {
     { number: 3, title: 'Grade Level', description: 'Level selection' },
     { number: 4, title: 'Review & Submit', description: 'Confirm details' },
   ] as const;
-  const [currentStep, setCurrentStep] = useState(1);
-  const [stepError, setStepError] = useState('');
 
   const validateStep1 = () => {
     if (!firstName.trim() || !lastName.trim() || !dob || !number.trim()) {
