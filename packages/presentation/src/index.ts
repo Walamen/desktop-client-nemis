@@ -65,6 +65,8 @@ export * from './mappers/reporting/dashboard-view-mapper';
 export * from './view-models/students/students-views';
 export * from './view-models/students/students-view-model';
 export * from './view-models/students/focused-student-view-models';
+export * from './view-models/students/student-statistics-view-model';
+export * from './view-models/students/student-statistics-views';
 export * from './view-models/class-roster/class-roster-views';
 export * from './view-models/class-roster/class-roster-view-model';
 export * from './view-models/attendance/attendance-views';

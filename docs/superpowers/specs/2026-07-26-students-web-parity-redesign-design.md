@@ -151,7 +151,9 @@ New/changed files, by layer:
 - **Toolbar**: `{p.totalCount} students found` + Table/Grid toggle (local `useState<'table'|'grid'>`).
 - **Table view**: swaps the current raw `<table>` styling for the web's column set — Student (`Avatar`
   initials + `fullName`), Admission #, Grade badge, Gender, Status `Badge`, Actions (View → profile link,
-  Edit → opens drawer, Archive/Restore → `profileVm.setStudentActive`). Row-selection checkboxes are kept
+  Edit → opens drawer). No archive/restore control is added to the table or `StudentCard` — that action
+  remains only on the profile page's own Archive/Restore button (`profileVm.setStudentActive`), matching
+  the original list, which didn't have one either. Row-selection checkboxes are kept
   (existing `toggleSelection`/`selectPage` capability), added as a column consistent with the web's
   design language even though the web reference doesn't have them — they're pre-existing desktop
   functionality, not new scope.
@@ -181,9 +183,10 @@ step indicator matching the web's, "Back"/"Next"/"Cancel"/"Create Student" foote
 
 Submit handler: `await listVm.createStudent(dto)`; on `ok`, loop the entered guardians and
 `await profileVm.createGuardian({ studentId: r.data.id, ...guardian })` for each; then show a plain
-success view (no credentials) with links to the new profile / "add another student" (resets wizard
-state). Edit mode (`StudentFormPage({ edit: true })`) is unchanged — it keeps its current single-page
-form; this redesign only touches the create path per the wizard shell.
+success view (no credentials) with "Go to student profile" and "Back to students list" links (no
+"add another student" reset-and-repeat flow). Edit mode (`StudentFormPage({ edit: true })`) is
+unchanged — it keeps its current single-page form; this redesign only touches the create path per
+the wizard shell.
 
 ## Architecture — Profile page redesign
 

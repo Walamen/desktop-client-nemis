@@ -19,7 +19,7 @@ import {
   useEnrollmentViewModel,
   useStudentProfileViewModel,
 } from '@/lib/presentation/hooks';
-import { human, Page, queryId } from './shared';
+import { human, queryId } from './shared';
 
 export function StudentProfilePage() {
   const vm = useStudentProfileViewModel();
@@ -49,21 +49,21 @@ export function StudentProfilePage() {
   }, [vm]);
   if (details.status === 'loading' || details.status === 'idle')
     return (
-      <Page title="Student Profile">
+      <div className="p-6 space-y-5">
         <Skeleton className="h-64 w-full" />
-      </Page>
+      </div>
     );
   if (details.status === 'error')
     return (
-      <Page title="Student Profile">
+      <div className="p-6 space-y-5">
         <ErrorState message={details.error.userMessage} />
-      </Page>
+      </div>
     );
   if (details.status === 'empty')
     return (
-      <Page title="Student Profile">
+      <div className="p-6 space-y-5">
         <EmptyState title="Student not found." />
-      </Page>
+      </div>
     );
   const d = details.data;
   const addGuardian = async (e: FormEvent) => {
@@ -95,27 +95,7 @@ export function StudentProfilePage() {
     if (result.ok) setMoveOpen(false);
   };
   return (
-    <Page
-      title={d.fullName}
-      action={
-        <div className="flex gap-2">
-          <Link href={`/government/school-admin/students/edit?id=${id}`}>
-            <Button variant="secondary">Edit</Button>
-          </Link>
-          <Link href={`/government/school-admin/students/enroll?id=${id}`}>
-            <Button>Enroll</Button>
-          </Link>
-          <Button
-            variant={d.status.label === 'Active' ? 'destructive' : 'secondary'}
-            onClick={() =>
-              void vm.setStudentActive({ studentId: id, isActive: d.status.label !== 'Active' })
-            }
-          >
-            {d.status.label === 'Active' ? 'Archive' : 'Restore'}
-          </Button>
-        </div>
-      }
-    >
+    <div className="p-6 space-y-5">
       <div className="bg-white border border-slate-300 rounded-card p-6">
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
           <Avatar
@@ -136,6 +116,22 @@ export function StudentProfilePage() {
               <Badge variant="neutral" size="sm">{d.gender}</Badge>
               {d.gradeLevel && <Badge variant="neutral" size="sm">{d.gradeLevel}</Badge>}
             </div>
+          </div>
+          <div className="flex flex-wrap justify-center sm:justify-end gap-2 sm:ml-auto">
+            <Link href={`/government/school-admin/students/edit?id=${id}`}>
+              <Button variant="secondary">Edit</Button>
+            </Link>
+            <Link href={`/government/school-admin/students/enroll?id=${id}`}>
+              <Button>Enroll</Button>
+            </Link>
+            <Button
+              variant={d.status.label === 'Active' ? 'destructive' : 'secondary'}
+              onClick={() =>
+                void vm.setStudentActive({ studentId: id, isActive: d.status.label !== 'Active' })
+              }
+            >
+              {d.status.label === 'Active' ? 'Archive' : 'Restore'}
+            </Button>
           </div>
         </div>
       </div>
@@ -293,7 +289,7 @@ export function StudentProfilePage() {
           />
         </form>
       </Modal>
-    </Page>
+    </div>
   );
 }
 function DetailRow({ label, value }: { label: string; value: string }) {

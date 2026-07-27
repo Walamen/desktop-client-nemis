@@ -144,6 +144,58 @@ describe('StudentsDirectoryPage view toggle', () => {
   });
 });
 
+describe('StudentsDirectoryPage pagination', () => {
+  it('windows the page-button strip instead of rendering one button per page', async () => {
+    (window as unknown as { nemis: unknown }).nemis = {
+      student: {
+        list: vi.fn(async () => ({
+          items: [
+            {
+              id: 's-1',
+              fullName: 'Grace Toe',
+              admissionNumber: 'ADM-1',
+              gradeLevel: 'Grade 1',
+              gender: 'Female',
+              isActive: true,
+              updatedAt: '2026-07-01',
+            },
+          ],
+          total: 600, // pageSize 12 => 50 pages
+          limit: 12,
+          offset: 0,
+        })),
+        getStatistics: vi.fn(async () => ({
+          totalStudents: 600,
+          maleStudents: 300,
+          femaleStudents: 300,
+          recentEnrollments: 10,
+        })),
+      },
+      school: { getSummary: vi.fn(async () => null) },
+      academicYear: { getCurrent: vi.fn(async () => null), list: vi.fn(async () => []) },
+      term: { getCurrent: vi.fn(async () => null) },
+      classes: {
+        list: vi.fn(async () => ({ data: [], total: 0, page: 1, pageSize: 20, totalPages: 0 })),
+      },
+    };
+    const layer = createRendererPresentation();
+    render(
+      <PresentationProvider layer={layer}>
+        <StudentsDirectoryPage />
+      </PresentationProvider>,
+    );
+    await waitFor(() => expect(screen.getByText('Grace Toe')).toBeInTheDocument());
+    const pageButtons = screen.getAllByRole('button', { name: /^\d+$/ });
+    // 50 true pages must never render as 50 buttons — the window is bounded
+    // regardless of how many pages exist.
+    expect(pageButtons.length).toBeLessThan(10);
+    expect(pageButtons.length).toBeLessThan(50);
+    // First and last page are always reachable.
+    expect(screen.getByRole('button', { name: '1' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '50' })).toBeInTheDocument();
+  });
+});
+
 describe('StudentsDirectoryPage edit drawer', () => {
   it('opens a drawer with the student loaded, not a route navigation', async () => {
     const getMock = vi.fn(async () => ({

@@ -19,7 +19,11 @@ import {
   Select,
   Skeleton,
 } from '@nemis-desktop/ui';
-import { totalPages, type StudentRowView } from '@nemis-desktop/presentation';
+import {
+  totalPages,
+  type StudentRowView,
+  type StudentStatisticsViewModel,
+} from '@nemis-desktop/presentation';
 import { useViewModel } from '@/hooks/use-view-model';
 import {
   useSettingsViewModel,
@@ -30,9 +34,49 @@ import {
 } from '@/lib/presentation/hooks';
 import { genders, grades, human } from './shared';
 
-function StatCards({ stats }: { stats: ReturnType<typeof useStudentStatisticsViewModel> }) {
+/**
+ * Windows a page-button strip down to a bounded set: page 1, page `total`,
+ * the current page +/- `delta` neighbors, and an `'ellipsis'` marker for any
+ * skipped range in between. Keeps the row from growing unbounded with the
+ * number of pages (e.g. 50+ pages for a large school) while still letting
+ * the user jump to the start/end or step through nearby pages.
+ */
+function getPaginationWindow(
+  current: number,
+  total: number,
+  delta = 2,
+): (number | 'ellipsis')[] {
+  if (total <= 1) return total === 1 ? [1] : [];
+  const left = Math.max(2, current - delta);
+  const right = Math.min(total - 1, current + delta);
+  const pages: (number | 'ellipsis')[] = [1];
+  if (left > 2) pages.push('ellipsis');
+  for (let page = left; page <= right; page++) pages.push(page);
+  if (right < total - 1) pages.push('ellipsis');
+  pages.push(total);
+  return pages;
+}
+
+function StatValue({
+  status,
+  value,
+  className,
+}: {
+  status: 'idle' | 'loading' | 'success' | 'refreshing' | 'empty' | 'error';
+  value: number | undefined;
+  className: string;
+}) {
+  if (status === 'error') {
+    return <p className={className}>—</p>;
+  }
+  if (value === undefined) {
+    return <Skeleton className="h-9 w-16 mt-2" />;
+  }
+  return <p className={className}>{value.toLocaleString()}</p>;
+}
+
+function StatCards({ stats }: { stats: StudentStatisticsViewModel }) {
   const state = useViewModel(stats.store, (s) => s.stats);
-  const value = (n: number) => n.toLocaleString();
   const data = state.status === 'success' || state.status === 'refreshing' ? state.data : null;
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -40,26 +84,40 @@ function StatCards({ stats }: { stats: ReturnType<typeof useStudentStatisticsVie
         <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">
           Total Students
         </p>
-        <p className="text-4xl font-bold text-slate-900 mt-2">{value(data?.totalStudents ?? 0)}</p>
+        <StatValue
+          status={state.status}
+          value={data?.totalStudents}
+          className="text-4xl font-bold text-slate-900 mt-2"
+        />
         <p className="text-xs text-slate-400 mt-1">Registered in school</p>
       </div>
       <div className="bg-white border border-slate-300 rounded-card p-4">
         <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">Male</p>
-        <p className="text-4xl font-bold text-sky-600 mt-2">{value(data?.maleStudents ?? 0)}</p>
+        <StatValue
+          status={state.status}
+          value={data?.maleStudents}
+          className="text-4xl font-bold text-sky-600 mt-2"
+        />
         <p className="text-xs text-slate-400 mt-1">Male students</p>
       </div>
       <div className="bg-white border border-slate-300 rounded-card p-4">
         <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">Female</p>
-        <p className="text-4xl font-bold text-pink-500 mt-2">{value(data?.femaleStudents ?? 0)}</p>
+        <StatValue
+          status={state.status}
+          value={data?.femaleStudents}
+          className="text-4xl font-bold text-pink-500 mt-2"
+        />
         <p className="text-xs text-slate-400 mt-1">Female students</p>
       </div>
       <div className="bg-white border border-slate-300 rounded-card p-4">
         <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">
           New This Quarter
         </p>
-        <p className="text-4xl font-bold text-emerald-600 mt-2">
-          {value(data?.recentEnrollments ?? 0)}
-        </p>
+        <StatValue
+          status={state.status}
+          value={data?.recentEnrollments}
+          className="text-4xl font-bold text-emerald-600 mt-2"
+        />
         <p className="text-xs text-slate-400 mt-1">Recent enrollments</p>
       </div>
     </div>
@@ -140,7 +198,9 @@ export function StudentsDirectoryPage() {
     });
     if (r.ok) {
       setEditingId(null);
-      void vm.loadStudents();
+      // Note: profileVm.updateStudent (StudentsViewModel.updateStudent) already
+      // awaits this.loadStudents() internally on success — vm and profileVm share
+      // the same underlying store, so an explicit refetch here would be redundant.
     }
   };
   return (
@@ -363,19 +423,29 @@ export function StudentsDirectoryPage() {
                 )}
               </div>
               <div className="flex items-center gap-1">
-                {Array.from({ length: Math.max(1, totalPages(p)) }, (_, i) => i + 1).map((page) => (
-                  <button
-                    key={page}
-                    onClick={() => void vm.goToPage(page)}
-                    className={`w-8 h-8 text-xs font-medium rounded-lg transition-colors ${
-                      p.page === page
-                        ? 'bg-slate-900 text-white'
-                        : 'text-slate-600 hover:bg-slate-50'
-                    }`}
-                  >
-                    {page}
-                  </button>
-                ))}
+                {getPaginationWindow(p.page, totalPages(p)).map((entry, index) =>
+                  entry === 'ellipsis' ? (
+                    <span
+                      key={`ellipsis-${index}`}
+                      className="w-8 h-8 flex items-center justify-center text-xs text-slate-400"
+                    >
+                      …
+                    </span>
+                  ) : (
+                    <button
+                      key={entry}
+                      onClick={() => void vm.goToPage(entry)}
+                      aria-current={p.page === entry ? 'page' : undefined}
+                      className={`w-8 h-8 text-xs font-medium rounded-lg transition-colors ${
+                        p.page === entry
+                          ? 'bg-slate-900 text-white'
+                          : 'text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      {entry}
+                    </button>
+                  ),
+                )}
               </div>
             </div>
           </>
@@ -390,7 +460,7 @@ export function StudentsDirectoryPage() {
             <Button type="button" variant="secondary" onClick={() => setEditingId(null)}>
               Cancel
             </Button>
-            <Button type="submit" form="edit-student-form">
+            <Button type="submit" form="edit-student-form" disabled={!detailsReady}>
               Save changes
             </Button>
           </>
