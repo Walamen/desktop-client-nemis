@@ -122,12 +122,28 @@ export class DesktopSyncWorker {
         for (const item of claimed) {
           const nextRetryCount = item.retryCount + 1;
           if (nextRetryCount >= DEAD_LETTER_THRESHOLD) {
-            await workspace.data.services.syncQueue.fail(item.id, { message, stack });
-            // markFailed() only sets status='failed' and bumps retryCount — it
-            // doesn't flag deadLetter, so the dead-letter marker is set here.
-            workspace.database.connection.prepare(`
-              UPDATE sync_queue SET deadLetter=1,updatedAt=? WHERE id=?
-            `).run(now, item.id);
+            // SyncQueueService.fail() wraps markFailed()+recordError() in its
+            // own transaction, which would leave a crash window between that
+            // commit and the deadLetter UPDATE below if run separately. Its
+            // work is synchronous (fail() is only async for the Promise
+            // contract), so call the repository directly here — same reason
+            // recordError is called directly in the branch below — and fold
+            // the deadLetter marker into the same IMMEDIATE transaction so
+            // the whole dead-letter transition is atomic. Nested
+            // executeTransaction calls inside markFailed()/recordError()
+            // compose as SAVEPOINTs under this outer transaction.
+            workspace.database.transactions.runImmediate(() => {
+              workspace.data.repositories.syncQueue.markFailed(item.id);
+              workspace.data.repositories.syncQueue.recordError({
+                operationId: item.id,
+                message,
+                stack: stack ?? null,
+                retryCount: nextRetryCount,
+              });
+              workspace.database.connection.prepare(`
+                UPDATE sync_queue SET deadLetter=1,updatedAt=? WHERE id=?
+              `).run(now, item.id);
+            });
           } else {
             const delayMs = BACKOFF_SCHEDULE_MS[nextRetryCount - 1] ?? BACKOFF_SCHEDULE_MS.at(-1)!;
             await workspace.data.services.syncQueue.scheduleRetry(
