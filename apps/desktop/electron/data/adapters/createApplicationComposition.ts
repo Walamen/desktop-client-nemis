@@ -25,9 +25,11 @@ function notBuilt(name: string): never {
  * their phase lands. */
 export function createApplicationComposition(
   dataLayer: DataLayer,
+  currentUserId: string,
   logger: IAppLogger = new ConsoleLogger(),
 ): ApplicationLayer {
   const ports: ApplicationPorts = {
+    currentUserId,
     // Infra — real SQLite.
     deviceGateway: new DeviceGatewayAdapter(dataLayer.repositories.devices),
     settingsGateway: new SettingsGatewayAdapter(

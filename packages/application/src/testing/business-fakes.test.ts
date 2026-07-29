@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { AcademicYear, Attendance, Institution, User, UserOrganization } from '@nemis-desktop/domain';
-import { ApprovalStatus, AttendanceStatus, InstitutionType, OwnershipType, SystemRole } from '@nemis-desktop/types';
+import { AcademicYear, Attendance, Institution } from '@nemis-desktop/domain';
+import { ApprovalStatus, AttendanceStatus, InstitutionType, OwnershipType } from '@nemis-desktop/types';
 import { InMemoryAttendanceRepository } from './attendance/in-memory-attendance-repository';
 import { InMemoryInstitutionRepository } from './institution/in-memory-institution-repository';
-import { InMemoryUserRepository } from './identity/in-memory-user-repository';
 import { InMemoryAcademicYearRepository } from './academics/in-memory-academic-year-repository';
 import { InMemoryDeviceGateway } from './infra/in-memory-device-gateway';
 
@@ -26,27 +25,6 @@ describe('business fakes new read methods', () => {
       }),
     );
     expect(repo.findFirst()?.id).toBe('inst-1');
-  });
-
-  it('InMemoryUserRepository.findFirst returns the only user or null', () => {
-    const repo = new InMemoryUserRepository();
-    expect(repo.findFirst()).toBeNull();
-    repo.store.set(
-      'usr-1',
-      User.reconstitute({
-        id: 'usr-1',
-        firstName: 'Local',
-        lastName: 'Admin',
-        email: 'admin@local.nemis',
-        isActive: true,
-        organizations: [
-          UserOrganization.reconstitute({ id: 'o-1', role: SystemRole.INSTITUTION_ADMIN, isActive: true }),
-        ],
-        version: 1,
-        updatedAt: '2026-07-20T00:00:00.000Z',
-      }),
-    );
-    expect(repo.findFirst()?.id).toBe('usr-1');
   });
 
   it('InMemoryAcademicYearRepository.findCurrent returns the current year or null', () => {

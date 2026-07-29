@@ -15,6 +15,9 @@ const statusOptions = Object.values(AttendanceStatus).map((status) => ({
   label: status.charAt(0) + status.slice(1).toLowerCase(),
 }));
 
+/** Teacher-facing attendance recording page. School admins get a separate,
+ * view-only report (AttendanceReportPage) — recording stays exclusive to
+ * teachers, who are the ones responsible for marking attendance. */
 export function AttendancePage() {
   const academics = useAcademicFoundationViewModel();
   const attendance = useAttendanceViewModel();

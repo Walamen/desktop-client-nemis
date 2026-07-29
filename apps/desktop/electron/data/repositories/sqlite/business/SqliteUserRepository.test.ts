@@ -13,11 +13,11 @@ describe('SqliteUserRepository', () => {
   });
   afterEach(() => test.cleanup());
 
-  it('findFirst returns null before provisioning', () => {
-    expect(repo.findFirst()).toBeNull();
+  it('findById returns null when the user is not provisioned', () => {
+    expect(repo.findById('user-1')).toBeNull();
   });
 
-  it('findFirst returns a provisioned user with its role', () => {
+  it('findById returns the matching provisioned user with its role', () => {
     test.context.connection
       .prepare(
         `INSERT INTO users
@@ -33,9 +33,21 @@ describe('SqliteUserRepository', () => {
          VALUES ('organization-1', 'user-1', ?, NULL, NULL, NULL, 1)`,
       )
       .run(SystemRole.INSTITUTION_ADMIN);
-    const user = repo.findFirst();
+    const user = repo.findById('user-1');
     expect(user?.name.full).toBe('Martha Doe');
     expect(user?.email.value).toBe('martha@school.edu.lr');
     expect(user?.hasRole(SystemRole.INSTITUTION_ADMIN)).toBe(true);
+  });
+
+  it('findById does not return a different user\'s row', () => {
+    test.context.connection
+      .prepare(
+        `INSERT INTO users
+          (id, firstName, middleName, lastName, email, isActive, version, updatedAt)
+         VALUES ('user-1', 'Martha', NULL, 'Doe', 'martha@school.edu.lr', 1, 1, ?);
+         `,
+      )
+      .run(new Date().toISOString());
+    expect(repo.findById('someone-else')).toBeNull();
   });
 });

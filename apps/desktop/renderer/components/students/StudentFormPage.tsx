@@ -205,27 +205,41 @@ export function StudentFormPage({ edit = false }: { edit?: boolean }) {
     );
   }
 
+  const schoolName =
+    profile.status === 'success' || profile.status === 'refreshing' ? profile.data.name : 'School';
+
   if (createdStudentId) {
     return (
-      <div className="p-6 max-w-2xl mx-auto space-y-5">
-        <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-2xl px-5 py-4">
-          <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-            <Check className="w-5 h-5 text-green-600" />
-          </div>
+      <div className="min-h-full bg-slate-100">
+        <div className="bg-slate-900 text-white px-6 py-5 flex items-center justify-between">
           <div>
-            <p className="font-semibold text-green-800 text-sm">Student created successfully</p>
-            <p className="text-xs text-green-700 mt-0.5">
-              {firstName} {lastName} has been added to your school.
-            </p>
+            <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">School Admin Portal</p>
+            <h1 className="text-xl font-bold mt-0.5">Add Student</h1>
+          </div>
+          <div className="text-right">
+            <p className="text-sm font-medium text-slate-300">{schoolName}</p>
           </div>
         </div>
-        <div className="flex gap-3">
-          <Link href={`/government/school-admin/students/profile?id=${createdStudentId}`}>
-            <Button>Go to student profile</Button>
-          </Link>
-          <Link href="/government/school-admin/students">
-            <Button variant="secondary">Back to students list</Button>
-          </Link>
+        <div className="px-6 py-6 max-w-2xl mx-auto space-y-5">
+          <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-2xl px-5 py-4">
+            <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+              <Check className="w-5 h-5 text-green-600" />
+            </div>
+            <div>
+              <p className="font-semibold text-green-800 text-sm">Student created successfully</p>
+              <p className="text-xs text-green-700 mt-0.5">
+                {firstName} {lastName} has been added to your school.
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <Link href={`/government/school-admin/students/profile?id=${createdStudentId}`}>
+              <Button>Go to student profile</Button>
+            </Link>
+            <Link href="/government/school-admin/students">
+              <Button variant="secondary">Back to students list</Button>
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -262,8 +276,17 @@ export function StudentFormPage({ edit = false }: { edit?: boolean }) {
   const handleBack = () => setCurrentStep((s) => Math.max(1, s - 1));
 
   return (
-    <div className="p-6">
-      <div className="flex gap-8">
+    <div className="min-h-full bg-slate-100">
+      <div className="bg-slate-900 text-white px-6 py-5 flex items-center justify-between">
+        <div>
+          <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">School Admin Portal</p>
+          <h1 className="text-xl font-bold mt-0.5">Add Student</h1>
+        </div>
+        <div className="text-right">
+          <p className="text-sm font-medium text-slate-300">{schoolName}</p>
+        </div>
+      </div>
+      <div className="px-6 py-6 flex gap-8">
         <div className="w-64 shrink-0">
           <div className="bg-white rounded-2xl border border-gray-200 p-6 sticky top-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-6">Progress</h2>

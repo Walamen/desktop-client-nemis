@@ -45,6 +45,7 @@ function buildLayer() {
     users: new InMemoryUserRepository(),
     institutions: new InMemoryInstitutionRepository(),
     gradingConfigs: new InMemoryGradingConfigRepository(),
+    currentUserId: 'test-user',
     deviceGateway: new InMemoryDeviceGateway(),
     settingsGateway: new InMemorySettingsGateway(),
     unitOfWork: new PassthroughUnitOfWork(),

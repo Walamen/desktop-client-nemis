@@ -119,8 +119,8 @@ export default function ProvisioningPage() {
           <p className="text-xs text-slate-400">Device {status.device.name} · NEMIS {status.device.appVersion}</p>
         </section>
 
-        <section className="m-4 lg:m-8 lg:ml-0 rounded-3xl bg-white text-slate-900 shadow-2xl flex items-center">
-          <div className="w-full max-w-lg mx-auto p-8 lg:p-12">
+        <section className="bg-slate-200 text-slate-900  flex items-center">
+          <div className="w-full max-w-lg mx-auto ">
             {status.stage === 'backend_gap' ? (
               <BackendGap status={status} onLogout={async () => setStatus(await nemisBridge.logout())} />
             ) : busy && status.authentication === 'authenticated' ? (

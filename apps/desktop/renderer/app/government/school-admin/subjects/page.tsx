@@ -1,3 +1,5 @@
-import { SubjectsPage } from '@/components/academic/AcademicFoundationPages';
+import { SubjectsDirectoryPage } from '@/components/subjects/SubjectsDirectoryPage';
 
-export default SubjectsPage;
+export default function Page() {
+  return <SubjectsDirectoryPage />;
+}

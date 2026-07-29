@@ -13,6 +13,7 @@ import {
   type DesktopSyncPushResult,
 } from '@nemis-desktop/types';
 import { ForbiddenError, UnauthorizedError } from '@nemis-desktop/shared';
+import { asRecord, unwrapCookies } from './sessionSecret';
 
 export class BackendProvisioningGateway {
   constructor(
@@ -78,7 +79,7 @@ export class BackendProvisioningGateway {
       }
       throw error;
     }
-    const cookies = sessionCookies(restored.sessionSecret);
+    const cookies = unwrapCookies(restored.sessionSecret);
     let response: Response;
     try {
       response = await fetch(new URL(path, this.baseUrl), {
@@ -98,13 +99,13 @@ export class BackendProvisioningGateway {
     if (response.status === 401) throw new UnauthorizedError();
     if (response.status === 403) throw new ForbiddenError('This device is not authorized.');
     if (!response.ok) throw new Error(`Provisioning request failed with status ${response.status}.`);
-    const root = object(await response.json());
+    const root = asRecord(await response.json());
     return validate(root.data);
   }
 }
 
 function validateDevice(value: unknown): RegisteredDevice {
-  const row = object(value);
+  const row = asRecord(value);
   for (const key of [
     'id', 'installationId', 'fingerprint', 'userId', 'role', 'scopeType',
     'scopeId', 'status', 'registeredAt', 'lastSeenAt',
@@ -120,7 +121,7 @@ function validateDevice(value: unknown): RegisteredDevice {
 }
 
 function validateSnapshot(value: unknown): ProvisioningSnapshot {
-  const snapshot = object(value);
+  const snapshot = asRecord(value);
   if (snapshot.contractVersion !== 1 || snapshot.checksumAlgorithm !== 'sha256') {
     throw new Error('Unsupported provisioning snapshot contract.');
   }
@@ -135,8 +136,8 @@ function validateSnapshot(value: unknown): ProvisioningSnapshot {
   if (!/^[a-f0-9]{64}$/.test(snapshot.checksum as string)) {
     throw new Error('Provisioning snapshot checksum is invalid.');
   }
-  const data = object(snapshot.data);
-  const manifest = object(snapshot.manifest);
+  const data = asRecord(snapshot.data);
+  const manifest = asRecord(snapshot.manifest);
   for (const collection of PROVISIONING_COLLECTIONS) {
     const rows = data[collection];
     if (!Array.isArray(rows)) throw new Error(`Snapshot collection ${collection} is invalid.`);
@@ -153,12 +154,12 @@ function validateSnapshot(value: unknown): ProvisioningSnapshot {
 }
 
 function validateSyncResult(value: unknown): DesktopSyncPushResult {
-  const result = object(value);
+  const result = asRecord(value);
   if (typeof result.processedAt !== 'string' || !Array.isArray(result.results)) {
     throw new Error('Desktop sync response is invalid.');
   }
   for (const entry of result.results) {
-    const row = object(entry);
+    const row = asRecord(entry);
     if (
       typeof row.operationId !== 'string' ||
       typeof row.entityType !== 'string' ||
@@ -169,16 +170,4 @@ function validateSyncResult(value: unknown): DesktopSyncPushResult {
     }
   }
   return result as unknown as DesktopSyncPushResult;
-}
-
-function object(value: unknown): Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {};
-}
-
-function sessionCookies(secret: string): string {
-  const parsed = object(JSON.parse(secret));
-  if (typeof parsed.cookies !== 'string') throw new Error('Protected session is invalid.');
-  return parsed.cookies;
 }

@@ -131,6 +131,8 @@ export interface ApplicationPorts {
   users: IUserRepository;
   institutions: IInstitutionRepository;
   gradingConfigs: IGradingConfigRepository;
+  /** The authenticated user's id for this workspace (see GetCurrentUserDeps). */
+  currentUserId: string;
   deviceGateway: IDeviceGateway;
   settingsGateway: ISettingsGateway;
   unitOfWork: IUnitOfWork;
@@ -354,7 +356,11 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
 
   const identity = new IdentityApplicationService({
     getUserById: new GetUserByIdUseCase({ users: ports.users, logger }),
-    getCurrentUser: new GetCurrentUserUseCase({ users: ports.users, logger }),
+    getCurrentUser: new GetCurrentUserUseCase({
+      users: ports.users,
+      logger,
+      currentUserId: ports.currentUserId,
+    }),
   });
 
   const institution = new InstitutionApplicationService({

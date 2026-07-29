@@ -1,2 +1,2 @@
-import { TeachersDirectoryPage } from '@/components/teachers/TeacherManagementPages';
+import { TeachersDirectoryPage } from '@/components/teachers/TeachersDirectoryPage';
 export default function Page(){return <TeachersDirectoryPage/>;}

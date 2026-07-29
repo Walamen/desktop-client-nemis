@@ -102,7 +102,7 @@ describe('dashboard query use cases', () => {
 
   it('GetCurrentUser returns the seeded user or null', async () => {
     const users = new InMemoryUserRepository();
-    const useCase = new GetCurrentUserUseCase({ users, logger });
+    const useCase = new GetCurrentUserUseCase({ users, logger, currentUserId: 'usr-1' });
     expect((await useCase.execute({})).data).toBeNull();
     users.store.set(
       'usr-1',

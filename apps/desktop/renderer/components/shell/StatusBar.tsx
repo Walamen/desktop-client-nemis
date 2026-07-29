@@ -38,7 +38,7 @@ export function StatusBar() {
 
   return (
     <footer
-      className="flex items-center justify-between h-7 px-4 bg-slate-100 border-t border-slate-200 text-[11px] text-slate-600"
+      className="flex items-center justify-between h-7 px-4 py-8 bg-slate-100 border-t border-slate-200 text-[11px] text-slate-600"
       role="status"
       aria-label="Application status"
     >

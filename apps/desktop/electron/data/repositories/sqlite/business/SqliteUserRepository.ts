@@ -48,15 +48,6 @@ export class SqliteUserRepository implements IUserRepository {
     });
   }
 
-  findFirst(): User | null {
-    return guarded('SqliteUserRepository.findFirst', () => {
-      const row = this.#statements
-        .get(`SELECT ${USER_COLUMNS} FROM ${TableNames.users} ORDER BY updatedAt ASC, id ASC LIMIT 1`)
-        .get() as UserRow | undefined;
-      return row ? this.#toUser(row) : null;
-    });
-  }
-
   #toUser(row: UserRow): User {
     const orgRows = this.#statements
       .get(

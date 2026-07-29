@@ -17,7 +17,11 @@ export function loadConfig(): AppConfig {
 
   const isDev = !app.isPackaged;
   const envFile = isDev ? '.env.development' : '.env.production';
-  dotenv.config({ path: path.join(app.getAppPath(), envFile) });
+  // Packaged builds never bundle dotfiles inside app.asar; forge.config.ts
+  // copies .env.production next to it via extraResource, so read it from
+  // process.resourcesPath instead of app.getAppPath() (which is the asar).
+  const envDir = isDev ? app.getAppPath() : process.resourcesPath;
+  dotenv.config({ path: path.join(envDir, envFile) });
 
   cachedConfig = parseConfig(process.env, isDev);
   return cachedConfig;

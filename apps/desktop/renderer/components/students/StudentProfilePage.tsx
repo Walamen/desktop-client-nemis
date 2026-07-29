@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
+import { ArrowLeft, Calendar, GraduationCap, Mail, MapPin, Phone, User, Users } from 'lucide-react';
 import { EnrollmentStatus } from '@nemis-desktop/types';
 import {
   Avatar,
@@ -17,14 +18,41 @@ import { useViewModel } from '@/hooks/use-view-model';
 import {
   useAcademicFoundationViewModel,
   useEnrollmentViewModel,
+  useSettingsViewModel,
   useStudentProfileViewModel,
 } from '@/lib/presentation/hooks';
 import { human, queryId } from './shared';
+
+function DetailRow({
+  icon,
+  label,
+  value,
+}: {
+  icon?: React.ReactNode;
+  label: string;
+  value?: string | null;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      {icon && <div className="mt-0.5 text-gray-400 flex-shrink-0">{icon}</div>}
+      <div>
+        <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">{label}</p>
+        <p className="text-sm text-gray-900 mt-0.5">
+          {value || <span className="text-gray-400 italic">Not provided</span>}
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export function StudentProfilePage() {
   const vm = useStudentProfileViewModel();
   const enrollmentVm = useEnrollmentViewModel();
   const foundation = useAcademicFoundationViewModel();
+  const settings = useSettingsViewModel();
+  const profile = useViewModel(settings.store, (s) => s.profile);
+  const schoolName =
+    profile.status === 'success' || profile.status === 'refreshing' ? profile.data.name : 'School';
   const details = useViewModel(vm.store, (s) => s.details);
   const enrollments = useViewModel(vm.store, (s) => s.enrollments);
   const classes = useViewModel(foundation.store, (s) => s.classes);
@@ -95,7 +123,25 @@ export function StudentProfilePage() {
     if (result.ok) setMoveOpen(false);
   };
   return (
-    <div className="p-6 space-y-5">
+    <div className="min-h-full bg-slate-100">
+      <div className="bg-slate-900 text-white px-6 py-5 flex items-center justify-between">
+        <div>
+          <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">School Admin Portal</p>
+          <h1 className="text-xl font-bold mt-0.5">Student Profile</h1>
+        </div>
+        <div className="text-right">
+          <p className="text-sm font-medium text-slate-300">{schoolName}</p>
+        </div>
+      </div>
+      <div className="px-6 py-6 space-y-5">
+        <Link
+          href="/government/school-admin/students"
+          className="flex items-center text-gray-600 font-bold hover:text-gray-900 transition-colors text-sm"
+        >
+          <ArrowLeft className="w-4 h-4 mr-1.5" />
+          Back to Students
+        </Link>
+
       <div className="bg-white border border-slate-300 rounded-card p-6">
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
           <Avatar
@@ -138,25 +184,34 @@ export function StudentProfilePage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <section className="bg-white border border-slate-300 rounded-card p-6">
-          <h2 className="text-base font-semibold text-gray-900 mb-4">Personal Information</h2>
+          <h2 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <User className="w-4 h-4 text-sky-700" />
+            Personal Information
+          </h2>
           <div className="space-y-4">
-            <DetailRow label="Grade" value={d.gradeLevel} />
-            <DetailRow label="Date of birth" value={d.dateOfBirth} />
+            <DetailRow icon={<GraduationCap className="w-4 h-4" />} label="Grade" value={d.gradeLevel} />
+            <DetailRow icon={<Calendar className="w-4 h-4" />} label="Date of birth" value={d.dateOfBirth} />
           </div>
         </section>
         <section className="bg-white border border-slate-300 rounded-card p-6">
-          <h2 className="text-base font-semibold text-gray-900 mb-4">Contact Information</h2>
+          <h2 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <Phone className="w-4 h-4 text-sky-700" />
+            Contact Information
+          </h2>
           <div className="space-y-4">
-            <DetailRow label="Phone" value={d.phoneNumber ?? '—'} />
-            <DetailRow label="Email" value={d.email ?? '—'} />
-            <DetailRow label="Address" value={d.address ?? '—'} />
+            <DetailRow icon={<Phone className="w-4 h-4" />} label="Phone" value={d.phoneNumber} />
+            <DetailRow icon={<Mail className="w-4 h-4" />} label="Email" value={d.email} />
+            <DetailRow icon={<MapPin className="w-4 h-4" />} label="Address" value={d.address} />
           </div>
         </section>
       </div>
 
       <section className="bg-white border border-slate-300 rounded-card p-6">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-base font-semibold text-gray-900">Guardians</h2>
+          <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+            <Users className="w-4 h-4 text-sky-700" />
+            Guardians
+          </h2>
           <Button size="sm" onClick={() => setGuardianOpen(true)}>
             Add
           </Button>
@@ -173,7 +228,10 @@ export function StudentProfilePage() {
         )}
       </section>
       <section className="bg-white border border-slate-300 rounded-card p-6">
-        <h2 className="text-base font-semibold text-gray-900 mb-4">Enrollment History</h2>
+        <h2 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <GraduationCap className="w-4 h-4 text-sky-700" />
+          Enrollment History
+        </h2>
         {enrollments.status === 'empty' ? (
           <p className="text-sm text-slate-500">No enrollment history available.</p>
         ) : enrollments.status === 'success' || enrollments.status === 'refreshing' ? (
@@ -289,14 +347,7 @@ export function StudentProfilePage() {
           />
         </form>
       </Modal>
-    </div>
-  );
-}
-function DetailRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-xs uppercase tracking-wider text-slate-400">{label}</p>
-      <p className="mt-1 text-sm text-gray-900">{value}</p>
+      </div>
     </div>
   );
 }

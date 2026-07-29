@@ -12,6 +12,7 @@ import {
   type ProvisioningUser,
 } from '@nemis-desktop/types';
 import { ForbiddenError, UnauthorizedError } from '@nemis-desktop/shared';
+import { asRecord, unwrapCookies, wrapCookies } from './sessionSecret';
 
 interface BackendUser {
   id: string;
@@ -42,7 +43,7 @@ export class BackendAuthenticationGateway implements AuthenticationGateway {
   }
 
   async restore(sessionSecret: string): Promise<AuthenticatedSession> {
-    let cookies = parseSecret(sessionSecret);
+    let cookies = unwrapCookies(sessionSecret);
     let response = await this.request('/auth/me', { headers: { cookie: cookies } }, true);
     if (response.status === 401) {
       const refreshed = await this.request('/auth/refresh', {
@@ -53,13 +54,13 @@ export class BackendAuthenticationGateway implements AuthenticationGateway {
       response = await this.request('/auth/me', { headers: { cookie: cookies } });
     }
     const user = readUser(await response.json());
-    return onlineSession(user, JSON.stringify({ cookies }));
+    return onlineSession(user, wrapCookies(cookies));
   }
 
   async logout(sessionSecret: string): Promise<void> {
     await this.request('/auth/logout', {
       method: 'POST',
-      headers: { cookie: parseSecret(sessionSecret) },
+      headers: { cookie: unwrapCookies(sessionSecret) },
     });
   }
 
@@ -104,10 +105,10 @@ function onlineSession(user: BackendUser, sessionSecret: string): AuthenticatedS
 }
 
 function readUser(payload: unknown): BackendUser {
-  const root = asObject(payload);
-  const firstData = asObject(root.data);
-  const nestedData = asObject(firstData.data);
-  const user = asObject(firstData.user ?? nestedData.user);
+  const root = asRecord(payload);
+  const firstData = asRecord(root.data);
+  const nestedData = asRecord(firstData.data);
+  const user = asRecord(firstData.user ?? nestedData.user);
   for (const key of ['id', 'email', 'firstName', 'lastName', 'role'] as const) {
     if (typeof user[key] !== 'string' || user[key].length === 0) {
       throw new Error('The authentication response did not match the backend contract.');
@@ -168,10 +169,6 @@ function resolveScope(role: DesktopPortalRole, user: BackendUser): DesktopUserSc
   throw new ForbiddenError(`This ${role} account has no active ${scopeType.toLowerCase()} assignment.`);
 }
 
-function asObject(value: unknown): Record<string, unknown> {
-  return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
-}
-
 function extractAuthCookies(response: Response): string {
   const headers = response.headers as Headers & { getSetCookie?: () => string[] };
   const setCookies = headers.getSetCookie?.() ?? [];
@@ -181,20 +178,12 @@ function extractAuthCookies(response: Response): string {
   if (values.length === 0) {
     throw new Error('The authentication server did not issue a session.');
   }
-  return JSON.stringify({ cookies: values.join('; ') });
-}
-
-function parseSecret(secret: string): string {
-  const parsed = JSON.parse(secret) as { cookies?: unknown };
-  if (typeof parsed.cookies !== 'string' || parsed.cookies.length === 0) {
-    throw new Error('The protected session is invalid.');
-  }
-  return parsed.cookies;
+  return wrapCookies(values.join('; '));
 }
 
 function mergeCookies(current: string, updateSecret: string): string {
   const jar = new Map<string, string>();
-  for (const entry of `${current}; ${parseSecret(updateSecret)}`.split(';')) {
+  for (const entry of `${current}; ${unwrapCookies(updateSecret)}`.split(';')) {
     const [name, ...rest] = entry.trim().split('=');
     if (name && rest.length > 0) jar.set(name, rest.join('='));
   }

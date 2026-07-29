@@ -58,7 +58,7 @@ export class WorkspaceManager {
       user,
       database,
       data,
-      application: createApplicationComposition(data),
+      application: createApplicationComposition(data, user.id),
     };
     return this.#active;
   }

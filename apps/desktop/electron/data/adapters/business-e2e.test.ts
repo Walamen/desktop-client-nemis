@@ -28,7 +28,7 @@ describe('business application layer end-to-end against real SQLite', () => {
   });
 
   it('dashboard overview is all zeros on a fresh install', async () => {
-    const app = createApplicationComposition(dataLayer, silent);
+    const app = createApplicationComposition(dataLayer, 'test-user', silent);
     const res = await app.reporting.getDashboardOverview();
     expect(res.data).toEqual({
       totalStudents: 0,
@@ -41,19 +41,19 @@ describe('business application layer end-to-end against real SQLite', () => {
   });
 
   it('has no user, school, or academic year before authenticated provisioning', async () => {
-    const app = createApplicationComposition(dataLayer, silent);
+    const app = createApplicationComposition(dataLayer, 'test-user', silent);
     expect((await app.identity.getCurrentUser()).data).toBeNull();
     expect((await app.institution.getCurrentSchool()).data).toBeNull();
     expect((await app.academics.getCurrentAcademicYear()).data).toBeNull();
   });
 
   it('device info reflects the seeded device', async () => {
-    const app = createApplicationComposition(dataLayer, silent);
+    const app = createApplicationComposition(dataLayer, 'test-user', silent);
     expect((await app.infra.getDeviceInfo()).data?.deviceName).toBe('business-e2e');
   });
 
   it('creating a student through the use case increments the overview count', async () => {
-    const app = createApplicationComposition(dataLayer, silent);
+    const app = createApplicationComposition(dataLayer, 'test-user', silent);
     await app.students.create({
       institutionId: 'inst-1', firstName: 'Grace', lastName: 'Toe',
       admissionNumber: 'ADM-1', dateOfBirth: '2015-01-01', gender: Gender.FEMALE,
@@ -72,7 +72,7 @@ describe('business application layer end-to-end against real SQLite', () => {
 
   it('academic foundation: year -> term -> class -> subject -> assignment, real SQLite joins', async () => {
     seedInstitution();
-    const app = createApplicationComposition(dataLayer, silent);
+    const app = createApplicationComposition(dataLayer, 'test-user', silent);
 
     const year = await app.academics.createAcademicYear({
       code: '2025/2026', startDate: '2025-09-01', endDate: '2026-07-31', makeCurrent: true,

@@ -9,6 +9,11 @@ import { invokeUseCase } from '../../pipeline/use-case-invoker';
 export interface GetCurrentUserDeps {
   users: IUserRepository;
   logger: IAppLogger;
+  /** The authenticated user's id for this workspace. A workspace's local
+   * `users` table holds every person in its provisioning snapshot (staff,
+   * admins, parents), not just the signed-in individual, so the current user
+   * must be looked up by id rather than by any arbitrary ordering. */
+  currentUserId: string;
 }
 
 export class GetCurrentUserUseCase implements QueryHandler<
@@ -19,7 +24,7 @@ export class GetCurrentUserUseCase implements QueryHandler<
 
   execute(_query: Record<string, never>): Promise<ApplicationResponse<UserOutput | null>> {
     return invokeUseCase('GetCurrentUser', this.deps.logger, async () => {
-      const user = this.deps.users.findFirst();
+      const user = this.deps.users.findById(this.deps.currentUserId);
       return ok(user ? toUserOutput(user) : null);
     });
   }

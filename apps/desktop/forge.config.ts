@@ -17,13 +17,22 @@ import { FuseV1Options, FuseVersion } from '@electron/fuses';
 // hence realpathSync + dereference.
 const externalRuntimeModules = ['better-sqlite3', 'bindings', 'file-uri-to-path'];
 
+// .env.production is git-ignored (machine-specific secrets/URLs) and, unlike
+// source files, is never bundled by the Vite plugin — it must be listed here
+// explicitly to end up next to app.asar where env.ts reads it at runtime.
+// Optional: only added if present, so `pnpm make` still works without one.
+const envProductionPath = path.resolve(__dirname, '.env.production');
+const extraResource = fs.existsSync(envProductionPath)
+  ? ['./renderer/out', './.env.production']
+  : ['./renderer/out'];
+
 const config: ForgeConfig = {
   packagerConfig: {
     name: 'Nemis',
     executableName: 'Nemis',
     icon: path.resolve(__dirname, 'assets', 'icon'),
     asar: true,
-    extraResource: ['./renderer/out'],
+    extraResource,
   },
   // Skip Forge's native rebuild: this machine has no C++ toolchain, and the
   // correct Electron-ABI prebuilt binary is installed by `pnpm rebuild:electron`

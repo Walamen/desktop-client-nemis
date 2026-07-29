@@ -28,14 +28,7 @@ export class ProvisioningService {
       const session = await this.restoreSession.execute();
       if (session) {
         this.workspaces?.activate(session.user);
-        const storedCompletion = this.importer.getCompletion();
-        const completion =
-          storedCompletion?.userId === session.user.id &&
-          storedCompletion.role === session.user.role &&
-          storedCompletion.scopeType === session.user.scope.type &&
-          storedCompletion.scopeId === session.user.scope.scopeId
-            ? storedCompletion
-            : null;
+        const completion = this.resolveCompletion(session.user);
         this.status = completion
           ? {
               ...this.status,
@@ -63,14 +56,7 @@ export class ProvisioningService {
     const session = await this.authenticateUser.execute(email, password);
     this.workspaces?.activate(session.user);
     this.restored = true;
-    const storedCompletion = this.importer.getCompletion();
-    const completion =
-      storedCompletion?.userId === session.user.id &&
-      storedCompletion.role === session.user.role &&
-      storedCompletion.scopeType === session.user.scope.type &&
-      storedCompletion.scopeId === session.user.scope.scopeId
-        ? storedCompletion
-        : null;
+    const completion = this.resolveCompletion(session.user);
     this.status = {
       ...this.status,
       authentication: 'authenticated',
@@ -136,11 +122,7 @@ export class ProvisioningService {
       };
       return this.status;
     } catch (error) {
-      this.status = {
-        ...this.status,
-        stage: this.status.stage,
-        message: friendlyFailure(error),
-      };
+      this.status = { ...this.status, message: friendlyFailure(error) };
       throw error;
     }
   }
@@ -151,6 +133,19 @@ export class ProvisioningService {
     message: string,
   ): void {
     this.status = { ...this.status, stage, progress, message };
+  }
+
+  /** Only reuse a stored completion if it was provisioned by this exact user/role/scope. */
+  private resolveCompletion(
+    user: ProvisioningUser,
+  ): ReturnType<ProvisioningImporter['getCompletion']> {
+    const stored = this.importer.getCompletion();
+    const matches =
+      stored?.userId === user.id &&
+      stored.role === user.role &&
+      stored.scopeType === user.scope.type &&
+      stored.scopeId === user.scope.scopeId;
+    return matches ? stored : null;
   }
 }
 

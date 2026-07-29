@@ -40,6 +40,7 @@ export interface TestPorts {
   users: InMemoryUserRepository;
   institutions: InMemoryInstitutionRepository;
   gradingConfigs: InMemoryGradingConfigRepository;
+  currentUserId: string;
   deviceGateway: InMemoryDeviceGateway;
   settingsGateway: InMemorySettingsGateway;
   unitOfWork: PassthroughUnitOfWork;
@@ -73,6 +74,7 @@ export function createTestApplication(): { app: ApplicationLayer; ports: TestPor
     users: new InMemoryUserRepository(),
     institutions: new InMemoryInstitutionRepository(),
     gradingConfigs: new InMemoryGradingConfigRepository(),
+    currentUserId: 'usr-1',
     deviceGateway: new InMemoryDeviceGateway(),
     settingsGateway: new InMemorySettingsGateway(),
     unitOfWork: new PassthroughUnitOfWork(),
