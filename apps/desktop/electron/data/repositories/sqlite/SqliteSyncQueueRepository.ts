@@ -11,7 +11,7 @@ import {
 } from '../../mappers/platformMappers';
 import type { SyncError, SyncQueueItem, SyncQueueStatus } from '../../models/platform';
 import { deleteFrom, insertInto, select } from '../../queries/builders';
-import { and, eq, inList, lt } from '../../queries/predicates';
+import { and, eq, inList, isNull, lt, lte, or } from '../../queries/predicates';
 import { validateEnqueue, validatePurge, validateRecordSyncError } from '../../validators/platform';
 import { BaseRepository } from '../base/BaseRepository';
 import type { RepositoryContext } from '../base/RepositoryContext';
@@ -24,6 +24,8 @@ const SYNC_QUEUE_COLUMNS = [
   'operationType',
   'payload',
   'retryCount',
+  'nextAttemptAt',
+  'deadLetter',
   'status',
   'createdAt',
   'updatedAt',
@@ -52,6 +54,8 @@ export class SqliteSyncQueueRepository
       operationType: input.operationType,
       payload: serializeJsonColumn(input.payload, 'sync_queue.payload'),
       retryCount: 0,
+      nextAttemptAt: null,
+      deadLetter: 0,
       status: 'pending',
       createdAt: now,
       updatedAt: now,
@@ -72,13 +76,17 @@ export class SqliteSyncQueueRepository
   }
 
   nextBatch(limit: number): SyncQueueItem[] {
-    return this.selectWhere('nextBatch', eq('status', 'pending'), {
-      orderBy: [
-        { column: 'createdAt', direction: 'asc' },
-        { column: 'id', direction: 'asc' },
-      ],
-      page: { limit, offset: 0 },
-    });
+    return this.selectWhere(
+      'nextBatch',
+      and(eq('status', 'pending'), or(isNull('nextAttemptAt'), lte('nextAttemptAt', nowIso()))),
+      {
+        orderBy: [
+          { column: 'createdAt', direction: 'asc' },
+          { column: 'id', direction: 'asc' },
+        ],
+        page: { limit, offset: 0 },
+      },
+    );
   }
 
   claimBatch(limit: number): SyncQueueItem[] {
@@ -117,6 +125,18 @@ export class SqliteSyncQueueRepository
       return this.updateById(id, {
         status: 'failed',
         retryCount: current.retryCount + 1,
+        updatedAt: nowIso(),
+      });
+    });
+  }
+
+  scheduleRetry(id: string, nextAttemptAt: string): SyncQueueItem {
+    return this.executeTransaction(() => {
+      const current = this.findByIdOrThrow(id);
+      return this.updateById(id, {
+        status: 'pending',
+        retryCount: current.retryCount + 1,
+        nextAttemptAt,
         updatedAt: nowIso(),
       });
     });

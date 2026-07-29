@@ -146,4 +146,33 @@ describe('SqliteSyncQueueRepository', () => {
     expect(repo.claimBatch(10)).toEqual([]);
     expect(repo.count()).toBe(0);
   });
+
+  it('scheduleRetry keeps status pending, increments retryCount, and sets nextAttemptAt', () => {
+    const item = repo.enqueue(op('e1'));
+    const rescheduled = repo.scheduleRetry(item.id, '2026-07-29T00:05:00.000Z');
+    expect(rescheduled.status).toBe('pending');
+    expect(rescheduled.retryCount).toBe(1);
+    expect(rescheduled.nextAttemptAt).toBe('2026-07-29T00:05:00.000Z');
+  });
+
+  it('claimBatch skips pending items whose nextAttemptAt is in the future', () => {
+    const first = repo.enqueue(op('e1'));
+    repo.enqueue(op('e2'));
+    repo.scheduleRetry(first.id, '2026-08-01T00:00:00.000Z');
+
+    const claimed = repo.claimBatch(10);
+
+    expect(claimed).toHaveLength(1);
+    expect(claimed[0]!.entityId).toBe('e2');
+  });
+
+  it('claimBatch includes pending items whose nextAttemptAt has already elapsed', () => {
+    vi.setSystemTime(new Date('2026-07-29T00:10:00.000Z'));
+    const item = repo.enqueue(op('e1'));
+    repo.scheduleRetry(item.id, '2026-07-29T00:00:00.000Z');
+
+    const claimed = repo.claimBatch(10);
+
+    expect(claimed.map((row) => row.id)).toEqual([item.id]);
+  });
 });

@@ -51,6 +51,8 @@ export interface SyncQueueItem {
   operationType: SyncOperationType;
   payload: unknown;
   retryCount: number;
+  nextAttemptAt: string | null;
+  deadLetter: boolean;
   status: SyncQueueStatus;
   createdAt: string;
   updatedAt: string;

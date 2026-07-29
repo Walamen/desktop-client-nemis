@@ -13,6 +13,8 @@ function makeItem(id: string, retryCount = 0): SyncQueueItem {
     operationType: 'create',
     payload: null,
     retryCount,
+    nextAttemptAt: null,
+    deadLetter: false,
     status: 'pending',
     createdAt: 't0',
     updatedAt: 't0',

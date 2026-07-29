@@ -60,6 +60,8 @@ describe('platform mappers', () => {
       operationType: 'create',
       payload: '{"name":"Ada"}',
       retryCount: 0,
+      nextAttemptAt: null,
+      deadLetter: 0,
       status: 'pending',
       createdAt: 't0',
       updatedAt: 't0',

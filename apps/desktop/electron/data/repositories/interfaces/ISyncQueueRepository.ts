@@ -30,6 +30,12 @@ export interface ISyncQueueRepository {
   markCompleted(ids: readonly string[]): number;
   /** Sets status 'failed' and increments retryCount. */
   markFailed(id: string): SyncQueueItem;
+  /**
+   * Transient-failure path: increments retryCount, keeps status 'pending'
+   * so claimBatch retries it once nextAttemptAt elapses. Distinct from
+   * markFailed, which is the terminal ('failed'/dead-letter) transition.
+   */
+  scheduleRetry(id: string, nextAttemptAt: string): SyncQueueItem;
   countByStatus(status: SyncQueueStatus): number;
   /** Deletes completed items older than the given ISO timestamp; returns the count. */
   purgeCompleted(olderThan: string): number;

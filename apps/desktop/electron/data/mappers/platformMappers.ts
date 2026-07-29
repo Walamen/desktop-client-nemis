@@ -81,6 +81,8 @@ export type SyncQueueRow = {
   operationType: string;
   payload: string | null;
   retryCount: number;
+  nextAttemptAt: string | null;
+  deadLetter: number;
   status: string;
   createdAt: string;
   updatedAt: string;
@@ -94,6 +96,8 @@ export const syncQueueMapper: RowMapper<SyncQueueRow, SyncQueueItem> = {
     operationType: row.operationType as SyncOperationType,
     payload: parseJsonColumn(row.payload, `sync_queue.payload (${row.id})`),
     retryCount: row.retryCount,
+    nextAttemptAt: row.nextAttemptAt,
+    deadLetter: row.deadLetter === 1,
     status: row.status as SyncQueueStatus,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
