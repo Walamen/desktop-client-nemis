@@ -45,4 +45,5 @@ export interface DesktopSyncStatus {
   conflicts: number;
   lastSyncAt: string | null;
   status: 'never' | 'idle' | 'syncing' | 'failed';
+  isOnline: boolean;
 }

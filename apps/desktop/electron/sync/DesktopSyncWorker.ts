@@ -9,6 +9,14 @@ import type { BackendProvisioningGateway } from '@app/provisioning/BackendProvis
 import type { WorkspaceManager } from '@app/workspace/WorkspaceManager';
 import { ProvisioningImporter } from '@app/provisioning/ProvisioningImporter';
 
+const BACKOFF_SCHEDULE_MS = [30_000, 60_000, 300_000, 900_000] as const; // 30s, 1m, 5m, 15m
+const DEAD_LETTER_THRESHOLD = 5;
+
+/** Minimal seam so DesktopSyncWorker doesn't depend on the concrete NetworkMonitor class. */
+export interface ConnectivitySource {
+  isOnline(): boolean;
+}
+
 export class DesktopSyncWorker {
   #running = false;
   #lastPullAt = 0;
@@ -16,6 +24,7 @@ export class DesktopSyncWorker {
   constructor(
     private readonly workspaces: WorkspaceManager,
     private readonly gateway: BackendProvisioningGateway,
+    private readonly connectivity: ConnectivitySource,
   ) {}
 
   async syncActive(): Promise<void> {
@@ -108,10 +117,33 @@ export class DesktopSyncWorker {
       }
       const now = new Date().toISOString();
       if (claimed.length > 0) {
-        workspace.database.connection.prepare(`
-          UPDATE sync_queue SET status='pending',updatedAt=?
-          WHERE status='in_flight' AND id IN (${claimed.map(() => '?').join(',')})
-        `).run(now, ...claimed.map((item) => item.id));
+        const message = error instanceof Error ? error.message : String(error);
+        const stack = error instanceof Error ? error.stack : undefined;
+        for (const item of claimed) {
+          const nextRetryCount = item.retryCount + 1;
+          if (nextRetryCount >= DEAD_LETTER_THRESHOLD) {
+            await workspace.data.services.syncQueue.fail(item.id, { message, stack });
+            // markFailed() only sets status='failed' and bumps retryCount — it
+            // doesn't flag deadLetter, so the dead-letter marker is set here.
+            workspace.database.connection.prepare(`
+              UPDATE sync_queue SET deadLetter=1,updatedAt=? WHERE id=?
+            `).run(now, item.id);
+          } else {
+            const delayMs = BACKOFF_SCHEDULE_MS[nextRetryCount - 1] ?? BACKOFF_SCHEDULE_MS.at(-1)!;
+            await workspace.data.services.syncQueue.scheduleRetry(
+              item.id,
+              new Date(Date.now() + delayMs).toISOString(),
+            );
+            // recordError lives on the repository, not the SyncQueueService
+            // facade (only fail() wraps it there), so call it directly.
+            workspace.data.repositories.syncQueue.recordError({
+              operationId: item.id,
+              message,
+              stack: stack ?? null,
+              retryCount: nextRetryCount,
+            });
+          }
+        }
       }
       workspace.database.connection.prepare(`
         UPDATE sync_metadata SET syncStatus='failed',updatedAt=? WHERE id='singleton'
@@ -139,6 +171,7 @@ export class DesktopSyncWorker {
       conflicts,
       lastSyncAt: metadata.lastSyncAt,
       status: this.#running ? 'syncing' : metadata.syncStatus,
+      isOnline: this.connectivity.isOnline(),
     };
   }
 
