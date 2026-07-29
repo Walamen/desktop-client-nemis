@@ -11,6 +11,7 @@ import { addProvisioningScope } from './009-add-provisioning-scope';
 import { createSyncOutbox } from './010-create-sync-outbox';
 import { createSchoolAdminModules } from './011-create-school-admin-modules';
 import { createTeacherLearningTables } from './012-create-teacher-learning-tables';
+import { addSyncRetryAndDeltaColumns } from './013-add-sync-retry-and-delta-columns';
 
 /**
  * Every migration, ascending by version. Append only — never edit or reorder
@@ -29,4 +30,5 @@ export const migrations: readonly Migration[] = [
   createSyncOutbox,
   createSchoolAdminModules,
   createTeacherLearningTables,
+  addSyncRetryAndDeltaColumns,
 ];
