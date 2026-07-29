@@ -7,7 +7,7 @@ export const addSyncRetryAndDeltaColumns: Migration = {
   up(db: SqliteDatabase): void {
     db.exec(`
       ALTER TABLE sync_queue ADD COLUMN nextAttemptAt TEXT;
-      ALTER TABLE sync_queue ADD COLUMN deadLetter INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE sync_queue ADD COLUMN deadLetter INTEGER NOT NULL DEFAULT 0 CHECK (deadLetter IN (0, 1));
       ALTER TABLE sync_metadata ADD COLUMN lastDeltaAt TEXT;
       ALTER TABLE sync_metadata ADD COLUMN lastFullResyncAt TEXT;
     `);
