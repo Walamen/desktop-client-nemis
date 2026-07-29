@@ -49,6 +49,10 @@ export class SyncQueueService {
     });
   }
 
+  scheduleRetry(id: string, nextAttemptAt: string): Promise<SyncQueueItem> {
+    return Promise.resolve(this.#deps.syncQueue.scheduleRetry(id, nextAttemptAt));
+  }
+
   countByStatus(status: SyncQueueStatus): Promise<number> {
     return Promise.resolve(this.#deps.syncQueue.countByStatus(status));
   }

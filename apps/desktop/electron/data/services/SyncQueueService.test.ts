@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { RecordSyncErrorInput } from '../dto/platform';
 import type { SyncError, SyncQueueItem } from '../models/platform';
 import type { ISyncQueueRepository } from '../repositories/interfaces/ISyncQueueRepository';
@@ -63,5 +63,26 @@ describe('SyncQueueService', () => {
     expect(recorded).toEqual([
       { operationId: 'q1', message: 'network timeout', stack: 'at sync()', retryCount: 1 },
     ]);
+  });
+
+  it('scheduleRetry delegates to the repository', async () => {
+    const scheduleRetry = vi.fn((id: string, nextAttemptAt: string) => ({
+      ...makeItem(id, 1),
+      status: 'pending' as const,
+      nextAttemptAt,
+    }));
+    const repo = {
+      scheduleRetry,
+    } as unknown as ISyncQueueRepository;
+    const transactions: TransactionRunner = {
+      run: (work) => work(),
+      runImmediate: (work) => work(),
+    };
+    const service = new SyncQueueService({ syncQueue: repo, transactions });
+
+    const result = await service.scheduleRetry('q1', '2026-07-29T00:05:00.000Z');
+
+    expect(scheduleRetry).toHaveBeenCalledWith('q1', '2026-07-29T00:05:00.000Z');
+    expect(result.nextAttemptAt).toBe('2026-07-29T00:05:00.000Z');
   });
 });
