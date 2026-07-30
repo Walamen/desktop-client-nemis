@@ -113,6 +113,40 @@ describe('ProvisioningImporter', () => {
     ]);
   });
 
+  it('keeps the error history of dead-lettered operations across a successful import', () => {
+    const importer = new ProvisioningImporter(manager);
+    const at = '2026-07-29T00:00:00.000Z';
+    // A dead-lettered operation survives the import; the reason string the
+    // conflicts UI shows for it is built from its sync_errors row, so that row
+    // has to survive too.
+    seedQueueItem('op-dead', 'failed', 1);
+    seedError('err-dead', 'op-dead');
+    // A completed operation's error history is transient and must still be
+    // cleared along with the operation itself.
+    seedQueueItem('op-done', 'completed', 0);
+    seedError('err-done', 'op-done');
+
+    importer.import(makeSnapshot(), CONTEXT, { preserveConflicts: true });
+
+    expect(manager.connection.prepare('SELECT id FROM sync_errors ORDER BY id').all()).toEqual([
+      { id: 'err-dead' },
+    ]);
+
+    function seedQueueItem(id: string, status: string, deadLetter: number): void {
+      manager.connection.prepare(`
+        INSERT INTO sync_queue
+          (id,entityType,entityId,operationType,payload,retryCount,status,deadLetter,createdAt,updatedAt)
+        VALUES (?,'students','s1','create',NULL,5,?,?,?,?)
+      `).run(id, status, deadLetter, at, at);
+    }
+    function seedError(id: string, operationId: string): void {
+      manager.connection.prepare(`
+        INSERT INTO sync_errors (id,operationId,message,stack,retryCount,createdAt)
+        VALUES (?,?,'server rejected permanently',NULL,5,?)
+      `).run(id, operationId, at);
+    }
+  });
+
   function countRows(table: string): number {
     return (manager.connection.prepare(`SELECT COUNT(*) count FROM ${table}`).get() as { count: number }).count;
   }

@@ -146,7 +146,17 @@ export class ProvisioningImporter {
         } else {
           db.prepare(`DELETE FROM sync_queue`).run();
         }
-        db.prepare(`DELETE FROM sync_errors`).run();
+        // Dead-lettered queue items survive this import, and listConflicts()
+        // builds their user-facing reason from their sync_errors rows — wiping
+        // those turns the dead-letter UI into "unknown error" after the next
+        // successful sync. Everything else is transient. (The IS NULL arm
+        // matters because deleting a sync_queue row nulls its errors'
+        // operationId, and `NULL NOT IN (...)` is never true.)
+        db.prepare(`
+          DELETE FROM sync_errors
+          WHERE operationId IS NULL
+             OR operationId NOT IN (SELECT id FROM sync_queue WHERE deadLetter=1)
+        `).run();
         if (!options.preserveConflicts) db.prepare(`DELETE FROM sync_conflicts`).run();
         db.prepare(`UPDATE sync_runtime SET captureEnabled=1 WHERE id='singleton'`).run();
         const completedAt = new Date().toISOString();
