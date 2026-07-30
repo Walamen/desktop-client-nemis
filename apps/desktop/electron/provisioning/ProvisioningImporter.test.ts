@@ -3,7 +3,12 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { PROVISIONING_COLLECTIONS, type ProvisioningData, type ProvisioningSnapshot } from '@nemis-desktop/types';
+import {
+  PROVISIONING_COLLECTIONS,
+  type ProvisioningData,
+  type ProvisioningRow,
+  type ProvisioningSnapshot,
+} from '@nemis-desktop/types';
 import { DatabaseManager } from '@app/database/DatabaseManager';
 import { ProvisioningImporter } from './ProvisioningImporter';
 
@@ -70,29 +75,90 @@ describe('ProvisioningImporter', () => {
       (manager.connection.prepare('SELECT name FROM institutions WHERE id=?').get('school-1') as { name: string }).name,
     ).toBe('Central High');
   });
+
+  it('merge mode upserts without deleting rows the snapshot omits', () => {
+    const importer = new ProvisioningImporter(manager);
+    importer.import(snapshotOf({ ...BASE_DATA, students: [student('s1', 'Ada')] }), CONTEXT);
+    expect(countRows('students')).toBe(1);
+
+    // A legitimately-empty delta: nothing changed on the server since the last
+    // pull, so every collection (and every manifest count) is 0. Under the old
+    // delete-everything import this wiped the whole local database.
+    importer.import(snapshotOf({}), CONTEXT, { merge: true });
+
+    expect(countRows('students')).toBe(1);
+    expect(countRows('institutions')).toBe(1);
+    expect(countRows('users')).toBe(1);
+  });
+
+  it('merge mode upserts a row that changed without touching rows absent from the delta', () => {
+    const importer = new ProvisioningImporter(manager);
+    importer.import(
+      snapshotOf({ ...BASE_DATA, students: [student('s1', 'Ada'), student('s2', 'Grace')] }),
+      CONTEXT,
+    );
+
+    // Delta: student s1 changed, s2 did not and is therefore absent.
+    importer.import(
+      snapshotOf({ ...BASE_DATA, students: [student('s1', 'Adaeze')] }),
+      CONTEXT,
+      { merge: true },
+    );
+
+    expect(
+      manager.connection.prepare('SELECT id,firstName FROM students ORDER BY id').all(),
+    ).toEqual([
+      { id: 's1', firstName: 'Adaeze' },
+      { id: 's2', firstName: 'Grace' },
+    ]);
+  });
+
+  function countRows(table: string): number {
+    return (manager.connection.prepare(`SELECT COUNT(*) count FROM ${table}`).get() as { count: number }).count;
+  }
 });
 
-function makeSnapshot(): ProvisioningSnapshot {
-  const empty = Object.fromEntries(PROVISIONING_COLLECTIONS.map((key) => [key, []])) as unknown as ProvisioningData;
-  const data: ProvisioningData = {
-    ...empty,
-    institutions: [{
-      id: 'school-1', code: 'SCH-1', name: 'Central High', type: 'SECONDARY',
-      ownership: 'PUBLIC', countyId: 'county-1', districtId: null,
-      approvalStatus: 'APPROVED', street: null, communityTown: null,
-      latitude: null, longitude: null, rejectionReason: null, profile: null,
-      version: 1, updatedAt: '2026-01-01T00:00:00.000Z', lastModifiedBy: null,
-    }],
-    users: [{
-      id: 'user-1', firstName: 'School', middleName: null, lastName: 'Admin',
-      email: 'admin@school.edu', isActive: true, version: 1,
-      updatedAt: '2026-01-01T00:00:00.000Z', lastModifiedBy: null,
-    }],
-    userOrganizations: [{
-      id: 'org-1', userId: 'user-1', role: 'INSTITUTION_ADMIN',
-      institutionId: 'school-1', countyId: 'county-1', districtId: null, isActive: true,
-    }],
+const CONTEXT = {
+  institutionId: 'school-1',
+  userId: 'user-1',
+  role: 'INSTITUTION_ADMIN',
+  scopeType: 'INSTITUTION',
+  scopeId: 'school-1',
+  serverDeviceId: 'server-device-1',
+};
+
+function student(id: string, firstName: string): ProvisioningRow {
+  return {
+    id,
+    institutionId: 'school-1',
+    firstName,
+    middleName: null,
+    lastName: 'Learner',
+    admissionNumber: `ADM-${id}`,
+    dateOfBirth: '2012-05-04',
+    gender: 'FEMALE',
+    gradeLevel: 'GRADE_7',
+    isActive: true,
+    admissionDate: '2026-01-05',
+    phoneNumber: null,
+    email: null,
+    address: null,
+    version: 1,
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    lastModifiedBy: null,
   };
+}
+
+function makeSnapshot(): ProvisioningSnapshot {
+  return snapshotOf(BASE_DATA);
+}
+
+/** Builds a valid, checksum-consistent snapshot envelope around `overrides`;
+ * every collection the caller omits is empty (and its manifest count 0), which
+ * is exactly the shape of a real delta snapshot. */
+function snapshotOf(overrides: Partial<ProvisioningData>): ProvisioningSnapshot {
+  const empty = Object.fromEntries(PROVISIONING_COLLECTIONS.map((key) => [key, []])) as unknown as ProvisioningData;
+  const data: ProvisioningData = { ...empty, ...overrides };
   const manifest = Object.fromEntries(
     PROVISIONING_COLLECTIONS.map((key) => [key, data[key].length]),
   ) as ProvisioningSnapshot['manifest'];
@@ -112,3 +178,22 @@ function makeSnapshot(): ProvisioningSnapshot {
     data,
   };
 }
+
+const BASE_DATA: Partial<ProvisioningData> = {
+  institutions: [{
+    id: 'school-1', code: 'SCH-1', name: 'Central High', type: 'SECONDARY',
+    ownership: 'PUBLIC', countyId: 'county-1', districtId: null,
+    approvalStatus: 'APPROVED', street: null, communityTown: null,
+    latitude: null, longitude: null, rejectionReason: null, profile: null,
+    version: 1, updatedAt: '2026-01-01T00:00:00.000Z', lastModifiedBy: null,
+  }],
+  users: [{
+    id: 'user-1', firstName: 'School', middleName: null, lastName: 'Admin',
+    email: 'admin@school.edu', isActive: true, version: 1,
+    updatedAt: '2026-01-01T00:00:00.000Z', lastModifiedBy: null,
+  }],
+  userOrganizations: [{
+    id: 'org-1', userId: 'user-1', role: 'INSTITUTION_ADMIN',
+    institutionId: 'school-1', countyId: 'county-1', districtId: null, isActive: true,
+  }],
+};

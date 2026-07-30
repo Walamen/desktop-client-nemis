@@ -112,7 +112,7 @@ export class DesktopSyncWorker {
           scopeId: workspace.user.scope.scopeId,
           institutionId: workspace.user.institutionId,
           serverDeviceId: completion.serverDeviceId,
-        }, { preserveConflicts: true });
+        }, { preserveConflicts: true, merge: !fullResyncDue });
         this.#lastPullAt = Date.now();
         const pulledAt = new Date().toISOString();
         workspace.database.connection.prepare(`

@@ -20,6 +20,13 @@ interface ImportContext {
 interface ImportOptions {
   /** Keep durable conflict evidence while replacing server-owned rows after sync. */
   preserveConflicts?: boolean;
+  /**
+   * Delta mode: skip the delete-everything step and upsert instead of
+   * insert. The snapshot's manifest counts are a subset, not the full
+   * table count, so verifyDatabase's count check is skipped too — its
+   * dependency/FK/integrity checks still run.
+   */
+  merge?: boolean;
 }
 
 interface TableSpec {
@@ -125,13 +132,15 @@ export class ProvisioningImporter {
           }
         }
         db.prepare(`UPDATE sync_runtime SET captureEnabled=0 WHERE id='singleton'`).run();
-        for (const collection of DELETE_ORDER) {
-          db.prepare(`DELETE FROM ${SPECS[collection].table}`).run();
+        if (!options.merge) {
+          for (const collection of DELETE_ORDER) {
+            db.prepare(`DELETE FROM ${SPECS[collection].table}`).run();
+          }
         }
         for (const collection of PROVISIONING_COLLECTIONS) {
-          insertRows(db, SPECS[collection], snapshot.data[collection]);
+          upsertRows(db, SPECS[collection], snapshot.data[collection], options.merge ?? false);
         }
-        verifyDatabase(db, snapshot);
+        verifyDatabase(db, snapshot, { skipCounts: options.merge ?? false });
         if (options.preserveConflicts) {
           db.prepare(`DELETE FROM sync_queue WHERE status='completed'`).run();
         } else {
@@ -188,11 +197,22 @@ function validateEnvelope(snapshot: ProvisioningSnapshot, context: ImportContext
   }
 }
 
-function insertRows(db: SqliteDatabase, table: TableSpec, rows: readonly ProvisioningRow[]): void {
+function upsertRows(
+  db: SqliteDatabase,
+  table: TableSpec,
+  rows: readonly ProvisioningRow[],
+  merge: boolean,
+): void {
   const placeholders = table.columns.map(() => '?').join(',');
-  const statement = db.prepare(
-    `INSERT INTO ${table.table} (${table.columns.join(',')}) VALUES (${placeholders})`,
-  );
+  const updateSet = table.columns
+    .filter((column) => column !== 'id')
+    .map((column) => `${column}=excluded.${column}`)
+    .join(',');
+  const sql = merge
+    ? `INSERT INTO ${table.table} (${table.columns.join(',')}) VALUES (${placeholders})
+       ON CONFLICT(id) DO UPDATE SET ${updateSet}`
+    : `INSERT INTO ${table.table} (${table.columns.join(',')}) VALUES (${placeholders})`;
+  const statement = db.prepare(sql);
   for (const row of rows) {
     if (typeof row.id !== 'string' || row.id.length === 0) {
       throw new Error(`Provisioning row for ${table.table} has no valid id.`);
@@ -208,12 +228,18 @@ function sqliteValue(value: unknown): string | number | null {
   return JSON.stringify(value);
 }
 
-function verifyDatabase(db: SqliteDatabase, snapshot: ProvisioningSnapshot): void {
-  for (const collection of PROVISIONING_COLLECTIONS) {
-    const table = SPECS[collection].table;
-    const row = db.prepare(`SELECT COUNT(*) count FROM ${table}`).get() as { count: number };
-    if (row.count !== snapshot.manifest[collection]) {
-      throw new Error(`Imported row count mismatch for ${collection}.`);
+function verifyDatabase(
+  db: SqliteDatabase,
+  snapshot: ProvisioningSnapshot,
+  options: { skipCounts: boolean } = { skipCounts: false },
+): void {
+  if (!options.skipCounts) {
+    for (const collection of PROVISIONING_COLLECTIONS) {
+      const table = SPECS[collection].table;
+      const row = db.prepare(`SELECT COUNT(*) count FROM ${table}`).get() as { count: number };
+      if (row.count !== snapshot.manifest[collection]) {
+        throw new Error(`Imported row count mismatch for ${collection}.`);
+      }
     }
   }
   const dependencies = [

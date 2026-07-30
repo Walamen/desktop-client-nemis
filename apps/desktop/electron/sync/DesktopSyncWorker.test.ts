@@ -23,6 +23,38 @@ function alwaysOnline() {
   return { isOnline: () => true };
 }
 
+/**
+ * A snapshot with no rows in any collection — the shape of a delta pull that
+ * found nothing new. ProvisioningImporter.import() validates the snapshot's
+ * scope (including institutionId, which must match
+ * ActiveWorkspace.user.institutionId) and its checksum (a real sha256 of
+ * `data`, not a placeholder) before any of this suite's assertions are
+ * reached, so the fixture must satisfy both — not just
+ * PROVISIONING_COLLECTIONS shape. `generatedAt` deliberately differs from any
+ * clock the tests set, so an assertion on it can prove the server's timestamp
+ * (not the local clock) is what gets persisted as lastDeltaAt.
+ */
+const SNAPSHOT_GENERATED_AT = '2026-07-28T18:30:45.123Z';
+
+function emptySnapshot() {
+  const data = Object.fromEntries(PROVISIONING_COLLECTIONS.map((key) => [key, []]));
+  return {
+    contractVersion: 1,
+    snapshotId: 'snap-1',
+    generatedAt: SNAPSHOT_GENERATED_AT,
+    userId: 'user-1',
+    role: 'INSTITUTION_ADMIN',
+    scopeType: 'INSTITUTION',
+    scopeId: 'school-1',
+    institutionId: 'school-1',
+    deviceId: 'device-1',
+    checksumAlgorithm: 'sha256',
+    checksum: createHash('sha256').update(JSON.stringify(data)).digest('hex'),
+    manifest: Object.fromEntries(PROVISIONING_COLLECTIONS.map((key) => [key, 0])),
+    data,
+  };
+}
+
 describe('DesktopSyncWorker retry policy', () => {
   let directory: string;
   let manager: DatabaseManager;
@@ -159,29 +191,43 @@ describe('DesktopSyncWorker retry policy', () => {
     expect(row.deadLetter).toBe(0);
   });
 
+  it('a delta pull merges the snapshot instead of wiping local rows it omits', async () => {
+    // Seed local rows that a delta snapshot legitimately does not mention.
+    // Capture has to be off first: the sync triggers would otherwise enqueue
+    // these seed writes, and a non-empty queue skips the pull altogether.
+    manager.connection.prepare(`UPDATE sync_runtime SET captureEnabled=0 WHERE id='singleton'`).run();
+    manager.connection.prepare(`
+      INSERT INTO institutions (id,code,name,type,ownership,countyId,approvalStatus,version,updatedAt)
+      VALUES ('school-1','SCH-1','Central High','SECONDARY','PUBLIC','county-1','APPROVED',1,?)
+    `).run('2026-07-01T00:00:00.000Z');
+    manager.connection.prepare(`
+      INSERT INTO students
+        (id,institutionId,firstName,lastName,admissionNumber,dateOfBirth,gender,isActive,version,updatedAt)
+      VALUES ('s1','school-1','Ada','Learner','ADM-1','2012-05-04','FEMALE',1,1,?)
+    `).run('2026-07-01T00:00:00.000Z');
+    manager.connection.prepare(`DELETE FROM sync_queue`).run();
+    // A full resync already happened moments ago, so this cycle pulls a delta.
+    const recently = new Date().toISOString();
+    manager.connection.prepare(`
+      UPDATE sync_metadata SET lastDeltaAt=?, lastFullResyncAt=? WHERE id='singleton'
+    `).run(recently, recently);
+    const downloadSnapshot = vi.fn().mockResolvedValue(emptySnapshot());
+    const gateway = { pushChanges: vi.fn(), downloadSnapshot } as unknown as BackendProvisioningGateway;
+    const worker = new DesktopSyncWorker(workspaces, gateway, alwaysOnline());
+
+    await worker.syncActive();
+
+    expect(downloadSnapshot).toHaveBeenCalledWith('device-1', recently);
+    expect(
+      (manager.connection.prepare(`SELECT COUNT(*) count FROM students`).get() as { count: number }).count,
+    ).toBe(1);
+    expect(
+      (manager.connection.prepare(`SELECT COUNT(*) count FROM institutions`).get() as { count: number }).count,
+    ).toBe(1);
+  });
+
   it('pulls with since after the first sync, and omits since once 24h have passed since the last full resync', async () => {
-    // ProvisioningImporter.import() validates the snapshot's scope (including
-    // institutionId, which must match ActiveWorkspace.user.institutionId) and
-    // its checksum (a real sha256 of `data`, not a placeholder) before this
-    // test's assertions about the `since` param are ever reached, so the
-    // fixture must satisfy both — not just PROVISIONING_COLLECTIONS shape.
-    const data = Object.fromEntries(PROVISIONING_COLLECTIONS.map((key) => [key, []]));
-    const checksum = createHash('sha256').update(JSON.stringify(data)).digest('hex');
-    const downloadSnapshot = vi.fn().mockResolvedValue({
-      contractVersion: 1,
-      snapshotId: 'snap-1',
-      generatedAt: '2026-07-29T00:00:00.000Z',
-      userId: 'user-1',
-      role: 'INSTITUTION_ADMIN',
-      scopeType: 'INSTITUTION',
-      scopeId: 'school-1',
-      institutionId: 'school-1',
-      deviceId: 'device-1',
-      checksumAlgorithm: 'sha256',
-      checksum,
-      manifest: Object.fromEntries(PROVISIONING_COLLECTIONS.map((key) => [key, 0])),
-      data,
-    });
+    const downloadSnapshot = vi.fn().mockResolvedValue(emptySnapshot());
     const gateway = { pushChanges: vi.fn(), downloadSnapshot } as unknown as BackendProvisioningGateway;
     const worker = new DesktopSyncWorker(workspaces, gateway, alwaysOnline());
 
