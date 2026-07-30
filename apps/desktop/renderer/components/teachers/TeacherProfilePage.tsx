@@ -16,7 +16,7 @@ import {
   useAcademicFoundationViewModel,
   useTeacherProfileViewModel,
   useTeachingAssignmentViewModel,
-} from '@/lib/presentation/hooks';
+} from '@/lib/presentation/hooks/school-admin';
 import { human, queryId, rows } from './shared';
 
 function DetailRow({

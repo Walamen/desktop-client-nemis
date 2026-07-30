@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { EmploymentType,Gender,StaffPosition,type EmploymentType as EmploymentTypeValue,type Gender as GenderValue,type StaffPosition as StaffPositionValue } from '@nemis-desktop/types';
 import { Badge,Button,EmptyState,ErrorState,Input,Modal,Select,Skeleton } from '@nemis-desktop/ui';
 import { useViewModel } from '@/hooks/use-view-model';
-import { useAcademicFoundationViewModel,useSettingsViewModel,useTeacherProfileViewModel,useTeacherSearchViewModel,useTeachersListViewModel,useTeachingAssignmentViewModel } from '@/lib/presentation/hooks';
+import { useAcademicFoundationViewModel,useSettingsViewModel,useTeacherProfileViewModel,useTeacherSearchViewModel,useTeachersListViewModel,useTeachingAssignmentViewModel } from '@/lib/presentation/hooks/school-admin';
 const human=(v:string)=>v.replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());
 const queryId=()=>typeof window==='undefined'?'':new URLSearchParams(window.location.search).get('id')??'';
 function Page({title,action,children}:{title:string;action?:ReactNode;children:ReactNode}){return <div className="p-6 space-y-5"><div className="flex justify-between items-center gap-3"><div><h1 className="text-2xl font-semibold">{title}</h1><p className="text-sm text-slate-500">Offline teacher and assignment records stored on this device.</p></div>{action}</div>{children}</div>}

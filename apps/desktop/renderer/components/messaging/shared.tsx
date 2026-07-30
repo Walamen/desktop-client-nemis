@@ -1,10 +1,11 @@
-import { nemisBridge } from '@/services/nemis-bridge';
+import { sharedBridge } from '@/services/nemis-bridge/shared';
+import { schoolAdminBridge } from '@/services/nemis-bridge/school-admin';
 import type { SchoolAdminRecord, StudentListItemResult, TeacherResult } from '@nemis-desktop/types';
 
 async function listAll(
   collection: 'conversations' | 'messages' | 'guardians' | 'student_guardians',
 ): Promise<SchoolAdminRecord[]> {
-  const result = await nemisBridge.listSchoolAdminRecords({ collection, limit: 250 });
+  const result = await sharedBridge.listSchoolAdminRecords({ collection, limit: 250 });
   return result.items;
 }
 
@@ -92,8 +93,8 @@ export async function loadConversations(currentUserId: string): Promise<Conversa
     listAll('messages'),
     listAll('guardians'),
     listAll('student_guardians'),
-    nemisBridge.listStudents({ limit: 2000 }),
-    nemisBridge.listTeachers({ limit: 2000 }),
+    schoolAdminBridge.listStudents({ limit: 2000 }),
+    schoolAdminBridge.listTeachers({ limit: 2000 }),
   ]);
 
   const studentNameById = new Map(studentsPage.items.map((s: StudentListItemResult) => [s.id, s.fullName]));
@@ -147,7 +148,7 @@ export async function getOrCreateConversation(params: { studentId: string; teach
   const rows = await listAll('conversations');
   const existing = rows.find((r) => r.studentId === params.studentId && r.teacherId === params.teacherId);
   if (existing) return existing;
-  return nemisBridge.saveSchoolAdminRecord({
+  return sharedBridge.saveSchoolAdminRecord({
     collection: 'conversations',
     record: { studentId: params.studentId, teacherId: params.teacherId, subject: params.subject || null, lastMessageAt: null },
   });
@@ -158,11 +159,11 @@ export async function getOrCreateConversation(params: { studentId: string; teach
  * active.user.role`) — passing them here would just be overwritten, so they
  * are omitted from the write. */
 export async function sendMessage(params: { conversationId: string; content: string }): Promise<SchoolAdminRecord> {
-  const message = await nemisBridge.saveSchoolAdminRecord({
+  const message = await sharedBridge.saveSchoolAdminRecord({
     collection: 'messages',
     record: { conversationId: params.conversationId, content: params.content, isRead: false, readAt: null },
   });
-  await nemisBridge.saveSchoolAdminRecord({
+  await sharedBridge.saveSchoolAdminRecord({
     collection: 'conversations',
     record: { id: params.conversationId, lastMessageAt: new Date().toISOString() },
   });
@@ -172,7 +173,7 @@ export async function sendMessage(params: { conversationId: string; content: str
 export async function markMessagesRead(messageIds: string[]): Promise<void> {
   await Promise.all(
     messageIds.map((id) =>
-      nemisBridge.saveSchoolAdminRecord({ collection: 'messages', record: { id, isRead: true, readAt: new Date().toISOString() } }),
+      sharedBridge.saveSchoolAdminRecord({ collection: 'messages', record: { id, isRead: true, readAt: new Date().toISOString() } }),
     ),
   );
 }

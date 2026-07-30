@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Bell, Check, Filter } from 'lucide-react';
 import { Spinner } from '@nemis-desktop/ui';
-import { useCurrentUserViewModel } from '@/lib/presentation/hooks';
+import { useCurrentUserViewModel } from '@/lib/presentation/hooks/shared';
 import { useViewModel } from '@/hooks/use-view-model';
-import { nemisBridge } from '@/services/nemis-bridge';
+import { schoolAdminBridge } from '@/services/nemis-bridge/school-admin';
 import type { SchoolSummaryResult } from '@nemis-desktop/types';
 import { getNotificationMeta, listMyNotifications, markNotificationRead, relativeTime, type NotificationRow } from './shared';
 
@@ -23,7 +23,7 @@ export function NotificationsPage() {
 
   useEffect(() => {
     currentUser.loadCurrentUser();
-    nemisBridge.getSchoolSummary().then(setSchool).catch(() => setSchool(null));
+    schoolAdminBridge.getSchoolSummary().then(setSchool).catch(() => setSchool(null));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

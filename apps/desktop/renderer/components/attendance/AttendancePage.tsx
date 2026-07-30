@@ -6,9 +6,9 @@ import { Button, EmptyState, ErrorState, Select, Skeleton } from '@nemis-desktop
 import { useViewModel } from '@/hooks/use-view-model';
 import {
   useAcademicFoundationViewModel,
-  useAttendanceViewModel,
   useStudentsViewModel,
-} from '@/lib/presentation/hooks';
+} from '@/lib/presentation/hooks/school-admin';
+import { useAttendanceViewModel } from '@/lib/presentation/hooks/shared';
 
 const statusOptions = Object.values(AttendanceStatus).map((status) => ({
   value: status,

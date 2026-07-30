@@ -1,5 +1,5 @@
 import { GradeLevel, type GradeLevel as GradeLevelValue } from '@nemis-desktop/types';
-import { nemisBridge } from '@/services/nemis-bridge';
+import { schoolAdminBridge } from '@/services/nemis-bridge/school-admin';
 
 /** "GRADE_10" -> "Grade 10", "KG" -> "KG" — mirrors portal-web's formatGradeLevel. */
 export const formatGrade = (v: string): string => v.replace('_', ' ').replace('GRADE ', 'Grade ');
@@ -36,10 +36,10 @@ export interface TeacherOnClass {
  * teacher list, then — for that small set only — each teacher's own
  * assignments filtered down to this class to recover homeroom/subject detail. */
 export async function getClassTeacherRoster(classId: string): Promise<TeacherOnClass[]> {
-  const page = await nemisBridge.listTeachers({ classId, isActive: true, limit: 100 });
+  const page = await schoolAdminBridge.listTeachers({ classId, isActive: true, limit: 100 });
   const roster: TeacherOnClass[] = [];
   for (const teacher of page.items) {
-    const assignments = await nemisBridge.listTeachingAssignments(teacher.id);
+    const assignments = await schoolAdminBridge.listTeachingAssignments(teacher.id);
     const forClass = assignments.filter((a) => a.classId === classId);
     roster.push({
       teacherId: teacher.id,
@@ -53,7 +53,7 @@ export async function getClassTeacherRoster(classId: string): Promise<TeacherOnC
 }
 
 export async function countTeachersForClass(classId: string): Promise<number> {
-  const page = await nemisBridge.listTeachers({ classId, isActive: true, limit: 1 });
+  const page = await schoolAdminBridge.listTeachers({ classId, isActive: true, limit: 1 });
   return page.total;
 }
 
@@ -69,8 +69,8 @@ export interface UnassignedStudent {
  * computed as a set difference between two real, filtered queries. */
 export async function getUnassignedStudents(): Promise<UnassignedStudent[]> {
   const [all, enrolled] = await Promise.all([
-    nemisBridge.listStudents({ isActive: true, limit: 2000 }),
-    nemisBridge.listStudents({ isActive: true, enrollmentStatus: 'ACTIVE', limit: 2000 }),
+    schoolAdminBridge.listStudents({ isActive: true, limit: 2000 }),
+    schoolAdminBridge.listStudents({ isActive: true, enrollmentStatus: 'ACTIVE', limit: 2000 }),
   ]);
   const enrolledIds = new Set(enrolled.items.map((s) => s.id));
   return all.items

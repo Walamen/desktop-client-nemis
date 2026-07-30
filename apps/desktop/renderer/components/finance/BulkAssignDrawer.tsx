@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react';
 import { GradeLevel, type GradeLevel as GradeLevelValue, type SchoolAdminRecord } from '@nemis-desktop/types';
 import { Button, Drawer } from '@nemis-desktop/ui';
 import { useViewModel } from '@/hooks/use-view-model';
-import { useAcademicFoundationViewModel } from '@/lib/presentation/hooks';
-import { nemisBridge } from '@/services/nemis-bridge';
+import { useAcademicFoundationViewModel } from '@/lib/presentation/hooks/school-admin';
+import { schoolAdminBridge } from '@/services/nemis-bridge/school-admin';
 import { bulkAssignObligations, gradeToLevel, human, parseLevels, type BulkAssignResult } from './shared';
 
 type TargetMode = 'gradeLevel' | 'class';
@@ -59,8 +59,8 @@ export function BulkAssignDrawer({ feeRule, onClose, onDone }: {
     setSubmitting(true);
     try {
       const students = mode === 'gradeLevel' && selectedGradeLevel
-        ? await nemisBridge.listStudents({ gradeLevel: selectedGradeLevel, isActive: true, limit: 2000 })
-        : await nemisBridge.listStudents({ classId: selectedClassId, isActive: true, limit: 2000 });
+        ? await schoolAdminBridge.listStudents({ gradeLevel: selectedGradeLevel, isActive: true, limit: 2000 })
+        : await schoolAdminBridge.listStudents({ classId: selectedClassId, isActive: true, limit: 2000 });
       const outcome = await bulkAssignObligations({
         feeRuleId: String(feeRule.id),
         academicYearId: term.data.academicYearId,

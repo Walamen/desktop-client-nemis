@@ -13,13 +13,13 @@ vi.mock('next/navigation', () => ({
 // enough and throws "store.subscribe is not a function". Use a real vanilla store,
 // same pattern as Header.test.tsx.
 const notificationStore = createStore(() => ({ notifications: [] as unknown[] }));
-vi.mock('../../lib/presentation/hooks', () => ({
+vi.mock('../../lib/presentation/hooks/shared', () => ({
   useNotificationStore: () => ({ store: notificationStore }),
 }));
-vi.mock('@/services/nemis-bridge', () => ({ nemisBridge: { logout: vi.fn().mockResolvedValue(undefined) } }));
+vi.mock('@/services/nemis-bridge/shared', () => ({ sharedBridge: { logout: vi.fn().mockResolvedValue(undefined) } }));
 
 import { Sidebar } from './Sidebar';
-import { nemisBridge } from '@/services/nemis-bridge';
+import { sharedBridge } from '@/services/nemis-bridge/shared';
 
 describe('Sidebar', () => {
   it('renders school-admin nav groups and items with correct hrefs', () => {
@@ -44,10 +44,10 @@ describe('Sidebar', () => {
     expect(screen.getByText('Audit Trail').closest('a')).toHaveAttribute('href', '/government/county/audit');
   });
 
-  it('calls nemisBridge.logout() when the Logout button is clicked', () => {
+  it('calls sharedBridge.logout() when the Logout button is clicked', () => {
     render(<Sidebar role={SystemRole.INSTITUTION_ADMIN} institutionName="X" />);
     fireEvent.click(screen.getByText('Logout'));
-    expect(nemisBridge.logout).toHaveBeenCalled();
+    expect(sharedBridge.logout).toHaveBeenCalled();
   });
 
   it('renders a role with no dashboardItem without crashing', () => {

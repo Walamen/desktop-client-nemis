@@ -1,4 +1,5 @@
-import { nemisBridge } from '@/services/nemis-bridge';
+import { sharedBridge } from '@/services/nemis-bridge/shared';
+import { schoolAdminBridge } from '@/services/nemis-bridge/school-admin';
 import type { ClassResult, SchoolAdminRecord, StudentListItemResult, TeacherResult, TeachingAssignmentResult } from '@nemis-desktop/types';
 import { gradeToLevel, LEVEL_LABEL, listFeeRules } from '@/components/finance/shared';
 import { getGradingConfig, listPeriodsForTerm } from '@/components/academic-grading/shared';
@@ -91,7 +92,7 @@ export interface ClassAgg {
 export async function loadClassAggregates(classes: ClassResult[]): Promise<ClassAgg[]> {
   return Promise.all(
     classes.map(async (c) => {
-      const page = await nemisBridge.listStudents({ classId: c.id, isActive: true, limit: 2000 });
+      const page = await schoolAdminBridge.listStudents({ classId: c.id, isActive: true, limit: 2000 });
       const students = [...page.items];
       return {
         classId: c.id,
@@ -196,7 +197,7 @@ export async function buildAttendanceReport(classAggs: ClassAgg[], period: Atten
 
   const perClass = await Promise.all(
     classAggs.map(async (agg) => {
-      const rows = (await Promise.all(dates.map((date) => nemisBridge.listAttendance({ classId: agg.classId, date })))).flat();
+      const rows = (await Promise.all(dates.map((date) => sharedBridge.listAttendance({ classId: agg.classId, date })))).flat();
       const present = rows.filter((r) => r.status === 'PRESENT').length;
       const absent = rows.filter((r) => r.status === 'ABSENT').length;
       const late = rows.filter((r) => r.status === 'LATE').length;
@@ -272,9 +273,9 @@ function computeAcademicStats(rows: SchoolAdminRecord[], passThresholdPct: numbe
 export async function buildAcademicReport(classAggs: ClassAgg[], termId: string): Promise<AcademicReportData> {
   const [periods, gradesResult, config, subjectsResult] = await Promise.all([
     listPeriodsForTerm(termId),
-    nemisBridge.listSchoolAdminRecords({ collection: 'grades', limit: 250 }),
+    sharedBridge.listSchoolAdminRecords({ collection: 'grades', limit: 250 }),
     getGradingConfig(),
-    nemisBridge.listSubjects({ limit: 250 }),
+    schoolAdminBridge.listSubjects({ limit: 250 }),
   ]);
 
   const periodIds = new Set(periods.map((p) => String(p.id)));
@@ -341,7 +342,7 @@ export interface StaffReportData {
  * the UI as "Approved" rather than "Qualified" to stay honest about what's
  * actually being measured). */
 export async function buildStaffReport(classAggs: ClassAgg[]): Promise<StaffReportData> {
-  const teachersPage = await nemisBridge.listTeachers({ isActive: true, limit: 2000 });
+  const teachersPage = await schoolAdminBridge.listTeachers({ isActive: true, limit: 2000 });
   const teachers = teachersPage.items;
   const teacherRows = teachers.filter((t) => TEACHING_POSITIONS.has(t.position));
   const totalTeachers = teacherRows.length;
@@ -356,9 +357,9 @@ export async function buildStaffReport(classAggs: ClassAgg[]): Promise<StaffRepo
 
   const classAssignments = await Promise.all(
     classAggs.map(async (c) => {
-      const classTeachersPage = await nemisBridge.listTeachers({ classId: c.classId, isActive: true, limit: 500 });
+      const classTeachersPage = await schoolAdminBridge.listTeachers({ classId: c.classId, isActive: true, limit: 500 });
       const classTeachers = classTeachersPage.items;
-      const assignmentLists = await Promise.all(classTeachers.map((t) => nemisBridge.listTeachingAssignments(t.id)));
+      const assignmentLists = await Promise.all(classTeachers.map((t) => schoolAdminBridge.listTeachingAssignments(t.id)));
       const assignments: (TeachingAssignmentResult & { teacher: TeacherResult })[] = [];
       classTeachers.forEach((teacher, i) => {
         for (const a of assignmentLists[i] ?? []) if (a.classId === c.classId) assignments.push({ ...a, teacher });
@@ -411,8 +412,8 @@ function summarizeObligations(rows: SchoolAdminRecord[]) {
 export async function buildFinancialReport(classAggs: ClassAgg[], termId: string | null): Promise<FinancialReportData> {
   const [rules, obligationsResult, paymentsResult] = await Promise.all([
     listFeeRules(),
-    nemisBridge.listSchoolAdminRecords({ collection: 'fee_obligations', limit: 250 }),
-    nemisBridge.listSchoolAdminRecords({ collection: 'fee_payments', limit: 250 }),
+    sharedBridge.listSchoolAdminRecords({ collection: 'fee_obligations', limit: 250 }),
+    sharedBridge.listSchoolAdminRecords({ collection: 'fee_payments', limit: 250 }),
   ]);
 
   const studentClassMap = new Map<string, string>();

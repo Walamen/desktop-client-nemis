@@ -1,4 +1,4 @@
-import { nemisBridge } from '@/services/nemis-bridge';
+import { sharedBridge } from '@/services/nemis-bridge/shared';
 import type { SchoolAdminRecord } from '@nemis-desktop/types';
 
 export interface NotificationTypeMeta {
@@ -87,7 +87,7 @@ const bool = (v: SchoolAdminRecord[string] | undefined): boolean => v === true |
  * this filters the synced-down rows to the current user's own, same as
  * portal-web's useGetUserNotificationsQuery would return for that user. */
 export async function listMyNotifications(recipientId: string): Promise<NotificationRow[]> {
-  const result = await nemisBridge.listSchoolAdminRecords({ collection: 'user_notifications', limit: 250 });
+  const result = await sharedBridge.listSchoolAdminRecords({ collection: 'user_notifications', limit: 250 });
   return result.items
     .filter((r) => str(r.recipientId) === recipientId)
     .map((r) => ({
@@ -100,5 +100,5 @@ export async function listMyNotifications(recipientId: string): Promise<Notifica
 /** The only field an owning user may change on an existing notification (see
  * SchoolAdminModuleService CONFIG: `user_notifications: { columns: ['isRead'] }`). */
 export async function markNotificationRead(id: string): Promise<void> {
-  await nemisBridge.saveSchoolAdminRecord({ collection: 'user_notifications', record: { id, isRead: true } });
+  await sharedBridge.saveSchoolAdminRecord({ collection: 'user_notifications', record: { id, isRead: true } });
 }

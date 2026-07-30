@@ -13,7 +13,7 @@ import {
   Wifi,
 } from 'lucide-react';
 import { desktopPortalRoute, type ProvisioningStatus } from '@nemis-desktop/types';
-import { nemisBridge } from '@/services/nemis-bridge';
+import { sharedBridge } from '@/services/nemis-bridge/shared';
 
 export default function ProvisioningPage() {
   const router = useRouter();
@@ -25,7 +25,7 @@ export default function ProvisioningPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    void nemisBridge
+    void sharedBridge
       .getProvisioningStatus()
       .then((next) => {
         setStatus(next);
@@ -42,7 +42,7 @@ export default function ProvisioningPage() {
     setBusy(true);
     setError(null);
     try {
-      const next = await nemisBridge.authenticate(email, password);
+      const next = await sharedBridge.authenticate(email, password);
       setPassword('');
       setStatus(next);
       setShowLogin(false);
@@ -64,16 +64,16 @@ export default function ProvisioningPage() {
     setBusy(true);
     setError(null);
     const poll = window.setInterval(() => {
-      void nemisBridge.getProvisioningStatus().then(setStatus);
+      void sharedBridge.getProvisioningStatus().then(setStatus);
     }, 400);
     try {
-      const next = await nemisBridge.startProvisioning();
+      const next = await sharedBridge.startProvisioning();
       setStatus(next);
       if (next.isProvisioned && next.user) {
         router.replace(desktopPortalRoute(next.user.role) ?? '/');
       }
     } catch {
-      const latest = await nemisBridge.getProvisioningStatus().catch(() => null);
+      const latest = await sharedBridge.getProvisioningStatus().catch(() => null);
       if (latest) setStatus(latest);
       setError(latest?.message ?? 'Provisioning could not continue. No local data was changed.');
     } finally {
@@ -122,7 +122,7 @@ export default function ProvisioningPage() {
         <section className="bg-slate-200 text-slate-900  flex items-center">
           <div className="w-full max-w-lg mx-auto ">
             {status.stage === 'backend_gap' ? (
-              <BackendGap status={status} onLogout={async () => setStatus(await nemisBridge.logout())} />
+              <BackendGap status={status} onLogout={async () => setStatus(await sharedBridge.logout())} />
             ) : busy && status.authentication === 'authenticated' ? (
               <ProgressCard status={status} />
             ) : status.stage === 'ready' ? (

@@ -4,8 +4,8 @@ import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { CheckCircle, Eye, FileText, Lock, Plus, RotateCcw, Unlock } from 'lucide-react';
 import { useViewModel } from '@/hooks/use-view-model';
-import { useAcademicFoundationViewModel, useAcademicYearViewModel } from '@/lib/presentation/hooks';
-import { nemisBridge } from '@/services/nemis-bridge';
+import { useAcademicFoundationViewModel, useAcademicYearViewModel } from '@/lib/presentation/hooks/school-admin';
+import { sharedBridge } from '@/services/nemis-bridge/shared';
 import type { SchoolAdminRecord } from '@nemis-desktop/types';
 import { formatDateShort, listAllWindows, listPeriodsForTerm, WINDOW_STATUS_CHIP, WINDOW_STATUS_RAIL } from './shared';
 
@@ -52,7 +52,7 @@ export function GradeWindowsPage() {
     event.preventDefault();
     setCreating(true);
     try {
-      await nemisBridge.saveSchoolAdminRecord({
+      await sharedBridge.saveSchoolAdminRecord({
         collection: 'grade_entry_windows',
         record: {
           gradingPeriodId: form.gradingPeriodId,
@@ -74,7 +74,7 @@ export function GradeWindowsPage() {
   };
 
   const transition = async (win: SchoolAdminRecord, changes: SchoolAdminRecord) => {
-    await nemisBridge.saveSchoolAdminRecord({ collection: 'grade_entry_windows', record: { id: win.id!, ...changes } });
+    await sharedBridge.saveSchoolAdminRecord({ collection: 'grade_entry_windows', record: { id: win.id!, ...changes } });
     await reload();
   };
 

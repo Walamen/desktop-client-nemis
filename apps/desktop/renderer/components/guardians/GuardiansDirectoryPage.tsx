@@ -16,9 +16,9 @@ import {
   Filter,
   ArrowRight,
 } from 'lucide-react';
-import { nemisBridge } from '@/services/nemis-bridge';
+import { sharedBridge } from '@/services/nemis-bridge/shared';
 import { useViewModel } from '@/hooks/use-view-model';
-import { useSettingsViewModel } from '@/lib/presentation/hooks';
+import { useSettingsViewModel } from '@/lib/presentation/hooks/school-admin';
 import { buildGuardianRows, type GuardianRow } from './shared';
 import { GuardianDrawer } from './GuardianDrawer';
 
@@ -162,9 +162,9 @@ export function GuardiansDirectoryPage() {
     (async () => {
       try {
         const [guardians, students, links] = await Promise.all([
-          nemisBridge.listSchoolAdminRecords({ collection: 'guardians', limit: 1000 }),
-          nemisBridge.listSchoolAdminRecords({ collection: 'students', limit: 2000 }),
-          nemisBridge.listSchoolAdminRecords({ collection: 'student_guardians', limit: 2000 }),
+          sharedBridge.listSchoolAdminRecords({ collection: 'guardians', limit: 1000 }),
+          sharedBridge.listSchoolAdminRecords({ collection: 'students', limit: 2000 }),
+          sharedBridge.listSchoolAdminRecords({ collection: 'student_guardians', limit: 2000 }),
         ]);
         if (cancelled) return;
         setRows(buildGuardianRows(guardians.items, students.items, links.items));

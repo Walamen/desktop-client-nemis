@@ -22,10 +22,10 @@ import {
 import { useViewModel } from '@/hooks/use-view-model';
 import {
   useSettingsViewModel,
-  useTeacherDashboardViewModel,
   useTeacherSearchViewModel,
   useTeachersListViewModel,
-} from '@/lib/presentation/hooks';
+} from '@/lib/presentation/hooks/school-admin';
+import { useTeacherDashboardViewModel } from '@/lib/presentation/hooks/teacher';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { human } from './shared';
 

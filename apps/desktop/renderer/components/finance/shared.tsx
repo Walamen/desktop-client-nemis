@@ -1,4 +1,4 @@
-import { nemisBridge } from '@/services/nemis-bridge';
+import { sharedBridge } from '@/services/nemis-bridge/shared';
 import type { SchoolAdminRecord } from '@nemis-desktop/types';
 
 export const human = (value: string): string =>
@@ -66,14 +66,14 @@ export function gradeToLevel(grade: string | null | undefined): string | null {
  * beyond pagination (same pattern used throughout classes/academic-grading
  * shared helpers). */
 async function listAll(collection: 'fee_rules' | 'fee_obligations' | 'fee_payments'): Promise<SchoolAdminRecord[]> {
-  const result = await nemisBridge.listSchoolAdminRecords({ collection, limit: 250 });
+  const result = await sharedBridge.listSchoolAdminRecords({ collection, limit: 250 });
   return result.items;
 }
 
 export const listFeeRules = () => listAll('fee_rules');
 
 export async function saveFeeRule(record: SchoolAdminRecord): Promise<SchoolAdminRecord> {
-  return nemisBridge.saveSchoolAdminRecord({ collection: 'fee_rules', record });
+  return sharedBridge.saveSchoolAdminRecord({ collection: 'fee_rules', record });
 }
 
 export async function listObligationsForRule(feeRuleId: string): Promise<SchoolAdminRecord[]> {
@@ -119,7 +119,7 @@ export async function getOrCreateObligation(params: {
     (row) => row.studentId === params.studentId && row.feeRuleId === params.feeRuleId && row.termId === params.termId,
   );
   if (existing) return existing;
-  return nemisBridge.saveSchoolAdminRecord({
+  return sharedBridge.saveSchoolAdminRecord({
     collection: 'fee_obligations',
     record: {
       studentId: params.studentId,
@@ -162,7 +162,7 @@ export async function bulkAssignObligations(params: {
       continue;
     }
     try {
-      await nemisBridge.saveSchoolAdminRecord({
+      await sharedBridge.saveSchoolAdminRecord({
         collection: 'fee_obligations',
         record: {
           studentId,
@@ -201,7 +201,7 @@ export async function recordPayment(params: {
   reference?: string;
   notes?: string;
 }): Promise<SchoolAdminRecord> {
-  return nemisBridge.saveSchoolAdminRecord({
+  return sharedBridge.saveSchoolAdminRecord({
     collection: 'fee_payments',
     record: {
       obligationId: params.obligationId,

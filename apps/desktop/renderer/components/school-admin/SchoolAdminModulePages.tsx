@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import type { SchoolAdminCollection, SchoolAdminRecord } from '@nemis-desktop/types';
-import { nemisBridge } from '@/services/nemis-bridge';
+import { sharedBridge } from '@/services/nemis-bridge/shared';
+import { studentBridge } from '@/services/nemis-bridge/school-admin/student-bridge';
 
 type Section = {
   collection: SchoolAdminCollection;
@@ -40,7 +41,7 @@ export function SchoolAdminCollectionPage({
   const load = useCallback(async () => {
     setError(null);
     try {
-      const result = await nemisBridge.listSchoolAdminRecords({ collection: active, limit: 200 });
+      const result = await sharedBridge.listSchoolAdminRecords({ collection: active, limit: 200 });
       setItems(result.items);
       setTotal(result.total);
     } catch (cause) {
@@ -55,14 +56,14 @@ export function SchoolAdminCollectionPage({
   }, [load]);
 
   const markRead = async (record: SchoolAdminRecord) => {
-    await nemisBridge.saveSchoolAdminRecord({
+    await sharedBridge.saveSchoolAdminRecord({
       collection: 'user_notifications',
       record: { id: record.id!, isRead: true },
     });
     await load();
   };
   const updateWorkflow = async (record: SchoolAdminRecord, changes: SchoolAdminRecord) => {
-    await nemisBridge.saveSchoolAdminRecord({
+    await sharedBridge.saveSchoolAdminRecord({
       collection: active,
       record: { id: record.id!, ...changes },
     });
@@ -196,10 +197,10 @@ export function RecordPaymentPage() {
     [obligations],
   );
   useEffect(() => {
-    void nemisBridge
+    void sharedBridge
       .listSchoolAdminRecords({ collection: 'fee_obligations', limit: 250 })
       .then((result) => setObligations(result.items));
-    void nemisBridge
+    void studentBridge
       .listStudents({ limit: 250, offset: 0 })
       .then((result) => setStudents(result.items as unknown as SchoolAdminRecord[]));
   }, []);
@@ -211,7 +212,7 @@ export function RecordPaymentPage() {
     const obligation = obligations.find((item) => item.id === form.get('obligationId'));
     if (!obligation) return setMessage('Choose a valid outstanding obligation.');
     try {
-      await nemisBridge.saveSchoolAdminRecord({
+      await sharedBridge.saveSchoolAdminRecord({
         collection: 'fee_payments',
         record: {
           obligationId: String(obligation.id),

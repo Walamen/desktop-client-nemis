@@ -4,11 +4,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 const connectivityStore = createStore(() => ({ isOnline: true, syncStatus: 'idle', lastSyncAt: null }));
 
-// setOnline is part of the real connectivity store's contract and StatusBar
-// calls it once a sync status arrives; the mock must provide it rather than
-// relying on the bridge rejecting first under jsdom.
-vi.mock('../../lib/presentation/hooks', () => ({
-  useConnectivityStore: () => ({ store: connectivityStore, setOnline: vi.fn() }),
+vi.mock('../../lib/presentation/hooks/shared', () => ({
+  useConnectivityStore: () => ({ store: connectivityStore }),
   useSyncViewModel: () => ({ store: connectivityStore }),
 }));
 vi.mock('../../hooks/useAppVersion', () => ({ useAppVersion: () => ({ version: '1.0.0', error: null }) }));

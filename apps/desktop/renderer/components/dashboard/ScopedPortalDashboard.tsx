@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import type { ProvisioningStatus } from '@nemis-desktop/types';
-import { nemisBridge } from '@/services/nemis-bridge';
+import { sharedBridge } from '@/services/nemis-bridge/shared';
 
 export function ScopedPortalDashboard({
   title,
@@ -13,7 +13,7 @@ export function ScopedPortalDashboard({
 }) {
   const [status, setStatus] = useState<ProvisioningStatus | null>(null);
   useEffect(() => {
-    void nemisBridge.getProvisioningStatus().then(setStatus);
+    void sharedBridge.getProvisioningStatus().then(setStatus);
   }, []);
   const user = status?.user;
   return (

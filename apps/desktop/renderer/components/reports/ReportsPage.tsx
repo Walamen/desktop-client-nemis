@@ -5,10 +5,10 @@ import {
   Calendar, ClipboardCheck, Download, FileText, GraduationCap, RefreshCw, Search, Users, DollarSign, AlertTriangle,
 } from 'lucide-react';
 import { Spinner } from '@nemis-desktop/ui';
-import { useAcademicFoundationViewModel } from '@/lib/presentation/hooks';
+import { useAcademicFoundationViewModel } from '@/lib/presentation/hooks/school-admin';
 import { useViewModel } from '@/hooks/use-view-model';
 import { hasData } from '@nemis-desktop/presentation';
-import { nemisBridge } from '@/services/nemis-bridge';
+import { schoolAdminBridge } from '@/services/nemis-bridge/school-admin';
 import type { SchoolSummaryResult } from '@nemis-desktop/types';
 import { LEVEL_LABEL, formatCurrency } from '@/components/finance/shared';
 import {
@@ -59,7 +59,7 @@ export function ReportsPage() {
     foundation.loadClasses();
     foundation.loadAcademicYears();
     foundation.loadCurrentTerm();
-    nemisBridge.getSchoolSummary().then(setSchool).catch(() => setSchool(null));
+    schoolAdminBridge.getSchoolSummary().then(setSchool).catch(() => setSchool(null));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

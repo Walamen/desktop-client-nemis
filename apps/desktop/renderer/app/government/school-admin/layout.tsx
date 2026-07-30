@@ -6,7 +6,7 @@ import { Header } from '@/components/shell/Header';
 import { StatusBar } from '@/components/shell/StatusBar';
 import { RouteGuard } from '@/components/shell/RouteGuard';
 import { ToastHost } from '@/components/shell/ToastHost';
-import { useSettingsViewModel } from '@/lib/presentation/hooks';
+import { useSettingsViewModel } from '@/lib/presentation/hooks/school-admin';
 import { useViewModel } from '@/hooks/use-view-model';
 import { SystemRole } from '@nemis-desktop/types';
 

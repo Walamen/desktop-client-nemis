@@ -6,8 +6,8 @@ import { GradeLevel, type GradeLevel as GradeLevelValue } from '@nemis-desktop/t
 import { Drawer, EmptyState, ErrorState, Select, Skeleton } from '@nemis-desktop/ui';
 import { ArrowLeft, Users, BookOpen, UserCheck, Plus, Trash2, AlertTriangle } from 'lucide-react';
 import { useViewModel } from '@/hooks/use-view-model';
-import { useAcademicFoundationViewModel } from '@/lib/presentation/hooks';
-import { nemisBridge } from '@/services/nemis-bridge';
+import { useAcademicFoundationViewModel } from '@/lib/presentation/hooks/school-admin';
+import { schoolAdminBridge } from '@/services/nemis-bridge/school-admin';
 import { formatGrade, getClassTeacherRoster, queryId, type TeacherOnClass } from './shared';
 
 type Tab = 'students' | 'subjects' | 'settings';
@@ -62,7 +62,7 @@ export function ClassDetailPage() {
 
   async function loadClass(classId: string) {
     setLoadError(null);
-    const page = await nemisBridge.listClasses({ limit: 500, includeInactive: true });
+    const page = await schoolAdminBridge.listClasses({ limit: 500, includeInactive: true });
     const found = page.items.find((c) => c.id === classId);
     if (!found) {
       setLoadError('Class not found.');
@@ -78,7 +78,7 @@ export function ClassDetailPage() {
   }
 
   async function refreshStudents(classId: string) {
-    const page = await nemisBridge.listStudents({ classId, enrollmentStatus: 'ACTIVE', limit: 500 });
+    const page = await schoolAdminBridge.listStudents({ classId, enrollmentStatus: 'ACTIVE', limit: 500 });
     setStudents(page.items);
   }
 

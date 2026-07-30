@@ -1,7 +1,7 @@
 'use client';
 
 import { X } from 'lucide-react';
-import { useNotificationStore } from '../../lib/presentation/hooks';
+import { useNotificationStore } from '../../lib/presentation/hooks/shared';
 import { useViewModel } from '../../hooks/use-view-model';
 
 const KIND_STYLES: Record<string, string> = {

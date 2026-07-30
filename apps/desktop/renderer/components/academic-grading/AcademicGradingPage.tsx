@@ -3,7 +3,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { CalendarRange, ClipboardList, DoorOpen, PenLine } from 'lucide-react';
-import { nemisBridge } from '@/services/nemis-bridge';
+import { sharedBridge } from '@/services/nemis-bridge/shared';
 import type { SchoolAdminRecord } from '@nemis-desktop/types';
 import { GradingConfigDrawer } from './GradingConfigDrawer';
 import { GradingPeriodsDrawer } from './GradingPeriodsDrawer';
@@ -39,7 +39,7 @@ export function AcademicGradingPage() {
   const [activeModal, setActiveModal] = useState<ModalKey>(null);
 
   useEffect(() => {
-    void nemisBridge
+    void sharedBridge
       .listSchoolAdminRecords({ collection: 'grade_entry_windows', limit: 250 })
       .then((result) => setWindows(result.items));
   }, []);

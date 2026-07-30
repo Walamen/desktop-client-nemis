@@ -20,7 +20,7 @@ import {
   useEnrollmentViewModel,
   useSettingsViewModel,
   useStudentProfileViewModel,
-} from '@/lib/presentation/hooks';
+} from '@/lib/presentation/hooks/school-admin';
 import { human, queryId } from './shared';
 
 function DetailRow({

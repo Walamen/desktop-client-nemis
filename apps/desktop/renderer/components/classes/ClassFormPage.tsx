@@ -3,7 +3,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { type GradeLevel as GradeLevelValue } from '@nemis-desktop/types';
 import { useViewModel } from '@/hooks/use-view-model';
-import { useAcademicFoundationViewModel, useAcademicYearViewModel, useSettingsViewModel } from '@/lib/presentation/hooks';
+import { useAcademicFoundationViewModel, useAcademicYearViewModel, useSettingsViewModel } from '@/lib/presentation/hooks/school-admin';
 import { ArrowLeft, Check } from 'lucide-react';
 import { formatGrade, GRADE_GROUPS } from './shared';
 

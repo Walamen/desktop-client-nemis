@@ -13,7 +13,7 @@ import {
   useSettingsViewModel,
   useStudentProfileViewModel,
   useStudentsListViewModel,
-} from '@/lib/presentation/hooks';
+} from '@/lib/presentation/hooks/school-admin';
 import { genders, grades, human, Page, queryId } from './shared';
 
 interface GuardianDraft {

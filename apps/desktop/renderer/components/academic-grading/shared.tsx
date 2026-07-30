@@ -1,4 +1,4 @@
-import { nemisBridge } from '@/services/nemis-bridge';
+import { sharedBridge } from '@/services/nemis-bridge/shared';
 import type { SchoolAdminRecord } from '@nemis-desktop/types';
 
 export interface GradeScaleItem {
@@ -85,21 +85,21 @@ export function pctTone(pct: SchoolAdminRecord[string] | undefined): string {
  * client-side — the same approach already used for "unassigned students" in
  * classes/shared.tsx and for fee obligations in SchoolAdminModulePages.tsx. */
 export async function listPeriodsForTerm(termId: string): Promise<SchoolAdminRecord[]> {
-  const result = await nemisBridge.listSchoolAdminRecords({ collection: 'grading_periods', limit: 250 });
+  const result = await sharedBridge.listSchoolAdminRecords({ collection: 'grading_periods', limit: 250 });
   return result.items.filter((item) => item.termId === termId);
 }
 
 export async function listAllWindows(): Promise<SchoolAdminRecord[]> {
-  const result = await nemisBridge.listSchoolAdminRecords({ collection: 'grade_entry_windows', limit: 250 });
+  const result = await sharedBridge.listSchoolAdminRecords({ collection: 'grade_entry_windows', limit: 250 });
   return result.items;
 }
 
 export async function listGradesForPeriod(gradingPeriodId: string): Promise<SchoolAdminRecord[]> {
-  const result = await nemisBridge.listSchoolAdminRecords({ collection: 'grades', limit: 250 });
+  const result = await sharedBridge.listSchoolAdminRecords({ collection: 'grades', limit: 250 });
   return result.items.filter((item) => item.gradingPeriodId === gradingPeriodId);
 }
 
 export async function getGradingConfig(): Promise<SchoolAdminRecord | null> {
-  const result = await nemisBridge.listSchoolAdminRecords({ collection: 'institution_grading_configs', limit: 1 });
+  const result = await sharedBridge.listSchoolAdminRecords({ collection: 'institution_grading_configs', limit: 1 });
   return result.items[0] ?? null;
 }

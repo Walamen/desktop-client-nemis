@@ -4,7 +4,7 @@ import type { SubjectRowView } from '@nemis-desktop/presentation';
 import { Card, Drawer } from '@nemis-desktop/ui';
 import { Plus, Trash2, Edit, BookOpen, RotateCcw } from 'lucide-react';
 import { useViewModel } from '@/hooks/use-view-model';
-import { useAcademicFoundationViewModel } from '@/lib/presentation/hooks';
+import { useAcademicFoundationViewModel } from '@/lib/presentation/hooks/school-admin';
 
 /** Subjects — mirrors portal-web's Subject Management page (dark header
  * band, all-subjects table, create/edit drawer). Web's "Bulk Import" (.xlsx

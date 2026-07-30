@@ -4,12 +4,12 @@ import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { Search, ChevronDown, Bell, LogOut, User2, Settings } from 'lucide-react';
 import { Avatar, Breadcrumbs, Dropdown, DropdownItem } from '@nemis-desktop/ui';
-import { useCurrentUserViewModel, useNotificationStore } from '../../lib/presentation/hooks';
+import { useCurrentUserViewModel, useNotificationStore } from '../../lib/presentation/hooks/shared';
 import { useViewModel } from '../../hooks/use-view-model';
 import type { DesktopPortalRole } from '@nemis-desktop/types';
 import { resolvePageTitle } from './page-titles';
 import { headerConfigs } from './sidebarConfig';
-import { nemisBridge } from '@/services/nemis-bridge';
+import { sharedBridge } from '@/services/nemis-bridge/shared';
 import { useRouter } from 'next/navigation';
 
 export function Header({ role }: { role: DesktopPortalRole }) {
@@ -85,7 +85,7 @@ export function Header({ role }: { role: DesktopPortalRole }) {
             <div className="h-px bg-gray-200" />
             <DropdownItem icon={<LogOut className="w-4 h-4 text-gray-600" />} onSelect={() => {
               setMenuOpen(false);
-              void nemisBridge.logout().finally(() => router.replace('/'));
+              void sharedBridge.logout().finally(() => router.replace('/'));
             }}>
               Sign Out
             </DropdownItem>

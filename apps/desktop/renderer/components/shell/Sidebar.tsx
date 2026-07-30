@@ -5,9 +5,9 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Map, LogOut } from 'lucide-react';
 import type { DesktopPortalRole } from '@nemis-desktop/types';
 import { sidebarConfigs, type SidebarBadge } from './sidebarConfig';
-import { useNotificationStore } from '../../lib/presentation/hooks';
+import { useNotificationStore } from '../../lib/presentation/hooks/shared';
 import { useViewModel } from '../../hooks/use-view-model';
-import { nemisBridge } from '@/services/nemis-bridge';
+import { sharedBridge } from '@/services/nemis-bridge/shared';
 
 export function Sidebar({
   role,
@@ -28,7 +28,7 @@ export function Sidebar({
   const headerTitle = config.headerTitle ?? institutionName ?? 'NEMIS';
 
   const handleLogout = () => {
-    void nemisBridge.logout().finally(() => router.replace('/'));
+    void sharedBridge.logout().finally(() => router.replace('/'));
   };
 
   return (

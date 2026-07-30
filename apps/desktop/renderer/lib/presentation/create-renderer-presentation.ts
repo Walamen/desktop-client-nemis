@@ -1,5 +1,5 @@
 import { createPresentationLayer, type PresentationLayer } from '@nemis-desktop/presentation';
-import { createIpcApplicationLayer } from './create-ipc-application-layer';
+import { createIpcApplicationLayer } from '../ipc';
 
 /** THE Phase-8 SEAM (now live): the renderer's presentation layer is built over
  * an ApplicationLayer-shaped IPC facade to the main process — no in-memory

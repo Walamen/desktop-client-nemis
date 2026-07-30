@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest';
 import type { ApplicationLayer } from '@nemis-desktop/application';
 import type { IpcChannel, IpcContract } from '@nemis-desktop/types';
 import { IPCError } from '@nemis-desktop/shared';
-import type { IpcHandle, IpcValidator } from '../registrar';
-import { registerDashboardHandlers } from './dashboard';
-import { registerSchoolHandlers } from './school';
-import { registerAcademicYearHandlers } from './academicYear';
-import { registerIdentityHandlers } from './identity';
-import { registerDeviceHandlers } from './device';
+import type { IpcHandle, IpcValidator } from '@app/ipc/registrar';
+import { registerDashboardHandlers } from './school-admin/dashboard';
+import { registerSchoolHandlers } from './school-admin/school';
+import { registerAcademicYearHandlers } from './school-admin/academicYear';
+import { registerIdentityHandlers } from './shared/identity';
+import { registerDeviceHandlers } from './shared/device';
 
 interface Captured {
   validate: IpcValidator;

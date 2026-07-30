@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MessageSquare, Search, Send, Loader2, Plus, X } from 'lucide-react';
 import { Avatar, Spinner } from '@nemis-desktop/ui';
-import { useCurrentUserViewModel } from '@/lib/presentation/hooks';
+import { useCurrentUserViewModel } from '@/lib/presentation/hooks/shared';
 import { useViewModel } from '@/hooks/use-view-model';
-import { nemisBridge } from '@/services/nemis-bridge';
+import { schoolAdminBridge } from '@/services/nemis-bridge/school-admin';
 import type { StudentListItemResult, TeacherResult } from '@nemis-desktop/types';
 import {
   SENDER_ROLE_LABEL, loadConversations, loadMessagesForConversation, getOrCreateConversation,
@@ -29,7 +29,7 @@ function NewConversationModal({ onClose, onCreated }: { onClose: () => void; onC
 
   useEffect(() => {
     const handle = setTimeout(async () => {
-      const page = await nemisBridge.listStudents({ keyword: studentQuery || undefined, isActive: true, limit: 15, sort: 'name' });
+      const page = await schoolAdminBridge.listStudents({ keyword: studentQuery || undefined, isActive: true, limit: 15, sort: 'name' });
       setStudents([...page.items]);
     }, 200);
     return () => clearTimeout(handle);
@@ -37,7 +37,7 @@ function NewConversationModal({ onClose, onCreated }: { onClose: () => void; onC
 
   useEffect(() => {
     const handle = setTimeout(async () => {
-      const page = await nemisBridge.listTeachers({ keyword: teacherQuery || undefined, isActive: true, limit: 15, sort: 'name' });
+      const page = await schoolAdminBridge.listTeachers({ keyword: teacherQuery || undefined, isActive: true, limit: 15, sort: 'name' });
       setTeachers([...page.items]);
     }, 200);
     return () => clearTimeout(handle);

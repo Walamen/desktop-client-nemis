@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState, type FormEvent } from 'react';
-import { useAcademicFoundationViewModel, useEnrollmentViewModel } from '@/lib/presentation/hooks';
+import { useAcademicFoundationViewModel, useEnrollmentViewModel } from '@/lib/presentation/hooks/school-admin';
 import { Button, Input, Select } from '@nemis-desktop/ui';
 import { useViewModel } from '@/hooks/use-view-model';
 import { human, Page, queryId } from './shared';

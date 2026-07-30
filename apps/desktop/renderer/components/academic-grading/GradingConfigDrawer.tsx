@@ -3,7 +3,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { Button, Drawer, Input } from '@nemis-desktop/ui';
-import { nemisBridge } from '@/services/nemis-bridge';
+import { sharedBridge } from '@/services/nemis-bridge/shared';
 import type { SchoolAdminRecord } from '@nemis-desktop/types';
 import { getGradingConfig, parseGradeScale, stringifyGradeScale, type GradeScaleItem } from './shared';
 
@@ -47,7 +47,7 @@ export function GradingConfigDrawer({ isOpen, onClose }: { isOpen: boolean; onCl
     setError('');
     setSaving(true);
     try {
-      await nemisBridge.saveSchoolAdminRecord({
+      await sharedBridge.saveSchoolAdminRecord({
         collection: 'institution_grading_configs',
         record: {
           ...(existing?.id ? { id: existing.id } : {}),

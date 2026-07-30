@@ -5,10 +5,10 @@ import { Search, ChevronLeft, ChevronRight, CheckCircle2, XCircle, Clock, MinusC
 import { useViewModel } from '@/hooks/use-view-model';
 import {
   useAcademicFoundationViewModel,
-  useAttendanceViewModel,
   useSettingsViewModel,
   useStudentsViewModel,
-} from '@/lib/presentation/hooks';
+} from '@/lib/presentation/hooks/school-admin';
+import { useAttendanceViewModel } from '@/lib/presentation/hooks/shared';
 
 const RECORDS_PER_PAGE = 15;
 

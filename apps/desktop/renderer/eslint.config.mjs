@@ -27,8 +27,11 @@ export const rendererImportGuard = {
 // The composition root is the one place allowed to build the fake application.
 // lib/presentation is the Phase-8 composition seam that wires every layer
 // (domain reconstitute + the application layer's ApplicationLayer type) over
-// the fake application into React; it is replaced by the IPC facade in the
-// sync phase, so domain/application/testing imports are permitted only here.
+// the fake application into React; lib/ipc is the IPC facade that replaced it
+// in the sync phase — it types its ApplicationLayer-shaped object against
+// @nemis-desktop/application directly, split per portal (shared/school-admin/
+// teacher/...), same as services/nemis-bridge/. domain/application/testing
+// imports are permitted only in these two composition-root directories.
 // electron, native SQLite, and main-process/infra path patterns stay banned.
 const COMPOSITION_ALLOWED_PATH_NAMES = new Set([
   '@nemis-desktop/presentation/testing',
@@ -37,7 +40,10 @@ const COMPOSITION_ALLOWED_PATH_NAMES = new Set([
 ]);
 
 export const rendererCompositionRelaxation = {
-  files: ['apps/desktop/renderer/lib/presentation/**/*.{ts,tsx}'],
+  files: [
+    'apps/desktop/renderer/lib/presentation/**/*.{ts,tsx}',
+    'apps/desktop/renderer/lib/ipc/**/*.{ts,tsx}',
+  ],
   rules: {
     'no-restricted-imports': [
       'error',

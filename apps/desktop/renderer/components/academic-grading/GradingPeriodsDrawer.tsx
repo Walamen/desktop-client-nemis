@@ -4,8 +4,8 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Calendar, Plus, RefreshCw, Settings } from 'lucide-react';
 import { Button, Drawer } from '@nemis-desktop/ui';
 import { useViewModel } from '@/hooks/use-view-model';
-import { useAcademicFoundationViewModel, useAcademicYearViewModel } from '@/lib/presentation/hooks';
-import { nemisBridge } from '@/services/nemis-bridge';
+import { useAcademicFoundationViewModel, useAcademicYearViewModel } from '@/lib/presentation/hooks/school-admin';
+import { sharedBridge } from '@/services/nemis-bridge/shared';
 import type { SchoolAdminRecord } from '@nemis-desktop/types';
 import { getGradingConfig, listPeriodsForTerm, PERIOD_STATUS_BADGE, periodStatus } from './shared';
 
@@ -79,7 +79,7 @@ export function GradingPeriodsDrawer({ isOpen, onClose }: { isOpen: boolean; onC
     event.preventDefault();
     if (!selectedTermId || year.status !== 'success' && year.status !== 'refreshing') return;
     const nextSequence = editing ? Number(editing.sequence) : periods.length + 1;
-    await nemisBridge.saveSchoolAdminRecord({
+    await sharedBridge.saveSchoolAdminRecord({
       collection: 'grading_periods',
       record: {
         ...(editing ? { id: editing.id } : {}),
@@ -103,7 +103,7 @@ export function GradingPeriodsDrawer({ isOpen, onClose }: { isOpen: boolean; onC
 
   const remove = async (period: SchoolAdminRecord) => {
     if (!window.confirm('Are you sure you want to delete this period?')) return;
-    await nemisBridge.deleteSchoolAdminRecord({ collection: 'grading_periods', id: String(period.id) });
+    await sharedBridge.deleteSchoolAdminRecord({ collection: 'grading_periods', id: String(period.id) });
     await reloadPeriods(selectedTermId);
   };
 
@@ -123,7 +123,7 @@ export function GradingPeriodsDrawer({ isOpen, onClose }: { isOpen: boolean; onC
       for (let i = 0; i < count; i += 1) {
         const periodStart = new Date(start + i * span);
         const periodEnd = new Date(i === count - 1 ? end : start + (i + 1) * span - dayMs);
-        await nemisBridge.saveSchoolAdminRecord({
+        await sharedBridge.saveSchoolAdminRecord({
           collection: 'grading_periods',
           record: {
             academicYearId: year.data.id,

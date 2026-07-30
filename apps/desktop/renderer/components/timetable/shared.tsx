@@ -1,4 +1,4 @@
-import { nemisBridge } from '@/services/nemis-bridge';
+import { schoolAdminBridge } from '@/services/nemis-bridge/school-admin';
 import { formatGrade } from '@/components/classes/shared';
 
 export const human = (value: string): string =>
@@ -25,10 +25,10 @@ export interface ClassTeacherOption {
  * (class-scoped teacher list, then each teacher's own assignments filtered
  * down to this class). */
 export async function getClassTeacherSubjects(classId: string): Promise<ClassTeacherOption[]> {
-  const page = await nemisBridge.listTeachers({ classId, isActive: true, limit: 100 });
+  const page = await schoolAdminBridge.listTeachers({ classId, isActive: true, limit: 100 });
   const options: ClassTeacherOption[] = [];
   for (const teacher of page.items) {
-    const assignments = await nemisBridge.listTeachingAssignments(teacher.id);
+    const assignments = await schoolAdminBridge.listTeachingAssignments(teacher.id);
     const subjects = assignments
       .filter((a) => a.classId === classId && a.subjectId && a.subjectName)
       .map((a) => ({ subjectId: a.subjectId!, subjectName: a.subjectName! }));

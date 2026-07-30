@@ -18,8 +18,8 @@ import {
   Eye,
 } from 'lucide-react';
 import { useViewModel } from '@/hooks/use-view-model';
-import { useAcademicFoundationViewModel, useAcademicYearViewModel } from '@/lib/presentation/hooks';
-import { nemisBridge } from '@/services/nemis-bridge';
+import { useAcademicFoundationViewModel, useAcademicYearViewModel } from '@/lib/presentation/hooks/school-admin';
+import { schoolAdminBridge } from '@/services/nemis-bridge/school-admin';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { formatGrade, getUnassignedStudents, type UnassignedStudent } from './shared';
 
@@ -64,7 +64,7 @@ export function ClassesDirectoryPage() {
   useEffect(() => {
     void vm.loadClasses();
     void academicYear.loadCurrent();
-    void nemisBridge.listClasses({ limit: 1 }).then((r) => setTotalClasses(r.total));
+    void schoolAdminBridge.listClasses({ limit: 1 }).then((r) => setTotalClasses(r.total));
     void refreshUnassigned();
     void refreshTeacherCoverage();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -75,9 +75,9 @@ export function ClassesDirectoryPage() {
   }
 
   async function refreshTeacherCoverage() {
-    const all = await nemisBridge.listClasses({ limit: 500, includeInactive: false });
+    const all = await schoolAdminBridge.listClasses({ limit: 500, includeInactive: false });
     const counts = await Promise.all(
-      all.items.map((c) => nemisBridge.listTeachers({ classId: c.id, isActive: true, limit: 1 }).then((r) => r.total)),
+      all.items.map((c) => schoolAdminBridge.listTeachers({ classId: c.id, isActive: true, limit: 1 }).then((r) => r.total)),
     );
     setTeacherCoverage({ with: counts.filter((n) => n > 0).length, without: counts.filter((n) => n === 0).length });
   }
@@ -89,8 +89,8 @@ export function ClassesDirectoryPage() {
     void Promise.all(
       state.data.map(async (c) => {
         const [enrolledRes, teacherRes] = await Promise.all([
-          nemisBridge.listStudents({ classId: c.id, enrollmentStatus: 'ACTIVE', limit: 1 }),
-          nemisBridge.listTeachers({ classId: c.id, isActive: true, limit: 1 }),
+          schoolAdminBridge.listStudents({ classId: c.id, enrollmentStatus: 'ACTIVE', limit: 1 }),
+          schoolAdminBridge.listTeachers({ classId: c.id, isActive: true, limit: 1 }),
         ]);
         return [c.id, enrolledRes.total, teacherRes.total] as const;
       }),
@@ -198,7 +198,7 @@ export function ClassesDirectoryPage() {
     if (result.ok) {
       setDrawerOpen(false);
       setEditing(null);
-      void nemisBridge.listTeachers({ classId: editing.id, isActive: true, limit: 1 }).then((r) =>
+      void schoolAdminBridge.listTeachers({ classId: editing.id, isActive: true, limit: 1 }).then((r) =>
         setTeacherCounts((prev) => ({ ...prev, [editing.id]: r.total })),
       );
     }
@@ -217,7 +217,7 @@ export function ClassesDirectoryPage() {
     setEnrolling(true);
     try {
       for (const student of studentsToEnroll) {
-        await nemisBridge.enrollStudent({
+        await schoolAdminBridge.enrollStudent({
           studentId: student.id,
           classId: enrollClassId,
           academicYearId: currentYearId,

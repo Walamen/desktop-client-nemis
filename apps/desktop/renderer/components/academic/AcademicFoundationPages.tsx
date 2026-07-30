@@ -6,7 +6,8 @@ import { AcademicYearStatus, GradeLevel, type GradeLevel as GradeLevelValue } fr
 import type { AcademicYearRowView, ClassRowView, SubjectRowView, TermRowView } from '@nemis-desktop/presentation';
 import { Badge, Button, EmptyState, ErrorState, Input, Modal, Select, Skeleton } from '@nemis-desktop/ui';
 import { useViewModel } from '@/hooks/use-view-model';
-import { useAcademicFoundationViewModel, useAcademicYearViewModel, useDeviceViewModel, useSettingsViewModel } from '@/lib/presentation/hooks';
+import { useAcademicFoundationViewModel, useAcademicYearViewModel, useSettingsViewModel } from '@/lib/presentation/hooks/school-admin';
+import { useDeviceViewModel } from '@/lib/presentation/hooks/shared';
 
 const gradeLevels = Object.values(GradeLevel);
 const labelGrade = (value: string) => value.replace('_', ' ').replace('GRADE ', 'Grade ');

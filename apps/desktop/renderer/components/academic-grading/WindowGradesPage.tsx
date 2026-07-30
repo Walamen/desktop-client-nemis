@@ -4,8 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, BookOpen, Download, Search, Users } from 'lucide-react';
 import { useViewModel } from '@/hooks/use-view-model';
-import { useAcademicFoundationViewModel, useStudentsViewModel } from '@/lib/presentation/hooks';
-import { nemisBridge } from '@/services/nemis-bridge';
+import { useAcademicFoundationViewModel, useStudentsViewModel } from '@/lib/presentation/hooks/school-admin';
+import { sharedBridge } from '@/services/nemis-bridge/shared';
 import type { SchoolAdminRecord } from '@nemis-desktop/types';
 import { queryId } from '@/components/classes/shared';
 import { GRADE_STATUS_STYLE, listGradesForPeriod, pctTone } from './shared';
@@ -43,7 +43,7 @@ export function WindowGradesPage() {
     }
     setLoading(true);
     void (async () => {
-      const result = await nemisBridge.listSchoolAdminRecords({ collection: 'grade_entry_windows', limit: 250 });
+      const result = await sharedBridge.listSchoolAdminRecords({ collection: 'grade_entry_windows', limit: 250 });
       const found = result.items.find((item) => item.id === windowId) ?? null;
       setWin(found);
       const rows = found?.gradingPeriodId ? await listGradesForPeriod(String(found.gradingPeriodId)) : [];

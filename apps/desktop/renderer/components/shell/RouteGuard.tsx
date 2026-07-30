@@ -7,7 +7,7 @@ import {
   roleCanAccessRoute,
   type DesktopPortalRole,
 } from '@nemis-desktop/types';
-import { nemisBridge } from '@/services/nemis-bridge';
+import { sharedBridge } from '@/services/nemis-bridge/shared';
 
 export function RouteGuard({
   children,
@@ -19,7 +19,7 @@ export function RouteGuard({
   const router = useRouter();
   const [allowed, setAllowed] = useState(false);
   useEffect(() => {
-    void nemisBridge.getProvisioningStatus().then((status) => {
+    void sharedBridge.getProvisioningStatus().then((status) => {
       if (!status.isProvisioned || status.authentication !== 'authenticated' || !status.user) {
         router.replace('/');
         return;

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getAppVersion } from '@/services/system';
+import { sharedBridge } from '@/services/nemis-bridge/shared';
 
 interface AppVersionState {
   version: string | null;
@@ -13,7 +13,7 @@ export function useAppVersion(): AppVersionState {
 
   useEffect(() => {
     let cancelled = false;
-    getAppVersion()
+    sharedBridge.getAppVersion()
       .then((version) => {
         if (!cancelled) setState({ version, error: null });
       })

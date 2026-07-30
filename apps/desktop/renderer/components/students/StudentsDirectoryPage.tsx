@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import Link from 'next/link';
-import { List, LayoutGrid, Search, SlidersHorizontal, UserPlus, ChevronLeft, ChevronRight, Eye, Edit as EditIcon, GraduationCap } from 'lucide-react';
+import { List, LayoutGrid, Search, SlidersHorizontal, UserPlus, Plus, ChevronLeft, ChevronRight, Eye, Edit as EditIcon, GraduationCap } from 'lucide-react';
 import {
   Gender,
   type Gender as GenderValue,
@@ -30,7 +30,7 @@ import {
   useStudentSearchViewModel,
   useStudentsListViewModel,
   useStudentStatisticsViewModel,
-} from '@/lib/presentation/hooks';
+} from '@/lib/presentation/hooks/school-admin';
 import { genders, grades, human } from './shared';
 
 /**
@@ -213,12 +213,20 @@ export function StudentsDirectoryPage() {
             </p>
             <h1 className="text-xl font-bold text-white">Students</h1>
           </div>
-          <Link href="/government/school-admin/students/create">
-            <button className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-slate-700 rounded-button hover:bg-slate-500">
-              <UserPlus className="w-4 h-4" />
-              Add Single Student
-            </button>
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link href="/government/school-admin/students/createbulk">
+              <button className="inline-flex items-center gap-2 rounded-button border border-slate-600 bg-slate-800 px-3 py-1.5 text-sm font-medium text-slate-300 hover:bg-slate-700">
+                <Plus className="w-4 h-4" />
+                Create Many
+              </button>
+            </Link>
+            <Link href="/government/school-admin/students/create">
+              <button className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-slate-700 rounded-button hover:bg-slate-500">
+                <UserPlus className="w-4 h-4" />
+                Add Single Student
+              </button>
+            </Link>
+          </div>
         </div>
 
         <div className="px-6 py-6 space-y-5">

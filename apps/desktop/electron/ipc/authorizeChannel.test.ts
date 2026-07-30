@@ -42,4 +42,60 @@ describe('authorizeChannel', () => {
       authorizeChannel(IpcChannels.ATTENDANCE_RECORD, workspace(SystemRole.DEO)),
     ).toThrow(/Attendance/);
   });
+
+  it('allows a teacher to load their class list and roster for attendance', () => {
+    expect(() =>
+      authorizeChannel(IpcChannels.CLASS_LIST, workspace(SystemRole.TEACHER)),
+    ).not.toThrow();
+    expect(() =>
+      authorizeChannel(IpcChannels.STUDENT_LIST, workspace(SystemRole.TEACHER)),
+    ).not.toThrow();
+  });
+
+  it('blocks non-staff roles from the class list and roster', () => {
+    expect(() => authorizeChannel(IpcChannels.CLASS_LIST, workspace(SystemRole.DEO))).toThrow(
+      /Attendance/,
+    );
+    expect(() => authorizeChannel(IpcChannels.STUDENT_LIST, workspace(SystemRole.DEO))).toThrow(
+      /Attendance/,
+    );
+  });
+
+  it('blocks teachers from institution-wide school-admin reads', () => {
+    for (const channel of [
+      IpcChannels.DASHBOARD_GET_OVERVIEW,
+      IpcChannels.TEACHER_LIST,
+      IpcChannels.TIMETABLE_LIST,
+      IpcChannels.STUDENT_GET_STATISTICS,
+    ]) {
+      expect(() => authorizeChannel(channel, workspace(SystemRole.TEACHER))).toThrow(
+        /school administrator/,
+      );
+    }
+  });
+
+  it('allows school admins to read institution-wide data', () => {
+    for (const channel of [
+      IpcChannels.DASHBOARD_GET_OVERVIEW,
+      IpcChannels.TEACHER_LIST,
+      IpcChannels.TIMETABLE_LIST,
+      IpcChannels.STUDENT_GET_STATISTICS,
+    ]) {
+      expect(() =>
+        authorizeChannel(channel, workspace(SystemRole.INSTITUTION_ADMIN)),
+      ).not.toThrow();
+    }
+  });
+
+  it('leaves cross-portal channels open to any authenticated role, including TEACHER_GET_DASHBOARD', () => {
+    for (const channel of [
+      IpcChannels.IDENTITY_GET_CURRENT_USER,
+      IpcChannels.DEVICE_GET_INFO,
+      IpcChannels.SETTINGS_GET,
+      IpcChannels.TEACHER_GET_DASHBOARD,
+    ]) {
+      expect(() => authorizeChannel(channel, workspace(SystemRole.TEACHER))).not.toThrow();
+      expect(() => authorizeChannel(channel, workspace(SystemRole.DEO))).not.toThrow();
+    }
+  });
 });

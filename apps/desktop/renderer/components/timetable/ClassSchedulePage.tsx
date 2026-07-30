@@ -7,7 +7,7 @@ import {
 import { DayOfWeek, type DayOfWeek as DayValue, type TimetableEntryResult } from '@nemis-desktop/types';
 import { Avatar, Button, Modal, Select } from '@nemis-desktop/ui';
 import { useViewModel } from '@/hooks/use-view-model';
-import { useAcademicFoundationViewModel, useAcademicYearViewModel, useSettingsViewModel, useTimetableViewModel } from '@/lib/presentation/hooks';
+import { useAcademicFoundationViewModel, useAcademicYearViewModel, useSettingsViewModel, useTimetableViewModel } from '@/lib/presentation/hooks/school-admin';
 import { downloadTimetableCsv, formatClassName, getClassTeacherSubjects, human, type ClassTeacherOption } from './shared';
 
 const WEEKDAYS: DayValue[] = [DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY];

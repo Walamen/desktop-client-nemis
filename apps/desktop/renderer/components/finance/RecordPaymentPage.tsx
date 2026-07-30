@@ -8,8 +8,8 @@ import {
 import type { SchoolAdminRecord } from '@nemis-desktop/types';
 import { Drawer } from '@nemis-desktop/ui';
 import { useViewModel } from '@/hooks/use-view-model';
-import { useAcademicFoundationViewModel } from '@/lib/presentation/hooks';
-import { nemisBridge } from '@/services/nemis-bridge';
+import { useAcademicFoundationViewModel } from '@/lib/presentation/hooks/school-admin';
+import { schoolAdminBridge } from '@/services/nemis-bridge/school-admin';
 import {
   computeFeeRuleSummary, formatCurrency, getOrCreateObligation, gradeToLevel, listFeeRules, listObligationsForRule,
   listPaymentsForObligation, OBLIGATION_STATUS_CONFIG, PAYMENT_METHODS, parseLevels, recordPayment,
@@ -208,7 +208,7 @@ export function RecordPaymentPage() {
     void listObligationsForRule(selectedRuleId).then(setObligations);
   }, [selectedRuleId]);
   useEffect(() => {
-    void nemisBridge.listStudents({
+    void schoolAdminBridge.listStudents({
       keyword: search || undefined,
       classId: selectedClassId !== 'all' ? selectedClassId : undefined,
       isActive: true, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE, sort: 'name',

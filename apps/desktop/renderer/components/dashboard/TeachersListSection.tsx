@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { Card, ErrorState, Skeleton, EmptyState, Avatar } from '@nemis-desktop/ui';
 import { Users, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
-import { useTeacherDashboardViewModel } from '@/lib/presentation/hooks';
+import { useTeacherDashboardViewModel } from '@/lib/presentation/hooks/teacher';
 import { useViewModel } from '@/hooks/use-view-model';
 
 const human = (v: string) => v.replaceAll('_', ' ');

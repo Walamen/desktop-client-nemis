@@ -7,12 +7,13 @@ import {
 } from 'lucide-react';
 import { ErrorState } from '@nemis-desktop/ui';
 import {
-  useDashboardViewModel, useCurrentUserViewModel, useSettingsViewModel, useAcademicYearViewModel,
+  useDashboardViewModel, useSettingsViewModel, useAcademicYearViewModel,
   useAcademicFoundationViewModel,
-  useTeacherDashboardViewModel,
   useTimetableDashboardViewModel,
   useStudentStatisticsViewModel,
-} from '@/lib/presentation/hooks';
+} from '@/lib/presentation/hooks/school-admin';
+import { useCurrentUserViewModel } from '@/lib/presentation/hooks/shared';
+import { useTeacherDashboardViewModel } from '@/lib/presentation/hooks/teacher';
 import { useViewModel } from '@/hooks/use-view-model';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { InfoTile } from '@/components/dashboard/InfoTile';

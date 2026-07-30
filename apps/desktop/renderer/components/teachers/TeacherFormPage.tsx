@@ -12,7 +12,7 @@ import {
 import { Button, Input, Select } from '@nemis-desktop/ui';
 import { ArrowLeft, Briefcase, Phone, User } from 'lucide-react';
 import { useViewModel } from '@/hooks/use-view-model';
-import { useSettingsViewModel, useTeacherProfileViewModel, useTeachersListViewModel } from '@/lib/presentation/hooks';
+import { useSettingsViewModel, useTeacherProfileViewModel, useTeachersListViewModel } from '@/lib/presentation/hooks/school-admin';
 import { human, queryId } from './shared';
 
 function SectionCard({
