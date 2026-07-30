@@ -147,8 +147,67 @@ describe('ProvisioningImporter', () => {
     }
   });
 
+  it('a failed delta merge records the error without disabling all future sync', () => {
+    const importer = new ProvisioningImporter(manager);
+    importer.import(snapshotOf({ ...BASE_DATA, students: [student('s1', 'Ada')] }), CONTEXT);
+    expect(readProvisioningMetadata().status).toBe('complete');
+
+    // Merge mode deliberately never deletes rows the delta omits (a delta
+    // cannot express server-side deletions; the 24h full resync is the safety
+    // net). So a stale local row the server has already superseded can collide
+    // with an incoming row on a SECONDARY unique constraint —
+    // idx_students_admission is UNIQUE(institutionId, admissionNumber), which
+    // the ON CONFLICT(id) upsert does not absorb.
+    expect(() =>
+      importer.import(
+        snapshotOf({ students: [{ ...student('s2', 'Grace'), admissionNumber: 'ADM-s1' }] }),
+        CONTEXT,
+        { merge: true },
+      ),
+    ).toThrow(/UNIQUE/i);
+
+    // status must still be 'complete'. DesktopSyncWorker.syncActive() proceeds
+    // only while it reads 'complete', and nothing flips it back automatically,
+    // so 'failed' (or 'in_progress') here would permanently disable every
+    // future sync cycle — including the 24h full resync that would clear the
+    // stale colliding row — leaving manual re-provisioning (which wipes the
+    // unsynced queue) as the only way out.
+    const metadata = readProvisioningMetadata();
+    expect(metadata.status).toBe('complete');
+    expect(metadata.lastError).toMatch(/UNIQUE/i);
+  });
+
+  it('a failed full import still marks provisioning failed', () => {
+    const importer = new ProvisioningImporter(manager);
+    importer.import(makeSnapshot(), CONTEXT);
+    expect(readProvisioningMetadata().status).toBe('complete');
+
+    // The same secondary-unique collision, but within one full snapshot: a full
+    // import is user-driven and re-runnable from the UI, so 'failed' remains
+    // the correct terminal state for it.
+    expect(() =>
+      importer.import(
+        snapshotOf({
+          ...BASE_DATA,
+          students: [student('s1', 'Ada'), { ...student('s2', 'Grace'), admissionNumber: 'ADM-s1' }],
+        }),
+        CONTEXT,
+      ),
+    ).toThrow(/UNIQUE/i);
+
+    const metadata = readProvisioningMetadata();
+    expect(metadata.status).toBe('failed');
+    expect(metadata.lastError).toMatch(/UNIQUE/i);
+  });
+
   function countRows(table: string): number {
     return (manager.connection.prepare(`SELECT COUNT(*) count FROM ${table}`).get() as { count: number }).count;
+  }
+
+  function readProvisioningMetadata(): { status: string; lastError: string | null } {
+    return manager.connection
+      .prepare(`SELECT status,lastError FROM provisioning_metadata WHERE id='singleton'`)
+      .get() as { status: string; lastError: string | null };
   }
 });
 

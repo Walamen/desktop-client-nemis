@@ -108,18 +108,35 @@ export class ProvisioningImporter {
     validateEnvelope(snapshot, context);
     const db = this.manager.connection;
     const startedAt = new Date().toISOString();
-    db.prepare(`
-      INSERT INTO provisioning_metadata
-        (id,status,institutionId,userId,role,scopeType,scopeId,serverDeviceId,startedAt,updatedAt,lastError)
-      VALUES ('singleton','in_progress',?,?,?,?,?,?,?,?,NULL)
-      ON CONFLICT(id) DO UPDATE SET status='in_progress',institutionId=excluded.institutionId,
-        userId=excluded.userId,role=excluded.role,scopeType=excluded.scopeType,
-        scopeId=excluded.scopeId,serverDeviceId=excluded.serverDeviceId,
-        startedAt=excluded.startedAt,updatedAt=excluded.updatedAt,lastError=NULL
-    `).run(
-      context.institutionId ?? null, context.userId, context.role, context.scopeType,
-      context.scopeId, context.serverDeviceId, startedAt, startedAt,
-    );
+    if (options.merge) {
+      // A delta merge is a sync step, not a (re)provisioning, and this row's
+      // `status` is the gate on ALL future sync — DesktopSyncWorker.syncActive()
+      // only proceeds while it reads 'complete', and nothing ever flips it back
+      // automatically. Moving it off 'complete' here (to 'in_progress', and then
+      // to 'failed' in the catch below) would permanently disable sync for any
+      // merge that failed or crashed mid-flight, including the 24h full resync
+      // that is the designed self-heal for the very stale-row collisions a merge
+      // can hit. The device is already provisioned and validateEnvelope has
+      // pinned the snapshot to this same scope, so only the bookkeeping columns
+      // move. ('in_progress' has no readers anywhere — it is written for
+      // diagnostics only.)
+      db.prepare(`
+        UPDATE provisioning_metadata SET updatedAt=?,lastError=NULL WHERE id='singleton'
+      `).run(startedAt);
+    } else {
+      db.prepare(`
+        INSERT INTO provisioning_metadata
+          (id,status,institutionId,userId,role,scopeType,scopeId,serverDeviceId,startedAt,updatedAt,lastError)
+        VALUES ('singleton','in_progress',?,?,?,?,?,?,?,?,NULL)
+        ON CONFLICT(id) DO UPDATE SET status='in_progress',institutionId=excluded.institutionId,
+          userId=excluded.userId,role=excluded.role,scopeType=excluded.scopeType,
+          scopeId=excluded.scopeId,serverDeviceId=excluded.serverDeviceId,
+          startedAt=excluded.startedAt,updatedAt=excluded.updatedAt,lastError=NULL
+      `).run(
+        context.institutionId ?? null, context.userId, context.role, context.scopeType,
+        context.scopeId, context.serverDeviceId, startedAt, startedAt,
+      );
+    }
 
     try {
       this.manager.transactions.runImmediate(() => {
@@ -171,10 +188,24 @@ export class ProvisioningImporter {
       });
     } catch (error) {
       const failedAt = new Date().toISOString();
-      db.prepare(`
-        UPDATE provisioning_metadata SET status='failed',updatedAt=?,lastError=?
-        WHERE id='singleton'
-      `).run(failedAt, safeError(error));
+      if (options.merge) {
+        // Record the diagnostics but leave `status` on 'complete' — see the
+        // merge branch above. A delta merge can legitimately fail on a
+        // SECONDARY unique constraint (e.g. students(institutionId,
+        // admissionNumber)) when a row the server superseded still exists
+        // locally, because merge mode never deletes rows the delta omits. That
+        // must surface as a thrown error the caller backs off on, not as a
+        // permanent shutdown of sync: the next cycle retries, and the 24h full
+        // resync clears the stale row for good.
+        db.prepare(`
+          UPDATE provisioning_metadata SET updatedAt=?,lastError=? WHERE id='singleton'
+        `).run(failedAt, safeError(error));
+      } else {
+        db.prepare(`
+          UPDATE provisioning_metadata SET status='failed',updatedAt=?,lastError=?
+          WHERE id='singleton'
+        `).run(failedAt, safeError(error));
+      }
       throw error;
     }
   }
