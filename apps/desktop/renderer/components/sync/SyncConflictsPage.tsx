@@ -2,23 +2,30 @@
 
 import { useEffect, useState } from 'react';
 import type { SyncConflictResult } from '@nemis-desktop/types';
-import { nemisBridge } from '@/services/nemis-bridge';
+import { sharedBridge } from '@/services/nemis-bridge/shared';
 
 export function SyncConflictsPage() {
   const [conflicts, setConflicts] = useState<readonly SyncConflictResult[] | null>(null);
   const [resolving, setResolving] = useState<string | null>(null);
   useEffect(() => {
-    void nemisBridge.listSyncConflicts().then(setConflicts);
+    void sharedBridge.listSyncConflicts().then(setConflicts);
   }, []);
   const resolve = async (
     conflictId: string,
-    resolution: 'keep_local' | 'accept_remote',
+    resolution: 'keep_local' | 'accept_remote' | 'retry',
   ) => {
     setResolving(conflictId);
     try {
-      await nemisBridge.resolveSyncConflict(conflictId, resolution);
+      // `sharedBridge.resolveSyncConflict`'s declared parameter type still
+      // predates this task's 'retry' resolution (it lives in the in-progress
+      // nemis-bridge/ refactor, out of scope here). The underlying IPC call
+      // (api().sync.resolveConflict) already accepts the full
+      // ResolveSyncConflictRequest, including 'retry', via @nemis-desktop/types
+      // — this cast only widens the local wrapper's stale signature and should
+      // be removed once that bridge module is updated to match.
+      await sharedBridge.resolveSyncConflict(conflictId, resolution as 'keep_local' | 'accept_remote');
       setConflicts((current) => current?.filter((item) => item.id !== conflictId) ?? []);
-      if (resolution === 'keep_local') void nemisBridge.runSync();
+      if (resolution === 'keep_local' || resolution === 'retry') void sharedBridge.runSync();
     } finally {
       setResolving(null);
     }
@@ -56,22 +63,35 @@ export function SyncConflictsPage() {
                 </div>
               </details>
               <div className="mt-4 flex gap-2">
-                <button
-                  type="button"
-                  disabled={resolving === conflict.id}
-                  className="rounded bg-blue-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
-                  onClick={() => void resolve(conflict.id, 'keep_local')}
-                >
-                  Retry my offline change
-                </button>
-                <button
-                  type="button"
-                  disabled={resolving === conflict.id}
-                  className="rounded border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 disabled:opacity-50"
-                  onClick={() => void resolve(conflict.id, 'accept_remote')}
-                >
-                  Accept server version
-                </button>
+                {conflict.source === 'dead_letter' ? (
+                  <button
+                    type="button"
+                    disabled={resolving === conflict.id}
+                    className="rounded bg-blue-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                    onClick={() => void resolve(conflict.id, 'retry')}
+                  >
+                    Retry now
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      disabled={resolving === conflict.id}
+                      className="rounded bg-blue-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                      onClick={() => void resolve(conflict.id, 'keep_local')}
+                    >
+                      Retry my offline change
+                    </button>
+                    <button
+                      type="button"
+                      disabled={resolving === conflict.id}
+                      className="rounded border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 disabled:opacity-50"
+                      onClick={() => void resolve(conflict.id, 'accept_remote')}
+                    >
+                      Accept server version
+                    </button>
+                  </>
+                )}
               </div>
             </article>
           ))}

@@ -596,7 +596,7 @@ export function assertResolveSyncConflictArgs(args: readonly unknown[]): void {
   if (!isPlainObject(request)) throw new IPCError('Expected a request object.');
   assertKnownKeys(request, ['conflictId', 'resolution']);
   assertString(request.conflictId, 'conflictId', ID_MAX_LENGTH);
-  assertEnumMember(request.resolution, 'resolution', ['keep_local', 'accept_remote']);
+  assertEnumMember(request.resolution, 'resolution', ['keep_local', 'accept_remote', 'retry']);
 }
 
 export function assertAttendanceListArgs(args: readonly unknown[]): void {

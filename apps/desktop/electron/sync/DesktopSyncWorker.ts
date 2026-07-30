@@ -192,23 +192,90 @@ export class DesktopSyncWorker {
   }
 
   listConflicts(): SyncConflictResult[] {
-    const rows = this.workspaces.active.database.connection.prepare(`
+    const db = this.workspaces.active.database.connection;
+    const conflictRows = db.prepare(`
       SELECT id,operationId,entityType,entityId,operationType,localPayload,remotePayload,
              reason,status,createdAt,resolvedAt
       FROM sync_conflicts WHERE status='unresolved' ORDER BY createdAt,id
-    `).all() as Array<Omit<SyncConflictResult, 'localPayload' | 'remotePayload'> & {
+    `).all() as Array<Omit<SyncConflictResult, 'localPayload' | 'remotePayload' | 'source'> & {
       localPayload: string | null;
       remotePayload: string | null;
     }>;
-    return rows.map((row) => ({
-      ...row,
-      localPayload: row.localPayload ? JSON.parse(row.localPayload) : null,
-      remotePayload: row.remotePayload ? JSON.parse(row.remotePayload) : null,
-    }));
+    const deadLetterRows = db.prepare(`
+      SELECT q.id,q.entityType,q.entityId,q.operationType,q.payload,q.createdAt,
+             (SELECT message FROM sync_errors WHERE operationId = q.id ORDER BY createdAt DESC, id DESC LIMIT 1) AS lastError,
+             q.retryCount
+      FROM sync_queue q WHERE q.status='failed' AND q.deadLetter=1 ORDER BY q.createdAt,q.id
+    `).all() as Array<{
+      id: string;
+      entityType: string;
+      entityId: string;
+      operationType: string;
+      payload: string | null;
+      createdAt: string;
+      lastError: string | null;
+      retryCount: number;
+    }>;
+    return [
+      ...conflictRows.map((row) => ({
+        ...row,
+        localPayload: row.localPayload ? JSON.parse(row.localPayload) : null,
+        remotePayload: row.remotePayload ? JSON.parse(row.remotePayload) : null,
+        source: 'conflict' as const,
+      })),
+      ...deadLetterRows.map((row) => ({
+        id: row.id,
+        operationId: row.id,
+        entityType: row.entityType,
+        entityId: row.entityId,
+        operationType: row.operationType as SyncConflictResult['operationType'],
+        localPayload: row.payload ? JSON.parse(row.payload) : null,
+        remotePayload: null,
+        reason: `Sync failed after ${row.retryCount} attempts: ${row.lastError ?? 'unknown error'}`,
+        status: 'unresolved' as const,
+        source: 'dead_letter' as const,
+        createdAt: row.createdAt,
+        resolvedAt: null,
+      })),
+    ];
   }
 
   resolveConflict(request: ResolveSyncConflictRequest): SyncConflictResult {
     const db = this.workspaces.active.database;
+    if (request.resolution === 'retry') {
+      return db.transactions.runImmediate(() => {
+        const row = db.connection.prepare(`
+          SELECT id,entityType,entityId,operationType,payload,createdAt
+          FROM sync_queue WHERE id=? AND status='failed' AND deadLetter=1
+        `).get(request.conflictId) as
+          | { id: string; entityType: string; entityId: string; operationType: string; payload: string | null; createdAt: string }
+          | undefined;
+        if (!row) throw new Error('The dead-lettered sync item was not found or was already retried.');
+        const resolvedAt = new Date().toISOString();
+        db.connection.prepare(`
+          UPDATE sync_queue SET status='pending',retryCount=0,nextAttemptAt=NULL,deadLetter=0,updatedAt=?
+          WHERE id=?
+        `).run(resolvedAt, row.id);
+        return {
+          id: row.id,
+          operationId: row.id,
+          entityType: row.entityType,
+          entityId: row.entityId,
+          operationType: row.operationType as SyncConflictResult['operationType'],
+          localPayload: row.payload ? JSON.parse(row.payload) : null,
+          remotePayload: null,
+          reason: 'Retried by user.',
+          status: 'retried' as const,
+          source: 'dead_letter' as const,
+          createdAt: row.createdAt,
+          resolvedAt,
+        };
+      });
+    }
+    // Narrowed to a plain const so the exclusion of 'retry' (checked above)
+    // survives capture by the closure below — TS re-widens `request.resolution`
+    // itself inside nested function bodies.
+    const resolution: 'keep_local' | 'accept_remote' = request.resolution;
     return db.transactions.runImmediate(() => {
       const row = db.connection.prepare(`
         SELECT id,operationId,entityType,entityId,operationType,localPayload,remotePayload,
@@ -217,7 +284,7 @@ export class DesktopSyncWorker {
       `).get(request.conflictId) as RawConflict | undefined;
       if (!row) throw new Error('The synchronization conflict was not found or is already resolved.');
       const resolvedAt = new Date().toISOString();
-      if (request.resolution === 'keep_local') {
+      if (resolution === 'keep_local') {
         db.connection.prepare(`
           INSERT INTO sync_queue
             (id,entityType,entityId,operationType,payload,retryCount,status,createdAt,updatedAt)
@@ -234,18 +301,18 @@ export class DesktopSyncWorker {
       }
       db.connection.prepare(`
         UPDATE sync_conflicts SET status=?,resolvedAt=? WHERE id=?
-      `).run(request.resolution, resolvedAt, row.id);
-      return toConflict({ ...row, status: request.resolution, resolvedAt });
+      `).run(resolution, resolvedAt, row.id);
+      return { ...toConflict({ ...row, status: resolution, resolvedAt }), source: 'conflict' as const };
     });
   }
 }
 
-type RawConflict = Omit<SyncConflictResult, 'localPayload' | 'remotePayload'> & {
+type RawConflict = Omit<SyncConflictResult, 'localPayload' | 'remotePayload' | 'source'> & {
   localPayload: string | null;
   remotePayload: string | null;
 };
 
-function toConflict(row: RawConflict): SyncConflictResult {
+function toConflict(row: RawConflict): Omit<SyncConflictResult, 'source'> {
   return {
     ...row,
     localPayload: row.localPayload ? JSON.parse(row.localPayload) : null,

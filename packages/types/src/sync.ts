@@ -29,14 +29,15 @@ export interface SyncConflictResult {
   localPayload: unknown;
   remotePayload: unknown;
   reason: string;
-  status: 'unresolved' | 'keep_local' | 'accept_remote' | 'merged';
+  status: 'unresolved' | 'keep_local' | 'accept_remote' | 'merged' | 'retried';
+  source: 'conflict' | 'dead_letter';
   createdAt: string;
   resolvedAt: string | null;
 }
 
 export interface ResolveSyncConflictRequest {
   conflictId: string;
-  resolution: 'keep_local' | 'accept_remote';
+  resolution: 'keep_local' | 'accept_remote' | 'retry';
 }
 
 export interface DesktopSyncStatus {
