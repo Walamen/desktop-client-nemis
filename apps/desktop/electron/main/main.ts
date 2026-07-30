@@ -48,6 +48,7 @@ function bootstrap(): void {
   let workspaces: WorkspaceManager | null = null;
   let networkMonitor: NetworkMonitor | null = null;
   let syncWorker: DesktopSyncWorker | null = null;
+  let quitHandled = false;
   const allowedOrigins = config.isDev ? [config.rendererDevUrl] : [RENDERER_ORIGIN];
 
   const createHardenedWindow = (): BrowserWindow => {
@@ -176,6 +177,11 @@ function bootstrap(): void {
   });
 
   app.on('will-quit', async (event) => {
+    // The trailing app.quit() below re-emits 'will-quit' into this same
+    // listener. Without this guard the second pass re-ran the pending-check and
+    // workspaces.close() against already-closed state, logging a spurious
+    // "Database shutdown failed" every time a flush actually happened.
+    if (quitHandled) return;
     if (workspaces && networkMonitor?.isOnline() && syncWorker) {
       try {
         const pending = workspaces.active.database.connection
@@ -197,6 +203,8 @@ function bootstrap(): void {
     } catch (error) {
       logger.error('Database shutdown failed:', error);
     }
+    // Set before app.quit(), which re-enters this listener synchronously.
+    quitHandled = true;
     app.quit();
   });
 }
