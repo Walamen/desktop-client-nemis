@@ -126,10 +126,16 @@ export class DesktopSyncWorker {
           serverDeviceId: completion.serverDeviceId,
         }, { preserveConflicts: true, merge: !fullResyncDue });
         this.#lastPullAt = Date.now();
+        // lastDeltaAt is the cutoff the next pull's `since` is measured against,
+        // so it must be the server's own generatedAt (already validated as a
+        // non-empty string by the gateway). The local clock would skip whatever
+        // the server wrote during the download/import window, and skew makes it
+        // worse. lastFullResyncAt only answers "when did THIS device last do a
+        // full resync", so it stays on the local clock.
         const pulledAt = new Date().toISOString();
         workspace.database.connection.prepare(`
           UPDATE sync_metadata SET lastDeltaAt=?${fullResyncDue ? ',lastFullResyncAt=?' : ''} WHERE id='singleton'
-        `).run(...(fullResyncDue ? [pulledAt, pulledAt] : [pulledAt]));
+        `).run(...(fullResyncDue ? [snapshot.generatedAt, pulledAt] : [snapshot.generatedAt]));
       }
     } catch (error) {
       try {

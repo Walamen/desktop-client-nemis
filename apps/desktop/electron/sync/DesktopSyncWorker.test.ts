@@ -348,6 +348,15 @@ describe('DesktopSyncWorker retry policy', () => {
 
     await worker.syncActive(); // first pull: no lastDeltaAt yet -> full (no since)
     expect(downloadSnapshot).toHaveBeenLastCalledWith('device-1', undefined);
+    // lastDeltaAt is the cutoff the NEXT pull's `since` is measured against, so
+    // it has to be the server's own generatedAt — this device's clock would
+    // silently skip anything the server wrote during the download/import
+    // window, or anything at all under clock skew. lastFullResyncAt is purely
+    // local scheduling bookkeeping and stays on the local clock.
+    expect(readSyncMetadata()).toEqual({
+      lastDeltaAt: SNAPSHOT_GENERATED_AT,
+      lastFullResyncAt: '2026-07-29T00:00:00.000Z',
+    });
 
     manager.connection.prepare(`
       UPDATE sync_metadata SET lastDeltaAt=?, lastFullResyncAt=? WHERE id='singleton'
@@ -356,10 +365,20 @@ describe('DesktopSyncWorker retry policy', () => {
     vi.setSystemTime(new Date('2026-07-29T01:00:00.000Z')); // +1h: well within 24h
     await worker.syncActive();
     expect(downloadSnapshot).toHaveBeenLastCalledWith('device-1', '2026-07-29T00:00:00.000Z');
+    expect(readSyncMetadata()).toEqual({
+      lastDeltaAt: SNAPSHOT_GENERATED_AT,
+      lastFullResyncAt: '2026-07-29T00:00:00.000Z', // untouched by a delta pull
+    });
 
     vi.setSystemTime(new Date('2026-07-30T01:00:00.000Z')); // +25h from lastFullResyncAt
     await worker.syncActive();
     expect(downloadSnapshot).toHaveBeenLastCalledWith('device-1', undefined);
     vi.useRealTimers();
   });
+
+  function readSyncMetadata(): { lastDeltaAt: string | null; lastFullResyncAt: string | null } {
+    return manager.connection
+      .prepare(`SELECT lastDeltaAt, lastFullResyncAt FROM sync_metadata WHERE id='singleton'`)
+      .get() as { lastDeltaAt: string | null; lastFullResyncAt: string | null };
+  }
 });
