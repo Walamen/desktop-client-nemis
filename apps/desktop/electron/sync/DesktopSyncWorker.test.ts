@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -7,6 +8,7 @@ import { createDataLayer, type DataLayer } from '../data/factories/createDataLay
 import type { ApplicationLayer } from '@nemis-desktop/application';
 import type { WorkspaceManager, ActiveWorkspace } from '../workspace/WorkspaceManager';
 import type { BackendProvisioningGateway } from '../provisioning/BackendProvisioningGateway';
+import { PROVISIONING_COLLECTIONS } from '@nemis-desktop/types';
 import { DesktopSyncWorker } from './DesktopSyncWorker';
 
 const TEST_DEVICE = { deviceName: 'worker-test', platform: 'win32', osVersion: '10.0', appVersion: '1.0.0' };
@@ -155,5 +157,59 @@ describe('DesktopSyncWorker retry policy', () => {
     expect(row.status).toBe('pending');
     expect(row.retryCount).toBe(0);
     expect(row.deadLetter).toBe(0);
+  });
+
+  it('pulls with since after the first sync, and omits since once 24h have passed since the last full resync', async () => {
+    // ProvisioningImporter.import() validates the snapshot's scope (including
+    // institutionId, which must match ActiveWorkspace.user.institutionId) and
+    // its checksum (a real sha256 of `data`, not a placeholder) before this
+    // test's assertions about the `since` param are ever reached, so the
+    // fixture must satisfy both — not just PROVISIONING_COLLECTIONS shape.
+    const data = Object.fromEntries(PROVISIONING_COLLECTIONS.map((key) => [key, []]));
+    const checksum = createHash('sha256').update(JSON.stringify(data)).digest('hex');
+    const downloadSnapshot = vi.fn().mockResolvedValue({
+      contractVersion: 1,
+      snapshotId: 'snap-1',
+      generatedAt: '2026-07-29T00:00:00.000Z',
+      userId: 'user-1',
+      role: 'INSTITUTION_ADMIN',
+      scopeType: 'INSTITUTION',
+      scopeId: 'school-1',
+      institutionId: 'school-1',
+      deviceId: 'device-1',
+      checksumAlgorithm: 'sha256',
+      checksum,
+      manifest: Object.fromEntries(PROVISIONING_COLLECTIONS.map((key) => [key, 0])),
+      data,
+    });
+    const gateway = { pushChanges: vi.fn(), downloadSnapshot } as unknown as BackendProvisioningGateway;
+    const worker = new DesktopSyncWorker(workspaces, gateway, alwaysOnline());
+
+    // The whole test runs under fake timers (rather than starting the first
+    // call on the real wall clock) because DesktopSyncWorker's #lastPullAt
+    // gate compares Date.now() against the previous call's Date.now(): if the
+    // first call used the real clock and a later fake-timer jump landed
+    // earlier than that real timestamp (as happens whenever this suite runs
+    // on/after the fixture's 2026-07-29 dates), the diff goes negative and
+    // the second pull is silently skipped, breaking this assertion for
+    // reasons unrelated to the since/delta logic under test.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-07-29T00:00:00.000Z'));
+
+    await worker.syncActive(); // first pull: no lastDeltaAt yet -> full (no since)
+    expect(downloadSnapshot).toHaveBeenLastCalledWith('device-1', undefined);
+
+    manager.connection.prepare(`
+      UPDATE sync_metadata SET lastDeltaAt=?, lastFullResyncAt=? WHERE id='singleton'
+    `).run('2026-07-29T00:00:00.000Z', '2026-07-29T00:00:00.000Z');
+
+    vi.setSystemTime(new Date('2026-07-29T01:00:00.000Z')); // +1h: well within 24h
+    await worker.syncActive();
+    expect(downloadSnapshot).toHaveBeenLastCalledWith('device-1', '2026-07-29T00:00:00.000Z');
+
+    vi.setSystemTime(new Date('2026-07-30T01:00:00.000Z')); // +25h from lastFullResyncAt
+    await worker.syncActive();
+    expect(downloadSnapshot).toHaveBeenLastCalledWith('device-1', undefined);
+    vi.useRealTimers();
   });
 });

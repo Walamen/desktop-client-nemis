@@ -40,9 +40,11 @@ export class BackendProvisioningGateway {
     return this.authorized(`/desktop/devices/${encodeURIComponent(id)}`, {}, validateDevice);
   }
 
-  async downloadSnapshot(deviceId: string): Promise<ProvisioningSnapshot> {
+  async downloadSnapshot(deviceId: string, since?: string): Promise<ProvisioningSnapshot> {
+    const params = new URLSearchParams({ deviceId });
+    if (since) params.set('since', since);
     return this.authorized(
-      `/desktop/provisioning/snapshot?deviceId=${encodeURIComponent(deviceId)}`,
+      `/desktop/provisioning/snapshot?${params.toString()}`,
       {},
       validateSnapshot,
     );

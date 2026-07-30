@@ -97,7 +97,13 @@ export class DesktopSyncWorker {
         `SELECT COUNT(*) count FROM sync_queue WHERE status IN ('pending','in_flight')`,
       ).get() as { count: number };
       if (stillPending.count === 0) {
-        const snapshot = await this.gateway.downloadSnapshot(completion.serverDeviceId);
+        const meta = workspace.database.connection.prepare(
+          `SELECT lastDeltaAt, lastFullResyncAt FROM sync_metadata WHERE id='singleton'`,
+        ).get() as { lastDeltaAt: string | null; lastFullResyncAt: string | null };
+        const fullResyncDue =
+          !meta.lastFullResyncAt || Date.now() - Date.parse(meta.lastFullResyncAt) >= 24 * 60 * 60_000;
+        const since = fullResyncDue ? undefined : (meta.lastDeltaAt ?? undefined);
+        const snapshot = await this.gateway.downloadSnapshot(completion.serverDeviceId, since);
         if (this.workspaces.active.identity !== workspace.identity) return;
         new ProvisioningImporter(workspace.database).import(snapshot, {
           userId: workspace.user.id,
@@ -108,6 +114,10 @@ export class DesktopSyncWorker {
           serverDeviceId: completion.serverDeviceId,
         }, { preserveConflicts: true });
         this.#lastPullAt = Date.now();
+        const pulledAt = new Date().toISOString();
+        workspace.database.connection.prepare(`
+          UPDATE sync_metadata SET lastDeltaAt=?${fullResyncDue ? ',lastFullResyncAt=?' : ''} WHERE id='singleton'
+        `).run(...(fullResyncDue ? [pulledAt, pulledAt] : [pulledAt]));
       }
     } catch (error) {
       try {

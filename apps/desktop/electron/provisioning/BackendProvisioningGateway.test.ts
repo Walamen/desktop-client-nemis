@@ -57,6 +57,26 @@ describe('BackendProvisioningGateway', () => {
     await expect(buildGateway().downloadSnapshot('device-1')).rejects.toThrow(/manifest/i);
   });
 
+  it('downloadSnapshot includes since as a query param when provided', async () => {
+    const data = Object.fromEntries(PROVISIONING_COLLECTIONS.map((key) => [key, []]));
+    const manifest = Object.fromEntries(PROVISIONING_COLLECTIONS.map((key) => [key, 0]));
+    const fetchMock = vi.fn<(url: string | URL, init?: RequestInit) => Promise<Response>>(async () => response({
+      contractVersion: 1, snapshotId: 'snapshot-1', generatedAt: '2026-01-01',
+      userId: 'user-1', role: 'INSTITUTION_ADMIN', scopeType: 'INSTITUTION',
+      scopeId: 'school-1', institutionId: 'school-1', deviceId: 'device-1',
+      checksumAlgorithm: 'sha256',
+      checksum: 'a'.repeat(64), manifest, data,
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    const gateway = buildGateway();
+
+    await gateway.downloadSnapshot('device-1', '2026-07-29T00:00:00.000Z');
+
+    const requestedUrl = new URL(fetchMock.mock.calls[0]![0] as string);
+    expect(requestedUrl.searchParams.get('deviceId')).toBe('device-1');
+    expect(requestedUrl.searchParams.get('since')).toBe('2026-07-29T00:00:00.000Z');
+  });
+
   it('preserves the protected session when revalidation is temporarily offline', async () => {
     const clear = vi.fn(async () => undefined);
     const authentication: AuthenticationGateway = {
