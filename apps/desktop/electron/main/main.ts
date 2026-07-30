@@ -22,6 +22,7 @@ import { WorkspaceManager } from '@app/workspace/WorkspaceManager';
 import type { ApplicationLayer } from '@nemis-desktop/application';
 import type { DataLayer } from '@app/data/factories/createDataLayer';
 import { DesktopSyncWorker } from '@app/sync/DesktopSyncWorker';
+import { NetworkMonitor } from '@app/sync/NetworkMonitor';
 import { SchoolAdminModuleService } from '@app/data/services/SchoolAdminModuleService';
 
 // Squirrel.Windows shortcut events during install/update: quit immediately.
@@ -45,6 +46,8 @@ function bootstrap(): void {
 
   let mainWindow: BrowserWindow | null = null;
   let workspaces: WorkspaceManager | null = null;
+  let networkMonitor: NetworkMonitor | null = null;
+  let syncWorker: DesktopSyncWorker | null = null;
   const allowedOrigins = config.isDev ? [config.rendererDevUrl] : [RENDERER_ORIGIN];
 
   const createHardenedWindow = (): BrowserWindow => {
@@ -111,11 +114,15 @@ function bootstrap(): void {
         loadDeviceIdentity(app.getPath('userData')),
         workspaces,
       );
-      const syncWorker = new DesktopSyncWorker(workspaces, backendProvisioning);
+      networkMonitor = new NetworkMonitor(config.apiBaseUrl, () => {
+        void syncWorker?.syncActive().catch((error) => logger.warn(`Reconnect sync deferred: ${String(error)}`));
+      });
+      syncWorker = new DesktopSyncWorker(workspaces, backendProvisioning, networkMonitor);
       const schoolAdmin = new SchoolAdminModuleService(workspaces);
       const syncTimer = setInterval(() => {
-        void syncWorker.syncActive().catch((error) => logger.warn(`Background sync deferred: ${String(error)}`));
+        void syncWorker?.syncActive().catch((error) => logger.warn(`Background sync deferred: ${String(error)}`));
       }, 30_000);
+      networkMonitor.start();
 
       denyPermissionRequests();
       denyPermissionChecks();
@@ -134,7 +141,10 @@ function bootstrap(): void {
           mainWindow = createHardenedWindow();
         }
       });
-      app.once('will-quit', () => clearInterval(syncTimer));
+      app.once('will-quit', () => {
+        clearInterval(syncTimer);
+        networkMonitor?.stop();
+      });
     })
     .catch((error: unknown) => {
       logger.error('Fatal startup failure:', error);
@@ -154,12 +164,29 @@ function bootstrap(): void {
     }
   });
 
-  app.on('will-quit', () => {
+  app.on('will-quit', async (event) => {
+    if (workspaces && networkMonitor?.isOnline() && syncWorker) {
+      try {
+        const pending = workspaces.active.database.connection
+          .prepare(`SELECT COUNT(*) count FROM sync_queue WHERE status='pending'`)
+          .get() as { count: number };
+        if (pending.count > 0) {
+          event.preventDefault();
+          await Promise.race([
+            syncWorker.syncActive().catch(() => undefined),
+            new Promise((resolve) => setTimeout(resolve, 3_000)),
+          ]);
+        }
+      } catch {
+        // best-effort only — never block quit on a flush failure
+      }
+    }
     try {
       workspaces?.close();
     } catch (error) {
       logger.error('Database shutdown failed:', error);
     }
+    app.quit();
   });
 }
 

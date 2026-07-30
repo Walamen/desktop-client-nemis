@@ -9,10 +9,10 @@ import {
   selectConnectivityPresentation,
   selectSyncPresentation,
 } from '@nemis-desktop/presentation';
-import { useConnectivityStore } from '../../lib/presentation/hooks';
+import { useConnectivityStore } from '../../lib/presentation/hooks/shared';
 import { useViewModel } from '../../hooks/use-view-model';
 import { useAppVersion } from '../../hooks/useAppVersion';
-import { nemisBridge } from '@/services/nemis-bridge';
+import { sharedBridge } from '@/services/nemis-bridge/shared';
 
 export function StatusBar() {
   const connectivity = useConnectivityStore();
@@ -24,11 +24,17 @@ export function StatusBar() {
   const [localSync, setLocalSync] = useState<DesktopSyncStatus | null>(null);
   const refresh = useCallback(() => {
     try {
-      void nemisBridge.getSyncStatus().then(setLocalSync).catch(() => setLocalSync(null));
+      void sharedBridge
+        .getSyncStatus()
+        .then((status) => {
+          setLocalSync(status);
+          connectivity.setOnline(status.isOnline);
+        })
+        .catch(() => setLocalSync(null));
     } catch {
       setLocalSync(null);
     }
-  }, []);
+  }, [connectivity]);
   useEffect(() => {
     refresh();
     const timer = window.setInterval(refresh, 5_000);
@@ -50,7 +56,7 @@ export function StatusBar() {
         <button
           type="button"
           className="flex items-center gap-1.5 hover:text-blue-700"
-          onClick={() => void nemisBridge.runSync().then(setLocalSync).catch(refresh)}
+          onClick={() => void sharedBridge.runSync().then(setLocalSync).catch(refresh)}
         >
           <RefreshCw className="w-3.5 h-3.5" />
           {localSync?.status === 'syncing' ? 'Syncing' : syncLabel}
