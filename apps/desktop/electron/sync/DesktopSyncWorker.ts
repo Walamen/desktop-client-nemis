@@ -54,6 +54,17 @@ export class DesktopSyncWorker {
     if (!completion?.serverDeviceId) return;
 
     this.#running = true;
+    // Crash recovery has to run here rather than once at boot: at boot no
+    // workspace is unlocked yet (activation happens later over IPC), so the
+    // recovery would silently no-op and a stranded row would block its own
+    // item forever AND every future delta pull (the pull gate below counts
+    // in_flight as still-pending) AND every subsequent ProvisioningImporter
+    // run. Here a workspace is guaranteed active, and this covers startup,
+    // login, the interval, reconnect, and manual sync at once. Safe because
+    // the #running guard above means no in-process cycle is holding in_flight
+    // rows at this point, and requestSingleInstanceLock rules out a second
+    // process.
+    this.recoverStaleInFlight();
     const claimed = await workspace.data.services.syncQueue.claim(50);
     const pullDue = Date.now() - this.#lastPullAt >= 5 * 60_000;
     if (claimed.length === 0 && !pullDue) {

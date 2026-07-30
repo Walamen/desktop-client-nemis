@@ -264,6 +264,51 @@ describe('DesktopSyncWorker retry policy', () => {
     expect(row.retryCount).toBe(0);
   });
 
+  it('syncActive itself recovers a stranded in_flight row and pushes it in the same cycle', async () => {
+    const item = await dataLayer.services.syncQueue.enqueue({
+      entityType: 'students',
+      entityId: 's1',
+      operationType: 'create',
+      payload: { firstName: 'Ada' },
+    });
+    // Stranded by a crash mid-push: claim() only ever selects 'pending'.
+    // Recovery must happen inside syncActive() — calling it once at boot (the
+    // original wiring) is a no-op, because no workspace is unlocked that early,
+    // so this row would block itself, every future delta pull, and every
+    // subsequent import, forever.
+    manager.connection.prepare(`UPDATE sync_queue SET status='in_flight' WHERE id=?`).run(item.id);
+    const gateway = {
+      pushChanges: vi.fn().mockResolvedValue({
+        processedAt: '2026-07-29T00:00:00.000Z',
+        results: [{ operationId: item.id, entityType: 'students', entityId: 's1', status: 'accepted' }],
+      }),
+      downloadSnapshot: vi.fn().mockResolvedValue(emptySnapshot()),
+    } as unknown as BackendProvisioningGateway;
+    const worker = new DesktopSyncWorker(workspaces, gateway, alwaysOnline());
+
+    await worker.syncActive();
+
+    // Proves the row was recovered AND claimed by this very cycle, not merely
+    // returned to 'pending' for some later one.
+    expect(gateway.pushChanges).toHaveBeenCalledWith('device-1', [
+      expect.objectContaining({ operationId: item.id }),
+    ]);
+    // ...and that the pull it used to block now runs: the pull gate counts
+    // in_flight as still-pending, so an unrecovered row would have skipped this.
+    expect(gateway.downloadSnapshot).toHaveBeenCalled();
+    // That pull's import sweeps status='completed' rows out of the queue, so a
+    // fully-processed item is simply gone rather than sitting at 'completed'.
+    // The invariant that matters is that nothing is left stranded.
+    expect(
+      manager.connection.prepare(`SELECT status FROM sync_queue WHERE id=?`).get(item.id),
+    ).toBeUndefined();
+    expect(
+      (manager.connection.prepare(
+        `SELECT COUNT(*) count FROM sync_queue WHERE status IN ('pending','in_flight')`,
+      ).get() as { count: number }).count,
+    ).toBe(0);
+  });
+
   it('getStatus reports isOnline from the injected connectivity source', () => {
     const worker = new DesktopSyncWorker(workspaces, {} as BackendProvisioningGateway, { isOnline: () => false });
     expect(worker.getStatus().isOnline).toBe(false);
