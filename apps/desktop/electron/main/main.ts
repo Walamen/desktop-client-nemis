@@ -115,6 +115,10 @@ function bootstrap(): void {
         workspaces,
       );
       networkMonitor = new NetworkMonitor(config.apiBaseUrl, () => {
+        // Without this, items already in backoff would sit out the very sync
+        // the reconnect exists to trigger — their nextAttemptAt is still in the
+        // future, so claimBatch would skip them.
+        syncWorker?.releaseBackoff();
         void syncWorker?.syncActive().catch((error) => logger.warn(`Reconnect sync deferred: ${String(error)}`));
       });
       syncWorker = new DesktopSyncWorker(workspaces, backendProvisioning, networkMonitor);

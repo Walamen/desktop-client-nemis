@@ -6,11 +6,20 @@ import type {
   SyncConflictResult,
 } from '@nemis-desktop/types';
 import type { BackendProvisioningGateway } from '@app/provisioning/BackendProvisioningGateway';
-import type { WorkspaceManager } from '@app/workspace/WorkspaceManager';
+import type { ActiveWorkspace, WorkspaceManager } from '@app/workspace/WorkspaceManager';
 import { ProvisioningImporter } from '@app/provisioning/ProvisioningImporter';
 
 const BACKOFF_SCHEDULE_MS = [30_000, 60_000, 300_000, 900_000] as const; // 30s, 1m, 5m, 15m
 const DEAD_LETTER_THRESHOLD = 5;
+/**
+ * BackendProvisioningGateway throws exactly this message for network-level
+ * failures (timeout/DNS/refused), as distinct from a server-side rejection,
+ * which throws a status-bearing message. A failure to reach the server says
+ * nothing about the item, so it must not consume the item's retry budget.
+ * Compared by message rather than by importing the gateway, which this worker
+ * intentionally depends on by type only.
+ */
+const UNREACHABLE_SERVER_MESSAGE = 'The NEMIS server could not be reached.';
 
 /** Minimal seam so DesktopSyncWorker doesn't depend on the concrete NetworkMonitor class. */
 export interface ConnectivitySource {
@@ -29,6 +38,9 @@ export class DesktopSyncWorker {
 
   async syncActive(): Promise<void> {
     if (this.#running) return;
+    // Offline: claiming a batch here would only fail the push and burn every
+    // claimed item's retry budget against a network that is known to be down.
+    if (!this.connectivity.isOnline()) return;
     let workspace;
     try {
       workspace = this.workspaces.active;
@@ -127,9 +139,30 @@ export class DesktopSyncWorker {
       }
       const now = new Date().toISOString();
       if (claimed.length > 0) {
+        // The push may well have succeeded — marking every claimed item
+        // 'completed' — before a later step in the same cycle (the pull) threw.
+        // Only items still in_flight actually failed; rescheduling or
+        // dead-lettering the rest would resurrect changes the server already
+        // applied.
+        const stillInFlight = new Set(
+          (
+            workspace.database.connection.prepare(
+              `SELECT id FROM sync_queue WHERE status='in_flight' AND id IN (${claimed.map(() => '?').join(',')})`,
+            ).all(...claimed.map((item) => item.id)) as Array<{ id: string }>
+          ).map((row) => row.id),
+        );
         const message = error instanceof Error ? error.message : String(error);
         const stack = error instanceof Error ? error.stack : undefined;
         for (const item of claimed) {
+          if (!stillInFlight.has(item.id)) continue; // already completed successfully earlier in this cycle
+          if (message === UNREACHABLE_SERVER_MESSAGE) {
+            // Unreachable server: return the item to the queue unpenalised so
+            // the next cycle (or a reconnect) can claim it immediately.
+            workspace.database.connection.prepare(
+              `UPDATE sync_queue SET status='pending',nextAttemptAt=NULL,updatedAt=? WHERE id=?`,
+            ).run(now, item.id);
+            continue;
+          }
           const nextRetryCount = item.retryCount + 1;
           if (nextRetryCount >= DEAD_LETTER_THRESHOLD) {
             // SyncQueueService.fail() wraps markFailed()+recordError() in its
@@ -177,6 +210,30 @@ export class DesktopSyncWorker {
       throw error;
     } finally {
       this.#running = false;
+    }
+  }
+
+  /** Clears backoff so a reconnect-triggered sync can claim everything pending immediately. */
+  releaseBackoff(): void {
+    const workspace = this.#activeWorkspaceOrNull();
+    if (!workspace) return;
+    workspace.database.connection.prepare(
+      `UPDATE sync_queue SET nextAttemptAt=NULL WHERE status='pending' AND nextAttemptAt IS NOT NULL`,
+    ).run();
+  }
+
+  /**
+   * Lifecycle hooks (reconnect, boot) can fire before any workspace is
+   * unlocked, and WorkspaceManager throws in that state. Both callers are
+   * fire-and-forget — NetworkMonitor invokes its onOnline callback from an
+   * un-awaited probe — so "no workspace" has to mean "nothing to do" rather
+   * than an unhandled throw. syncActive() guards the same way.
+   */
+  #activeWorkspaceOrNull(): ActiveWorkspace | null {
+    try {
+      return this.workspaces.active;
+    } catch {
+      return null;
     }
   }
 

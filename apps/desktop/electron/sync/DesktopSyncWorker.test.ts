@@ -138,6 +138,110 @@ describe('DesktopSyncWorker retry policy', () => {
     expect(row.status).toBe('failed');
   });
 
+  it('leaves already-pushed items completed when the pull step fails afterwards', async () => {
+    const item = await dataLayer.services.syncQueue.enqueue({
+      entityType: 'students',
+      entityId: 's1',
+      operationType: 'create',
+      payload: { firstName: 'Ada' },
+    });
+    const gateway = {
+      pushChanges: vi.fn().mockResolvedValue({
+        processedAt: '2026-07-29T00:00:00.000Z',
+        results: [{ operationId: item.id, entityType: 'students', entityId: 's1', status: 'accepted' }],
+      }),
+      downloadSnapshot: vi.fn().mockRejectedValue(new Error('pull exploded')),
+    } as unknown as BackendProvisioningGateway;
+    const worker = new DesktopSyncWorker(workspaces, gateway, alwaysOnline());
+
+    await expect(worker.syncActive()).rejects.toThrow('pull exploded');
+
+    // The push half of this cycle succeeded, so the failure handler must not
+    // reschedule or dead-letter its items — they are already synced.
+    const row = manager.connection
+      .prepare(`SELECT status, retryCount, nextAttemptAt, deadLetter FROM sync_queue WHERE id=?`)
+      .get(item.id) as { status: string; retryCount: number; nextAttemptAt: string | null; deadLetter: number };
+    expect(row.status).toBe('completed');
+    expect(row.retryCount).toBe(0);
+    expect(row.nextAttemptAt).toBeNull();
+    expect(row.deadLetter).toBe(0);
+    expect(
+      (manager.connection.prepare(`SELECT COUNT(*) count FROM sync_errors`).get() as { count: number }).count,
+    ).toBe(0);
+  });
+
+  it('does not touch the network or the queue while offline', async () => {
+    const item = await dataLayer.services.syncQueue.enqueue({
+      entityType: 'students',
+      entityId: 's1',
+      operationType: 'create',
+      payload: { firstName: 'Ada' },
+    });
+    const gateway = {
+      pushChanges: vi.fn(),
+      downloadSnapshot: vi.fn(),
+    } as unknown as BackendProvisioningGateway;
+    const worker = new DesktopSyncWorker(workspaces, gateway, { isOnline: () => false });
+
+    await worker.syncActive();
+
+    expect(gateway.pushChanges).not.toHaveBeenCalled();
+    expect(gateway.downloadSnapshot).not.toHaveBeenCalled();
+    const row = manager.connection
+      .prepare(`SELECT status, retryCount FROM sync_queue WHERE id=?`)
+      .get(item.id) as { status: string; retryCount: number };
+    expect(row.status).toBe('pending');
+    expect(row.retryCount).toBe(0);
+  });
+
+  it('does not spend retry budget when the server is unreachable', async () => {
+    const item = await dataLayer.services.syncQueue.enqueue({
+      entityType: 'students',
+      entityId: 's1',
+      operationType: 'create',
+      payload: { firstName: 'Ada' },
+    });
+    const gateway = {
+      // The exact message BackendProvisioningGateway throws for network-level
+      // failures, as distinct from a server-side rejection.
+      pushChanges: vi.fn().mockRejectedValue(new Error('The NEMIS server could not be reached.')),
+      downloadSnapshot: vi.fn(),
+    } as unknown as BackendProvisioningGateway;
+    const worker = new DesktopSyncWorker(workspaces, gateway, alwaysOnline());
+
+    await expect(worker.syncActive()).rejects.toThrow('could not be reached');
+
+    const row = manager.connection
+      .prepare(`SELECT status, retryCount, nextAttemptAt, deadLetter FROM sync_queue WHERE id=?`)
+      .get(item.id) as { status: string; retryCount: number; nextAttemptAt: string | null; deadLetter: number };
+    expect(row.status).toBe('pending');
+    expect(row.nextAttemptAt).toBeNull();
+    expect(row.retryCount).toBe(0);
+    expect(row.deadLetter).toBe(0);
+    expect(
+      (manager.connection.prepare(`SELECT COUNT(*) count FROM sync_errors`).get() as { count: number }).count,
+    ).toBe(0);
+  });
+
+  it('releaseBackoff clears scheduled backoff so a reconnect can claim everything pending', async () => {
+    const item = await dataLayer.services.syncQueue.enqueue({
+      entityType: 'students',
+      entityId: 's1',
+      operationType: 'create',
+      payload: { firstName: 'Ada' },
+    });
+    await dataLayer.services.syncQueue.scheduleRetry(item.id, '2099-01-01T00:00:00.000Z');
+    const worker = new DesktopSyncWorker(workspaces, {} as BackendProvisioningGateway, alwaysOnline());
+
+    worker.releaseBackoff();
+
+    const row = manager.connection
+      .prepare(`SELECT status, nextAttemptAt FROM sync_queue WHERE id=?`)
+      .get(item.id) as { status: string; nextAttemptAt: string | null };
+    expect(row.status).toBe('pending');
+    expect(row.nextAttemptAt).toBeNull();
+  });
+
   it('getStatus reports isOnline from the injected connectivity source', () => {
     const worker = new DesktopSyncWorker(workspaces, {} as BackendProvisioningGateway, { isOnline: () => false });
     expect(worker.getStatus().isOnline).toBe(false);
