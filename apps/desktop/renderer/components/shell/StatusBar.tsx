@@ -9,10 +9,10 @@ import {
   selectConnectivityPresentation,
   selectSyncPresentation,
 } from '@nemis-desktop/presentation';
-import { useConnectivityStore } from '../../lib/presentation/hooks/shared';
+import { useConnectivityStore } from '../../lib/presentation/hooks';
 import { useViewModel } from '../../hooks/use-view-model';
 import { useAppVersion } from '../../hooks/useAppVersion';
-import { sharedBridge } from '@/services/nemis-bridge/shared';
+import { nemisBridge } from '@/services/nemis-bridge';
 
 export function StatusBar() {
   const connectivity = useConnectivityStore();
@@ -24,7 +24,7 @@ export function StatusBar() {
   const [localSync, setLocalSync] = useState<DesktopSyncStatus | null>(null);
   const refresh = useCallback(() => {
     try {
-      void sharedBridge
+      void nemisBridge
         .getSyncStatus()
         .then((status) => {
           setLocalSync(status);
@@ -56,7 +56,7 @@ export function StatusBar() {
         <button
           type="button"
           className="flex items-center gap-1.5 hover:text-blue-700"
-          onClick={() => void sharedBridge.runSync().then(setLocalSync).catch(refresh)}
+          onClick={() => void nemisBridge.runSync().then(setLocalSync).catch(refresh)}
         >
           <RefreshCw className="w-3.5 h-3.5" />
           {localSync?.status === 'syncing' ? 'Syncing' : syncLabel}

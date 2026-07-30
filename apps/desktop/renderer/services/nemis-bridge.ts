@@ -73,7 +73,7 @@ export const nemisBridge = {
   runSync: () => api().sync.run(),
   getSyncStatus: () => api().sync.getStatus(),
   listSyncConflicts: () => api().sync.listConflicts(),
-  resolveSyncConflict: (conflictId: string, resolution: 'keep_local' | 'accept_remote') =>
+  resolveSyncConflict: (conflictId: string, resolution: 'keep_local' | 'accept_remote' | 'retry') =>
     api().sync.resolveConflict({ conflictId, resolution }),
   getDashboardOverview: (): Promise<DashboardOverviewResult> => api().dashboard.getOverview(),
   getSchoolSummary: (): Promise<SchoolSummaryResult | null> => api().school.getSummary(),

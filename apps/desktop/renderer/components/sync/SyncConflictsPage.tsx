@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import type { SyncConflictResult } from '@nemis-desktop/types';
-import { sharedBridge } from '@/services/nemis-bridge/shared';
+import { nemisBridge } from '@/services/nemis-bridge';
 
 export function SyncConflictsPage() {
   const [conflicts, setConflicts] = useState<readonly SyncConflictResult[] | null>(null);
   const [resolving, setResolving] = useState<string | null>(null);
   useEffect(() => {
-    void sharedBridge.listSyncConflicts().then(setConflicts);
+    void nemisBridge.listSyncConflicts().then(setConflicts);
   }, []);
   const resolve = async (
     conflictId: string,
@@ -16,16 +16,9 @@ export function SyncConflictsPage() {
   ) => {
     setResolving(conflictId);
     try {
-      // `sharedBridge.resolveSyncConflict`'s declared parameter type still
-      // predates this task's 'retry' resolution (it lives in the in-progress
-      // nemis-bridge/ refactor, out of scope here). The underlying IPC call
-      // (api().sync.resolveConflict) already accepts the full
-      // ResolveSyncConflictRequest, including 'retry', via @nemis-desktop/types
-      // — this cast only widens the local wrapper's stale signature and should
-      // be removed once that bridge module is updated to match.
-      await sharedBridge.resolveSyncConflict(conflictId, resolution as 'keep_local' | 'accept_remote');
+      await nemisBridge.resolveSyncConflict(conflictId, resolution);
       setConflicts((current) => current?.filter((item) => item.id !== conflictId) ?? []);
-      if (resolution === 'keep_local' || resolution === 'retry') void sharedBridge.runSync();
+      if (resolution === 'keep_local' || resolution === 'retry') void nemisBridge.runSync();
     } finally {
       setResolving(null);
     }
