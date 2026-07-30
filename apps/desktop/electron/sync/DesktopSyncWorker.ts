@@ -219,6 +219,15 @@ export class DesktopSyncWorker {
     }
   }
 
+  /** Crash/shutdown-race recovery: items stuck in_flight from a prior process can never be re-claimed otherwise. */
+  recoverStaleInFlight(): void {
+    const workspace = this.#activeWorkspaceOrNull();
+    if (!workspace) return;
+    workspace.database.connection.prepare(
+      `UPDATE sync_queue SET status='pending',updatedAt=? WHERE status='in_flight'`,
+    ).run(new Date().toISOString());
+  }
+
   /** Clears backoff so a reconnect-triggered sync can claim everything pending immediately. */
   releaseBackoff(): void {
     const workspace = this.#activeWorkspaceOrNull();

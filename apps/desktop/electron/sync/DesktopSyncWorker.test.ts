@@ -242,6 +242,28 @@ describe('DesktopSyncWorker retry policy', () => {
     expect(row.nextAttemptAt).toBeNull();
   });
 
+  it('recoverStaleInFlight returns items stranded in_flight by a dead process to pending', async () => {
+    const item = await dataLayer.services.syncQueue.enqueue({
+      entityType: 'students',
+      entityId: 's1',
+      operationType: 'create',
+      payload: { firstName: 'Ada' },
+    });
+    // A crash (or the shutdown-flush race) leaves rows mid-flight; claimBatch
+    // only ever selects 'pending', so nothing would ever pick them up again —
+    // and while they sit there they also block every delta pull.
+    manager.connection.prepare(`UPDATE sync_queue SET status='in_flight' WHERE id=?`).run(item.id);
+    const worker = new DesktopSyncWorker(workspaces, {} as BackendProvisioningGateway, alwaysOnline());
+
+    worker.recoverStaleInFlight();
+
+    const row = manager.connection
+      .prepare(`SELECT status, retryCount FROM sync_queue WHERE id=?`)
+      .get(item.id) as { status: string; retryCount: number };
+    expect(row.status).toBe('pending');
+    expect(row.retryCount).toBe(0);
+  });
+
   it('getStatus reports isOnline from the injected connectivity source', () => {
     const worker = new DesktopSyncWorker(workspaces, {} as BackendProvisioningGateway, { isOnline: () => false });
     expect(worker.getStatus().isOnline).toBe(false);

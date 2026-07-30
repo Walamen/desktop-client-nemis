@@ -122,6 +122,13 @@ function bootstrap(): void {
         void syncWorker?.syncActive().catch((error) => logger.warn(`Reconnect sync deferred: ${String(error)}`));
       });
       syncWorker = new DesktopSyncWorker(workspaces, backendProvisioning, networkMonitor);
+      // Un-stick anything a previous process left mid-flight, before the timer,
+      // the reconnect callback or the startup sync below touch the queue. Note
+      // this only recovers a workspace that is already unlocked; at first boot
+      // none is (ProvisioningService activates one on session restore/login),
+      // so recovery for that case still depends on the next sync cycle after
+      // unlock. See the fix-wave report's I2 note.
+      syncWorker.recoverStaleInFlight();
       const schoolAdmin = new SchoolAdminModuleService(workspaces);
       const syncTimer = setInterval(() => {
         void syncWorker?.syncActive().catch((error) => logger.warn(`Background sync deferred: ${String(error)}`));
