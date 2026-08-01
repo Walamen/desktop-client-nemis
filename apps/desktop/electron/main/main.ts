@@ -131,9 +131,19 @@ function bootstrap(): void {
       // unlock. See the fix-wave report's I2 note.
       syncWorker.recoverStaleInFlight();
       const schoolAdmin = new SchoolAdminModuleService(workspaces);
-      const syncTimer = setInterval(() => {
-        void syncWorker?.syncActive().catch((error) => logger.warn(`Background sync deferred: ${String(error)}`));
-      }, 30_000);
+      let syncTimerStopped = false;
+      let syncTimer: NodeJS.Timeout | undefined;
+      const scheduleSync = () => {
+        syncTimer = setTimeout(() => {
+          void syncWorker
+            ?.syncActive()
+            .catch((error) => logger.warn(`Background sync deferred: ${String(error)}`))
+            .finally(() => {
+              if (!syncTimerStopped) scheduleSync();
+            });
+        }, 20_000);
+      };
+      scheduleSync();
       networkMonitor.start();
 
       denyPermissionRequests();
@@ -154,7 +164,8 @@ function bootstrap(): void {
         }
       });
       app.once('will-quit', () => {
-        clearInterval(syncTimer);
+        syncTimerStopped = true;
+        clearTimeout(syncTimer);
         networkMonitor?.stop();
       });
     })

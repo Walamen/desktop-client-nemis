@@ -30,7 +30,7 @@ const config: ForgeConfig = {
   packagerConfig: {
     name: 'Nemis',
     executableName: 'Nemis',
-    icon: path.resolve(__dirname, 'assets', 'icon'),
+    icon: path.resolve(__dirname, 'assets/icons/win', 'icon'),
     asar: true,
     extraResource,
   },
@@ -54,7 +54,7 @@ const config: ForgeConfig = {
     new MakerSquirrel({
       name: 'Nemis',
       setupExe: 'nemis-setup.exe',
-      setupIcon: path.resolve(__dirname, 'assets', 'icon.ico'),
+      setupIcon: path.resolve(__dirname, 'assets/icons/win', 'icon.ico'),
     }),
     new MakerZIP({}, ['darwin']),
     new MakerRpm({}),

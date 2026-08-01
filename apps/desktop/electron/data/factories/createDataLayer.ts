@@ -82,6 +82,30 @@ export interface DataLayer {
 export function createDataLayer(manager: DatabaseManager, log: DatabaseLogger): DataLayer {
   const context = createRepositoryContext(manager, log);
 
+  // TEMP DATA REPAIR — remove once confirmed applied. Blank phoneNumber
+  // values satisfy the staff table's NOT NULL constraint but fail Teacher
+  // domain reconstitution, which was crashing every teacher-list read that
+  // touched the row. Patches to a placeholder so reads work again; edit the
+  // affected teacher(s) in the UI afterward to set the real number.
+  try {
+    const bad = context.connection
+      .prepare(
+        `SELECT id, firstName, lastName FROM staff WHERE phoneNumber IS NULL OR trim(phoneNumber) = ''`,
+      )
+      .all() as { id: string; firstName: string; lastName: string }[];
+    if (bad.length > 0) {
+      log.warn(`[TEMP REPAIR] blank phoneNumber on ${bad.length} staff row(s): ${JSON.stringify(bad)}`);
+      context.connection
+        .prepare(
+          `UPDATE staff SET phoneNumber = '0000000000' WHERE phoneNumber IS NULL OR trim(phoneNumber) = ''`,
+        )
+        .run();
+      log.warn('[TEMP REPAIR] patched to placeholder 0000000000 — edit these teachers to set the real number.');
+    }
+  } catch (error) {
+    log.error('[TEMP REPAIR] failed', error);
+  }
+
   const devices = new SqliteDeviceRepository(context);
   const appSettings = new SqliteAppSettingsRepository(context);
   const syncMetadata = new SqliteSyncMetadataRepository(context);

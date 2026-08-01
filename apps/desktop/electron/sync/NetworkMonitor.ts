@@ -25,7 +25,7 @@ export class NetworkMonitor implements ConnectivitySource {
     apiBaseUrl: string,
     private readonly onOnline: () => void,
   ) {
-    this.#probeUrl = new URL('/auth/me', apiBaseUrl).toString();
+    this.#probeUrl = new URL('/connectivity/status', apiBaseUrl).toString();
   }
 
   isOnline(): boolean {

@@ -8,7 +8,7 @@ import { ArrowLeft, Users, BookOpen, UserCheck, Plus, Trash2, AlertTriangle } fr
 import { useViewModel } from '@/hooks/use-view-model';
 import { useAcademicFoundationViewModel } from '@/lib/presentation/hooks/school-admin';
 import { schoolAdminBridge } from '@/services/nemis-bridge/school-admin';
-import { formatGrade, getClassTeacherRoster, queryId, type TeacherOnClass } from './shared';
+import { fetchAllPages, formatGrade, getClassTeacherRoster, queryId, type TeacherOnClass } from './shared';
 
 type Tab = 'students' | 'subjects' | 'settings';
 
@@ -62,8 +62,10 @@ export function ClassDetailPage() {
 
   async function loadClass(classId: string) {
     setLoadError(null);
-    const page = await schoolAdminBridge.listClasses({ limit: 500, includeInactive: true });
-    const found = page.items.find((c) => c.id === classId);
+    const allClasses = await fetchAllPages((limit, offset) =>
+      schoolAdminBridge.listClasses({ limit, offset, includeInactive: true }),
+    );
+    const found = allClasses.find((c) => c.id === classId);
     if (!found) {
       setLoadError('Class not found.');
       return;
@@ -78,8 +80,10 @@ export function ClassDetailPage() {
   }
 
   async function refreshStudents(classId: string) {
-    const page = await schoolAdminBridge.listStudents({ classId, enrollmentStatus: 'ACTIVE', limit: 500 });
-    setStudents(page.items);
+    const items = await fetchAllPages((limit, offset) =>
+      schoolAdminBridge.listStudents({ classId, enrollmentStatus: 'ACTIVE', limit, offset }),
+    );
+    setStudents(items);
   }
 
   async function refreshTeachers(classId: string) {

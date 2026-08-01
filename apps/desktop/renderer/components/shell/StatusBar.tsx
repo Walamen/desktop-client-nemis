@@ -9,7 +9,7 @@ import {
   selectConnectivityPresentation,
   selectSyncPresentation,
 } from '@nemis-desktop/presentation';
-import { useConnectivityStore } from '../../lib/presentation/hooks';
+import { useConnectivityStore } from '../../lib/presentation/hooks/shared';
 import { useViewModel } from '../../hooks/use-view-model';
 import { useAppVersion } from '../../hooks/useAppVersion';
 import { nemisBridge } from '@/services/nemis-bridge';
