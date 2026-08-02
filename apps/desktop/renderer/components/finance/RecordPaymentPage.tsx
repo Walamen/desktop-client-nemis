@@ -349,7 +349,7 @@ export function RecordPaymentPage() {
           <div className="flex justify-center border border-slate-300 bg-white p-12">
             <div className="h-7 w-7 animate-spin rounded-full border-4 border-secondary border-t-transparent" />
           </div>
-        ) : !rule ? (
+        ) : rules !== null && rules.length === 0 ? (
           <div className="border border-slate-300 bg-white p-12 text-center text-sm text-slate-400">No fee rules apply to your school yet.</div>
         ) : rowsForTab.length === 0 ? (
           <div className="border border-slate-300 bg-white p-12 text-center">
@@ -386,6 +386,8 @@ export function RecordPaymentPage() {
                     <div className="text-right">
                       <p className="text-sm font-semibold text-active">{formatCurrency(s.totalPaid, currency)}</p>
                     </div>
+                  ) : !s.rule ? (
+                    <span className="text-xs italic text-slate-400">Payment threshold not set</span>
                   ) : null}
                 </div>
               </div>

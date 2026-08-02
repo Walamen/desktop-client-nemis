@@ -258,14 +258,21 @@ function upsertRows(
     if (typeof row.id !== 'string' || row.id.length === 0) {
       throw new Error(`Provisioning row for ${table.table} has no valid id.`);
     }
-    statement.run(...table.columns.map((column) => sqliteValue(row[column])));
+    statement.run(...table.columns.map((column) => sqliteValue(row[column], column)));
   }
 }
 
-function sqliteValue(value: unknown): string | number | null {
+/** `applicableLevels` is a native array on the server (Prisma `InstitutionLevel[]`)
+ * but this app's own fee-rule CRUD (finance/shared.tsx stringifyLevels/parseLevels)
+ * stores and reads it as a comma-joined string, matching the generic collection
+ * API's string|number|boolean|null value constraint. Provisioned rows must use
+ * that same comma-joined format, not the generic JSON.stringify fallback below,
+ * or parseLevels silently mis-splits it and excludes every student from the rule. */
+function sqliteValue(value: unknown, column: string): string | number | null {
   if (value === null || value === undefined) return null;
   if (typeof value === 'boolean') return value ? 1 : 0;
   if (typeof value === 'string' || typeof value === 'number') return value;
+  if (column === 'applicableLevels' && Array.isArray(value)) return value.join(',');
   return JSON.stringify(value);
 }
 

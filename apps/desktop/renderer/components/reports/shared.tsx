@@ -1,6 +1,7 @@
 import { sharedBridge } from '@/services/nemis-bridge/shared';
 import { schoolAdminBridge } from '@/services/nemis-bridge/school-admin';
 import type { ClassResult, SchoolAdminRecord, StudentListItemResult, TeacherResult, TeachingAssignmentResult } from '@nemis-desktop/types';
+import { fetchAllPages } from '@/components/classes/shared';
 import { gradeToLevel, LEVEL_LABEL, listFeeRules } from '@/components/finance/shared';
 import { getGradingConfig, listPeriodsForTerm } from '@/components/academic-grading/shared';
 
@@ -88,12 +89,15 @@ export interface ClassAgg {
 /** One `listStudents({classId})` call per scoped class — the same real
  * pattern already used by finance/BulkAssignDrawer and timetable/shared, just
  * reused here to build enrollment/attendance/academic/financial aggregates
- * from a single roster fetch instead of re-querying per report type. */
+ * from a single roster fetch instead of re-querying per report type. Paged
+ * through fetchAllPages since the IPC layer rejects any "limit" outside
+ * 1–100 — a single oversized page request isn't allowed. */
 export async function loadClassAggregates(classes: ClassResult[]): Promise<ClassAgg[]> {
   return Promise.all(
     classes.map(async (c) => {
-      const page = await schoolAdminBridge.listStudents({ classId: c.id, isActive: true, limit: 2000 });
-      const students = [...page.items];
+      const students = await fetchAllPages((limit, offset) =>
+        schoolAdminBridge.listStudents({ classId: c.id, isActive: true, limit, offset }),
+      );
       return {
         classId: c.id,
         className: c.name,
@@ -271,11 +275,11 @@ function computeAcademicStats(rows: SchoolAdminRecord[], passThresholdPct: numbe
 /** Only counts APPROVED/PUBLISHED grades — mirrors portal-web's note that
  * draft and unapproved submissions aren't reflected in the academic report. */
 export async function buildAcademicReport(classAggs: ClassAgg[], termId: string): Promise<AcademicReportData> {
-  const [periods, gradesResult, config, subjectsResult] = await Promise.all([
+  const [periods, gradesResult, config, subjects] = await Promise.all([
     listPeriodsForTerm(termId),
     sharedBridge.listSchoolAdminRecords({ collection: 'grades', limit: 250 }),
     getGradingConfig(),
-    schoolAdminBridge.listSubjects({ limit: 250 }),
+    fetchAllPages((limit, offset) => schoolAdminBridge.listSubjects({ limit, offset })),
   ]);
 
   const periodIds = new Set(periods.map((p) => String(p.id)));
@@ -291,7 +295,7 @@ export async function buildAcademicReport(classAggs: ClassAgg[], termId: string)
 
   const genderByStudent = new Map<string, string>();
   for (const c of classAggs) for (const s of c.students) genderByStudent.set(s.id, s.gender);
-  const subjectNames = new Map(subjectsResult.items.map((s) => [s.id, s.name]));
+  const subjectNames = new Map(subjects.map((s) => [s.id, s.name]));
 
   const overall = computeAcademicStats(relevant, passThresholdPct);
   const gradedStudents = new Set(relevant.map((r) => String(r.studentId))).size;
@@ -342,8 +346,7 @@ export interface StaffReportData {
  * the UI as "Approved" rather than "Qualified" to stay honest about what's
  * actually being measured). */
 export async function buildStaffReport(classAggs: ClassAgg[]): Promise<StaffReportData> {
-  const teachersPage = await schoolAdminBridge.listTeachers({ isActive: true, limit: 2000 });
-  const teachers = teachersPage.items;
+  const teachers = await fetchAllPages((limit, offset) => schoolAdminBridge.listTeachers({ isActive: true, limit, offset }));
   const teacherRows = teachers.filter((t) => TEACHING_POSITIONS.has(t.position));
   const totalTeachers = teacherRows.length;
   const approvedTeachers = teacherRows.filter((t) => t.approvalStatus === 'APPROVED').length;
@@ -357,8 +360,9 @@ export async function buildStaffReport(classAggs: ClassAgg[]): Promise<StaffRepo
 
   const classAssignments = await Promise.all(
     classAggs.map(async (c) => {
-      const classTeachersPage = await schoolAdminBridge.listTeachers({ classId: c.classId, isActive: true, limit: 500 });
-      const classTeachers = classTeachersPage.items;
+      const classTeachers = await fetchAllPages((limit, offset) =>
+        schoolAdminBridge.listTeachers({ classId: c.classId, isActive: true, limit, offset }),
+      );
       const assignmentLists = await Promise.all(classTeachers.map((t) => schoolAdminBridge.listTeachingAssignments(t.id)));
       const assignments: (TeachingAssignmentResult & { teacher: TeacherResult })[] = [];
       classTeachers.forEach((teacher, i) => {

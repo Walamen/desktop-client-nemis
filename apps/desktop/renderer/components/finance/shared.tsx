@@ -18,9 +18,20 @@ export const FEE_CATEGORIES = ['TUITION', 'ACTIVITY', 'TRANSPORT', 'UNIFORM', 'B
 
 /** `applicableLevels` is stored as a comma-separated string — SchoolAdminRecord
  * values are limited to string | number | boolean | null, so arrays can't be
- * persisted directly through the generic collection API. */
+ * persisted directly through the generic collection API. Rows provisioned
+ * before the importer learned this convention may still hold the server's
+ * raw JSON array (e.g. `'["SECONDARY","PRIMARY"]'`) — tolerate that shape too
+ * so already-synced fee rules don't silently exclude every student. */
 export function parseLevels(value: SchoolAdminRecord[string] | undefined): string[] {
   if (typeof value !== 'string' || !value) return [];
+  if (value.startsWith('[')) {
+    try {
+      const parsed: unknown = JSON.parse(value);
+      if (Array.isArray(parsed)) return parsed.filter((v): v is string => typeof v === 'string');
+    } catch {
+      // Fall through to comma-split below.
+    }
+  }
   return value.split(',').map((v) => v.trim()).filter(Boolean);
 }
 

@@ -6,7 +6,7 @@ import { GradeLevel, type GradeLevel as GradeLevelValue } from '@nemis-desktop/t
 import { Drawer, EmptyState, ErrorState, Select, Skeleton } from '@nemis-desktop/ui';
 import { ArrowLeft, Users, BookOpen, UserCheck, Plus, Trash2, AlertTriangle } from 'lucide-react';
 import { useViewModel } from '@/hooks/use-view-model';
-import { useAcademicFoundationViewModel } from '@/lib/presentation/hooks/school-admin';
+import { useAcademicFoundationViewModel, useTeachersListViewModel, useTeachingAssignmentViewModel } from '@/lib/presentation/hooks/school-admin';
 import { schoolAdminBridge } from '@/services/nemis-bridge/school-admin';
 import { fetchAllPages, formatGrade, getClassTeacherRoster, queryId, type TeacherOnClass } from './shared';
 
@@ -27,12 +27,17 @@ function StatChip({ label, value }: { label: string; value: number | string }) {
  * Settings tabs. The Teachers card is real: it's built from a class-scoped
  * teacher query plus each of those (few) teachers' own assignment list
  * filtered to this class, since no bulk "assignments by class" query exists.
- * Assigning a teacher to a specific subject-in-class isn't wired up here —
- * that flow belongs to the Teachers module's "Assign Teaching" action. */
+ * Assigning wraps the same TeachingAssignmentViewModel.assign() the Teachers
+ * module's "Assign Teaching" action uses; unlike portal-web's array-of-subjects
+ * mutation, this domain ties one assignment to exactly one subject, so the
+ * drawer here assigns one class-subject at a time (call it again for another). */
 export function ClassDetailPage() {
   const vm = useAcademicFoundationViewModel();
+  const teachersVm = useTeachersListViewModel();
+  const assignVm = useTeachingAssignmentViewModel();
   const classSubjects = useViewModel(vm.store, (s) => s.classSubjects);
   const subjects = useViewModel(vm.store, (s) => s.subjects);
+  const teacherList = useViewModel(teachersVm.store, (s) => s.list);
 
   const [id, setId] = useState('');
   const [activeTab, setActiveTab] = useState<Tab>('students');
@@ -46,6 +51,12 @@ export function ClassDetailPage() {
   const [subjectToAdd, setSubjectToAdd] = useState('');
   const [addingSubject, setAddingSubject] = useState(false);
 
+  const [isAssignTeacherOpen, setIsAssignTeacherOpen] = useState(false);
+  const [teacherToAssign, setTeacherToAssign] = useState('');
+  const [subjectForTeacher, setSubjectForTeacher] = useState('');
+  const [isClassTeacherFlag, setIsClassTeacherFlag] = useState(false);
+  const [assigningTeacher, setAssigningTeacher] = useState(false);
+
   const [section, setSection] = useState('');
   const [gradeLevel, setGradeLevel] = useState<GradeLevelValue>(GradeLevel.KG);
   const [capacity, setCapacity] = useState('');
@@ -57,6 +68,7 @@ export function ClassDetailPage() {
     setId(value);
     if (value) void loadClass(value);
     void vm.loadSubjects();
+    void teachersVm.loadTeachers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -90,10 +102,13 @@ export function ClassDetailPage() {
     setTeachers(await getClassTeacherRoster(classId));
   }
 
-  const availableSubjectsForClass =
-    (subjects.status === 'success' || subjects.status === 'refreshing') && (classSubjects.status === 'success' || classSubjects.status === 'refreshing')
-      ? subjects.data.filter((s) => s.isActive && !classSubjects.data.some((link) => link.subjectId === s.id))
-      : [];
+  const subjectsData = subjects.status === 'success' || subjects.status === 'refreshing' ? subjects.data : [];
+  const classSubjectsData = classSubjects.status === 'success' || classSubjects.status === 'refreshing' ? classSubjects.data : [];
+  const availableSubjectsForClass = subjectsData.filter((s) => s.isActive && !classSubjectsData.some((link) => link.subjectId === s.id));
+
+  const teachersData = teacherList.status === 'success' || teacherList.status === 'refreshing' ? teacherList.data : [];
+  const assignedSubjectIds = new Set((teachers ?? []).flatMap((t) => t.subjectIds));
+  const availableSubjectsForTeacher = classSubjectsData.filter((s) => !assignedSubjectIds.has(s.subjectId));
 
   const handleAddSubject = async () => {
     if (!subjectToAdd || !id) return;
@@ -109,6 +124,25 @@ export function ClassDetailPage() {
   const handleRemoveSubject = async (subjectId: string) => {
     if (!id) return;
     await vm.unassignSubject(id, subjectId);
+  };
+
+  const handleAssignTeacher = async () => {
+    if (!teacherToAssign || !subjectForTeacher || !id) return;
+    setAssigningTeacher(true);
+    const result = await assignVm.assign({ teacherId: teacherToAssign, classId: id, subjectId: subjectForTeacher, isClassTeacher: isClassTeacherFlag });
+    setAssigningTeacher(false);
+    if (result.ok) {
+      setIsAssignTeacherOpen(false);
+      setTeacherToAssign('');
+      setSubjectForTeacher('');
+      setIsClassTeacherFlag(false);
+      void refreshTeachers(id);
+    }
+  };
+
+  const handleRemoveTeacher = async (teacher: TeacherOnClass) => {
+    for (const assignmentId of teacher.assignmentIds) await assignVm.remove(assignmentId, teacher.teacherId);
+    if (id) void refreshTeachers(id);
   };
 
   const handleUpdate = async (e: FormEvent) => {
@@ -261,9 +295,9 @@ export function ClassDetailPage() {
             <div className="flex items-start gap-3 p-4 border border-amber-200 rounded-lg bg-amber-50">
               <AlertTriangle className="w-6 h-6 text-amber-600 mt-0.5 shrink-0" />
               <div>
-                <p className="text-sm font-bold text-amber-800">Assign subjects to this class, then assign teachers from the Teachers module</p>
+                <p className="text-sm font-bold text-amber-800">Add subjects to this class before assigning teachers</p>
                 <p className="text-xs font-semibold text-amber-700 mt-0.5">
-                  Use a teacher&apos;s profile page ({'"'}Assign Teaching{'"'}) to link them to a subject in this class. The roster below reflects those assignments.
+                  Teachers can only be assigned to subjects that have been added to the class. Once subjects are added, use {'"'}Assign Teacher{'"'} to link a teacher to a subject — a teacher already teaching one subject can be assigned to another the same way.
                 </p>
               </div>
             </div>
@@ -316,9 +350,20 @@ export function ClassDetailPage() {
               </div>
 
               <div className="bg-white rounded-lg border border-slate-300 overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-100">
-                  <h2 className="text-sm font-semibold text-gray-900">Teachers</h2>
-                  <p className="text-xs text-gray-400 mt-0.5">{teachers?.length ?? 0} assigned</p>
+                <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                  <div>
+                    <h2 className="text-sm font-semibold text-gray-900">Teachers</h2>
+                    <p className="text-xs text-gray-400 mt-0.5">{teachers?.length ?? 0} assigned</p>
+                  </div>
+                  <button
+                    onClick={() => setIsAssignTeacherOpen(true)}
+                    disabled={availableSubjectsForTeacher.length === 0}
+                    title={availableSubjectsForTeacher.length === 0 ? 'Add subjects to this class first' : undefined}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-50 transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Assign Teacher
+                  </button>
                 </div>
                 {teachers === null ? (
                   <div className="p-6">
@@ -330,23 +375,34 @@ export function ClassDetailPage() {
                   <ul className="divide-y divide-gray-100">
                     {teachers.map((t) => (
                       <li key={t.teacherId} className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium text-gray-900 text-sm">
-                            {t.firstName} {t.lastName}
-                          </p>
-                          {t.isClassTeacher && <span className="px-1.5 py-0.5 text-xs font-semibold bg-amber-50 text-amber-700 rounded">Homeroom</span>}
-                        </div>
-                        {t.subjects.length > 0 ? (
-                          <div className="flex flex-wrap gap-1.5 mt-2">
-                            {t.subjects.map((s) => (
-                              <span key={s} className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-slate-100 text-slate-700 rounded">
-                                {s}
-                              </span>
-                            ))}
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium text-gray-900 text-sm">
+                                {t.firstName} {t.lastName}
+                              </p>
+                              {t.isClassTeacher && <span className="px-1.5 py-0.5 text-xs font-semibold bg-amber-50 text-amber-700 rounded">Homeroom</span>}
+                            </div>
+                            {t.subjects.length > 0 ? (
+                              <div className="flex flex-wrap gap-1.5 mt-2">
+                                {t.subjects.map((s) => (
+                                  <span key={s} className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-slate-100 text-slate-700 rounded">
+                                    {s}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-xs text-gray-400 mt-0.5 italic">No subjects assigned</p>
+                            )}
                           </div>
-                        ) : (
-                          <p className="text-xs text-gray-400 mt-0.5 italic">No subjects assigned</p>
-                        )}
+                          <button
+                            onClick={() => void handleRemoveTeacher(t)}
+                            className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0"
+                            title="Remove teacher from class"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </li>
                     ))}
                   </ul>
@@ -496,6 +552,82 @@ export function ClassDetailPage() {
                 ))}
               </select>
             )}
+          </div>
+        </Drawer>
+
+        <Drawer
+          isOpen={isAssignTeacherOpen}
+          onClose={() => {
+            setIsAssignTeacherOpen(false);
+            setTeacherToAssign('');
+            setSubjectForTeacher('');
+            setIsClassTeacherFlag(false);
+          }}
+          title="Assign Teacher"
+          size="md"
+          footer={
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => setIsAssignTeacherOpen(false)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={assigningTeacher || !teacherToAssign || !subjectForTeacher}
+                onClick={() => void handleAssignTeacher()}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-50"
+              >
+                {assigningTeacher ? 'Assigning…' : 'Assign Teacher'}
+              </button>
+            </div>
+          }
+        >
+          <div className="space-y-4 p-1">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Teacher <span className="text-red-500">*</span>
+              </label>
+              {teachersData.length === 0 ? (
+                <p className="text-sm text-gray-400 italic">No active teachers found. Add teachers from the Teachers module first.</p>
+              ) : (
+                <select
+                  value={teacherToAssign}
+                  onChange={(e) => setTeacherToAssign(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 bg-white text-sm"
+                >
+                  <option value="">Select a teacher…</option>
+                  {teachersData.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.firstName} {t.lastName}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Subject <span className="text-red-500">*</span>
+              </label>
+              {availableSubjectsForTeacher.length === 0 ? (
+                <p className="text-sm text-gray-400 italic">All assigned subjects already have a teacher.</p>
+              ) : (
+                <select
+                  value={subjectForTeacher}
+                  onChange={(e) => setSubjectForTeacher(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 bg-white text-sm"
+                >
+                  <option value="">Select a subject…</option>
+                  {availableSubjectsForTeacher.map((s) => (
+                    <option key={s.subjectId} value={s.subjectId}>
+                      {s.subjectName} ({s.subjectCode})
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+            <label className="flex items-center gap-2 text-sm text-gray-700">
+              <input type="checkbox" checked={isClassTeacherFlag} onChange={(e) => setIsClassTeacherFlag(e.target.checked)} className="w-4 h-4 text-sky-700 border-gray-300 rounded focus:ring-sky-500" />
+              Set as homeroom teacher
+            </label>
           </div>
         </Drawer>
       </div>

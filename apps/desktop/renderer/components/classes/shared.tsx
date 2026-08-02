@@ -30,6 +30,8 @@ export interface TeacherOnClass {
   lastName: string;
   isClassTeacher: boolean;
   subjects: string[];
+  subjectIds: string[];
+  assignmentIds: string[];
 }
 
 /** Walks a paged IPC list endpoint (limit/offset in, {items, total} out) and
@@ -69,6 +71,8 @@ export async function getClassTeacherRoster(classId: string): Promise<TeacherOnC
       lastName: teacher.lastName,
       isClassTeacher: forClass.some((a) => a.isClassTeacher),
       subjects: forClass.map((a) => a.subjectName).filter((s): s is string => Boolean(s)),
+      subjectIds: forClass.map((a) => a.subjectId).filter((s): s is string => Boolean(s)),
+      assignmentIds: forClass.map((a) => a.id),
     });
   }
   return roster;
