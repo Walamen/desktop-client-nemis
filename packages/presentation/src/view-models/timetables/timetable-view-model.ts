@@ -47,7 +47,21 @@ export class TimetableViewModel {
     });
   }
   async loadClass(classId:string):Promise<void>{this.setFilters({classId,limit:100,sort:'day'});await this.load();}
-  async loadTeacher(teacherId:string):Promise<void>{this.setFilters({teacherId,limit:100,sort:'day'});await this.load();}
+  // Deliberately NOT routed through setFilters()+load() (TIMETABLE_LIST,
+  // an admin-only browsing endpoint) — TeacherScheduleViewModel is the
+  // teacher portal's own "my schedule" screen, so this goes through the
+  // dedicated getTeacherSchedule/TIMETABLE_TEACHER channel instead, which
+  // authorizeChannel.ts opens to TEACHER and self-scopes server-side
+  // (timetables.ts) the same way TEACHER_LIST_ASSIGNMENTS does.
+  async loadTeacher(teacherId:string):Promise<void>{
+    await trackQuery({
+      access:{get:()=>this.store.getState().entries,set:entries=>this.store.setState({entries})},
+      fetch:()=>this.deps.timetables.getTeacherSchedule(teacherId),
+      map:page=>page.items,
+      onData:page=>this.store.setState({total:page.total}),
+      isEmpty:rows=>rows.length===0,
+    });
+  }
   async loadSubject(subjectId:string):Promise<void>{this.setFilters({subjectId,limit:100,sort:'day'});await this.load();}
   async loadConflicts():Promise<void>{
     await trackQuery({

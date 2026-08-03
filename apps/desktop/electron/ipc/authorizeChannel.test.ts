@@ -87,6 +87,33 @@ describe('authorizeChannel', () => {
     }
   });
 
+  it('allows a teacher to load their own timetable and the school period schedule', () => {
+    expect(() =>
+      authorizeChannel(IpcChannels.TIMETABLE_TEACHER, workspace(SystemRole.TEACHER)),
+    ).not.toThrow();
+    expect(() =>
+      authorizeChannel(IpcChannels.TIMETABLE_PERIODS, workspace(SystemRole.TEACHER)),
+    ).not.toThrow();
+    expect(() =>
+      authorizeChannel(IpcChannels.TIMETABLE_TEACHER, workspace(SystemRole.DEO)),
+    ).toThrow(/Attendance/);
+  });
+
+  it('allows a teacher to load the current academic year and term list for the gradebook', () => {
+    expect(() =>
+      authorizeChannel(IpcChannels.ACADEMIC_YEAR_GET_CURRENT, workspace(SystemRole.TEACHER)),
+    ).not.toThrow();
+    expect(() =>
+      authorizeChannel(IpcChannels.TERM_LIST, workspace(SystemRole.TEACHER)),
+    ).not.toThrow();
+    expect(() =>
+      authorizeChannel(IpcChannels.ACADEMIC_YEAR_GET_CURRENT, workspace(SystemRole.DEO)),
+    ).toThrow(/Attendance/);
+    expect(() =>
+      authorizeChannel(IpcChannels.TERM_LIST, workspace(SystemRole.DEO)),
+    ).toThrow(/Attendance/);
+  });
+
   it('leaves cross-portal channels open to any authenticated role, including TEACHER_GET_DASHBOARD', () => {
     for (const channel of [
       IpcChannels.IDENTITY_GET_CURRENT_USER,

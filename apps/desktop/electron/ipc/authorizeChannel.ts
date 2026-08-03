@@ -52,21 +52,16 @@ const SCHOOL_ADMIN_CHANNELS = new Set<IpcChannel>([
   // Reads — institution-wide data with no teacher-facing screen behind it.
   IpcChannels.DASHBOARD_GET_OVERVIEW,
   IpcChannels.SCHOOL_GET_SUMMARY,
-  IpcChannels.ACADEMIC_YEAR_GET_CURRENT,
   IpcChannels.ACADEMIC_YEAR_LIST,
-  IpcChannels.TERM_LIST,
   IpcChannels.TERM_GET_CURRENT,
   IpcChannels.SUBJECT_LIST,
   IpcChannels.CLASS_GRADE_LEVEL_COUNTS,
   IpcChannels.CLASS_SUBJECT_LIST,
   IpcChannels.TEACHER_LIST,
   IpcChannels.TEACHER_GET_PROFILE,
-  IpcChannels.TEACHER_LIST_ASSIGNMENTS,
   IpcChannels.TIMETABLE_LIST,
   IpcChannels.TIMETABLE_CLASS,
-  IpcChannels.TIMETABLE_TEACHER,
   IpcChannels.TIMETABLE_SUBJECT,
-  IpcChannels.TIMETABLE_PERIODS,
   IpcChannels.TIMETABLE_DASHBOARD,
   IpcChannels.TIMETABLE_CONFLICTS,
   IpcChannels.STUDENT_GET,
@@ -77,11 +72,24 @@ const SCHOOL_ADMIN_CHANNELS = new Set<IpcChannel>([
 // Reads a teacher's own screens genuinely need, in addition to school
 // admins: AttendancePage.tsx loads the class picker (CLASS_LIST) and the
 // class roster (STUDENT_LIST) before it can record attendance.
+// TEACHER_LIST_ASSIGNMENTS backs the teacher's own dashboard (their classes,
+// subjects, homeroom flag) — the handler self-scopes a TEACHER caller to
+// their own id, see teacherDirectory.ts. TIMETABLE_TEACHER backs the
+// teacher's own Timetable page the same way — see timetables.ts.
+// TIMETABLE_PERIODS, ACADEMIC_YEAR_GET_CURRENT and TERM_LIST are structural
+// institution-wide data (bell schedule, current year, term list) that the
+// Timetable and Gradebook pages need to render — not teacher- or
+// class-specific, so none of them need self-scoping.
 const SCHOOL_STAFF_CHANNELS = new Set<IpcChannel>([
   IpcChannels.ATTENDANCE_LIST,
   IpcChannels.ATTENDANCE_RECORD,
   IpcChannels.CLASS_LIST,
   IpcChannels.STUDENT_LIST,
+  IpcChannels.TEACHER_LIST_ASSIGNMENTS,
+  IpcChannels.TIMETABLE_TEACHER,
+  IpcChannels.TIMETABLE_PERIODS,
+  IpcChannels.ACADEMIC_YEAR_GET_CURRENT,
+  IpcChannels.TERM_LIST,
 ]);
 
 export function authorizeChannel(channel: IpcChannel, workspaces: WorkspaceManager): void {

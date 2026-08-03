@@ -12,6 +12,8 @@ import { createSyncOutbox } from './010-create-sync-outbox';
 import { createSchoolAdminModules } from './011-create-school-admin-modules';
 import { createTeacherLearningTables } from './012-create-teacher-learning-tables';
 import { addSyncRetryAndDeltaColumns } from './013-add-sync-retry-and-delta-columns';
+import { createStaffDirectoryTable } from './014-create-staff-directory-table';
+import { createInstitutionAdminTable } from './015-create-institution-admin-table';
 
 /**
  * Every migration, ascending by version. Append only — never edit or reorder
@@ -31,4 +33,6 @@ export const migrations: readonly Migration[] = [
   createSchoolAdminModules,
   createTeacherLearningTables,
   addSyncRetryAndDeltaColumns,
+  createStaffDirectoryTable,
+  createInstitutionAdminTable,
 ];

@@ -72,8 +72,8 @@ export function registerIpcHandlers(
   registerClassHandlers(securedHandle, app);
   registerSubjectHandlers(securedHandle, app);
   registerStudentHandlers(securedHandle, app);
-  registerTeacherDirectoryHandlers(securedHandle, app);
-  registerTimetableHandlers(securedHandle, app);
+  registerTeacherDirectoryHandlers(securedHandle, app, workspaces);
+  registerTimetableHandlers(securedHandle, app, workspaces);
 
   registerTeacherDashboardHandlers(securedHandle, app);
 }

@@ -2,6 +2,8 @@ export const SCHOOL_ADMIN_COLLECTIONS = [
   'institutions',
   'students',
   'staff',
+  'staff_directory',
+  'institution_admin',
   'classes',
   'subjects',
   'timetable_entries',
