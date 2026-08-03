@@ -6,7 +6,7 @@ function greeting(hour: number): string {
   return 'Good evening,';
 }
 
-export function DashboardGreeting({ name }: { name: string }) {
+export function DashboardGreeting({ name, role = 'School Principal' }: { name: string; role?: string }) {
   const now = new Date();
   const formattedDate = new Intl.DateTimeFormat('en-GB', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }).format(now);
   const [first, last] = name.split(' ');
@@ -18,7 +18,7 @@ export function DashboardGreeting({ name }: { name: string }) {
           <div>
             <p className="text-sm text-slate-400 font-semibold">{greeting(now.getHours())}</p>
             <h2 className="text-xl font-bold text-slate-100">{name}</h2>
-            <p className="text-sm text-slate-400 font-semibold">School Principal</p>
+            <p className="text-sm text-slate-400 font-semibold">{role}</p>
           </div>
         </div>
         <div className="flex items-center gap-2 px-4 py-2 bg-slate-600 self-start lg:self-auto rounded">
