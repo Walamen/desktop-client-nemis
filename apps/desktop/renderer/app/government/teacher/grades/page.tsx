@@ -548,12 +548,36 @@ export default function TeacherGradesPage() {
           listTemplatesForSubject(selectedClassId, subject.id),
           listAssessmentsForPeriod(selectedClassId, subject.id, selectedPeriodId),
         ]);
+        // Same reverse-lookup shape as reloadTemplateScores: templateId ->
+        // instance id, used here to check that a student has a graded
+        // instance for EVERY template, not just any template.
+        const instanceIdByTemplateId = new Map(instances.map((i) => [i.templateId, i.id]));
         const instanceIds = new Set(instances.map((i) => i.id));
         const gradesResult = await sharedBridge.listSchoolAdminRecords({ collection: 'grades', limit: 250 });
         const subjectGrades = gradesResult.items.filter((g) => g.assessmentId != null && instanceIds.has(String(g.assessmentId)));
-        const studentsScored = new Set(subjectGrades.map((g) => g.studentId)).size;
+        const gradedPairs = new Set(subjectGrades.map((g) => `${g.studentId}::${g.assessmentId}`));
+
+        const hasTemplates = subjectTemplates.length > 0;
+        const hasRoster = roster.length > 0;
+        // "Fully scored" = every roster student has a grade row for every
+        // template in this subject (not just "any" template, any student).
+        const studentsScored = hasTemplates
+          ? roster.filter((student) => subjectTemplates.every((template) => {
+              const instanceId = instanceIdByTemplateId.get(template.id);
+              return instanceId != null && gradedPairs.has(`${student.id}::${instanceId}`);
+            })).length
+          : 0;
         const weightsTotal = totalWeight(subjectTemplates);
-        const isReady = Math.abs(weightsTotal - 100) < 0.01 && studentsScored > 0;
+        const isWeightsComplete = Math.abs(weightsTotal - 100) < 0.01;
+        const isReady = hasTemplates && hasRoster && isWeightsComplete && studentsScored === roster.length;
+
+        let notReadyReason: string;
+        if (!hasTemplates) notReadyReason = 'No assessment templates set up';
+        else if (!hasRoster) notReadyReason = 'No students enrolled';
+        else if (!isWeightsComplete) notReadyReason = `Weights total ${weightsTotal}%`;
+        else if (studentsScored === 0) notReadyReason = 'No scores entered';
+        else notReadyReason = `${studentsScored}/${roster.length} students fully scored`;
+
         return {
           subjectId: subject.id,
           subjectName: subject.name,
@@ -561,7 +585,7 @@ export default function TeacherGradesPage() {
           totalStudents: roster.length,
           weightsTotal,
           isReady,
-          notReadyReason: studentsScored === 0 ? 'No scores entered' : `Weights total ${weightsTotal}%`,
+          notReadyReason,
         };
       }),
     ).then((statuses) => {
@@ -571,7 +595,7 @@ export default function TeacherGradesPage() {
       }
     });
     return () => { cancelled = true; };
-  }, [activeTab, selectedClassId, selectedPeriodId, isExamPeriod, selectedClass, roster.length]);
+  }, [activeTab, selectedClassId, selectedPeriodId, isExamPeriod, selectedClass, roster]);
 
   const readyCount = submissionStatuses.filter((s) => s.isReady).length;
   const [submittingAll, setSubmittingAll] = useState(false);

@@ -262,4 +262,42 @@ describe('Teacher grades page', () => {
       }),
     ));
   });
+
+  it('requires every roster student to be fully scored on every template before a subject is Ready', async () => {
+    const nemis = installBaseMock();
+    // A second roster student who never gets scored — the old "any scored
+    // student" gate would still call this Ready off Alice's score alone.
+    (nemis as unknown as { student: { list: ReturnType<typeof vi.fn> } }).student.list = vi.fn(async () => ({
+      items: [
+        { id: 'student-1', fullName: 'Alice Johnson', admissionNumber: 'ADM-001', gradeLevel: 'GRADE_10', gender: 'FEMALE', isActive: true },
+        { id: 'student-2', fullName: 'Bob Smith', admissionNumber: 'ADM-002', gradeLevel: 'GRADE_10', gender: 'FEMALE', isActive: true },
+      ],
+      total: 2,
+      limit: 100,
+      offset: 0,
+    }));
+    const layer = createRendererPresentation();
+    await layer.bootstrap.run();
+    render(<PresentationProvider layer={layer}><TeacherGradesPage /></PresentationProvider>);
+
+    await waitFor(() => expect(nemis.term.list).toHaveBeenCalledWith('ay-1'));
+    await screen.findByText('Grade 10A');
+
+    const [, , subjectSelect, periodSelect] = screen.getAllByRole('combobox');
+    fireEvent.change(subjectSelect!, { target: { value: 'sub-1' } });
+    fireEvent.change(periodSelect!, { target: { value: 'period-1' } });
+    await screen.findByText('Quiz 1');
+    // Only Alice gets a score; Bob is left blank.
+    fireEvent.change(screen.getAllByRole('spinbutton')[0]!, { target: { value: '18' } });
+    fireEvent.click(screen.getByText('Save'));
+    await waitFor(() => expect(nemis.schoolAdmin.save).toHaveBeenCalledWith(expect.objectContaining({ collection: 'grades' })));
+
+    fireEvent.click(screen.getByText('Summary & Submit'));
+    expect(await screen.findByText('Mathematics')).toBeInTheDocument();
+    expect(await screen.findByText(/Not ready/)).toBeInTheDocument();
+    expect(screen.queryByText('Ready')).toBeNull();
+    expect(screen.getByText('1/2')).toBeInTheDocument();
+
+    expect(screen.getByText(/Submit All Ready Subjects/).closest('button')).toBeDisabled();
+  });
 });
