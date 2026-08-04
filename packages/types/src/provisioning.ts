@@ -84,7 +84,7 @@ export const PROVISIONING_COLLECTIONS = [
   'classTeachers', 'classSubjectTeachers',
   'timetableEntries',
   'studentTransfers',
-  'institutionGradingConfigs', 'gradingPeriods', 'gradeEntryWindows',
+  'institutionGradingConfigs', 'gradingPeriods', 'assessmentTemplates', 'assessments', 'gradeEntryWindows',
   'gradeEntryWindowClasses', 'grades',
   'feeRules', 'feeObligations', 'feePayments',
   'announcements', 'conversations', 'messages', 'userNotifications',

@@ -686,8 +686,13 @@ In `apps/desktop/electron/data/services/SchoolAdminModuleService.ts`:
 Add to `CONFIG`, right after `institution_admin:`:
 
 ```ts
-  assessment_templates: { columns: [], scope: 'institution' },
+  assessment_templates: { columns: ['classId', 'subjectId', 'name', 'type', 'totalMarks', 'weight', 'date'], scope: 'student' },
 ```
+
+Two things about this entry that are easy to get wrong by pattern-matching the neighboring `staff_directory`/`institution_admin` entries — both of which use `columns: []` — and both reasons are covered in Task 6's helper code, not just this file:
+
+1. **`columns` must be the explicit writable-field list, not `[]`.** `save()`'s INSERT statement only ever writes `['id', ...config.columns, 'createdAt', 'updatedAt']` — `staff_directory`/`institution_admin` get away with `columns: []` only because they're read-only (nothing ever calls `save()` on them); `institutions`/`staff`/`classes`/etc. get away with it because `save()` blocks those collections outright before reaching the column logic (`ForbiddenError('Use the dedicated workflow...')`). `assessment_templates` has neither excuse — it's genuinely written through this path — so an empty `columns` here would silently drop every real field and persist rows containing only `id`/`createdAt`/`updatedAt`. The already-shipped `grades` `CONFIG` entry is the model to follow: a full explicit list.
+2. **`scope: 'student'` is not a typo** despite this collection having no `studentId` field — `assertScoped`'s `'student'` branch resolves via `record.studentId` *or falls back to `record.classId`* (checking the `classes` table) when `studentId` is absent. `assessment_templates` rows always carry `classId`, so this reuses that existing fallback path — the same one `grades` relies on for the identical reason (no `institutionId` column on either table). `scope: 'institution'` would be a genuine bug here: that branch requires `record.institutionId`, so every save by the teacher who is this collection's only writer would fail with `ForbiddenError('The institution is outside this workspace.')`.
 
 Add `'assessment_templates'` to `ROLE_READ_COLLECTIONS.TEACHER`'s set (right after `'institution_admin'`) and to `ROLE_WRITE_COLLECTIONS.TEACHER`'s set (which currently reads `new Set(['grades', 'messages', 'user_notifications'])` — add `'assessment_templates'` there too).
 
@@ -784,7 +789,13 @@ And to `verifyDatabase`'s dependency array, right after Task 4's entry:
     ['assessments', 'templateId', 'assessment_templates'],
 ```
 
-- [ ] **Step 6: Register in `SchoolAdminModuleService`** — `CONFIG` entry `assessments: { columns: [], scope: 'institution' },` right after `assessment_templates:`; add `'assessments'` to both `ROLE_READ_COLLECTIONS.TEACHER` and `ROLE_WRITE_COLLECTIONS.TEACHER`.
+- [ ] **Step 6: Register in `SchoolAdminModuleService`** — `CONFIG` entry:
+
+```ts
+  assessments: { columns: ['templateId', 'classId', 'subjectId', 'gradingPeriodId', 'name', 'type', 'totalMarks', 'weight', 'date'], scope: 'student' },
+```
+
+right after `assessment_templates:` — the explicit column list and `scope: 'student'`-via-`classId`-fallback reasoning are identical to Task 4 Step 6's (`assessments` rows always carry `classId` too, are genuinely written through `save()`, and have no `institutionId` column). Add `'assessments'` to both `ROLE_READ_COLLECTIONS.TEACHER` and `ROLE_WRITE_COLLECTIONS.TEACHER`.
 
 - [ ] **Step 7: Typecheck**
 
@@ -2493,7 +2504,7 @@ Add to `grades/page.tsx`:
   };
 ```
 
-Note: `saveSchoolAdminRecord` with only `id` plus the changed fields relies on the existing generic `SchoolAdminModuleService.save()` doing a partial-field upsert-by-id (the same assumption the existing `persist`/`persistExamScores` functions already make when passing `{ id: existing.id, ...fullRecordAgain }` — if `save()` actually requires the FULL record rather than a partial patch, adjust these two handlers to spread the full existing grade row instead of just `{id, isPublished, status, publishedAt}`; verify this against `SchoolAdminModuleService.save()`'s implementation before writing this step's final code, since Task 11 didn't need to exercise this partial-vs-full distinction (it always sent full records).
+Note: this partial-record save (only `id` plus the changed fields) is confirmed safe — `SchoolAdminModuleService.save()` (`apps/desktop/electron/data/services/SchoolAdminModuleService.ts`) builds its write as `{ ...(existing ?? {}), ...request.record, id, createdAt: existing?.createdAt ?? now, updatedAt: now }`, i.e. it fetches the existing row and merges the patch on top — a partial `request.record` is the normal, supported case, not a special one. No further verification needed here.
 
 - [ ] **Step 2: Add the button row for the regular-period path**
 
@@ -2837,5 +2848,6 @@ git commit -m "feat(desktop): add Summary & Submit tab to the weighted Gradebook
 ## Plan self-review notes (for the human reviewing this plan, not a task to execute)
 
 - **Spec coverage:** Goal 1 (template CRUD) → Tasks 7-10. Goal 2 (weighted grid + publish/unpublish) → Tasks 11-12. Goal 3 (Summary & Submit) → Task 13. Goal 4 (offline) → Tasks 1-6 (outbox triggers + sync-push validators, no online-only shortcuts anywhere). Goal 5 (exam periods untouched) → explicitly preserved as a separate branch in every Task 11-13 JSX/handler change. All three "Resolved design questions" from the spec are reflected: weighted formula in `weightedPercentage`/`handleSubmitAllReady`, full scope across all 13 tasks, `recharts` added in Task 7.
-- **Known judgment call flagged in-line:** Task 12 Step 1 flags that `saveSchoolAdminRecord`'s partial-vs-full-record behavior needs verifying against `SchoolAdminModuleService.save()` before finalizing the publish/unpublish handlers — this wasn't verified during planning (Tasks 1-11 never needed a partial update, only full-record upserts), so it's the one place execution should double check the assumption before trusting the code as written.
+- **Pre-flight fix (found and corrected before dispatch, not by a task reviewer):** Tasks 4 and 5 originally specified `scope: 'institution'` for the new `assessment_templates`/`assessments` `CONFIG` entries. Verifying against `SchoolAdminModuleService.assertScoped()` before dispatch showed that branch requires `record.institutionId`, which neither table has (matching Prisma's actual schema) — every save by the teacher who is each collection's sole writer would have thrown `ForbiddenError`. Both now correctly specify `scope: 'student'`, whose resolver falls back to `record.classId` when `studentId` is absent (the exact mechanism the already-shipped `grades` collection relies on for the same reason). Fixed in place in both tasks; this note is a record of the correction, not an open item.
+- **Pre-flight verification (also resolved before dispatch):** Task 12's publish/unpublish handlers send partial records (`{ id, isPublished, status, publishedAt }`) rather than full ones. Confirmed against `SchoolAdminModuleService.save()`'s implementation that this is the normal, supported case (it merges the existing row with the patch) — Task 12's text no longer carries this as an open question.
 - **Task 11 Step 3's exam-period JSX branches are described as edits to "the existing" table rather than full replacement code** — this is intentional, not a placeholder: Task 11 is a surgical edit to an already-large existing file, and reproducing the entire unchanged exam-period JSX verbatim in this plan would make the diff harder to review, not easier. The instruction to "keep the isExamPeriod branch, replace its else" is unambiguous about what changes.

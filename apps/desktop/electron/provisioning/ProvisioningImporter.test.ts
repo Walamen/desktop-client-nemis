@@ -177,6 +177,25 @@ describe('ProvisioningImporter', () => {
     expect(metadata.lastError).toMatch(/UNIQUE/i);
   });
 
+  it('imports assessments referencing a grading period without an FK violation, both on first import and on re-provisioning', () => {
+    // PROVISIONING_COLLECTIONS must insert assessments AFTER gradingPeriods
+    // (assessments.gradingPeriodId REFERENCES grading_periods(id)) and delete
+    // them in the exact reverse order, so grading_periods must be deleted
+    // AFTER assessments too. Importing twice exercises both directions.
+    const importer = new ProvisioningImporter(manager);
+    const snapshot = snapshotOf(ASSESSMENT_FK_DATA);
+
+    expect(() => importer.import(snapshot, CONTEXT)).not.toThrow();
+    expect(countRows('grading_periods')).toBe(1);
+    expect(countRows('assessments')).toBe(1);
+
+    // Re-provisioning: deletes everything (in reverse collection order) and
+    // re-inserts. This is where the delete-order half of the bug bit.
+    expect(() => importer.import(snapshot, CONTEXT)).not.toThrow();
+    expect(countRows('grading_periods')).toBe(1);
+    expect(countRows('assessments')).toBe(1);
+  });
+
   it('a failed full import still marks provisioning failed', () => {
     const importer = new ProvisioningImporter(manager);
     importer.import(makeSnapshot(), CONTEXT);
@@ -288,5 +307,48 @@ const BASE_DATA: Partial<ProvisioningData> = {
   userOrganizations: [{
     id: 'org-1', userId: 'user-1', role: 'INSTITUTION_ADMIN',
     institutionId: 'school-1', countyId: 'county-1', districtId: null, isActive: true,
+  }],
+};
+
+/** BASE_DATA plus a class/subject/gradingPeriod/assessmentTemplate/assessment
+ * chain, exercising assessments.gradingPeriodId -> grading_periods(id) (the
+ * real SQLite FK added in migration 017) and the corresponding
+ * verifyDatabase dependency check. */
+const ASSESSMENT_FK_DATA: Partial<ProvisioningData> = {
+  ...BASE_DATA,
+  academicYears: [{
+    id: 'ay-1', institutionId: 'school-1', code: '2026',
+    startDate: '2026-01-01', endDate: '2026-12-31', isCurrent: true,
+    status: 'ACTIVE', version: 1, updatedAt: '2026-01-01T00:00:00.000Z',
+    lastModifiedBy: null,
+  }],
+  classes: [{
+    id: 'class-1', institutionId: 'school-1', academicYearId: 'ay-1',
+    name: 'Grade 7A', gradeLevel: 'GRADE_7', capacity: 30, isActive: true,
+    section: 'A', version: 1, updatedAt: '2026-01-01T00:00:00.000Z',
+    lastModifiedBy: null,
+  }],
+  subjects: [{
+    id: 'subject-1', institutionId: 'school-1', name: 'Mathematics',
+    code: 'MATH', description: null, isActive: true, version: 1,
+    updatedAt: '2026-01-01T00:00:00.000Z', lastModifiedBy: null,
+  }],
+  gradingPeriods: [{
+    id: 'gp-1', institutionId: 'school-1', academicYearId: 'ay-1',
+    termId: 'term-1', name: 'Term 1', code: 'T1', periodType: 'TERM',
+    sequence: 1, maxMarks: 100, passingMarks: 50, weight: 1,
+    startDate: '2026-01-01', endDate: '2026-04-01', isActive: true,
+    createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
+  }],
+  assessmentTemplates: [{
+    id: 'tmpl-1', classId: 'class-1', subjectId: 'subject-1', name: 'CAT 1',
+    type: 'TEST', totalMarks: 30, weight: 30, date: '2026-01-15',
+    createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
+  }],
+  assessments: [{
+    id: 'assess-1', templateId: 'tmpl-1', classId: 'class-1', subjectId: 'subject-1',
+    gradingPeriodId: 'gp-1', name: 'CAT 1', type: 'TEST', totalMarks: 30,
+    weight: 30, date: '2026-01-15', createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
   }],
 };
