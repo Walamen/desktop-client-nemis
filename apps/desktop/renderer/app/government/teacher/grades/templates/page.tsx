@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, CheckCircle, Hash, Plus } from 'lucide-react';
-import { Card, Button, Spinner } from '@nemis-desktop/ui';
+import { AlertCircle, CheckCircle, Edit2, Hash, Plus, Trash2 } from 'lucide-react';
+import { Card, Button, Drawer, Spinner } from '@nemis-desktop/ui';
 import { PieChart, Pie, Cell, Legend, ResponsiveContainer } from 'recharts';
 import { useCurrentUserViewModel } from '@/lib/presentation/hooks/shared';
 import { useTeachingAssignmentViewModel } from '@/lib/presentation/hooks/school-admin';
@@ -16,6 +16,26 @@ import {
 } from '@/components/academic-grading/assessments';
 
 const CHART_COLORS = ['#000e21', '#26556A', '#146316', '#a6731c', '#8099A8', '#c10021'];
+
+const ASSESSMENT_TYPES = [
+  { value: 'QUIZ', label: 'Quiz' },
+  { value: 'TEST', label: 'Test' },
+  { value: 'ASSIGNMENT', label: 'Assignment' },
+  { value: 'LAB', label: 'Lab' },
+  { value: 'PRACTICAL', label: 'Practical' },
+];
+
+interface TemplateFormData {
+  name: string;
+  type: string;
+  totalMarks: string;
+  weight: string;
+  date: string;
+}
+
+function emptyFormData(): TemplateFormData {
+  return { name: '', type: 'QUIZ', totalMarks: '', weight: '', date: new Date().toISOString().slice(0, 10) };
+}
 
 interface ClassOption {
   classId: string;
@@ -81,6 +101,58 @@ export default function AssessmentSetupPage() {
   const [templates, setTemplates] = useState<AssessmentTemplateRow[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
+
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [formData, setFormData] = useState<TemplateFormData>(emptyFormData());
+  const [saving, setSaving] = useState(false);
+
+  const resetForm = () => {
+    setFormData(emptyFormData());
+    setEditingId(null);
+    setIsDrawerOpen(false);
+  };
+
+  const handleEdit = (template: AssessmentTemplateRow) => {
+    setEditingId(template.id);
+    setFormData({
+      name: template.name,
+      type: template.type,
+      totalMarks: String(template.totalMarks),
+      weight: template.weight != null ? String(template.weight) : '',
+      date: template.date.slice(0, 10),
+    });
+    setIsDrawerOpen(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await sharedBridge.saveSchoolAdminRecord({
+        collection: 'assessment_templates',
+        record: {
+          ...(editingId ? { id: editingId } : {}),
+          classId: selectedClassId,
+          subjectId: selectedSubjectId,
+          name: formData.name,
+          type: formData.type,
+          totalMarks: Number(formData.totalMarks),
+          weight: formData.weight ? Number(formData.weight) : null,
+          date: formData.date,
+        },
+      });
+      resetForm();
+      setReloadToken((t) => t + 1);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    await sharedBridge.deleteSchoolAdminRecord({ collection: 'assessment_templates', id });
+    setReloadToken((t) => t + 1);
+  };
 
   useEffect(() => {
     if (!selectedClassId || !selectedSubjectId) {
@@ -192,7 +264,7 @@ export default function AssessmentSetupPage() {
             <div className="lg:col-span-2">
               <Card title={`Assessments (${templates.length})`}>
                 <div className="flex justify-end mb-3">
-                  <Button onClick={() => setReloadToken((t) => t + 1)} variant="secondary">
+                  <Button onClick={() => { setEditingId(null); setFormData(emptyFormData()); setIsDrawerOpen(true); }}>
                     <Plus className="w-4 h-4 mr-2" />
                     Add Assessment
                   </Button>
@@ -214,6 +286,14 @@ export default function AssessmentSetupPage() {
                             {template.weight != null && <span className="font-medium text-primary">{template.weight}%</span>}
                           </div>
                         </div>
+                        <div className="flex items-center gap-1">
+                          <Button variant="secondary" size="sm" onClick={() => handleEdit(template)}>
+                            <Edit2 className="w-4 h-4" />
+                          </Button>
+                          <Button variant="destructive" size="sm" onClick={() => void handleDelete(template.id)}>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -223,6 +303,81 @@ export default function AssessmentSetupPage() {
           </div>
         )}
       </div>
+
+      <Drawer
+        isOpen={isDrawerOpen}
+        onClose={resetForm}
+        title={editingId ? 'Edit Assessment' : 'Add Assessment'}
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="secondary" onClick={resetForm} disabled={saving}>Cancel</Button>
+            <Button type="submit" form="assessment-template-form" disabled={saving}>
+              {saving ? 'Saving...' : editingId ? 'Update Assessment' : 'Create Assessment'}
+            </Button>
+          </div>
+        }
+      >
+        <form id="assessment-template-form" onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Assessment Name *</label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder="e.g., Quiz 1, Midterm Exam"
+              required
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Type *</label>
+            <select
+              value={formData.type}
+              onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+              required
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+            >
+              {ASSESSMENT_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Total Marks *</label>
+            <input
+              type="number"
+              value={formData.totalMarks}
+              onChange={(e) => setFormData({ ...formData, totalMarks: e.target.value })}
+              min="0"
+              step="0.1"
+              required
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Weight (%)</label>
+            <input
+              type="number"
+              value={formData.weight}
+              onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
+              min="0"
+              max="100"
+              step="0.1"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Date *</label>
+            <input
+              type="date"
+              value={formData.date}
+              onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+              required
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+            />
+          </div>
+        </form>
+      </Drawer>
     </div>
   );
 }
