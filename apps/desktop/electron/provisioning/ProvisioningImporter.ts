@@ -306,6 +306,7 @@ function verifyDatabase(
     ['institution_admin', 'institutionId', 'institutions'],
     ['assessment_templates', 'classId', 'classes'],
     ['assessments', 'templateId', 'assessment_templates'],
+    ['assessments', 'gradingPeriodId', 'grading_periods'],
     ['enrollments', 'studentId', 'students'],
     ['enrollments', 'classId', 'classes'],
     ['enrollments', 'academicYearId', 'academic_years'],

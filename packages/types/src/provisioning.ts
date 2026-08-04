@@ -80,11 +80,11 @@ export interface RegisteredDevice {
 export const PROVISIONING_COLLECTIONS = [
   'institutions', 'users', 'userOrganizations', 'academicYears', 'terms',
   'classes', 'subjects', 'classSubjects', 'students', 'guardians',
-  'studentGuardians', 'enrollments', 'attendance', 'staff', 'staffDirectory', 'institutionAdmin', 'assessmentTemplates', 'assessments', 'subjectTeachers',
+  'studentGuardians', 'enrollments', 'attendance', 'staff', 'staffDirectory', 'institutionAdmin', 'subjectTeachers',
   'classTeachers', 'classSubjectTeachers',
   'timetableEntries',
   'studentTransfers',
-  'institutionGradingConfigs', 'gradingPeriods', 'gradeEntryWindows',
+  'institutionGradingConfigs', 'gradingPeriods', 'assessmentTemplates', 'assessments', 'gradeEntryWindows',
   'gradeEntryWindowClasses', 'grades',
   'feeRules', 'feeObligations', 'feePayments',
   'announcements', 'conversations', 'messages', 'userNotifications',
