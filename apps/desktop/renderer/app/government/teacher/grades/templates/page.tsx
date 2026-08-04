@@ -229,26 +229,29 @@ export default function AssessmentSetupPage() {
   const handleCopyToSubject = async () => {
     if (!copyTargetSubjectId || templates.length === 0) return;
     setIsCopying(true);
-    const targetTemplates = await listTemplatesForSubject(selectedClassId, copyTargetSubjectId);
-    for (const template of templates) {
-      const existing = targetTemplates.find((t) => t.name.toLowerCase() === template.name.toLowerCase());
-      await sharedBridge.saveSchoolAdminRecord({
-        collection: 'assessment_templates',
-        record: {
-          ...(existing ? { id: existing.id } : {}),
-          classId: selectedClassId,
-          subjectId: copyTargetSubjectId,
-          name: template.name,
-          type: template.type,
-          totalMarks: template.totalMarks,
-          weight: template.weight,
-          date: template.date,
-        },
-      });
+    try {
+      const targetTemplates = await listTemplatesForSubject(selectedClassId, copyTargetSubjectId);
+      for (const template of templates) {
+        const existing = targetTemplates.find((t) => t.name.toLowerCase() === template.name.toLowerCase());
+        await sharedBridge.saveSchoolAdminRecord({
+          collection: 'assessment_templates',
+          record: {
+            ...(existing ? { id: existing.id } : {}),
+            classId: selectedClassId,
+            subjectId: copyTargetSubjectId,
+            name: template.name,
+            type: template.type,
+            totalMarks: template.totalMarks,
+            weight: template.weight,
+            date: template.date,
+          },
+        });
+      }
+      setIsCopyOpen(false);
+      setCopyTargetSubjectId('');
+    } finally {
+      setIsCopying(false);
     }
-    setIsCopying(false);
-    setIsCopyOpen(false);
-    setCopyTargetSubjectId('');
   };
 
   useEffect(() => {

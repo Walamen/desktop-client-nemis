@@ -178,4 +178,57 @@ describe('Assessment Setup page', () => {
       expect.objectContaining({ record: expect.objectContaining({ name: 'Quiz 1', subjectId: 'sub-2' }) }),
     ));
   });
+
+  it('re-enables the copy modal buttons after a failed copy instead of leaving them stuck disabled', async () => {
+    const nemis = installBaseMock();
+    const layer = createRendererPresentation();
+    await layer.bootstrap.run();
+    render(
+      <PresentationProvider layer={layer}>
+        <AssessmentSetupPage />
+      </PresentationProvider>,
+    );
+
+    expect(await screen.findByText('Grade 10A')).toBeInTheDocument();
+    const [classSelect, subjectSelect] = screen.getAllByRole('combobox');
+    fireEvent.change(classSelect!, { target: { value: 'class-1' } });
+    fireEvent.change(subjectSelect!, { target: { value: 'sub-1' } });
+
+    fireEvent.click(await screen.findByText('Add Assessment'));
+    fireEvent.change(screen.getByPlaceholderText('Quiz 1'), { target: { value: 'Quiz 1' } });
+    fireEvent.change(screen.getByPlaceholderText('100'), { target: { value: '20' } });
+    fireEvent.click(screen.getByText('Create 1 Assessment'));
+    await screen.findByText('Quiz 1');
+
+    // A rejected unhandled promise from the copy's save call is expected
+    // here (production code intentionally lets the error propagate rather
+    // than swallowing it — see CLAUDE.md "never fail silently" — matching
+    // handleSubmit/handleBulkSubmit's existing try/finally-only pattern).
+    // Suppress it at the process level so the test runner doesn't treat it
+    // as a stray failure; the assertion below is what actually verifies the
+    // fix (isCopying resets even though the save rejected).
+    const suppressRejection = (reason: unknown) => {
+      if (!(reason instanceof Error) || reason.message !== 'network error') throw reason;
+    };
+    process.on('unhandledRejection', suppressRejection);
+
+    nemis.schoolAdmin.save.mockRejectedValueOnce(new Error('network error'));
+    fireEvent.click(screen.getByText('Copy to Subject'));
+    const combos = screen.getAllByRole('combobox');
+    fireEvent.change(combos[combos.length - 1]!, { target: { value: 'sub-2' } });
+    fireEvent.click(screen.getByText('Copy'));
+
+    // While the copy is in-flight, both buttons are disabled ("Copying…" is
+    // shown in place of "Copy").
+    await screen.findByText('Copying…');
+
+    // After the rejected save, isCopying must reset to false (the bug: it
+    // previously stayed true forever, stranding the user in an unclosable,
+    // unretriable modal) — the Copy button's label reverts and both buttons
+    // become enabled again.
+    await waitFor(() => expect(screen.getByText('Copy')).not.toBeDisabled());
+    expect(screen.getByText('Cancel')).not.toBeDisabled();
+
+    process.off('unhandledRejection', suppressRejection);
+  });
 });
