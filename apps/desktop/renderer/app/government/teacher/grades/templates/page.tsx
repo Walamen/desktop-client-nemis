@@ -17,11 +17,16 @@ import {
 
 const CHART_COLORS = ['#000e21', '#26556A', '#146316', '#a6731c', '#8099A8', '#c10021'];
 
+// Must stay a subset of Prisma's AssessmentType enum (Nemis/apps/Server/
+// prisma/schema.prisma: EXAM, TEST, QUIZ, ASSIGNMENT, PROJECT, PRACTICAL) —
+// there is no 'LAB'. A value outside that enum saves fine locally (no CHECK
+// constraint on this column) but the backend rejects it on sync-push,
+// silently dead-lettering the template and everything that references it.
 const ASSESSMENT_TYPES = [
   { value: 'QUIZ', label: 'Quiz' },
   { value: 'TEST', label: 'Test' },
   { value: 'ASSIGNMENT', label: 'Assignment' },
-  { value: 'LAB', label: 'Lab' },
+  { value: 'PROJECT', label: 'Project' },
   { value: 'PRACTICAL', label: 'Practical' },
 ];
 
