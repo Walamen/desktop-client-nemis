@@ -15,6 +15,7 @@ import { addSyncRetryAndDeltaColumns } from './013-add-sync-retry-and-delta-colu
 import { createStaffDirectoryTable } from './014-create-staff-directory-table';
 import { createInstitutionAdminTable } from './015-create-institution-admin-table';
 import { createAssessmentTemplatesTable } from './016-create-assessment-templates-table';
+import { createAssessmentsTable } from './017-create-assessments-table';
 
 /**
  * Every migration, ascending by version. Append only — never edit or reorder
@@ -37,4 +38,5 @@ export const migrations: readonly Migration[] = [
   createStaffDirectoryTable,
   createInstitutionAdminTable,
   createAssessmentTemplatesTable,
+  createAssessmentsTable,
 ];
