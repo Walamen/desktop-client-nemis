@@ -686,10 +686,13 @@ In `apps/desktop/electron/data/services/SchoolAdminModuleService.ts`:
 Add to `CONFIG`, right after `institution_admin:`:
 
 ```ts
-  assessment_templates: { columns: [], scope: 'student' },
+  assessment_templates: { columns: ['classId', 'subjectId', 'name', 'type', 'totalMarks', 'weight', 'date'], scope: 'student' },
 ```
 
-`scope: 'student'` is not a typo despite this collection having no `studentId` field — `assertScoped`'s `'student'` branch resolves via `record.studentId` *or falls back to `record.classId`* (checking the `classes` table) when `studentId` is absent. `assessment_templates` rows always carry `classId`, so this reuses that existing fallback path — the same one the already-shipped `grades` collection relies on (`grades`'s own `CONFIG` entry is `scope: 'student'`, not `'institution'`, for the identical reason: no `institutionId` column). Using `scope: 'institution'` here would be a genuine bug: that branch requires `record.institutionId`, which this table doesn't have, so every save by the teacher who is this collection's only writer would fail with `ForbiddenError('The institution is outside this workspace.')`.
+Two things about this entry that are easy to get wrong by pattern-matching the neighboring `staff_directory`/`institution_admin` entries — both of which use `columns: []` — and both reasons are covered in Task 6's helper code, not just this file:
+
+1. **`columns` must be the explicit writable-field list, not `[]`.** `save()`'s INSERT statement only ever writes `['id', ...config.columns, 'createdAt', 'updatedAt']` — `staff_directory`/`institution_admin` get away with `columns: []` only because they're read-only (nothing ever calls `save()` on them); `institutions`/`staff`/`classes`/etc. get away with it because `save()` blocks those collections outright before reaching the column logic (`ForbiddenError('Use the dedicated workflow...')`). `assessment_templates` has neither excuse — it's genuinely written through this path — so an empty `columns` here would silently drop every real field and persist rows containing only `id`/`createdAt`/`updatedAt`. The already-shipped `grades` `CONFIG` entry is the model to follow: a full explicit list.
+2. **`scope: 'student'` is not a typo** despite this collection having no `studentId` field — `assertScoped`'s `'student'` branch resolves via `record.studentId` *or falls back to `record.classId`* (checking the `classes` table) when `studentId` is absent. `assessment_templates` rows always carry `classId`, so this reuses that existing fallback path — the same one `grades` relies on for the identical reason (no `institutionId` column on either table). `scope: 'institution'` would be a genuine bug here: that branch requires `record.institutionId`, so every save by the teacher who is this collection's only writer would fail with `ForbiddenError('The institution is outside this workspace.')`.
 
 Add `'assessment_templates'` to `ROLE_READ_COLLECTIONS.TEACHER`'s set (right after `'institution_admin'`) and to `ROLE_WRITE_COLLECTIONS.TEACHER`'s set (which currently reads `new Set(['grades', 'messages', 'user_notifications'])` — add `'assessment_templates'` there too).
 
@@ -786,7 +789,13 @@ And to `verifyDatabase`'s dependency array, right after Task 4's entry:
     ['assessments', 'templateId', 'assessment_templates'],
 ```
 
-- [ ] **Step 6: Register in `SchoolAdminModuleService`** — `CONFIG` entry `assessments: { columns: [], scope: 'student' },` right after `assessment_templates:` (same `'student'`-scope-via-`classId`-fallback reasoning as Task 4 Step 6 — `assessments` rows always carry `classId` too, and have no `institutionId` column either); add `'assessments'` to both `ROLE_READ_COLLECTIONS.TEACHER` and `ROLE_WRITE_COLLECTIONS.TEACHER`.
+- [ ] **Step 6: Register in `SchoolAdminModuleService`** — `CONFIG` entry:
+
+```ts
+  assessments: { columns: ['templateId', 'classId', 'subjectId', 'gradingPeriodId', 'name', 'type', 'totalMarks', 'weight', 'date'], scope: 'student' },
+```
+
+right after `assessment_templates:` — the explicit column list and `scope: 'student'`-via-`classId`-fallback reasoning are identical to Task 4 Step 6's (`assessments` rows always carry `classId` too, are genuinely written through `save()`, and have no `institutionId` column). Add `'assessments'` to both `ROLE_READ_COLLECTIONS.TEACHER` and `ROLE_WRITE_COLLECTIONS.TEACHER`.
 
 - [ ] **Step 7: Typecheck**
 
