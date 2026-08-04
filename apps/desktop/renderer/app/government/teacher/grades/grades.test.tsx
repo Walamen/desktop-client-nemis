@@ -250,11 +250,15 @@ describe('Teacher grades page', () => {
     fireEvent.click(screen.getByText(/Submit All Ready Subjects/));
     // Regression: this write is for a brand-new (never-before-submitted)
     // period-summary row. `grades.isPublished` is NOT NULL with no DEFAULT,
-    // so omitting it throws on insert.
+    // so omitting it throws on insert — and `letterGrade` is what downstream
+    // report-card rendering reads for this row (18/20 = 90%, which the mock
+    // grade scale's 80-100 band maps to 'A').
     await waitFor(() => expect(nemis.schoolAdmin.save).toHaveBeenCalledWith(
       expect.objectContaining({
         collection: 'grades',
-        record: expect.objectContaining({ assessmentId: null, status: 'SUBMITTED', isPublished: false }),
+        record: expect.objectContaining({
+          assessmentId: null, status: 'SUBMITTED', isPublished: false, letterGrade: 'A',
+        }),
       }),
     ));
   });
