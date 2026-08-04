@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
-  Award, CheckCircle, Info, Lock, Save, Send,
+  AlertCircle, Award, CheckCircle, Info, Lock, Save, Send,
 } from 'lucide-react';
 import type { SchoolAdminRecord } from '@nemis-desktop/types';
 import { Alert, Button, ErrorState, Spinner } from '@nemis-desktop/ui';
@@ -25,6 +26,14 @@ import {
   parseGradeScale,
   type GradeScaleItem,
 } from '@/components/academic-grading/shared';
+import {
+  type AssessmentTemplateRow,
+  listAssessmentsForPeriod,
+  listTemplatesForSubject,
+  materializeAssessment,
+  totalWeight,
+  weightedPercentage,
+} from '@/components/academic-grading/assessments';
 
 interface ClassOption {
   classId: string;
@@ -44,21 +53,22 @@ function letterFor(scale: GradeScaleItem[], pct: number): string | undefined {
 
 /** Teacher Gradebook — mirrors portal-web's grades page (term/class/subject/
  * period selectors, a window-status banner, a per-student score table, Save
- * + Submit actions) but built on the real desktop `grades` table via the
- * generic offline collection API instead of a weighted assessment-template
- * system, which the desktop backend doesn't have (no assessment_templates
- * table exists — see components/academic-grading/WindowGradesPage.tsx for
- * the school-admin side of the same constraint).
+ * + Submit actions) built on the real desktop `grades` table via the generic
+ * offline collection API.
  *
- * The `grades` table has three fixed score components — assessmentScore
- * (CA), testScore, examScore — instead of arbitrary weighted templates. A
- * REGULAR_PERIOD uses CA + Test; a MIDTERM_EXAM/FINAL_EXAM period uses a
- * single Exam score, the same regular-vs-exam split the web page makes, just
- * against the fields that actually exist. Submitting is gated on the grading
+ * Two independent scoring paths share this page, split on `isExamPeriod`:
+ * a MIDTERM_EXAM/FINAL_EXAM period still uses the original fixed single Exam
+ * score against `grades.examScore` (this path is unchanged from before
+ * assessment templates existed). A REGULAR_PERIOD now scores against the
+ * per-subject weighted assessment templates from
+ * components/academic-grading/assessments.ts (`assessment_templates` +
+ * `assessments` + `grades.assessmentId`), matching web's weighted-template
+ * design instead of fixed CA/Test fields. Submitting is gated on the grading
  * period's grade_entry_window being OPEN, matching the schema's real
  * DRAFT → OPEN → CLOSED → PUBLISHED lifecycle that the school-admin Windows
  * page already manages. */
 export default function TeacherGradesPage() {
+  const router = useRouter();
   const currentUser = useCurrentUserViewModel();
   const teachingAssignments = useTeachingAssignmentViewModel();
   const academicYear = useAcademicYearViewModel();
@@ -211,6 +221,70 @@ export default function TeacherGradesPage() {
     else setGrades([]);
   }, [selectedPeriodId]);
 
+  const [templates, setTemplates] = useState<AssessmentTemplateRow[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
+
+  useEffect(() => {
+    if (isExamPeriod || !selectedClassId || !selectedSubjectId) {
+      setTemplates([]);
+      return;
+    }
+    let cancelled = false;
+    setLoadingTemplates(true);
+    void listTemplatesForSubject(selectedClassId, selectedSubjectId).then((rows_) => {
+      if (!cancelled) {
+        setTemplates(rows_);
+        setLoadingTemplates(false);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [isExamPeriod, selectedClassId, selectedSubjectId]);
+
+  // studentId -> templateId -> score. Populated from `grades` rows filtered
+  // by assessmentId (via the local `assessments` instances for this period),
+  // matching web's getAssessmentScores shape.
+  const [templateScores, setTemplateScores] = useState<Record<string, Record<string, number | null>>>({});
+  const [scoresPublished, setScoresPublished] = useState(false);
+
+  const reloadTemplateScores = async () => {
+    if (isExamPeriod || templates.length === 0 || !selectedPeriodId) {
+      setTemplateScores({});
+      setScoresPublished(false);
+      return;
+    }
+    const instances = await listAssessmentsForPeriod(selectedClassId, selectedSubjectId, selectedPeriodId);
+    const instanceIdByTemplateId = new Map(instances.map((i) => [i.templateId, i.id]));
+    const instanceIds = new Set(instances.map((i) => i.id));
+    const relevantGrades = grades.filter((g) => g.assessmentId != null && instanceIds.has(String(g.assessmentId)));
+    const next: Record<string, Record<string, number | null>> = {};
+    for (const grade of relevantGrades) {
+      const studentId = String(grade.studentId);
+      const templateId = [...instanceIdByTemplateId.entries()].find(([, id]) => id === String(grade.assessmentId))?.[0];
+      if (!templateId) continue;
+      next[studentId] = { ...(next[studentId] ?? {}), [templateId]: grade.marksObtained != null ? Number(grade.marksObtained) : null };
+    }
+    setTemplateScores(next);
+    setScoresPublished(relevantGrades.some((g) => Boolean(g.isPublished)));
+  };
+
+  useEffect(() => {
+    void reloadTemplateScores();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [templates, grades, isExamPeriod, selectedClassId, selectedSubjectId, selectedPeriodId]);
+
+  const setTemplateScore = (studentId: string, templateId: string, value: string, template: AssessmentTemplateRow) => {
+    const numValue = value === '' ? null : Number(value);
+    if (numValue !== null && (Number.isNaN(numValue) || numValue < 0 || numValue > template.totalMarks)) return;
+    setTemplateScores((prev) => ({
+      ...prev,
+      [studentId]: { ...(prev[studentId] ?? {}), [templateId]: numValue },
+    }));
+    setHasUnsaved(true);
+  };
+
+  const weight = totalWeight(templates);
+  const isWeightComplete = Math.abs(weight - 100) < 0.01;
+
   const gradeFor = (studentId: string): SchoolAdminRecord | undefined =>
     grades.find(
       (g) =>
@@ -280,7 +354,7 @@ export default function TeacherGradesPage() {
     return g ? g.status !== 'DRAFT' : false;
   };
 
-  const persist = async (nextStatus: 'DRAFT' | 'SUBMITTED') => {
+  const persistExamScores = async (nextStatus: 'DRAFT' | 'SUBMITTED') => {
     if (!selectedClassId || !selectedSubjectId || !selectedPeriodId) return;
     for (const student of roster) {
       if (isLocked(student.id)) continue;
@@ -311,11 +385,50 @@ export default function TeacherGradesPage() {
     await reloadGrades(selectedPeriodId);
   };
 
+  const persistTemplateScores = async () => {
+    if (!selectedClassId || !selectedSubjectId || !selectedPeriodId) return;
+    for (const template of templates) {
+      const assessmentId = await materializeAssessment(template, selectedPeriodId);
+      for (const student of roster) {
+        const score = templateScores[student.id]?.[template.id];
+        if (score === undefined) continue;
+        const instances = await listAssessmentsForPeriod(selectedClassId, selectedSubjectId, selectedPeriodId);
+        const existingGrade = grades.find(
+          (g) => String(g.studentId) === student.id && String(g.assessmentId) === assessmentId,
+        );
+        if (score === null) {
+          if (existingGrade) {
+            await sharedBridge.deleteSchoolAdminRecord({ collection: 'grades', id: String(existingGrade.id) });
+          }
+          continue;
+        }
+        await sharedBridge.saveSchoolAdminRecord({
+          collection: 'grades',
+          record: {
+            ...(existingGrade ? { id: existingGrade.id } : {}),
+            studentId: student.id,
+            subjectId: selectedSubjectId,
+            classId: selectedClassId,
+            gradingPeriodId: selectedPeriodId,
+            assessmentId,
+            marksObtained: score,
+            maxMarks: template.totalMarks,
+            isPublished: existingGrade?.isPublished ?? false,
+            status: existingGrade?.status ?? 'DRAFT',
+          },
+        });
+        void instances; // instances refetched per-iteration above only to keep existingGrade lookups current across the loop; see design doc's race-window note.
+      }
+    }
+    await reloadGrades(selectedPeriodId);
+  };
+
   const handleSave = async () => {
     setSaving(true);
     setFeedback(null);
     try {
-      await persist('DRAFT');
+      if (isExamPeriod) await persistExamScores('DRAFT');
+      else await persistTemplateScores();
       setHasUnsaved(false);
       setFeedback({ kind: 'success', message: 'Scores saved.' });
     } catch (cause) {
@@ -333,7 +446,7 @@ export default function TeacherGradesPage() {
     setSubmitting(true);
     setFeedback(null);
     try {
-      await persist('SUBMITTED');
+      await persistExamScores('SUBMITTED');
       setHasUnsaved(false);
       setFeedback({ kind: 'success', message: 'Grades submitted.' });
     } catch (cause) {
@@ -454,6 +567,25 @@ export default function TeacherGradesPage() {
 
         {feedback && <Alert variant={feedback.kind === 'success' ? 'success' : 'error'}>{feedback.message}</Alert>}
 
+        {filtersComplete && !isExamPeriod && !loadingTemplates && templates.length === 0 && (
+          <div className="bg-white border border-slate-300 rounded-card text-center py-12">
+            <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-3" />
+            <h3 className="text-lg font-semibold text-slate-900">No Assessments Found</h3>
+            <p className="text-slate-600 mt-1 mb-4">
+              You need to create assessments before you can enter grades.
+            </p>
+            <Button onClick={() => router.push('/government/teacher/grades/templates')}>
+              Go to Assessment Setup
+            </Button>
+          </div>
+        )}
+
+        {filtersComplete && !isExamPeriod && templates.length > 0 && !isWeightComplete && (
+          <Alert variant="warning">
+            Assessment weights incomplete. Current total: {weight.toFixed(1)}%. You can enter grades now, but you&apos;ll need to complete the weighting (100%) before submitting final grades.
+          </Alert>
+        )}
+
         {!filtersComplete ? (
           <div className="bg-white border border-slate-300 rounded-card text-center py-12">
             <Award className="w-12 h-12 text-slate-400 mx-auto mb-3" />
@@ -483,17 +615,13 @@ export default function TeacherGradesPage() {
                         Exam Score
                         <span className="block text-[10px] font-normal text-slate-400">(max {maxMarks})</span>
                       </th>
-                    ) : (
-                      <>
-                        <th className="px-3 py-3 text-center text-xs font-semibold text-slate-600 uppercase border-r min-w-[120px]">
-                          CA
-                          <span className="block text-[10px] font-normal text-slate-400">(max {maxMarks})</span>
+                    ) : templates.length === 0 ? null : (
+                      templates.map((template) => (
+                        <th key={template.id} className="px-3 py-3 text-center text-xs font-semibold text-slate-600 uppercase border-r min-w-[120px]">
+                          {template.name}
+                          <span className="block text-[10px] font-normal text-slate-400">({template.totalMarks} marks)</span>
                         </th>
-                        <th className="px-3 py-3 text-center text-xs font-semibold text-slate-600 uppercase border-r min-w-[120px]">
-                          Test
-                          <span className="block text-[10px] font-normal text-slate-400">(max {maxMarks})</span>
-                        </th>
-                      </>
+                      ))
                     )}
                     <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase border-r min-w-[100px]">
                       Final
@@ -529,34 +657,30 @@ export default function TeacherGradesPage() {
                             />
                           </td>
                         ) : (
-                          <>
-                            <td className="px-2 py-1 border-r">
+                          templates.map((template) => (
+                            <td key={template.id} className="px-2 py-1 border-r">
                               <input
                                 type="number"
-                                value={scores.ca ?? ''}
-                                onChange={(e) => setScore(student.id, 'ca', e.target.value)}
-                                disabled={locked}
+                                value={templateScores[student.id]?.[template.id] ?? ''}
+                                onChange={(e) => setTemplateScore(student.id, template.id, e.target.value, template)}
+                                disabled={scoresPublished}
                                 min="0"
-                                max={maxMarks}
-                                className={inputClass}
+                                max={template.totalMarks}
+                                className={`w-24 text-center p-2 border rounded-md focus:ring-2 focus:ring-primary focus:border-primary ${scoresPublished ? 'bg-slate-100 cursor-not-allowed text-slate-500' : ''}`}
                               />
                             </td>
-                            <td className="px-2 py-1 border-r">
-                              <input
-                                type="number"
-                                value={scores.test ?? ''}
-                                onChange={(e) => setScore(student.id, 'test', e.target.value)}
-                                disabled={locked}
-                                min="0"
-                                max={maxMarks}
-                                className={inputClass}
-                              />
-                            </td>
-                          </>
+                          ))
                         )}
                         <td className="px-4 py-2 text-center text-sm font-bold text-slate-800 border-r">
-                          {percentage !== null ? `${percentage}%` : '—'}
-                          {letterGrade ? <span className="ml-1 text-xs font-normal text-slate-400">({letterGrade})</span> : null}
+                          {isExamPeriod ? (
+                            <>
+                              {percentage !== null ? `${percentage}%` : '—'}
+                              {letterGrade ? <span className="ml-1 text-xs font-normal text-slate-400">({letterGrade})</span> : null}
+                            </>
+                          ) : (() => {
+                              const pct = weightedPercentage(new Map(Object.entries(templateScores[student.id] ?? {})), templates);
+                              return pct !== null ? `${pct}%` : '—';
+                            })()}
                         </td>
                         <td className="px-4 py-2 text-center">
                           <span

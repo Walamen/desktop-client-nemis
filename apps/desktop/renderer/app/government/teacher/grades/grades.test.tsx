@@ -4,6 +4,13 @@ import { PresentationProvider } from '@/lib/presentation/presentation-provider';
 import { createRendererPresentation } from '@/lib/presentation/create-renderer-presentation';
 import TeacherGradesPage from './page';
 
+// The page now calls useRouter() (Assessment Setup empty-state link), which
+// throws "invariant expected app router to be mounted" outside a real Next.js
+// app router context — same mock pattern as Header.test.tsx/Sidebar.test.tsx.
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
 // Regression coverage for the same category of bugs found on the sibling
 // My School and Timetable pages:
 // 1. It passed the signed-in login id (`users.id`) to
@@ -20,6 +27,9 @@ const USER_ID = 'user-1';
 const STAFF_ID = 'staff-1';
 
 function installBaseMock() {
+  const assessmentInstances: Record<string, unknown>[] = [];
+  const gradeRows: Record<string, unknown>[] = [];
+
   (window as unknown as { nemis: unknown }).nemis = {
     identity: { getCurrentUser: vi.fn(async () => ({ id: USER_ID, fullName: 'Jane Doe', email: 'jane@example.com', isActive: true, roles: ['TEACHER'] })) },
     device: { getInfo: vi.fn(async () => null) },
@@ -51,28 +61,30 @@ function installBaseMock() {
     attendance: { list: vi.fn(async () => []) },
     schoolAdmin: {
       list: vi.fn(async (request: { collection: string }) => {
-        if (request.collection === 'staff') {
-          return { items: [{ id: STAFF_ID, userId: USER_ID }], total: 1 };
-        }
-        if (request.collection === 'grading_periods') {
-          return {
-            items: [
-              { id: 'period-1', termId: 'term-1', name: 'Period 1', periodType: 'REGULAR_PERIOD', maxMarks: 100, isActive: 1 },
-            ],
-            total: 1,
-          };
-        }
-        if (request.collection === 'grade_entry_windows') {
-          return { items: [{ id: 'window-1', gradingPeriodId: 'period-1', status: 'OPEN' }], total: 1 };
-        }
-        if (request.collection === 'institution_grading_configs') {
-          return {
-            items: [{ id: 'config-1', gradeScale: JSON.stringify([{ letter: 'A', description: 'Excellent', min: 80, max: 100, gradePoint: 4 }]) }],
-            total: 1,
-          };
-        }
-        if (request.collection === 'grades') return { items: [], total: 0 };
+        if (request.collection === 'staff') return { items: [{ id: STAFF_ID, userId: USER_ID }], total: 1 };
+        if (request.collection === 'grading_periods') return { items: [{ id: 'period-1', termId: 'term-1', name: 'Period 1', periodType: 'REGULAR_PERIOD', maxMarks: 100, isActive: 1 }], total: 1 };
+        if (request.collection === 'grade_entry_windows') return { items: [{ id: 'window-1', gradingPeriodId: 'period-1', status: 'OPEN' }], total: 1 };
+        if (request.collection === 'institution_grading_configs') return { items: [{ id: 'config-1', gradeScale: JSON.stringify([{ letter: 'A', description: 'Excellent', min: 80, max: 100, gradePoint: 4 }]) }], total: 1 };
+        if (request.collection === 'assessment_templates') return { items: [{ id: 'template-1', classId: 'class-1', subjectId: 'sub-1', name: 'Quiz 1', type: 'QUIZ', totalMarks: 20, weight: 100, date: '2025-09-15' }], total: 1 };
+        if (request.collection === 'assessments') return { items: assessmentInstances, total: assessmentInstances.length };
+        if (request.collection === 'grades') return { items: gradeRows, total: gradeRows.length };
         return { items: [], total: 0 };
+      }),
+      save: vi.fn(async (request: { collection: string; record: Record<string, unknown> }) => {
+        if (request.collection === 'assessments') {
+          const created = { id: `assessment-${assessmentInstances.length + 1}`, ...request.record };
+          assessmentInstances.push(created);
+          return created;
+        }
+        const created = { id: request.record.id ?? `grade-${gradeRows.length + 1}`, ...request.record };
+        const idx = gradeRows.findIndex((g) => g.id === created.id);
+        if (idx >= 0) gradeRows[idx] = created; else gradeRows.push(created);
+        return created;
+      }),
+      delete: vi.fn(async (request: { id: string }) => {
+        const idx = gradeRows.findIndex((g) => g.id === request.id);
+        if (idx >= 0) gradeRows.splice(idx, 1);
+        return { id: request.id };
       }),
     },
   };
@@ -81,7 +93,7 @@ function installBaseMock() {
       teacher: { listAssignments: ReturnType<typeof vi.fn> };
       academicYear: { getCurrent: ReturnType<typeof vi.fn> };
       term: { list: ReturnType<typeof vi.fn> };
-      schoolAdmin: { list: ReturnType<typeof vi.fn> };
+      schoolAdmin: { list: ReturnType<typeof vi.fn>; save: ReturnType<typeof vi.fn>; delete: ReturnType<typeof vi.fn> };
     };
   }).nemis;
 }
@@ -119,5 +131,17 @@ describe('Teacher grades page', () => {
     fireEvent.change(periodSelect!, { target: { value: 'period-1' } });
 
     expect(await screen.findByText('Alice Johnson')).toBeInTheDocument();
+
+    expect(await screen.findByText('Quiz 1')).toBeInTheDocument(); // template column header
+    const scoreInput = screen.getAllByRole('spinbutton')[0]!;
+    fireEvent.change(scoreInput, { target: { value: '18' } });
+    fireEvent.click(screen.getByText('Save'));
+
+    await waitFor(() => expect(nemis.schoolAdmin.save).toHaveBeenCalledWith(
+      expect.objectContaining({ collection: 'assessments', record: expect.objectContaining({ templateId: 'template-1', gradingPeriodId: 'period-1' }) }),
+    ));
+    await waitFor(() => expect(nemis.schoolAdmin.save).toHaveBeenCalledWith(
+      expect.objectContaining({ collection: 'grades', record: expect.objectContaining({ marksObtained: 18, assessmentId: 'assessment-1' }) }),
+    ));
   });
 });
