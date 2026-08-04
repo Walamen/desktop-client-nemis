@@ -221,4 +221,35 @@ describe('Teacher grades page', () => {
     // Students" instead of switching to "Update Grades".
     await waitFor(() => expect(screen.getByText('Update Grades')).toBeInTheDocument());
   });
+
+  it('shows Summary & Submit readiness and submits ready subjects', async () => {
+    const nemis = installBaseMock();
+    const layer = createRendererPresentation();
+    await layer.bootstrap.run();
+    render(<PresentationProvider layer={layer}><TeacherGradesPage /></PresentationProvider>);
+
+    // Wait for the class/term auto-selects (and the periods they unlock) to
+    // settle before touching subject/period — same race test 2/3 above avoid
+    // via this same waitFor pair (a <select> fireEvent.change with no
+    // matching <option> yet resets to '' instead of sticking).
+    await waitFor(() => expect(nemis.term.list).toHaveBeenCalledWith('ay-1'));
+    await screen.findByText('Grade 10A');
+
+    const [, , subjectSelect, periodSelect] = screen.getAllByRole('combobox');
+    fireEvent.change(subjectSelect!, { target: { value: 'sub-1' } });
+    fireEvent.change(periodSelect!, { target: { value: 'period-1' } });
+    await screen.findByText('Quiz 1');
+    fireEvent.change(screen.getAllByRole('spinbutton')[0]!, { target: { value: '18' } });
+    fireEvent.click(screen.getByText('Save'));
+    await waitFor(() => expect(nemis.schoolAdmin.save).toHaveBeenCalledWith(expect.objectContaining({ collection: 'grades' })));
+
+    fireEvent.click(screen.getByText('Summary & Submit'));
+    expect(await screen.findByText('Mathematics')).toBeInTheDocument();
+    expect(await screen.findByText('Ready')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText(/Submit All Ready Subjects/));
+    await waitFor(() => expect(nemis.schoolAdmin.save).toHaveBeenCalledWith(
+      expect.objectContaining({ collection: 'grades', record: expect.objectContaining({ assessmentId: null, status: 'SUBMITTED' }) }),
+    ));
+  });
 });

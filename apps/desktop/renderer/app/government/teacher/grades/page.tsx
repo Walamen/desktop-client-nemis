@@ -140,6 +140,7 @@ export default function TeacherGradesPage() {
   const [selectedClassId, setSelectedClassId] = useState('');
   const [selectedSubjectId, setSelectedSubjectId] = useState('');
   const [selectedPeriodId, setSelectedPeriodId] = useState('');
+  const [activeTab, setActiveTab] = useState<'scores' | 'submit'>('scores');
 
   useEffect(() => {
     if (!selectedTermId && termOptions.length > 0) setSelectedTermId(termOptions[0]!.id);
@@ -183,6 +184,17 @@ export default function TeacherGradesPage() {
   const selectedPeriod = periods.find((p) => String(p.id) === selectedPeriodId);
   const isExamPeriod = selectedPeriod?.periodType === 'MIDTERM_EXAM' || selectedPeriod?.periodType === 'FINAL_EXAM';
   const maxMarks = Number(selectedPeriod?.maxMarks ?? 100);
+
+  // Exam periods never show tabs — force back to the (only rendered)
+  // Gradebook grid if the teacher had the Summary & Submit tab open on a
+  // regular period and then switches the period selector straight to an
+  // exam period. Without this, `activeTab` would stay 'submit' while both
+  // the grid (gated on activeTab === 'scores') and the submit panel (gated
+  // on !isExamPeriod) go unrendered — a blank page with no way back, since
+  // the tab switcher itself is also hidden for exam periods.
+  useEffect(() => {
+    if (isExamPeriod) setActiveTab('scores');
+  }, [isExamPeriod]);
 
   const [windows, setWindows] = useState<SchoolAdminRecord[] | null>(null);
   useEffect(() => {
@@ -508,6 +520,113 @@ export default function TeacherGradesPage() {
     }
   };
 
+  // Summary & Submit tab — readiness overview across every subject the
+  // teacher teaches in the selected class (not just the currently-selected
+  // subject), so the teacher can see at a glance which subjects still need
+  // work before the final period-level grade can be submitted.
+  interface SubjectSubmissionStatus {
+    subjectId: string;
+    subjectName: string;
+    studentsScored: number;
+    totalStudents: number;
+    weightsTotal: number;
+    isReady: boolean;
+    notReadyReason: string;
+  }
+
+  const [submissionStatuses, setSubmissionStatuses] = useState<SubjectSubmissionStatus[]>([]);
+  const [loadingStatus, setLoadingStatus] = useState(false);
+
+  useEffect(() => {
+    if (activeTab !== 'submit' || !selectedClassId || !selectedPeriodId || isExamPeriod) return;
+    let cancelled = false;
+    setLoadingStatus(true);
+    const subjectsInClass = selectedClass?.subjects ?? [];
+    void Promise.all(
+      subjectsInClass.map(async (subject) => {
+        const [subjectTemplates, instances] = await Promise.all([
+          listTemplatesForSubject(selectedClassId, subject.id),
+          listAssessmentsForPeriod(selectedClassId, subject.id, selectedPeriodId),
+        ]);
+        const instanceIds = new Set(instances.map((i) => i.id));
+        const gradesResult = await sharedBridge.listSchoolAdminRecords({ collection: 'grades', limit: 250 });
+        const subjectGrades = gradesResult.items.filter((g) => g.assessmentId != null && instanceIds.has(String(g.assessmentId)));
+        const studentsScored = new Set(subjectGrades.map((g) => g.studentId)).size;
+        const weightsTotal = totalWeight(subjectTemplates);
+        const isReady = Math.abs(weightsTotal - 100) < 0.01 && studentsScored > 0;
+        return {
+          subjectId: subject.id,
+          subjectName: subject.name,
+          studentsScored,
+          totalStudents: roster.length,
+          weightsTotal,
+          isReady,
+          notReadyReason: studentsScored === 0 ? 'No scores entered' : `Weights total ${weightsTotal}%`,
+        };
+      }),
+    ).then((statuses) => {
+      if (!cancelled) {
+        setSubmissionStatuses(statuses);
+        setLoadingStatus(false);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [activeTab, selectedClassId, selectedPeriodId, isExamPeriod, selectedClass, roster.length]);
+
+  const readyCount = submissionStatuses.filter((s) => s.isReady).length;
+  const [submittingAll, setSubmittingAll] = useState(false);
+
+  const handleSubmitAllReady = async () => {
+    if (!isWindowOpen) {
+      setFeedback({ kind: 'error', message: 'The grade entry window is not open.' });
+      return;
+    }
+    setSubmittingAll(true);
+    setFeedback(null);
+    try {
+      for (const status of submissionStatuses.filter((s) => s.isReady)) {
+        const subjectTemplates = await listTemplatesForSubject(selectedClassId, status.subjectId);
+        const instances = await listAssessmentsForPeriod(selectedClassId, status.subjectId, selectedPeriodId);
+        const instanceIdByTemplateId = new Map(instances.map((i) => [i.id, i.templateId]));
+        const gradesResult = await sharedBridge.listSchoolAdminRecords({ collection: 'grades', limit: 250 });
+        for (const student of roster) {
+          const studentScores = new Map<string, number | null>();
+          for (const grade of gradesResult.items) {
+            if (String(grade.studentId) !== student.id || grade.assessmentId == null) continue;
+            const templateId = instanceIdByTemplateId.get(String(grade.assessmentId));
+            if (templateId) studentScores.set(templateId, grade.marksObtained != null ? Number(grade.marksObtained) : null);
+          }
+          const percentage = weightedPercentage(studentScores, subjectTemplates);
+          if (percentage === null) continue;
+          const existingPeriodGrade = gradesResult.items.find(
+            (g) => String(g.studentId) === student.id && g.assessmentId == null && String(g.gradingPeriodId) === selectedPeriodId && String(g.subjectId) === status.subjectId,
+          );
+          await sharedBridge.saveSchoolAdminRecord({
+            collection: 'grades',
+            record: {
+              ...(existingPeriodGrade ? { id: existingPeriodGrade.id } : {}),
+              studentId: student.id,
+              subjectId: status.subjectId,
+              classId: selectedClassId,
+              gradingPeriodId: selectedPeriodId,
+              assessmentId: null,
+              marksObtained: percentage,
+              maxMarks: 100,
+              percentage,
+              status: 'SUBMITTED',
+            },
+          });
+        }
+      }
+      setFeedback({ kind: 'success', message: `Submitted final grades for ${readyCount} subject(s).` });
+      setActiveTab('scores');
+    } catch (cause) {
+      setFeedback({ kind: 'error', message: cause instanceof Error ? cause.message : 'Failed to submit grades.' });
+    } finally {
+      setSubmittingAll(false);
+    }
+  };
+
   const filtersComplete = Boolean(selectedTermId && selectedClassId && selectedSubjectId && selectedPeriodId);
 
   if (assignments.status === 'error' && assignments.error.kind === 'database-unavailable') {
@@ -617,6 +736,19 @@ export default function TeacherGradesPage() {
           )}
         </div>
 
+        {selectedTermId && selectedClassId && selectedPeriodId && !isExamPeriod && (
+          <div className="border-b border-slate-200">
+            <nav className="flex gap-1">
+              <button onClick={() => setActiveTab('scores')} className={`py-2.5 px-4 rounded-t-lg font-bold text-sm ${activeTab === 'scores' ? 'bg-secondary/10 border-x border-t text-slate-700' : 'text-slate-600'}`}>
+                Gradebook
+              </button>
+              <button onClick={() => setActiveTab('submit')} className={`py-2.5 px-4 rounded-t-lg font-bold text-sm ${activeTab === 'submit' ? 'bg-secondary/10 border-x border-t text-slate-700' : 'text-slate-500'}`}>
+                Summary & Submit
+              </button>
+            </nav>
+          </div>
+        )}
+
         {feedback && <Alert variant={feedback.kind === 'success' ? 'success' : 'error'}>{feedback.message}</Alert>}
 
         {filtersComplete && !isExamPeriod && !loadingTemplates && templates.length === 0 && (
@@ -638,7 +770,7 @@ export default function TeacherGradesPage() {
           </Alert>
         )}
 
-        {!filtersComplete ? (
+        {activeTab === 'scores' && (!filtersComplete ? (
           <div className="bg-white border border-slate-300 rounded-card text-center py-12">
             <Award className="w-12 h-12 text-slate-400 mx-auto mb-3" />
             <p className="text-slate-500">Select a term, class, subject, and grading period to begin.</p>
@@ -786,6 +918,56 @@ export default function TeacherGradesPage() {
                   </>
                 )}
               </div>
+            </div>
+          </div>
+        ))}
+
+        {activeTab === 'submit' && !isExamPeriod && (
+          <div className="space-y-4">
+            {!isWindowOpen && (
+              <Alert variant="warning">The grade submission window for this period is currently closed.</Alert>
+            )}
+            <div className="bg-white border border-slate-300 rounded-card overflow-hidden">
+              {loadingStatus ? (
+                <div className="flex justify-center py-12"><Spinner size="lg" /></div>
+              ) : submissionStatuses.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-slate-500 text-sm">You are not assigned to any subjects in this class.</p>
+                </div>
+              ) : (
+                <table className="min-w-full border-collapse">
+                  <thead className="bg-secondary/20">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase border-r">Subject</th>
+                      <th className="px-4 py-3 text-center text-xs font-bold text-slate-700 uppercase border-r">Scores Saved</th>
+                      <th className="px-4 py-3 text-center text-xs font-bold text-slate-700 uppercase border-r">Weights</th>
+                      <th className="px-4 py-3 text-center text-xs font-bold text-slate-700 uppercase">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {submissionStatuses.map((s) => (
+                      <tr key={s.subjectId} className="border-b hover:bg-slate-50/70">
+                        <td className="px-4 py-3 text-sm font-bold text-slate-600 border-r">{s.subjectName}</td>
+                        <td className="px-4 py-3 text-sm text-center border-r">{s.studentsScored}/{s.totalStudents}</td>
+                        <td className={`px-4 py-3 text-sm text-center border-r ${Math.abs(s.weightsTotal - 100) < 0.01 ? 'text-slate-700' : 'text-amber-600 font-medium'}`}>{s.weightsTotal}%</td>
+                        <td className="px-4 py-3 text-center">
+                          {s.isReady ? (
+                            <span className="inline-block px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">Ready</span>
+                          ) : (
+                            <span className="inline-block px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">Not ready — {s.notReadyReason}</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+            <div className="flex justify-end">
+              <Button onClick={() => void handleSubmitAllReady()} disabled={submittingAll || !isWindowOpen || readyCount === 0}>
+                <Send className="w-4 h-4 mr-2" />
+                {submittingAll ? 'Submitting...' : `Submit All Ready Subjects (${readyCount})`}
+              </Button>
             </div>
           </div>
         )}
