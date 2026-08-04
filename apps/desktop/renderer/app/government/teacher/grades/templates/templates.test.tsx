@@ -70,10 +70,13 @@ describe('Assessment Setup page', () => {
     fireEvent.change(classSelect!, { target: { value: 'class-1' } });
     fireEvent.change(subjectSelect!, { target: { value: 'sub-1' } });
 
+    // "Add Assessment" now opens the bulk-create table (Task 9) — a single
+    // empty row by default — rather than the single-record form, which is
+    // reserved for editing an existing template.
     fireEvent.click(await screen.findByText('Add Assessment'));
-    fireEvent.change(screen.getByPlaceholderText('e.g., Quiz 1, Midterm Exam'), { target: { value: 'Quiz 1' } });
-    fireEvent.change(screen.getAllByRole('spinbutton')[0]!, { target: { value: '20' } });
-    fireEvent.click(screen.getByText('Create Assessment'));
+    fireEvent.change(screen.getByPlaceholderText('Quiz 1'), { target: { value: 'Quiz 1' } });
+    fireEvent.change(screen.getByPlaceholderText('100'), { target: { value: '20' } });
+    fireEvent.click(screen.getByText('Create 1 Assessment'));
 
     await waitFor(() => expect(nemis.schoolAdmin.save).toHaveBeenCalledWith(
       expect.objectContaining({ collection: 'assessment_templates', record: expect.objectContaining({ name: 'Quiz 1', classId: 'class-1', subjectId: 'sub-1' }) }),
@@ -102,5 +105,39 @@ describe('Assessment Setup page', () => {
       expect.objectContaining({ collection: 'assessment_templates' }),
     ));
     expect(await screen.findByText('No assessments found.')).toBeInTheDocument();
+  });
+
+  it('bulk-creates multiple templates in one submission', async () => {
+    const nemis = installBaseMock();
+    const layer = createRendererPresentation();
+    await layer.bootstrap.run();
+    render(
+      <PresentationProvider layer={layer}>
+        <AssessmentSetupPage />
+      </PresentationProvider>,
+    );
+
+    // Wait for the teaching-assignments load to populate the class <option>
+    // before selecting it — selecting a value with no matching <option> yet
+    // is a silent no-op in jsdom (same precedent as the test above).
+    expect(await screen.findByText('Grade 10A')).toBeInTheDocument();
+    const [classSelect, subjectSelect] = screen.getAllByRole('combobox');
+    fireEvent.change(classSelect!, { target: { value: 'class-1' } });
+    fireEvent.change(subjectSelect!, { target: { value: 'sub-1' } });
+    fireEvent.click(await screen.findByText('Add Assessment'));
+
+    fireEvent.click(screen.getByText('Add Row'));
+    const nameInputs = screen.getAllByPlaceholderText('Quiz 1');
+    fireEvent.change(nameInputs[0]!, { target: { value: 'Quiz 1' } });
+    fireEvent.change(nameInputs[1]!, { target: { value: 'Quiz 2' } });
+    const marksInputs = screen.getAllByPlaceholderText('100');
+    fireEvent.change(marksInputs[0]!, { target: { value: '20' } });
+    fireEvent.change(marksInputs[1]!, { target: { value: '20' } });
+
+    fireEvent.click(screen.getByText('Create 2 Assessments'));
+
+    await waitFor(() => expect(nemis.schoolAdmin.save).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText('Quiz 1')).toBeInTheDocument();
+    expect(screen.getByText('Quiz 2')).toBeInTheDocument();
   });
 });

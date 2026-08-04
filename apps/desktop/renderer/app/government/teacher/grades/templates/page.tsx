@@ -37,6 +37,20 @@ function emptyFormData(): TemplateFormData {
   return { name: '', type: 'QUIZ', totalMarks: '', weight: '', date: new Date().toISOString().slice(0, 10) };
 }
 
+interface BulkRow {
+  id: string;
+  name: string;
+  type: string;
+  totalMarks: string;
+  weight: string;
+  date: string;
+}
+
+const makeRowId = () => Math.random().toString(36).slice(2, 9);
+function emptyBulkRow(): BulkRow {
+  return { id: makeRowId(), name: '', type: 'QUIZ', totalMarks: '', weight: '', date: new Date().toISOString().slice(0, 10) };
+}
+
 interface ClassOption {
   classId: string;
   label: string;
@@ -106,6 +120,60 @@ export default function AssessmentSetupPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<TemplateFormData>(emptyFormData());
   const [saving, setSaving] = useState(false);
+
+  const [bulkRows, setBulkRows] = useState<BulkRow[]>([emptyBulkRow()]);
+  const [bulkErrors, setBulkErrors] = useState<Record<string, Record<string, string>>>({});
+  const [bulkSaving, setBulkSaving] = useState(false);
+
+  const handleBulkRowChange = (id: string, field: keyof Omit<BulkRow, 'id'>, value: string) =>
+    setBulkRows((prev) => prev.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
+
+  const handleAddBulkRow = () => setBulkRows((prev) => [...prev, emptyBulkRow()]);
+
+  const handleRemoveBulkRow = (id: string) => {
+    setBulkRows((prev) => prev.filter((r) => r.id !== id));
+    setBulkErrors((prev) => { const next = { ...prev }; delete next[id]; return next; });
+  };
+
+  const liveWeight = bulkRows.reduce((s, r) => s + (parseFloat(r.weight) || 0), 0);
+
+  const handleBulkSubmit = async () => {
+    const errors: Record<string, Record<string, string>> = {};
+    bulkRows.forEach((row) => {
+      const e: Record<string, string> = {};
+      if (!row.name.trim()) e.name = 'Required';
+      if (!row.date) e.date = 'Required';
+      const marks = parseFloat(row.totalMarks);
+      if (!row.totalMarks || Number.isNaN(marks) || marks <= 0) e.totalMarks = 'Must be > 0';
+      if (Object.keys(e).length > 0) errors[row.id] = e;
+    });
+    setBulkErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
+    setBulkSaving(true);
+    try {
+      for (const row of bulkRows) {
+        await sharedBridge.saveSchoolAdminRecord({
+          collection: 'assessment_templates',
+          record: {
+            classId: selectedClassId,
+            subjectId: selectedSubjectId,
+            name: row.name.trim(),
+            type: row.type,
+            totalMarks: parseFloat(row.totalMarks),
+            weight: row.weight ? parseFloat(row.weight) : null,
+            date: row.date,
+          },
+        });
+      }
+      setBulkRows([emptyBulkRow()]);
+      setBulkErrors({});
+      setIsDrawerOpen(false);
+      setReloadToken((t) => t + 1);
+    } finally {
+      setBulkSaving(false);
+    }
+  };
 
   const resetForm = () => {
     setFormData(emptyFormData());
@@ -264,7 +332,7 @@ export default function AssessmentSetupPage() {
             <div className="lg:col-span-2">
               <Card title={`Assessments (${templates.length})`}>
                 <div className="flex justify-end mb-3">
-                  <Button onClick={() => { setEditingId(null); setFormData(emptyFormData()); setIsDrawerOpen(true); }}>
+                  <Button onClick={() => { setEditingId(null); setBulkRows([emptyBulkRow()]); setBulkErrors({}); setIsDrawerOpen(true); }}>
                     <Plus className="w-4 h-4 mr-2" />
                     Add Assessment
                   </Button>
@@ -307,76 +375,149 @@ export default function AssessmentSetupPage() {
       <Drawer
         isOpen={isDrawerOpen}
         onClose={resetForm}
-        title={editingId ? 'Edit Assessment' : 'Add Assessment'}
+        title={editingId ? 'Edit Assessment' : 'Add Assessments'}
+        size={editingId ? 'md' : 'lg'}
         footer={
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="secondary" onClick={resetForm} disabled={saving}>Cancel</Button>
-            <Button type="submit" form="assessment-template-form" disabled={saving}>
-              {saving ? 'Saving...' : editingId ? 'Update Assessment' : 'Create Assessment'}
-            </Button>
-          </div>
+          editingId ? (
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="secondary" onClick={resetForm} disabled={saving}>Cancel</Button>
+              <Button type="submit" form="assessment-template-form" disabled={saving}>
+                {saving ? 'Saving...' : 'Update Assessment'}
+              </Button>
+            </div>
+          ) : (
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="secondary" onClick={resetForm} disabled={bulkSaving}>Cancel</Button>
+              <Button type="button" onClick={() => void handleBulkSubmit()} disabled={bulkSaving || bulkRows.length === 0}>
+                {bulkSaving ? 'Creating...' : `Create ${bulkRows.length} Assessment${bulkRows.length !== 1 ? 's' : ''}`}
+              </Button>
+            </div>
+          )
         }
       >
-        <form id="assessment-template-form" onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Assessment Name *</label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="e.g., Quiz 1, Midterm Exam"
-              required
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-            />
+        {editingId ? (
+          <form id="assessment-template-form" onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Assessment Name *</label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="e.g., Quiz 1, Midterm Exam"
+                required
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Type *</label>
+              <select
+                value={formData.type}
+                onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                required
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+              >
+                {ASSESSMENT_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Total Marks *</label>
+              <input
+                type="number"
+                value={formData.totalMarks}
+                onChange={(e) => setFormData({ ...formData, totalMarks: e.target.value })}
+                min="0"
+                step="0.1"
+                required
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Weight (%)</label>
+              <input
+                type="number"
+                value={formData.weight}
+                onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
+                min="0"
+                max="100"
+                step="0.1"
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Date *</label>
+              <input
+                type="date"
+                value={formData.date}
+                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                required
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+              />
+            </div>
+          </form>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-slate-500">Total weight across all rows</span>
+              <span className={`font-bold ${Math.abs(liveWeight - 100) < 0.01 ? 'text-active' : 'text-pending'}`}>
+                {liveWeight.toFixed(1)}%
+              </span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200">
+                    <th className="text-left py-2 pr-2 font-medium min-w-[140px]">Name *</th>
+                    <th className="text-left py-2 pr-2 font-medium min-w-[110px]">Type</th>
+                    <th className="text-left py-2 pr-2 font-medium min-w-[80px]">Marks *</th>
+                    <th className="text-left py-2 pr-2 font-medium min-w-[70px]">Weight %</th>
+                    <th className="text-left py-2 pr-2 font-medium min-w-[130px]">Date *</th>
+                    <th className="w-8" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {bulkRows.map((row) => {
+                    const errs = bulkErrors[row.id] ?? {};
+                    return (
+                      <tr key={row.id} className="border-b border-slate-100">
+                        <td className="py-1.5 pr-2">
+                          <input type="text" value={row.name} onChange={(e) => handleBulkRowChange(row.id, 'name', e.target.value)} placeholder="Quiz 1" className={`w-full px-2 py-1.5 border rounded text-sm ${errs.name ? 'border-red-400' : 'border-slate-300'}`} />
+                          {errs.name && <p className="text-xs text-red-600 mt-0.5">{errs.name}</p>}
+                        </td>
+                        <td className="py-1.5 pr-2">
+                          <select value={row.type} onChange={(e) => handleBulkRowChange(row.id, 'type', e.target.value)} className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm">
+                            {ASSESSMENT_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                          </select>
+                        </td>
+                        <td className="py-1.5 pr-2">
+                          <input type="number" value={row.totalMarks} onChange={(e) => handleBulkRowChange(row.id, 'totalMarks', e.target.value)} placeholder="100" min="0" step="0.1" className={`w-full px-2 py-1.5 border rounded text-sm ${errs.totalMarks ? 'border-red-400' : 'border-slate-300'}`} />
+                          {errs.totalMarks && <p className="text-xs text-red-600 mt-0.5">{errs.totalMarks}</p>}
+                        </td>
+                        <td className="py-1.5 pr-2">
+                          <input type="number" value={row.weight} onChange={(e) => handleBulkRowChange(row.id, 'weight', e.target.value)} placeholder="20" min="0" max="100" step="0.1" className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
+                        </td>
+                        <td className="py-1.5 pr-2">
+                          <input type="date" value={row.date} onChange={(e) => handleBulkRowChange(row.id, 'date', e.target.value)} className={`w-full px-2 py-1.5 border rounded text-sm ${errs.date ? 'border-red-400' : 'border-slate-300'}`} />
+                          {errs.date && <p className="text-xs text-red-600 mt-0.5">{errs.date}</p>}
+                        </td>
+                        <td className="py-1.5">
+                          <button type="button" onClick={() => handleRemoveBulkRow(row.id)} disabled={bulkRows.length === 1} className="text-red-400 disabled:opacity-30 p-1">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <Button type="button" variant="secondary" size="sm" onClick={handleAddBulkRow}>
+              <Plus className="w-4 h-4 mr-1" />
+              Add Row
+            </Button>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Type *</label>
-            <select
-              value={formData.type}
-              onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-              required
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-            >
-              {ASSESSMENT_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>{t.label}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Total Marks *</label>
-            <input
-              type="number"
-              value={formData.totalMarks}
-              onChange={(e) => setFormData({ ...formData, totalMarks: e.target.value })}
-              min="0"
-              step="0.1"
-              required
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Weight (%)</label>
-            <input
-              type="number"
-              value={formData.weight}
-              onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
-              min="0"
-              max="100"
-              step="0.1"
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Date *</label>
-            <input
-              type="date"
-              value={formData.date}
-              onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-              required
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-            />
-          </div>
-        </form>
+        )}
       </Drawer>
     </div>
   );
