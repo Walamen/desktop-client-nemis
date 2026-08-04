@@ -51,6 +51,26 @@ function letterFor(scale: GradeScaleItem[], pct: number): string | undefined {
   return scale.find((band) => pct >= band.min && pct <= band.max)?.letter;
 }
 
+/** `SchoolAdminModuleService.list()` hard-caps every page at 250 rows
+ * (`ORDER BY rowid DESC`, i.e. the 250 most-recently-inserted rows of the
+ * WHOLE `grades` table, not scoped to a class/subject/period). The Summary &
+ * Submit readiness check and submit action both need to see every grade row
+ * a teacher has ever written, or scoring one subject's full roster can evict
+ * an earlier subject's rows from the window and make that subject's
+ * readiness permanently read "0 scored" even though it's genuinely done.
+ * Page through the whole collection instead of taking just the first page. */
+async function listAllGrades(): Promise<SchoolAdminRecord[]> {
+  const all: SchoolAdminRecord[] = [];
+  let offset = 0;
+  for (;;) {
+    const result = await sharedBridge.listSchoolAdminRecords({ collection: 'grades', limit: 250, offset });
+    all.push(...result.items);
+    offset += result.items.length;
+    if (result.items.length === 0 || all.length >= result.total) break;
+  }
+  return all;
+}
+
 /** Teacher Gradebook — mirrors portal-web's grades page (term/class/subject/
  * period selectors, a window-status banner, a per-student score table, Save
  * + Submit actions) built on the real desktop `grades` table via the generic
@@ -561,8 +581,8 @@ export default function TeacherGradesPage() {
         // instance for EVERY template, not just any template.
         const instanceIdByTemplateId = new Map(instances.map((i) => [i.templateId, i.id]));
         const instanceIds = new Set(instances.map((i) => i.id));
-        const gradesResult = await sharedBridge.listSchoolAdminRecords({ collection: 'grades', limit: 250 });
-        const subjectGrades = gradesResult.items.filter((g) => g.assessmentId != null && instanceIds.has(String(g.assessmentId)));
+        const allGrades = await listAllGrades();
+        const subjectGrades = allGrades.filter((g) => g.assessmentId != null && instanceIds.has(String(g.assessmentId)));
         const gradedPairs = new Set(subjectGrades.map((g) => `${g.studentId}::${g.assessmentId}`));
 
         const hasTemplates = subjectTemplates.length > 0;
@@ -620,17 +640,17 @@ export default function TeacherGradesPage() {
         const subjectTemplates = await listTemplatesForSubject(selectedClassId, status.subjectId);
         const instances = await listAssessmentsForPeriod(selectedClassId, status.subjectId, selectedPeriodId);
         const instanceIdByTemplateId = new Map(instances.map((i) => [i.id, i.templateId]));
-        const gradesResult = await sharedBridge.listSchoolAdminRecords({ collection: 'grades', limit: 250 });
+        const allGrades = await listAllGrades();
         for (const student of roster) {
           const studentScores = new Map<string, number | null>();
-          for (const grade of gradesResult.items) {
+          for (const grade of allGrades) {
             if (String(grade.studentId) !== student.id || grade.assessmentId == null) continue;
             const templateId = instanceIdByTemplateId.get(String(grade.assessmentId));
             if (templateId) studentScores.set(templateId, grade.marksObtained != null ? Number(grade.marksObtained) : null);
           }
           const percentage = weightedPercentage(studentScores, subjectTemplates);
           if (percentage === null) continue;
-          const existingPeriodGrade = gradesResult.items.find(
+          const existingPeriodGrade = allGrades.find(
             (g) => String(g.studentId) === student.id && g.assessmentId == null && String(g.gradingPeriodId) === selectedPeriodId && String(g.subjectId) === status.subjectId,
           );
           await sharedBridge.saveSchoolAdminRecord({

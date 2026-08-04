@@ -26,7 +26,7 @@ vi.mock('next/navigation', () => ({
 const USER_ID = 'user-1';
 const STAFF_ID = 'staff-1';
 
-function installBaseMock() {
+function installBaseMock(options?: { paginateGrades?: boolean }) {
   const assessmentInstances: Record<string, unknown>[] = [];
   const gradeRows: Record<string, unknown>[] = [];
 
@@ -60,14 +60,25 @@ function installBaseMock() {
     },
     attendance: { list: vi.fn(async () => []) },
     schoolAdmin: {
-      list: vi.fn(async (request: { collection: string }) => {
+      list: vi.fn(async (request: { collection: string; limit?: number; offset?: number }) => {
         if (request.collection === 'staff') return { items: [{ id: STAFF_ID, userId: USER_ID }], total: 1 };
         if (request.collection === 'grading_periods') return { items: [{ id: 'period-1', termId: 'term-1', name: 'Period 1', periodType: 'REGULAR_PERIOD', maxMarks: 100, isActive: 1 }], total: 1 };
         if (request.collection === 'grade_entry_windows') return { items: [{ id: 'window-1', gradingPeriodId: 'period-1', status: 'OPEN' }], total: 1 };
         if (request.collection === 'institution_grading_configs') return { items: [{ id: 'config-1', gradeScale: JSON.stringify([{ letter: 'A', description: 'Excellent', min: 80, max: 100, gradePoint: 4 }]) }], total: 1 };
         if (request.collection === 'assessment_templates') return { items: [{ id: 'template-1', classId: 'class-1', subjectId: 'sub-1', name: 'Quiz 1', type: 'QUIZ', totalMarks: 20, weight: 100, date: '2025-09-15' }], total: 1 };
         if (request.collection === 'assessments') return { items: assessmentInstances, total: assessmentInstances.length };
-        if (request.collection === 'grades') return { items: gradeRows, total: gradeRows.length };
+        if (request.collection === 'grades') {
+          if (options?.paginateGrades) {
+            // Mirrors SchoolAdminModuleService.list()'s real behavior:
+            // `ORDER BY rowid DESC` (newest-inserted row first), hard-capped
+            // at 250 rows per page, `total` = the full un-capped row count.
+            const limit = Math.min(request.limit ?? 100, 250);
+            const offset = request.offset ?? 0;
+            const newestFirst = [...gradeRows].reverse();
+            return { items: newestFirst.slice(offset, offset + limit), total: gradeRows.length };
+          }
+          return { items: gradeRows, total: gradeRows.length };
+        }
         return { items: [], total: 0 };
       }),
       save: vi.fn(async (request: { collection: string; record: Record<string, unknown> }) => {
@@ -299,5 +310,70 @@ describe('Teacher grades page', () => {
     expect(screen.getByText('1/2')).toBeInTheDocument();
 
     expect(screen.getByText(/Submit All Ready Subjects/).closest('button')).toBeDisabled();
+  });
+
+  it('sees a genuinely scored subject as Ready even when its grade rows have been pushed past the 250-row page by later grading', async () => {
+    // Regression test for the pagination bug: SchoolAdminModuleService.list()
+    // hard-caps every `grades` read at the 250 MOST-RECENTLY-INSERTED rows of
+    // the whole table (ORDER BY rowid DESC), with no scoping to class/
+    // subject/period. A single un-paginated call therefore only sees the
+    // newest 250 rows — if the teacher's Mathematics row is old enough to
+    // fall outside that window (evicted by later grading elsewhere), the
+    // readiness check must still find it by paging through the full
+    // collection, not just the first page.
+    const nemis = installBaseMock({ paginateGrades: true });
+    const layer = createRendererPresentation();
+    await layer.bootstrap.run();
+
+    // Seed the REAL scored grade row first (oldest / lowest rowid)...
+    const assessment = await nemis.schoolAdmin.save({
+      collection: 'assessments',
+      record: {
+        templateId: 'template-1', classId: 'class-1', subjectId: 'sub-1', gradingPeriodId: 'period-1',
+        name: 'Quiz 1', type: 'QUIZ', totalMarks: 20, weight: 100, date: '2025-09-15',
+      },
+    });
+    await nemis.schoolAdmin.save({
+      collection: 'grades',
+      record: {
+        studentId: 'student-1', assessmentId: (assessment as { id: string }).id, marksObtained: 18, maxMarks: 20,
+        subjectId: 'sub-1', classId: 'class-1', gradingPeriodId: 'period-1',
+      },
+    });
+    // ...then 260 newer, unrelated grade rows (as if from another subject
+    // graded afterwards) — enough to push the real row outside a single
+    // 250-row "most recent" page.
+    for (let i = 0; i < 260; i++) {
+      // Sequential await (not Promise.all) so insertion order — and thus the
+      // mock's rowid-order stand-in — matches what the test depends on.
+      await nemis.schoolAdmin.save({
+        collection: 'grades',
+        record: {
+          studentId: `padding-student-${i}`, assessmentId: null, marksObtained: null, maxMarks: 100,
+          subjectId: 'other-subject', classId: 'class-1', gradingPeriodId: 'period-1',
+        },
+      });
+    }
+
+    render(<PresentationProvider layer={layer}><TeacherGradesPage /></PresentationProvider>);
+
+    await waitFor(() => expect(nemis.term.list).toHaveBeenCalledWith('ay-1'));
+    await screen.findByText('Grade 10A');
+
+    // Summary & Submit's readiness effect only runs once term/class/subject/
+    // period are all selected — same DOM-order combobox targeting the other
+    // tests use (Term, Class, Subject, Period).
+    const [, , subjectSelect, periodSelect] = screen.getAllByRole('combobox');
+    fireEvent.change(subjectSelect!, { target: { value: 'sub-1' } });
+    fireEvent.change(periodSelect!, { target: { value: 'period-1' } });
+    await screen.findByText('Quiz 1');
+
+    fireEvent.click(screen.getByText('Summary & Submit'));
+    expect(await screen.findByText('Mathematics')).toBeInTheDocument();
+    // Without the pagination fix this reads "Not ready — 0/1 students fully
+    // scored" forever, because the single capped call never sees the real
+    // (now-evicted) grade row.
+    expect(await screen.findByText('Ready')).toBeInTheDocument();
+    expect(screen.queryByText(/Not ready/)).toBeNull();
   });
 });
