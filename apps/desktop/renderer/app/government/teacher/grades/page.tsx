@@ -464,7 +464,14 @@ export default function TeacherGradesPage() {
       if (hasUnsaved) await persistTemplateScores();
       const instances = await listAssessmentsForPeriod(selectedClassId, selectedSubjectId, selectedPeriodId);
       const instanceIds = new Set(instances.map((i) => i.id));
-      const toPublish = grades.filter((g) => g.assessmentId != null && instanceIds.has(String(g.assessmentId)));
+      // Fetch fresh rather than reading the closed-over `grades` state:
+      // persistTemplateScores() above may have just created brand-new grade
+      // rows (first-time scores for a student/template pair), and its own
+      // reloadGrades() call only lands via setGrades — it does not mutate
+      // this function's already-captured `grades` closure. Filtering the
+      // stale closure would silently skip publishing those new rows.
+      const currentGrades = await listGradesForPeriod(selectedPeriodId);
+      const toPublish = currentGrades.filter((g) => g.assessmentId != null && instanceIds.has(String(g.assessmentId)));
       for (const grade of toPublish) {
         await sharedBridge.saveSchoolAdminRecord({
           collection: 'grades',

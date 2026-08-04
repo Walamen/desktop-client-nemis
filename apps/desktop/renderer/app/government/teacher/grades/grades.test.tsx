@@ -179,4 +179,46 @@ describe('Teacher grades page', () => {
     fireEvent.click(screen.getByText('Update Grades'));
     await waitFor(() => expect(screen.getByText('Send to Students')).toBeInTheDocument());
   });
+
+  it('publishes a score entered just before clicking Send to Students, with no separate manual Save first', async () => {
+    // Regression test: handleSendToStudents' internal
+    // `if (hasUnsaved) await persistTemplateScores()` can create a
+    // brand-new `grades` row (first score ever entered for this
+    // student/template pair — no prior row to have been captured in the
+    // component's `grades` state/closure). The publish step must read
+    // freshly from storage rather than the stale pre-persist `grades`
+    // closure, or this newly-created row is silently skipped.
+    const nemis = installBaseMock();
+    const layer = createRendererPresentation();
+    await layer.bootstrap.run();
+    render(<PresentationProvider layer={layer}><TeacherGradesPage /></PresentationProvider>);
+
+    await waitFor(() => expect(nemis.term.list).toHaveBeenCalledWith('ay-1'));
+    await screen.findByText('Grade 10A');
+
+    const [, , subjectSelect, periodSelect] = screen.getAllByRole('combobox');
+    fireEvent.change(subjectSelect!, { target: { value: 'sub-1' } });
+    fireEvent.change(periodSelect!, { target: { value: 'period-1' } });
+    await screen.findByText('Quiz 1');
+
+    // No prior grade row exists for this student/template yet. Enter a
+    // score and go straight to "Send to Students" — deliberately skipping
+    // a manual "Save" click — so the implicit persistTemplateScores() call
+    // inside handleSendToStudents is what creates the row for the first
+    // time.
+    fireEvent.change(screen.getAllByRole('spinbutton')[0]!, { target: { value: '18' } });
+    fireEvent.click(await screen.findByText('Send to Students'));
+
+    await waitFor(() => expect(nemis.schoolAdmin.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        collection: 'grades',
+        record: expect.objectContaining({ isPublished: true, status: 'PUBLISHED' }),
+      }),
+    ));
+    // If the newly-created row had been skipped (stale-closure bug), no
+    // grade for this period would be published and the row would stay
+    // published:false — the button row would still show "Send to
+    // Students" instead of switching to "Update Grades".
+    await waitFor(() => expect(screen.getByText('Update Grades')).toBeInTheDocument());
+  });
 });
