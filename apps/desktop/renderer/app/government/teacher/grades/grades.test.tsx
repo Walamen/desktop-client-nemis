@@ -76,8 +76,15 @@ function installBaseMock() {
           assessmentInstances.push(created);
           return created;
         }
-        const created = { id: request.record.id ?? `grade-${gradeRows.length + 1}`, ...request.record };
-        const idx = gradeRows.findIndex((g) => g.id === created.id);
+        // Mirrors SchoolAdminModuleService.save()'s real merge-on-write
+        // behavior (fetch existing row, spread the patch on top) so that the
+        // partial-record saves used by publish/unpublish (`{ id, isPublished,
+        // status, publishedAt }` only) don't silently wipe the rest of the
+        // row the way a naive full-object replace would.
+        const id = request.record.id ?? `grade-${gradeRows.length + 1}`;
+        const idx = gradeRows.findIndex((g) => g.id === id);
+        const existing = idx >= 0 ? gradeRows[idx] : undefined;
+        const created = { ...(existing ?? {}), ...request.record, id };
         if (idx >= 0) gradeRows[idx] = created; else gradeRows.push(created);
         return created;
       }),
@@ -143,5 +150,33 @@ describe('Teacher grades page', () => {
     await waitFor(() => expect(nemis.schoolAdmin.save).toHaveBeenCalledWith(
       expect.objectContaining({ collection: 'grades', record: expect.objectContaining({ marksObtained: 18, assessmentId: 'assessment-1' }) }),
     ));
+  });
+
+  it('publishes scores to students, then allows unlocking them again', async () => {
+    const nemis = installBaseMock();
+    const layer = createRendererPresentation();
+    await layer.bootstrap.run();
+    render(<PresentationProvider layer={layer}><TeacherGradesPage /></PresentationProvider>);
+
+    // Wait for the class/term auto-selects (and the periods they unlock) to
+    // settle before touching subject/period — otherwise fireEvent.change on
+    // a <select> with no matching <option> yet resets to '' instead of
+    // sticking, same race test 1 above avoids via its earlier waitFor calls.
+    await waitFor(() => expect(nemis.term.list).toHaveBeenCalledWith('ay-1'));
+    await screen.findByText('Grade 10A');
+
+    const [, , subjectSelect, periodSelect] = screen.getAllByRole('combobox');
+    fireEvent.change(subjectSelect!, { target: { value: 'sub-1' } });
+    fireEvent.change(periodSelect!, { target: { value: 'period-1' } });
+    await screen.findByText('Quiz 1');
+    fireEvent.change(screen.getAllByRole('spinbutton')[0]!, { target: { value: '18' } });
+    fireEvent.click(screen.getByText('Save'));
+    await waitFor(() => expect(nemis.schoolAdmin.save).toHaveBeenCalledWith(expect.objectContaining({ collection: 'grades' })));
+
+    fireEvent.click(await screen.findByText('Send to Students'));
+    await waitFor(() => expect(screen.getByText('Update Grades')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText('Update Grades'));
+    await waitFor(() => expect(screen.getByText('Send to Students')).toBeInTheDocument());
   });
 });

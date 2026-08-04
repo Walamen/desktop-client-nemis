@@ -454,6 +454,53 @@ export default function TeacherGradesPage() {
     }
   };
 
+  const [publishing, setPublishing] = useState(false);
+  const [unpublishing, setUnpublishing] = useState(false);
+
+  const handleSendToStudents = async () => {
+    setPublishing(true);
+    setFeedback(null);
+    try {
+      if (hasUnsaved) await persistTemplateScores();
+      const instances = await listAssessmentsForPeriod(selectedClassId, selectedSubjectId, selectedPeriodId);
+      const instanceIds = new Set(instances.map((i) => i.id));
+      const toPublish = grades.filter((g) => g.assessmentId != null && instanceIds.has(String(g.assessmentId)));
+      for (const grade of toPublish) {
+        await sharedBridge.saveSchoolAdminRecord({
+          collection: 'grades',
+          record: { id: grade.id!, isPublished: true, status: 'PUBLISHED', publishedAt: new Date().toISOString() },
+        });
+      }
+      await reloadGrades(selectedPeriodId);
+      setFeedback({ kind: 'success', message: `${toPublish.length} score(s) sent to students.` });
+    } catch (cause) {
+      setFeedback({ kind: 'error', message: cause instanceof Error ? cause.message : 'Failed to send grades to students.' });
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  const handleUpdateGrades = async () => {
+    setUnpublishing(true);
+    setFeedback(null);
+    try {
+      const instances = await listAssessmentsForPeriod(selectedClassId, selectedSubjectId, selectedPeriodId);
+      const instanceIds = new Set(instances.map((i) => i.id));
+      const toUnpublish = grades.filter((g) => g.assessmentId != null && instanceIds.has(String(g.assessmentId)) && Boolean(g.isPublished));
+      for (const grade of toUnpublish) {
+        await sharedBridge.saveSchoolAdminRecord({
+          collection: 'grades',
+          record: { id: grade.id!, isPublished: false, status: 'DRAFT', publishedAt: null },
+        });
+      }
+      await reloadGrades(selectedPeriodId);
+    } catch (cause) {
+      setFeedback({ kind: 'error', message: cause instanceof Error ? cause.message : 'Failed to unlock grades.' });
+    } finally {
+      setUnpublishing(false);
+    }
+  };
+
   const filtersComplete = Boolean(selectedTermId && selectedClassId && selectedSubjectId && selectedPeriodId);
 
   if (assignments.status === 'error' && assignments.error.kind === 'database-unavailable') {
@@ -704,14 +751,33 @@ export default function TeacherGradesPage() {
                 </span>
               )}
               <div className="flex items-center gap-2 ml-auto">
-                <Button variant="secondary" onClick={() => void handleSave()} disabled={saving || !hasUnsaved}>
-                  <Save className="w-4 h-4 mr-2" />
-                  {saving ? 'Saving...' : 'Save'}
-                </Button>
-                <Button onClick={() => void handleSubmit()} disabled={submitting || !isWindowOpen}>
-                  <Send className="w-4 h-4 mr-2" />
-                  {submitting ? 'Submitting...' : 'Submit Grades'}
-                </Button>
+                {isExamPeriod ? (
+                  <>
+                    <Button variant="secondary" onClick={() => void handleSave()} disabled={saving || !hasUnsaved}>
+                      <Save className="w-4 h-4 mr-2" />
+                      {saving ? 'Saving...' : 'Save'}
+                    </Button>
+                    <Button onClick={() => void handleSubmit()} disabled={submitting || !isWindowOpen}>
+                      <Send className="w-4 h-4 mr-2" />
+                      {submitting ? 'Submitting...' : 'Submit Grades'}
+                    </Button>
+                  </>
+                ) : scoresPublished ? (
+                  <Button variant="secondary" onClick={() => void handleUpdateGrades()} disabled={unpublishing}>
+                    {unpublishing ? 'Unlocking...' : 'Update Grades'}
+                  </Button>
+                ) : (
+                  <>
+                    <Button variant="secondary" onClick={() => void handleSave()} disabled={saving || !hasUnsaved}>
+                      <Save className="w-4 h-4 mr-2" />
+                      {saving ? 'Saving...' : 'Save'}
+                    </Button>
+                    <Button onClick={() => void handleSendToStudents()} disabled={publishing || saving || roster.length === 0}>
+                      <Send className="w-4 h-4 mr-2" />
+                      {publishing ? 'Sending...' : 'Send to Students'}
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
           </div>
