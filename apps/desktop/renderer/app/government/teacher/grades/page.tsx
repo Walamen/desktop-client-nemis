@@ -217,7 +217,15 @@ export default function TeacherGradesPage() {
     }
   }, [selectedClassId, students]);
 
-  const roster = studentList.status === 'success' || studentList.status === 'refreshing' ? studentList.data : [];
+  // Memoized (rather than a bare ternary) so the empty-roster branch's `[]`
+  // is referentially stable across renders — the readiness-computation
+  // effect below now depends on `roster` itself (not just `.length`), and a
+  // fresh array literal on every render there would otherwise re-run it
+  // every render whenever there's no roster yet.
+  const roster = useMemo(
+    () => (studentList.status === 'success' || studentList.status === 'refreshing' ? studentList.data : []),
+    [studentList],
+  );
 
   const [grades, setGrades] = useState<SchoolAdminRecord[]>([]);
   const [loadingGrades, setLoadingGrades] = useState(false);
