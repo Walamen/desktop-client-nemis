@@ -24,6 +24,10 @@ const CONFIG: Record<
   staff: { columns: [], scope: 'institution' },
   staff_directory: { columns: [], scope: 'institution' },
   institution_admin: { columns: [], scope: 'institution' },
+  assessment_templates: {
+    columns: ['classId', 'subjectId', 'name', 'type', 'totalMarks', 'weight', 'date'],
+    scope: 'student',
+  },
   classes: { columns: [], scope: 'institution' },
   subjects: { columns: [], scope: 'institution' },
   timetable_entries: { columns: [], scope: 'institution' },
@@ -258,6 +262,7 @@ const ROLE_READ_COLLECTIONS: Readonly<Record<string, ReadonlySet<SchoolAdminColl
     'staff',
     'staff_directory',
     'institution_admin',
+    'assessment_templates',
     'classes',
     'subjects',
     'timetable_entries',
@@ -317,7 +322,7 @@ const ROLE_READ_COLLECTIONS: Readonly<Record<string, ReadonlySet<SchoolAdminColl
 
 const ROLE_WRITE_COLLECTIONS: Readonly<Record<string, ReadonlySet<SchoolAdminCollection>>> = {
   INSTITUTION_ADMIN: new Set(Object.keys(CONFIG) as SchoolAdminCollection[]),
-  TEACHER: new Set(['grades', 'messages', 'user_notifications']),
+  TEACHER: new Set(['grades', 'messages', 'user_notifications', 'assessment_templates']),
   COUNTY_ADMIN: new Set(['reports', 'alerts']),
   DEO: new Set(['student_transfers', 'reports', 'alerts']),
   MINISTRY_ADMIN: new Set(['reports', 'alerts']),
