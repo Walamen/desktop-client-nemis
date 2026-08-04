@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, CheckCircle, Copy, Edit2, Hash, Plus, Trash2, X } from 'lucide-react';
-import { Card, Button, Drawer, Spinner } from '@nemis-desktop/ui';
+import { Alert, Card, Button, Drawer, Spinner } from '@nemis-desktop/ui';
 import { PieChart, Pie, Cell, Legend, ResponsiveContainer } from 'recharts';
 import { useCurrentUserViewModel } from '@/lib/presentation/hooks/shared';
 import { useTeachingAssignmentViewModel } from '@/lib/presentation/hooks/school-admin';
@@ -130,6 +130,11 @@ export default function AssessmentSetupPage() {
   const [bulkErrors, setBulkErrors] = useState<Record<string, Record<string, string>>>({});
   const [bulkSaving, setBulkSaving] = useState(false);
 
+  // This page has no other error-feedback UI — the FK-backed delete guard
+  // below is the first place on this page an operation can fail in a way
+  // the teacher needs to be told about.
+  const [feedback, setFeedback] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
+
   const handleBulkRowChange = (id: string, field: keyof Omit<BulkRow, 'id'>, value: string) =>
     setBulkRows((prev) => prev.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
 
@@ -223,8 +228,20 @@ export default function AssessmentSetupPage() {
   };
 
   const handleDelete = async (id: string) => {
-    await sharedBridge.deleteSchoolAdminRecord({ collection: 'assessment_templates', id });
-    setReloadToken((t) => t + 1);
+    setFeedback(null);
+    try {
+      await sharedBridge.deleteSchoolAdminRecord({ collection: 'assessment_templates', id });
+      setReloadToken((t) => t + 1);
+    } catch (cause) {
+      // The local SQLite FK (assessments.templateId REFERENCES
+      // assessment_templates(id), foreign_keys=ON, no cascade) mirrors the
+      // backend's conflict() guard against deleting a template that already
+      // has recorded assessments. That failure currently maps to a generic
+      // IPC error message rather than a specific one, so this stays generic
+      // too rather than guessing at a message the error doesn't actually carry.
+      console.error('Failed to delete assessment template', cause);
+      setFeedback({ kind: 'error', message: 'Failed to delete assessment. It may already have recorded scores.' });
+    }
   };
 
   const [isCopyOpen, setIsCopyOpen] = useState(false);
@@ -322,6 +339,8 @@ export default function AssessmentSetupPage() {
             </div>
           </div>
         </Card>
+
+        {feedback && <Alert variant={feedback.kind === 'success' ? 'success' : 'error'}>{feedback.message}</Alert>}
 
         {!selectedClassId || !selectedSubjectId ? (
           <Card>

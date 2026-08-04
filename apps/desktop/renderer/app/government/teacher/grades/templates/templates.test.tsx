@@ -108,6 +108,46 @@ describe('Assessment Setup page', () => {
     expect(await screen.findByText('No assessments found.')).toBeInTheDocument();
   });
 
+  it('surfaces feedback instead of an unhandled rejection when deleting a template fails', async () => {
+    // Mirrors the local SQLite FK (assessments.templateId REFERENCES
+    // assessment_templates(id), foreign_keys=ON, no cascade) rejecting a
+    // delete for a template that already has recorded assessments — the
+    // desktop equivalent of the backend's conflict() guard. Before the fix,
+    // handleDelete had no try/catch at all, so this rejection would surface
+    // as an unhandled promise rejection with zero user-visible explanation.
+    const nemis = installBaseMock();
+    const layer = createRendererPresentation();
+    await layer.bootstrap.run();
+    render(
+      <PresentationProvider layer={layer}>
+        <AssessmentSetupPage />
+      </PresentationProvider>,
+    );
+
+    expect(await screen.findByText('Grade 10A')).toBeInTheDocument();
+    const [classSelect, subjectSelect] = screen.getAllByRole('combobox');
+    fireEvent.change(classSelect!, { target: { value: 'class-1' } });
+    fireEvent.change(subjectSelect!, { target: { value: 'sub-1' } });
+
+    fireEvent.click(await screen.findByText('Add Assessment'));
+    fireEvent.change(screen.getByPlaceholderText('Quiz 1'), { target: { value: 'Quiz 1' } });
+    fireEvent.change(screen.getByPlaceholderText('100'), { target: { value: '20' } });
+    fireEvent.click(screen.getByText('Create 1 Assessment'));
+    await screen.findByText('Quiz 1');
+
+    nemis.schoolAdmin.delete.mockRejectedValueOnce(new Error('[UNEXPECTED_ERROR] An unexpected error occurred.'));
+
+    const templateRow = screen.getByText('Quiz 1').closest('div.flex.items-start')!;
+    const rowButtons = templateRow.querySelectorAll('button');
+    fireEvent.click(rowButtons[1]!);
+
+    await waitFor(() => expect(nemis.schoolAdmin.delete).toHaveBeenCalled());
+    expect(await screen.findByText(/Failed to delete assessment/)).toBeInTheDocument();
+    // The row must still be there — the delete never actually happened, and
+    // reloadToken was never bumped for it.
+    expect(screen.getByText('Quiz 1')).toBeInTheDocument();
+  });
+
   it('bulk-creates multiple templates in one submission', async () => {
     const nemis = installBaseMock();
     const layer = createRendererPresentation();
