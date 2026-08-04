@@ -613,6 +613,7 @@ export default function TeacherGradesPage() {
               marksObtained: percentage,
               maxMarks: 100,
               percentage,
+              isPublished: existingPeriodGrade?.isPublished ?? false,
               status: 'SUBMITTED',
             },
           });
