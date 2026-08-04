@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, CheckCircle, Edit2, Hash, Plus, Trash2 } from 'lucide-react';
+import { AlertCircle, CheckCircle, Copy, Edit2, Hash, Plus, Trash2, X } from 'lucide-react';
 import { Card, Button, Drawer, Spinner } from '@nemis-desktop/ui';
 import { PieChart, Pie, Cell, Legend, ResponsiveContainer } from 'recharts';
 import { useCurrentUserViewModel } from '@/lib/presentation/hooks/shared';
@@ -222,6 +222,35 @@ export default function AssessmentSetupPage() {
     setReloadToken((t) => t + 1);
   };
 
+  const [isCopyOpen, setIsCopyOpen] = useState(false);
+  const [copyTargetSubjectId, setCopyTargetSubjectId] = useState('');
+  const [isCopying, setIsCopying] = useState(false);
+
+  const handleCopyToSubject = async () => {
+    if (!copyTargetSubjectId || templates.length === 0) return;
+    setIsCopying(true);
+    const targetTemplates = await listTemplatesForSubject(selectedClassId, copyTargetSubjectId);
+    for (const template of templates) {
+      const existing = targetTemplates.find((t) => t.name.toLowerCase() === template.name.toLowerCase());
+      await sharedBridge.saveSchoolAdminRecord({
+        collection: 'assessment_templates',
+        record: {
+          ...(existing ? { id: existing.id } : {}),
+          classId: selectedClassId,
+          subjectId: copyTargetSubjectId,
+          name: template.name,
+          type: template.type,
+          totalMarks: template.totalMarks,
+          weight: template.weight,
+          date: template.date,
+        },
+      });
+    }
+    setIsCopying(false);
+    setIsCopyOpen(false);
+    setCopyTargetSubjectId('');
+  };
+
   useEffect(() => {
     if (!selectedClassId || !selectedSubjectId) {
       setTemplates([]);
@@ -331,7 +360,13 @@ export default function AssessmentSetupPage() {
 
             <div className="lg:col-span-2">
               <Card title={`Assessments (${templates.length})`}>
-                <div className="flex justify-end mb-3">
+                <div className="flex justify-end gap-2 mb-3">
+                  {templates.length > 0 && (
+                    <Button variant="secondary" onClick={() => { setCopyTargetSubjectId(''); setIsCopyOpen(true); }}>
+                      <Copy className="w-4 h-4 mr-2" />
+                      Copy to Subject
+                    </Button>
+                  )}
                   <Button onClick={() => { setEditingId(null); setBulkRows([emptyBulkRow()]); setBulkErrors({}); setIsDrawerOpen(true); }}>
                     <Plus className="w-4 h-4 mr-2" />
                     Add Assessment
@@ -519,6 +554,41 @@ export default function AssessmentSetupPage() {
           </div>
         )}
       </Drawer>
+
+      {isCopyOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-slate-900">Copy to Subject</h3>
+              <button onClick={() => setIsCopyOpen(false)} className="p-1 rounded text-slate-400 hover:bg-slate-100">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-sm text-slate-500">
+              All {templates.length} assessment(s) from the current subject will be copied to the subject you select below.
+            </p>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Target Subject *</label>
+              <select
+                value={copyTargetSubjectId}
+                onChange={(e) => setCopyTargetSubjectId(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+              >
+                <option value="">— Select a subject —</option>
+                {(selectedClass?.subjects ?? [])
+                  .filter((s) => s.id !== selectedSubjectId)
+                  .map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="secondary" onClick={() => setIsCopyOpen(false)} disabled={isCopying}>Cancel</Button>
+              <Button onClick={() => void handleCopyToSubject()} disabled={!copyTargetSubjectId || isCopying}>
+                {isCopying ? 'Copying…' : (<><Copy className="w-4 h-4 mr-2" />Copy</>)}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

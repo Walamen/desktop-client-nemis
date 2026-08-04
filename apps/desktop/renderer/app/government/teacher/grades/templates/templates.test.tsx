@@ -20,6 +20,7 @@ function installBaseMock() {
       getDashboard: vi.fn(async () => ({ totalTeachers: 0, bySubject: [], byGrade: [], byEmploymentStatus: [], recentlyAdded: [], totalAssignments: 0, unassignedTeachers: 0 })),
       listAssignments: vi.fn(async (id: string) => (id === STAFF_ID ? [
         { id: 'a1', teacherId: STAFF_ID, institutionId: 'inst-1', academicYearId: 'ay-1', academicYearName: '2025/2026', classId: 'class-1', className: 'Grade 10A', gradeLevel: 'GRADE_10', subjectId: 'sub-1', subjectName: 'Mathematics', isClassTeacher: false, assignedAt: '2025-01-01T00:00:00.000Z' },
+        { id: 'a2', teacherId: STAFF_ID, institutionId: 'inst-1', academicYearId: 'ay-1', academicYearName: '2025/2026', classId: 'class-1', className: 'Grade 10A', gradeLevel: 'GRADE_10', subjectId: 'sub-2', subjectName: 'Science', isClassTeacher: false, assignedAt: '2025-01-01T00:00:00.000Z' },
       ] : [])),
     },
     student: { list: vi.fn(async () => ({ items: [], total: 0, limit: 1, offset: 0 })) },
@@ -139,5 +140,42 @@ describe('Assessment Setup page', () => {
     await waitFor(() => expect(nemis.schoolAdmin.save).toHaveBeenCalledTimes(2));
     expect(await screen.findByText('Quiz 1')).toBeInTheDocument();
     expect(screen.getByText('Quiz 2')).toBeInTheDocument();
+  });
+
+  it('copies templates from one subject to another', async () => {
+    const nemis = installBaseMock();
+    const layer = createRendererPresentation();
+    await layer.bootstrap.run();
+    render(
+      <PresentationProvider layer={layer}>
+        <AssessmentSetupPage />
+      </PresentationProvider>,
+    );
+
+    expect(await screen.findByText('Grade 10A')).toBeInTheDocument();
+    const [classSelect, subjectSelect] = screen.getAllByRole('combobox');
+    fireEvent.change(classSelect!, { target: { value: 'class-1' } });
+    fireEvent.change(subjectSelect!, { target: { value: 'sub-1' } });
+
+    // Create a template in the source subject (sub-1) via the bulk-create
+    // table's default row — "Add Assessment" opens bulk-create mode by
+    // default (Task 9); the single-record form is edit-only.
+    fireEvent.click(await screen.findByText('Add Assessment'));
+    fireEvent.change(screen.getByPlaceholderText('Quiz 1'), { target: { value: 'Quiz 1' } });
+    fireEvent.change(screen.getByPlaceholderText('100'), { target: { value: '20' } });
+    fireEvent.click(screen.getByText('Create 1 Assessment'));
+    await screen.findByText('Quiz 1');
+
+    fireEvent.click(screen.getByText('Copy to Subject'));
+    // The target-subject <select> in the copy modal carries no accessible
+    // name, so select it by DOM order (last of the now-three comboboxes:
+    // class, subject, copy-target) — same pattern used in grades.test.tsx.
+    const combos = screen.getAllByRole('combobox');
+    fireEvent.change(combos[combos.length - 1]!, { target: { value: 'sub-2' } });
+    fireEvent.click(screen.getByText('Copy'));
+
+    await waitFor(() => expect(nemis.schoolAdmin.save).toHaveBeenCalledWith(
+      expect.objectContaining({ record: expect.objectContaining({ name: 'Quiz 1', subjectId: 'sub-2' }) }),
+    ));
   });
 });
