@@ -392,7 +392,6 @@ export default function TeacherGradesPage() {
       for (const student of roster) {
         const score = templateScores[student.id]?.[template.id];
         if (score === undefined) continue;
-        const instances = await listAssessmentsForPeriod(selectedClassId, selectedSubjectId, selectedPeriodId);
         const existingGrade = grades.find(
           (g) => String(g.studentId) === student.id && String(g.assessmentId) === assessmentId,
         );
@@ -417,7 +416,6 @@ export default function TeacherGradesPage() {
             status: existingGrade?.status ?? 'DRAFT',
           },
         });
-        void instances; // instances refetched per-iteration above only to keep existingGrade lookups current across the loop; see design doc's race-window note.
       }
     }
     await reloadGrades(selectedPeriodId);
