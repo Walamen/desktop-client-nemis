@@ -120,4 +120,55 @@ describe('AssignmentsViewModel', () => {
     expect(outcome.ok).toBe(false);
     expect(notifications.store.getState().notifications.at(-1)?.kind).toBe('error');
   });
+
+  // These four cover the case where an assignment's id changed underneath a
+  // page a teacher is already viewing (a background sync's first-push id
+  // rewrite — see AssignmentSyncService.pushAssignment). The page's mutating
+  // action fails against the now-stale id it's still holding; reloading on
+  // that failure surfaces the same 'error' detail/submissions state a fresh
+  // page load would, which is what drives the existing auto-redirect in
+  // AssignmentDetailPage.tsx/AssignmentForm.tsx/SubmissionsTable.tsx.
+
+  it('updateAssignment reloads the detail on failure, surfacing a stale id instead of leaving stale state behind', async () => {
+    const { vm } = build();
+    const outcome = await vm.updateAssignment({
+      id: 'stale-id', teacherId: 'staff-1', status: AssignmentStatus.ACTIVE,
+    });
+    expect(outcome.ok).toBe(false);
+    expect(vm.store.getState().detail.status).toBe('error');
+  });
+
+  it('deleteAssignment reloads the detail on failure, surfacing a stale id instead of leaving stale state behind', async () => {
+    const { vm } = build();
+    const outcome = await vm.deleteAssignment({ id: 'stale-id', teacherId: 'staff-1' });
+    expect(outcome.ok).toBe(false);
+    expect(vm.store.getState().detail.status).toBe('error');
+  });
+
+  it('gradeSubmission reloads the submissions list even when grading fails for a reason other than a stale id', async () => {
+    const { vm, ports } = build();
+    const created = await vm.createAssignment(createDto);
+    const assignmentId = created.ok ? created.data.id : '';
+    ports.assignmentSubmissions.enrolledStudentsByAssignment.set(assignmentId, [
+      { studentId: 'stu-1', studentName: 'Ada Lovelace', admissionNumber: 'ADM-001' },
+    ]);
+    // A validation failure (negative grade), not an ownership/stale-id one —
+    // the assignment genuinely still exists under this id for this teacher.
+    const outcome = await vm.gradeSubmission({
+      assignmentId, studentId: 'stu-1', teacherId: 'staff-1', grade: -5,
+    });
+    expect(outcome.ok).toBe(false);
+    // So the reload succeeds and the table stays populated rather than being
+    // wiped by the failed grade attempt.
+    expect(vm.store.getState().submissions.status).toBe('success');
+  });
+
+  it('gradeSubmission surfaces a stale id when the assignment no longer exists under the held id', async () => {
+    const { vm } = build();
+    const outcome = await vm.gradeSubmission({
+      assignmentId: 'stale-id', studentId: 'stu-1', teacherId: 'staff-1', grade: 50,
+    });
+    expect(outcome.ok).toBe(false);
+    expect(vm.store.getState().submissions.status).toBe('error');
+  });
 });

@@ -133,6 +133,15 @@ export class AssignmentsViewModel {
     if (outcome.ok) {
       this.store.setState({ detail: { status: 'success', data: outcome.data } });
       await this.loadAssignments(dto.teacherId);
+    } else {
+      // A background sync can rewrite this assignment's id between the page
+      // loading it and the teacher submitting an edit (see
+      // AssignmentSyncService.pushAssignment) — reloading surfaces the same
+      // 'error' detail state a fresh page load would if the id is now
+      // genuinely gone, which is what drives AssignmentForm's existing
+      // auto-redirect. A failure for any other reason just refreshes detail
+      // back to its current server state.
+      await this.loadAssignment(dto.id, dto.teacherId);
     }
     return outcome;
   }
@@ -141,7 +150,12 @@ export class AssignmentsViewModel {
     this.store.setState({ mutationStatus: 'submitting' });
     const outcome = await this.deleteCommand.execute(dto);
     this.store.setState({ mutationStatus: outcome.ok ? 'submitted' : 'failed' });
-    if (outcome.ok) await this.loadAssignments(dto.teacherId);
+    if (outcome.ok) {
+      await this.loadAssignments(dto.teacherId);
+    } else {
+      // Same stale-id reasoning as updateAssignment's failure branch above.
+      await this.loadAssignment(dto.id, dto.teacherId);
+    }
     return outcome;
   }
 
@@ -151,7 +165,12 @@ export class AssignmentsViewModel {
     this.store.setState({ mutationStatus: 'submitting' });
     const outcome = await this.gradeCommand.execute(dto);
     this.store.setState({ mutationStatus: outcome.ok ? 'submitted' : 'failed' });
-    if (outcome.ok) await this.loadSubmissions(dto.assignmentId, dto.teacherId);
+    // Reload either way: on success this refreshes the graded row as before;
+    // on failure it surfaces a stale-id 'error' state the same way a fresh
+    // load would (driving SubmissionsTable's existing auto-redirect) if the
+    // assignment is genuinely gone, or just leaves the table as-is if the
+    // failure was for some other reason (e.g. a permission check).
+    await this.loadSubmissions(dto.assignmentId, dto.teacherId);
     return outcome;
   }
 }
