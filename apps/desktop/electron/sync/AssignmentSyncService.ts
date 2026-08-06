@@ -87,26 +87,39 @@ export class AssignmentSyncService {
     // UpdateAssignmentDto has no classId field on the backend (it never
     // changes after creation) — only include it on the first, create push.
     const isFirstPush = row.remoteId === null;
-    const result = isFirstPush
-      ? await this.gateway.createAssignment({ ...fields, classId: row.classId }, filePath)
-      : await this.gateway.updateAssignment(row.remoteId!, fields, filePath);
+    const result =
+      row.remoteId === null
+        ? await this.gateway.createAssignment({ ...fields, classId: row.classId }, filePath)
+        : await this.gateway.updateAssignment(row.remoteId, fields, filePath);
 
     const now = new Date().toISOString();
     if (isFirstPush) {
       // The backend mints its own id for a new assignment — it never accepts
       // a client-supplied one (see migration 020's doc comment). Canonicalize
-      // this row's local primary key to that server id now, before this
-      // device can have created any local assignment_submissions rows for it
-      // (submissions only ever arrive from the server / a pull, never
-      // created offline). Without this, the next snapshot pull would insert
-      // a *second* row for this assignment under the server id — see this
-      // file's class-level doc comment and ProvisioningImporter's plain
-      // upsert-by-id merge.
-      db.prepare(
-        `UPDATE assignments
-         SET id = ?, remoteId = ?, attachmentUrl = COALESCE(?, attachmentUrl), attachmentName = COALESCE(?, attachmentName), syncedAt = ?
-         WHERE id = ?`,
-      ).run(result.id, result.id, result.attachmentUrl ?? null, result.attachmentName ?? null, now, row.id);
+      // this row's local primary key to that server id now. Without this,
+      // the next snapshot pull would insert a *second* row for this
+      // assignment under the server id — see this file's class-level doc
+      // comment and ProvisioningImporter's plain upsert-by-id merge.
+      //
+      // A teacher can grade a synthesized "PENDING" row before this
+      // assignment has ever been pushed (see GradeSubmissionUseCase), which
+      // inserts a local assignment_submissions row keyed on the *local*
+      // assignment id. The cascade below re-points that row at the new
+      // canonical id so the rewrite doesn't orphan it.
+      const canonicalize = db.transaction((oldId: string, newId: string) => {
+        db.prepare(
+          `UPDATE assignments
+           SET id = ?, remoteId = ?, attachmentUrl = COALESCE(?, attachmentUrl), attachmentName = COALESCE(?, attachmentName), syncedAt = ?
+           WHERE id = ?`,
+        ).run(newId, newId, result.attachmentUrl ?? null, result.attachmentName ?? null, now, oldId);
+        // UPDATE OR IGNORE guards the (assignmentId,studentId) unique
+        // constraint in the extremely unlikely event a row already exists
+        // under the new id.
+        db.prepare(
+          `UPDATE OR IGNORE assignment_submissions SET assignmentId = ? WHERE assignmentId = ?`,
+        ).run(newId, oldId);
+      });
+      canonicalize(row.id, result.id);
     } else {
       db.prepare(
         `UPDATE assignments

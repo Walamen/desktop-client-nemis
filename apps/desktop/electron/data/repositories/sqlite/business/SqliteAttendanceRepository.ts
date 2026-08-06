@@ -100,7 +100,7 @@ export class SqliteAttendanceRepository implements IAttendanceRepository {
     return guarded('SqliteAttendanceRepository.findExistingId', () => {
       const row = this.#statements
         .get(
-          `SELECT id FROM ${TableNames.attendance} WHERE studentId = ? AND subjectId IS ? AND date = ?`,
+          `SELECT id FROM ${TableNames.attendance} WHERE studentId = ? AND subjectId IS ? AND date = ? ORDER BY updatedAt DESC LIMIT 1`,
         )
         .get(studentId, subjectId ?? null, date) as { id: string } | undefined;
       return row?.id;

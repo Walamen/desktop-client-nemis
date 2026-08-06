@@ -51,6 +51,22 @@ describe('AssignmentSyncService', () => {
     expect(row.syncedAt).toBeTruthy();
   });
 
+  it('cascades the id rewrite to a locally-graded submission created before the first push', async () => {
+    insertAssignment();
+    test.context.connection.prepare(`
+      INSERT INTO assignment_submissions (id,assignmentId,studentId,status,grade,feedback,createdAt,updatedAt,syncedAt)
+      VALUES ('s1','a1','stu-1','GRADED',90,'Great',?,?,NULL)
+    `).run('2026-08-02T00:00:00.000Z', '2026-08-02T00:00:00.000Z');
+
+    const gateway = buildGateway();
+    await new AssignmentSyncService(gateway).pushPending(test.context.connection);
+
+    const submission = test.context.connection.prepare(`SELECT assignmentId FROM assignment_submissions WHERE id='s1'`).get() as {
+      assignmentId: string;
+    };
+    expect(submission.assignmentId).toBe('remote-a1');
+  });
+
   it('a second pull-merge for the same assignment after its first push updates the canonical row instead of duplicating it', async () => {
     insertAssignment();
     const gateway = buildGateway();

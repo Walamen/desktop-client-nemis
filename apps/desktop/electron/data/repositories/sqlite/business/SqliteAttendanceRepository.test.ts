@@ -124,4 +124,23 @@ describe('SqliteAttendanceRepository', () => {
     expect(rows[0]?.id).toBe('att-1');
     expect(rows[0]?.status).toBe(AttendanceStatus.ABSENT);
   });
+
+  it('save() with the same id enqueues only a create then an update in sync_queue, never a delete', () => {
+    repo.save(
+      Attendance.record({
+        id: 'att-1', studentId: 'stu-1', classId: 'c-1', subjectId: 'subj-1',
+        date: '2026-07-20', status: AttendanceStatus.PRESENT, occurredAt: '2026-07-20T08:00:00.000Z',
+      }),
+    );
+    repo.save(
+      Attendance.record({
+        id: 'att-1', studentId: 'stu-1', classId: 'c-1', subjectId: 'subj-1',
+        date: '2026-07-20', status: AttendanceStatus.ABSENT, occurredAt: '2026-07-20T09:00:00.000Z',
+      }),
+    );
+    const ops = test.context.connection
+      .prepare(`SELECT operationType FROM sync_queue WHERE entityType='attendance' AND entityId='att-1' ORDER BY rowid`)
+      .all() as { operationType: string }[];
+    expect(ops.map((o) => o.operationType)).toEqual(['create', 'update']);
+  });
 });
