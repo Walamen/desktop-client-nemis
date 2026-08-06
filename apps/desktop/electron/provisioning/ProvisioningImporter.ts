@@ -161,6 +161,7 @@ export class ProvisioningImporter {
         for (const collection of PROVISIONING_COLLECTIONS) {
           upsertRows(db, SPECS[collection], snapshot.data[collection], options.merge ?? false);
         }
+        markPulledAssignmentsSynced(db, snapshot.data.assignments);
         verifyDatabase(db, snapshot, { skipCounts: options.merge ?? false });
         if (options.preserveConflicts) {
           db.prepare(`DELETE FROM sync_queue WHERE status='completed'`).run();
@@ -217,6 +218,28 @@ export class ProvisioningImporter {
 
 function spec(table: string, columns: readonly string[]): TableSpec {
   return { table, columns };
+}
+
+/** `remoteId`/`syncedAt` are desktop-only push-tracking columns (migration
+ * 020) — the server never sends them, so a pulled assignment always lands
+ * with both NULL via the generic upsert above. Left alone, that makes
+ * AssignmentSyncService.pushPending() treat a web-created (or otherwise
+ * not-yet-seen-by-this-device) assignment as never-pushed, re-creating it as
+ * a duplicate on the server every sync cycle. A row already canonicalized by
+ * this device's own first push (Task 4 of the sync-conflict-fixes plan) is
+ * unaffected: its remoteId is already non-NULL, and `id` already equals it.
+ * The `remoteId IS NULL` guard also means a locally-created, not-yet-pushed
+ * assignment (absent from `rows` because the server has never seen it) is
+ * never touched by this loop. */
+function markPulledAssignmentsSynced(db: SqliteDatabase, rows: readonly ProvisioningRow[]): void {
+  if (rows.length === 0) return;
+  const statement = db.prepare(
+    `UPDATE assignments SET remoteId = ?, syncedAt = ? WHERE id = ? AND remoteId IS NULL`,
+  );
+  for (const row of rows) {
+    const id = String(row.id);
+    statement.run(id, row.updatedAt == null ? null : String(row.updatedAt), id);
+  }
 }
 
 function validateEnvelope(snapshot: ProvisioningSnapshot, context: ImportContext): void {

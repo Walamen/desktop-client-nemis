@@ -219,6 +219,42 @@ describe('ProvisioningImporter', () => {
     expect(metadata.lastError).toMatch(/UNIQUE/i);
   });
 
+  it('marks a pulled assignment as already-synced, so it is not re-pushed as a duplicate', () => {
+    // A web-created (or otherwise not-yet-seen-by-this-device) assignment
+    // arrives with no local remoteId/syncedAt bookkeeping — those columns are
+    // desktop-only and never sent by the server. Without this,
+    // AssignmentSyncService.pushPending() would treat it as never-pushed and
+    // create a duplicate on the server every sync cycle.
+    const importer = new ProvisioningImporter(manager);
+    importer.import(snapshotOf({ ...BASE_DATA, assignments: [assignment('a1')] }), CONTEXT);
+
+    const row = manager.connection
+      .prepare('SELECT remoteId, syncedAt FROM assignments WHERE id=?')
+      .get('a1') as { remoteId: string | null; syncedAt: string | null };
+    expect(row.remoteId).toBe('a1');
+    expect(row.syncedAt).toBe('2026-01-01T00:00:00.000Z');
+  });
+
+  it('does not touch a locally-created assignment the snapshot never mentions (still pending its first push)', () => {
+    const importer = new ProvisioningImporter(manager);
+    importer.import(snapshotOf(BASE_DATA), CONTEXT);
+    // Simulates AssignmentSyncService.pushPending() inserting a row this
+    // device created offline, before it has ever been pushed.
+    manager.connection.prepare(`
+      INSERT INTO assignments (id,classId,subjectId,teacherId,title,type,status,dueDate,createdAt,updatedAt,remoteId,syncedAt)
+      VALUES ('local-1','class-1',NULL,'staff-1','Local homework','HOMEWORK','DRAFT','2026-02-01',?,?,NULL,NULL)
+    `).run('2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z');
+
+    // A later delta pull that says nothing about this assignment — the
+    // server has never seen it, so it cannot appear in the snapshot.
+    importer.import(snapshotOf(BASE_DATA), CONTEXT, { merge: true });
+
+    const row = manager.connection
+      .prepare('SELECT remoteId FROM assignments WHERE id=?')
+      .get('local-1') as { remoteId: string | null };
+    expect(row.remoteId).toBeNull();
+  });
+
   function countRows(table: string): number {
     return (manager.connection.prepare(`SELECT COUNT(*) count FROM ${table}`).get() as { count: number }).count;
   }
@@ -258,6 +294,16 @@ function student(id: string, firstName: string): ProvisioningRow {
     version: 1,
     updatedAt: '2026-01-01T00:00:00.000Z',
     lastModifiedBy: null,
+  };
+}
+
+function assignment(id: string, classId = 'class-1'): ProvisioningRow {
+  return {
+    id, classId, subjectId: null, teacherId: 'staff-1',
+    title: 'Chapter 5', type: 'HOMEWORK', status: 'PUBLISHED',
+    description: null, instructions: null, dueDate: '2026-02-01',
+    totalMarks: null, attachmentUrl: null, attachmentName: null,
+    createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
   };
 }
 
