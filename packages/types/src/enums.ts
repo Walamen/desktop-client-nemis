@@ -196,3 +196,28 @@ export const DayOfWeek = {
   SUNDAY: 'SUNDAY',
 } as const;
 export type DayOfWeek = (typeof DayOfWeek)[keyof typeof DayOfWeek];
+
+export const AssignmentType = {
+  HOMEWORK: 'HOMEWORK',
+  PROJECT: 'PROJECT',
+  QUIZ: 'QUIZ',
+  TEST: 'TEST',
+  EXAM: 'EXAM',
+  PRESENTATION: 'PRESENTATION',
+} as const;
+export type AssignmentType = (typeof AssignmentType)[keyof typeof AssignmentType];
+
+export const AssignmentStatus = {
+  DRAFT: 'DRAFT',
+  ACTIVE: 'ACTIVE',
+  CLOSED: 'CLOSED',
+} as const;
+export type AssignmentStatus = (typeof AssignmentStatus)[keyof typeof AssignmentStatus];
+
+export const SubmissionStatus = {
+  PENDING: 'PENDING',
+  SUBMITTED: 'SUBMITTED',
+  GRADED: 'GRADED',
+  LATE: 'LATE',
+} as const;
+export type SubmissionStatus = (typeof SubmissionStatus)[keyof typeof SubmissionStatus];

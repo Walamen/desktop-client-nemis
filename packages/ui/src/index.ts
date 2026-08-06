@@ -17,3 +17,4 @@ export * from './Breadcrumbs';
 export * from './Dropdown';
 export * from './Skeleton';
 export * from './ErrorState';
+export * from './RichTextEditor';

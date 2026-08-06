@@ -96,3 +96,18 @@ export * from './services/teacher-application-service';
 export * from './use-cases/provisioning/authentication';
 export * from './use-cases/timetables/timetable-use-cases';
 export * from './services/timetable-application-service';
+export * from './dto/assignments/assignment-dto';
+export * from './use-cases/assignments/list-assignments';
+export * from './use-cases/assignments/get-assignment';
+export * from './use-cases/assignments/create-assignment';
+// Named (not `export *`) to avoid colliding with teacher-use-cases.ts's own
+// UpdateAssignmentUseCase (teaching-assignment updates — an unrelated
+// "assignment" concept: which subject a teacher teaches, not homework).
+export {
+  UpdateAssignmentUseCase as UpdateHomeworkAssignmentUseCase,
+  type UpdateAssignmentDeps as UpdateHomeworkAssignmentDeps,
+} from './use-cases/assignments/update-assignment';
+export * from './use-cases/assignments/delete-assignment';
+export * from './use-cases/assignments/list-submissions';
+export * from './use-cases/assignments/grade-submission';
+export * from './services/assignments-application-service';

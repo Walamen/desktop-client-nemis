@@ -2,7 +2,7 @@ import { contextBridge } from 'electron';
 import type { NemisApi } from '@nemis-desktop/types';
 import { sharedApi } from './shared';
 import { schoolAdminApi, teacherDirectoryApi } from './school-admin';
-import { teacherDashboardApi } from './teacher';
+import { teacherDashboardApi, assignmentApi } from './teacher';
 import { deepFreeze } from './deep-freeze';
 import './county';
 import './deo';
@@ -27,6 +27,7 @@ const nemisApi: NemisApi = {
     ...teacherDirectoryApi,
     ...teacherDashboardApi,
   },
+  assignment: assignmentApi,
 };
 
 // Deep-frozen before crossing the context bridge: renderer code runs in a

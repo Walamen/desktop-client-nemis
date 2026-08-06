@@ -64,6 +64,49 @@ export class BackendProvisioningGateway {
     );
   }
 
+  // ─── Teacher assignments — dedicated push path ───────────────────────────
+  // Not part of the generic sync_queue/outbox mechanism: the backend's
+  // desktop-sync-applier has no case for this entity type at all (see
+  // migration 019's doc comment), and these endpoints carry an optional file
+  // upload the generic JSON payload mechanism can't. Reuses the same
+  // cookie-session authorized() plumbing as everything else here — just with
+  // a FormData body when a local attachment needs uploading.
+
+  async createAssignment(
+    fields: Readonly<Record<string, string>>,
+    filePath?: string,
+  ): Promise<AssignmentPushResult> {
+    return this.authorized(
+      '/teacher/assignments',
+      { method: 'POST', body: await buildAssignmentBody(fields, filePath) },
+      validateAssignmentPushResult,
+    );
+  }
+
+  async updateAssignment(
+    remoteId: string,
+    fields: Readonly<Record<string, string>>,
+    filePath?: string,
+  ): Promise<AssignmentPushResult> {
+    return this.authorized(
+      `/teacher/assignments/${encodeURIComponent(remoteId)}`,
+      { method: 'PATCH', body: await buildAssignmentBody(fields, filePath) },
+      validateAssignmentPushResult,
+    );
+  }
+
+  async gradeSubmission(
+    assignmentRemoteId: string,
+    studentId: string,
+    payload: { grade: number; feedback?: string },
+  ): Promise<void> {
+    await this.authorized(
+      `/teacher/assignments/${encodeURIComponent(assignmentRemoteId)}/submissions/${encodeURIComponent(studentId)}/grade`,
+      { method: 'POST', body: JSON.stringify(payload) },
+      () => undefined,
+    );
+  }
+
   private async authorized<T>(
     path: string,
     init: RequestInit,
@@ -82,13 +125,16 @@ export class BackendProvisioningGateway {
       throw error;
     }
     const cookies = unwrapCookies(restored.sessionSecret);
+    // FormData bodies must NOT get a hardcoded content-type — fetch derives
+    // the correct `multipart/form-data; boundary=...` from the body itself.
+    const isFormData = init.body instanceof FormData;
     let response: Response;
     try {
       response = await fetch(new URL(path, this.baseUrl), {
         ...init,
         headers: {
           accept: 'application/json',
-          'content-type': 'application/json',
+          ...(isFormData ? {} : { 'content-type': 'application/json' }),
           'x-app-context': 'desktop',
           cookie: cookies,
           ...init.headers,
@@ -104,6 +150,26 @@ export class BackendProvisioningGateway {
     const root = asRecord(await response.json());
     return validate(root.data);
   }
+}
+
+export interface AssignmentPushResult {
+  id: string;
+  attachmentUrl?: string;
+  attachmentName?: string;
+}
+
+async function buildAssignmentBody(
+  fields: Readonly<Record<string, string>>,
+  filePath?: string,
+): Promise<string | FormData> {
+  if (!filePath) return JSON.stringify(fields);
+  const { readFile } = await import('node:fs/promises');
+  const { basename } = await import('node:path');
+  const form = new FormData();
+  for (const [key, value] of Object.entries(fields)) form.append(key, value);
+  const buffer = await readFile(filePath);
+  form.append('file', new Blob([buffer]), basename(filePath));
+  return form;
 }
 
 function validateDevice(value: unknown): RegisteredDevice {
@@ -153,6 +219,18 @@ function validateSnapshot(value: unknown): ProvisioningSnapshot {
     }
   }
   return snapshot as unknown as ProvisioningSnapshot;
+}
+
+function validateAssignmentPushResult(value: unknown): AssignmentPushResult {
+  const row = asRecord(value);
+  if (typeof row.id !== 'string' || row.id.length === 0) {
+    throw new Error('Assignment push response is invalid.');
+  }
+  return {
+    id: row.id,
+    attachmentUrl: typeof row.attachmentUrl === 'string' ? row.attachmentUrl : undefined,
+    attachmentName: typeof row.attachmentName === 'string' ? row.attachmentName : undefined,
+  };
 }
 
 function validateSyncResult(value: unknown): DesktopSyncPushResult {

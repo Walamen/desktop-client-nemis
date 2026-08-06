@@ -1,17 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import {
   ApprovalStatus,
+  AssignmentStatus,
   AttendanceStatus,
   EnrollmentStatus,
   GradeStatus,
+  SubmissionStatus,
 } from '@nemis-desktop/types';
 import {
   presentActive,
   presentApprovalStatus,
+  presentAssignmentStatus,
   presentAttendanceStatus,
   presentConnectivity,
   presentEnrollmentStatus,
   presentGradeStatus,
+  presentSubmissionStatus,
   presentSyncStatus,
 } from './present-status';
 
@@ -54,6 +58,21 @@ describe('status presenters', () => {
   it('presents approval statuses', () => {
     expect(presentApprovalStatus(ApprovalStatus.APPROVED).badge).toBe('success');
     expect(presentApprovalStatus(ApprovalStatus.UNDER_REVIEW).label).toBe('Under review');
+  });
+
+  it('presents assignment statuses', () => {
+    expect(presentAssignmentStatus(AssignmentStatus.DRAFT)).toEqual({ label: 'Draft', badge: 'neutral' });
+    expect(presentAssignmentStatus(AssignmentStatus.ACTIVE).badge).toBe('success');
+    expect(presentAssignmentStatus(AssignmentStatus.CLOSED).badge).toBe('pending');
+  });
+
+  it('presents submission statuses', () => {
+    expect(presentSubmissionStatus(SubmissionStatus.PENDING)).toEqual({
+      label: 'Pending',
+      badge: 'neutral',
+    });
+    expect(presentSubmissionStatus(SubmissionStatus.GRADED).badge).toBe('success');
+    expect(presentSubmissionStatus(SubmissionStatus.LATE).badge).toBe('pending');
   });
 
   it('presents sync and connectivity', () => {

@@ -14,13 +14,14 @@ interface AttendanceRow {
   date: string;
   status: string;
   recordedBy: string | null;
+  remarks: string | null;
+  updateReason: string | null;
   updatedAt: string;
 }
 
 /** Rebuilds an Attendance aggregate from a row. Lossy by necessity: the domain
- * entity has no reconstitute and exposes no subjectId/recordedBy getters, so
- * those round-trip as stored (may be NULL) and version resets to 1. The
- * dashboard never reads these; it uses countByDate (exact SQL). */
+ * entity has no reconstitute, so version resets to 1. The dashboard never
+ * reads these; it uses countByDate (exact SQL). */
 function toAttendance(row: AttendanceRow): Attendance {
   return Attendance.record({
     id: row.id,
@@ -30,13 +31,13 @@ function toAttendance(row: AttendanceRow): Attendance {
     date: row.date,
     status: row.status as AttendanceStatus,
     recordedBy: row.recordedBy ?? undefined,
+    remarks: row.remarks ?? undefined,
+    updateReason: row.updateReason ?? undefined,
     occurredAt: row.updatedAt,
   });
 }
 
-/** SQLite adapter for IAttendanceRepository. Only countByDate is on the
- * dashboard path; save/findByClassAndDate are implemented for port completeness
- * (no attendance CRUD UI this phase). */
+/** SQLite adapter for IAttendanceRepository. */
 export class SqliteAttendanceRepository implements IAttendanceRepository {
   readonly #statements: StatementCache;
 
@@ -46,23 +47,30 @@ export class SqliteAttendanceRepository implements IAttendanceRepository {
 
   save(attendance: Attendance): void {
     guarded('SqliteAttendanceRepository.save', () => {
-      // Class attendance is one current record per student and day. Replace
-      // the previous record inside the use case's unit-of-work transaction so
-      // repeated saves cannot inflate reports with duplicate rows.
+      // One current record per (student, subject, date) — mirrors the web
+      // backend's studentId_subjectId_date unique constraint (classId is not
+      // part of the key: a student sits in one class, so it never varies for
+      // a given studentId). Replace the previous record inside the use case's
+      // unit-of-work transaction so repeated saves cannot inflate reports
+      // with duplicate rows. SQLite's `IS ?` (rather than `= ?`) correctly
+      // matches NULL when subjectId is unset (general, subject-less marking).
       this.#statements
         .get(
           `DELETE FROM ${TableNames.attendance}
-           WHERE studentId = ? AND classId = ? AND date = ? AND subjectId IS NULL`,
+           WHERE studentId = ? AND subjectId IS ? AND date = ?`,
         )
-        .run(attendance.studentId, attendance.classId, attendance.date);
+        .run(attendance.studentId, attendance.subjectId ?? null, attendance.date);
       this.#statements
         .get(
           `INSERT INTO ${TableNames.attendance}
-           (id, studentId, classId, subjectId, date, status, recordedBy, version, updatedAt, lastModifiedBy, deviceId)
-           VALUES (?, ?, ?, NULL, ?, ?, NULL, ?, ?, ?, NULL)
+           (id, studentId, classId, subjectId, date, status, recordedBy, remarks, updateReason, version, updatedAt, lastModifiedBy, deviceId)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
            ON CONFLICT(id) DO UPDATE SET
              status = excluded.status,
              date = excluded.date,
+             recordedBy = excluded.recordedBy,
+             remarks = excluded.remarks,
+             updateReason = excluded.updateReason,
              version = excluded.version,
              updatedAt = excluded.updatedAt,
              lastModifiedBy = excluded.lastModifiedBy`,
@@ -71,8 +79,12 @@ export class SqliteAttendanceRepository implements IAttendanceRepository {
           attendance.id,
           attendance.studentId,
           attendance.classId,
+          attendance.subjectId ?? null,
           attendance.date,
           attendance.status,
+          attendance.recordedBy ?? null,
+          attendance.remarks ?? null,
+          attendance.updateReason ?? null,
           attendance.version,
           attendance.updatedAt,
           attendance.lastModifiedBy ?? null,
@@ -80,14 +92,21 @@ export class SqliteAttendanceRepository implements IAttendanceRepository {
     });
   }
 
-  findByClassAndDate(classId: string, date: string): Attendance[] {
+  findByClassAndDate(classId: string, date: string, subjectId?: string): Attendance[] {
     return guarded('SqliteAttendanceRepository.findByClassAndDate', () => {
-      const rows = this.#statements
-        .get(
-          `SELECT id, studentId, classId, subjectId, date, status, recordedBy, updatedAt
-           FROM ${TableNames.attendance} WHERE classId = ? AND date = ?`,
-        )
-        .all(classId, date) as AttendanceRow[];
+      const columns =
+        'id, studentId, classId, subjectId, date, status, recordedBy, remarks, updateReason, updatedAt';
+      const rows =
+        subjectId === undefined
+          ? (this.#statements
+              .get(`SELECT ${columns} FROM ${TableNames.attendance} WHERE classId = ? AND date = ?`)
+              .all(classId, date) as AttendanceRow[])
+          : (this.#statements
+              .get(
+                `SELECT ${columns} FROM ${TableNames.attendance}
+                 WHERE classId = ? AND date = ? AND subjectId = ?`,
+              )
+              .all(classId, date, subjectId) as AttendanceRow[]);
       return rows.map(toAttendance);
     });
   }

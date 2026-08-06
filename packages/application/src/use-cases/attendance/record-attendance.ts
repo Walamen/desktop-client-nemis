@@ -47,6 +47,8 @@ export class RecordAttendanceUseCase implements CommandHandler<
         date: command.date,
         status: command.status,
         recordedBy: command.recordedBy,
+        remarks: command.remarks,
+        updateReason: command.updateReason,
         occurredAt,
       });
       this.deps.unitOfWork.run(() => this.deps.attendance.save(attendance));

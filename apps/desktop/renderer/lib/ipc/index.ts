@@ -1,8 +1,12 @@
-import type { ApplicationLayer, TeacherApplicationService } from '@nemis-desktop/application';
+import type {
+  ApplicationLayer,
+  AssignmentsApplicationService,
+  TeacherApplicationService,
+} from '@nemis-desktop/application';
 import { group } from './core';
 import { sharedIpc } from './shared';
 import { schoolAdminIpc } from './school-admin';
-import { teacherIpc, teacherAssessments } from './teacher';
+import { teacherIpc, teacherAssessments, assignmentsIpc } from './teacher';
 import './county';
 import './deo';
 import './ministry-portal';
@@ -13,7 +17,7 @@ import './ministry-portal';
  *   lib/ipc/shared.ts       — identity, infra, attendance
  *   lib/ipc/school-admin.ts — reporting, institution, academics, students,
  *                             timetables, staff-directory (teachers, minus dashboard)
- *   lib/ipc/teacher.ts      — teachers.dashboard, assessments (stub)
+ *   lib/ipc/teacher.ts      — teachers.dashboard, assignments (full), assessments (stub)
  *   lib/ipc/county.ts, deo.ts, ministry-portal.ts — placeholders, no
  *                             ApplicationLayer keys of their own yet
  * The `teachers` service is the one key genuinely owned by two portals: its
@@ -34,6 +38,7 @@ export function createIpcApplicationLayer(): ApplicationLayer {
       ...teacherIpc,
     }),
     assessments: group('assessments', teacherAssessments),
+    assignments: group<AssignmentsApplicationService>('assignments', assignmentsIpc),
   };
   // Private class fields prevent structural typing; this cast is intentional.
   return facade as unknown as ApplicationLayer;

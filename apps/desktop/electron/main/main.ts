@@ -232,6 +232,7 @@ function deferredApplication(get: () => ApplicationLayer): ApplicationLayer {
     reporting: deferredMember(get, 'reporting'),
     teachers: deferredMember(get, 'teachers'),
     timetables: deferredMember(get, 'timetables'),
+    assignments: deferredMember(get, 'assignments'),
   };
 }
 

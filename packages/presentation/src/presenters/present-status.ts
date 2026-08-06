@@ -1,8 +1,10 @@
 import {
   ApprovalStatus,
+  AssignmentStatus,
   AttendanceStatus,
   EnrollmentStatus,
   GradeStatus,
+  SubmissionStatus,
 } from '@nemis-desktop/types';
 import { formatIsoDateTime } from '../formatters/format-date';
 import type { StatusPresentation, SyncStatus } from './status-presentation';
@@ -59,6 +61,27 @@ const APPROVAL: Record<ApprovalStatus, StatusPresentation> = {
 
 export function presentApprovalStatus(status: ApprovalStatus): StatusPresentation {
   return APPROVAL[status];
+}
+
+const ASSIGNMENT: Record<AssignmentStatus, StatusPresentation> = {
+  [AssignmentStatus.DRAFT]: { label: 'Draft', badge: 'neutral' },
+  [AssignmentStatus.ACTIVE]: { label: 'Active', badge: 'success' },
+  [AssignmentStatus.CLOSED]: { label: 'Closed', badge: 'pending' },
+};
+
+export function presentAssignmentStatus(status: AssignmentStatus): StatusPresentation {
+  return ASSIGNMENT[status];
+}
+
+const SUBMISSION: Record<SubmissionStatus, StatusPresentation> = {
+  [SubmissionStatus.PENDING]: { label: 'Pending', badge: 'neutral' },
+  [SubmissionStatus.SUBMITTED]: { label: 'Submitted', badge: 'active' },
+  [SubmissionStatus.GRADED]: { label: 'Graded', badge: 'success' },
+  [SubmissionStatus.LATE]: { label: 'Late', badge: 'pending' },
+};
+
+export function presentSubmissionStatus(status: SubmissionStatus): StatusPresentation {
+  return SUBMISSION[status];
 }
 
 export function presentSyncStatus(

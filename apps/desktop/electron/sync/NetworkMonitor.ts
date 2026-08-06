@@ -63,7 +63,14 @@ export class NetworkMonitor implements ConnectivitySource {
     try {
       // Any HTTP response (even 401/403) proves the network path is up —
       // only a thrown network-level error (timeout/DNS/refused) means offline.
-      await fetch(this.#probeUrl, { signal: AbortSignal.timeout(PROBE_TIMEOUT_MS) });
+      // x-app-context identifies this as the desktop app (same convention as
+      // BackendProvisioningGateway/BackendAuthenticationGateway) so the server
+      // can log a single "Online" line for these probes instead of nothing
+      // identifying them.
+      await fetch(this.#probeUrl, {
+        signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
+        headers: { "x-app-context": "desktop" },
+      });
       return true;
     } catch {
       return false;

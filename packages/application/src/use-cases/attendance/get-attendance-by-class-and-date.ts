@@ -23,7 +23,7 @@ export class GetAttendanceByClassAndDateUseCase implements QueryHandler<
   execute(query: GetAttendanceByClassAndDateDto): Promise<ApplicationResponse<AttendanceOutput[]>> {
     return invokeUseCase('GetAttendanceByClassAndDate', this.deps.logger, async () => {
       const records = this.deps.attendance
-        .findByClassAndDate(query.classId, query.date)
+        .findByClassAndDate(query.classId, query.date, query.subjectId)
         .map(toAttendanceOutput);
       return ok(records);
     });

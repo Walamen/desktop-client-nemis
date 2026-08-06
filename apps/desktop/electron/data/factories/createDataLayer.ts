@@ -11,6 +11,8 @@ import type {
   IEnrollmentRepository,
   ITeacherRepository,
   ITimetableRepository,
+  IAssignmentRepository,
+  IAssignmentSubmissionRepository,
 } from '@nemis-desktop/application';
 import type { DatabaseLogger, DatabaseManager } from '../../database/DatabaseManager';
 import { translateDatabaseError } from '../errors/translateError';
@@ -32,6 +34,8 @@ import { SqliteGuardianRepository } from '../repositories/sqlite/business/Sqlite
 import { SqliteEnrollmentRepository } from '../repositories/sqlite/business/SqliteEnrollmentRepository';
 import { SqliteTeacherRepository } from '../repositories/sqlite/business/SqliteTeacherRepository';
 import { SqliteTimetableRepository } from '../repositories/sqlite/business/SqliteTimetableRepository';
+import { SqliteAssignmentRepository } from '../repositories/sqlite/business/SqliteAssignmentRepository';
+import { SqliteAssignmentSubmissionRepository } from '../repositories/sqlite/business/SqliteAssignmentSubmissionRepository';
 import { SqliteAppSettingsRepository } from '../repositories/sqlite/SqliteAppSettingsRepository';
 import { SqliteAuditLogRepository } from '../repositories/sqlite/SqliteAuditLogRepository';
 import { SqliteDeviceRepository } from '../repositories/sqlite/SqliteDeviceRepository';
@@ -63,6 +67,8 @@ export interface DataLayer {
     enrollments: IEnrollmentRepository;
     teachers: ITeacherRepository;
     timetables: ITimetableRepository;
+    assignments: IAssignmentRepository;
+    assignmentSubmissions: IAssignmentSubmissionRepository;
   };
   services: {
     device: DeviceService;
@@ -123,6 +129,8 @@ export function createDataLayer(manager: DatabaseManager, log: DatabaseLogger): 
   const enrollments = new SqliteEnrollmentRepository(context);
   const teachers = new SqliteTeacherRepository(context);
   const timetables = new SqliteTimetableRepository(context);
+  const assignments = new SqliteAssignmentRepository(context);
+  const assignmentSubmissions = new SqliteAssignmentSubmissionRepository(context);
 
   // Services see only the RepositoryError taxonomy: failures of the
   // transaction machinery itself (BEGIN/COMMIT, closed-connection errors)
@@ -166,6 +174,8 @@ export function createDataLayer(manager: DatabaseManager, log: DatabaseLogger): 
       enrollments,
       teachers,
       timetables,
+      assignments,
+      assignmentSubmissions,
     },
     services: {
       device: new DeviceService({ devices }),

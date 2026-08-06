@@ -1,6 +1,8 @@
 import { IPCError } from '@nemis-desktop/shared';
 import {
   AcademicYearStatus,
+  AssignmentStatus,
+  AssignmentType,
   AttendanceStatus,
   DayOfWeek,
   EmploymentType,
@@ -603,22 +605,27 @@ export function assertAttendanceListArgs(args: readonly unknown[]): void {
   assertArity(args, 1);
   const [request] = args;
   if (!isPlainObject(request)) throw new IPCError('Expected a request object.');
-  assertKnownKeys(request, ['classId', 'date']);
+  assertKnownKeys(request, ['classId', 'date', 'subjectId']);
   assertString(request.classId, 'classId', ID_MAX_LENGTH);
   assertIsoDate(request.date, 'date');
+  assertOptionalString(request.subjectId, 'subjectId', ID_MAX_LENGTH);
 }
 
 export function assertRecordAttendanceArgs(args: readonly unknown[]): void {
   assertArity(args, 1);
   const [request] = args;
   if (!isPlainObject(request)) throw new IPCError('Expected a request object.');
-  assertKnownKeys(request, ['studentId', 'classId', 'subjectId', 'date', 'status', 'recordedBy']);
+  assertKnownKeys(request, [
+    'studentId', 'classId', 'subjectId', 'date', 'status', 'recordedBy', 'remarks', 'updateReason',
+  ]);
   assertString(request.studentId, 'studentId', ID_MAX_LENGTH);
   assertString(request.classId, 'classId', ID_MAX_LENGTH);
   assertOptionalString(request.subjectId, 'subjectId', ID_MAX_LENGTH);
   assertIsoDate(request.date, 'date');
   assertEnumMember(request.status, 'status', Object.values(AttendanceStatus));
   assertOptionalString(request.recordedBy, 'recordedBy', ID_MAX_LENGTH);
+  assertOptionalString(request.remarks, 'remarks', DESCRIPTION_MAX_LENGTH);
+  assertOptionalString(request.updateReason, 'updateReason', DESCRIPTION_MAX_LENGTH);
 }
 
 export function assertCreateAcademicYearArgs(args: readonly unknown[]): void {
@@ -770,4 +777,84 @@ export function assertClassSubjectPairArgs(args: readonly unknown[]): void {
   assertKnownKeys(request, ['classId', 'subjectId']);
   assertString(request.classId, 'classId', ID_MAX_LENGTH);
   assertString(request.subjectId, 'subjectId', ID_MAX_LENGTH);
+}
+
+// --- Teacher Assignments -------------------------------------------------
+
+function assertNonNegativeNumber(value: unknown, field: string): void {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+    throw new IPCError(`Expected "${field}" to be a number >= 0.`);
+  }
+}
+
+function assertOptionalNonNegativeNumber(value: unknown, field: string): void {
+  if (value === undefined) return;
+  assertNonNegativeNumber(value, field);
+}
+
+export function assertListAssignmentsArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [request] = args;
+  if (!isPlainObject(request)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(request, ['classId', 'status']);
+  assertOptionalString(request.classId, 'classId', ID_MAX_LENGTH);
+  assertOptionalEnumMember(request.status, 'status', Object.values(AssignmentStatus));
+}
+
+export function assertCreateAssignmentArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [request] = args;
+  if (!isPlainObject(request)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(request, [
+    'classId', 'subjectId', 'title', 'type', 'status', 'instructions', 'dueDate', 'totalMarks',
+    'attachmentFilePath',
+  ]);
+  assertString(request.classId, 'classId', ID_MAX_LENGTH);
+  assertOptionalString(request.subjectId, 'subjectId', ID_MAX_LENGTH);
+  assertString(request.title, 'title', NAME_MAX_LENGTH);
+  assertEnumMember(request.type, 'type', Object.values(AssignmentType));
+  // Only DRAFT/ACTIVE at creation — CLOSED is reached later via update.
+  assertEnumMember(request.status, 'status', [AssignmentStatus.DRAFT, AssignmentStatus.ACTIVE]);
+  assertOptionalString(request.instructions, 'instructions', DESCRIPTION_MAX_LENGTH);
+  assertIsoDate(request.dueDate, 'dueDate');
+  assertOptionalNonNegativeNumber(request.totalMarks, 'totalMarks');
+  assertOptionalString(request.attachmentFilePath, 'attachmentFilePath', DESCRIPTION_MAX_LENGTH);
+}
+
+export function assertUpdateAssignmentArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [request] = args;
+  if (!isPlainObject(request)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(request, [
+    'id', 'title', 'subjectId', 'type', 'status', 'instructions', 'dueDate', 'totalMarks',
+    'attachmentFilePath',
+  ]);
+  assertString(request.id, 'id', ID_MAX_LENGTH);
+  assertOptionalString(request.title, 'title', NAME_MAX_LENGTH);
+  assertOptionalString(request.subjectId, 'subjectId', ID_MAX_LENGTH);
+  assertOptionalEnumMember(request.type, 'type', Object.values(AssignmentType));
+  assertOptionalEnumMember(request.status, 'status', Object.values(AssignmentStatus));
+  assertOptionalString(request.instructions, 'instructions', DESCRIPTION_MAX_LENGTH);
+  assertOptionalIsoDate(request.dueDate, 'dueDate');
+  assertOptionalNonNegativeNumber(request.totalMarks, 'totalMarks');
+  assertOptionalString(request.attachmentFilePath, 'attachmentFilePath', DESCRIPTION_MAX_LENGTH);
+}
+
+/** A local `local-file://...` marker or a real https:// URL — either way,
+ * just a bounded string; assignment:open-attachment decides which shell
+ * method to use based on the prefix (see the handler, not this validator). */
+export function assertOpenAttachmentArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  assertString(args[0], 'attachmentUrl', DESCRIPTION_MAX_LENGTH);
+}
+
+export function assertGradeSubmissionArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [request] = args;
+  if (!isPlainObject(request)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(request, ['assignmentId', 'studentId', 'grade', 'feedback']);
+  assertString(request.assignmentId, 'assignmentId', ID_MAX_LENGTH);
+  assertString(request.studentId, 'studentId', ID_MAX_LENGTH);
+  assertNonNegativeNumber(request.grade, 'grade');
+  assertOptionalString(request.feedback, 'feedback', DESCRIPTION_MAX_LENGTH);
 }

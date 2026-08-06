@@ -1,3 +1,6 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type {
   AuthenticatedSession,
@@ -99,6 +102,56 @@ describe('BackendProvisioningGateway', () => {
 
     await expect(gateway.verifyDevice('device-1')).rejects.toThrow(/offline/i);
     expect(clear).not.toHaveBeenCalled();
+  });
+
+  it('createAssignment posts plain JSON when there is no local attachment', async () => {
+    const fetchMock = vi.fn<(url: string | URL, init?: RequestInit) => Promise<Response>>(
+      async () => response({ id: 'remote-a1' }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const result = await buildGateway().createAssignment({ title: 'Ch5', classId: 'c-1' });
+    expect(result.id).toBe('remote-a1');
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(String(url)).toBe('https://nemis.example/teacher/assignments');
+    expect(init?.method).toBe('POST');
+    expect(typeof init?.body).toBe('string');
+    expect(JSON.parse(init!.body as string)).toEqual({ title: 'Ch5', classId: 'c-1' });
+    expect((init?.headers as Record<string, string>)['content-type']).toBe('application/json');
+  });
+
+  it('updateAssignment sends multipart/form-data (no explicit content-type) when a local attachment is present', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nemis-attachment-'));
+    const filePath = path.join(dir, 'notes.pdf');
+    fs.writeFileSync(filePath, 'pdf-bytes');
+    try {
+      const fetchMock = vi.fn<(url: string | URL, init?: RequestInit) => Promise<Response>>(
+        async () => response({ id: 'remote-a1', attachmentUrl: 'https://cdn/notes.pdf', attachmentName: 'notes.pdf' }),
+      );
+      vi.stubGlobal('fetch', fetchMock);
+      const result = await buildGateway().updateAssignment('remote-a1', { title: 'Ch5' }, filePath);
+      expect(result.attachmentUrl).toBe('https://cdn/notes.pdf');
+      const [url, init] = fetchMock.mock.calls[0]!;
+      expect(String(url)).toBe('https://nemis.example/teacher/assignments/remote-a1');
+      expect(init?.method).toBe('PATCH');
+      expect(init?.body).toBeInstanceOf(FormData);
+      expect((init?.headers as Record<string, string>)['content-type']).toBeUndefined();
+      const form = init!.body as FormData;
+      expect(form.get('title')).toBe('Ch5');
+      expect((form.get('file') as File).name).toBe('notes.pdf');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('gradeSubmission posts to the nested submissions/grade endpoint', async () => {
+    const fetchMock = vi.fn<(url: string | URL, init?: RequestInit) => Promise<Response>>(
+      async () => response({ id: 'sub-1' }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    await buildGateway().gradeSubmission('remote-a1', 'stu-1', { grade: 85, feedback: 'Great' });
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(String(url)).toBe('https://nemis.example/teacher/assignments/remote-a1/submissions/stu-1/grade');
+    expect(JSON.parse(init!.body as string)).toEqual({ grade: 85, feedback: 'Great' });
   });
 });
 

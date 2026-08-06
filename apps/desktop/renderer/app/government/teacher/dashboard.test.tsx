@@ -16,8 +16,13 @@ interface MockNemis {
   student: { list: ReturnType<typeof vi.fn> };
   attendance: { list: ReturnType<typeof vi.fn> };
   schoolAdmin: { list: ReturnType<typeof vi.fn> };
+  assignment: { list: ReturnType<typeof vi.fn> };
 }
 
+// Shape matches AssignmentResult (packages/types/src/assignments.ts) — the
+// "due assignments" widget reads window.nemis.assignment.list directly, not
+// the generic schoolAdmin collection (that path never supported this
+// entity — see migration 019's doc comment).
 function installBaseMock(assignmentRecords: Record<string, unknown>[] = []): MockNemis {
   (window as unknown as { nemis: unknown }).nemis = {
     dashboard: { getOverview: vi.fn(async () => ({ totalStudents: 0, totalClasses: 0, totalSubjects: 0, attendanceToday: { present: 0, total: 0 }, studentsByGrade: [], recentlyEnrolled: [] })) },
@@ -37,12 +42,10 @@ function installBaseMock(assignmentRecords: Record<string, unknown>[] = []): Moc
         if (request.collection === 'staff') {
           return { items: [{ id: STAFF_ID, userId: USER_ID }], total: 1 };
         }
-        if (request.collection === 'assignments') {
-          return { items: assignmentRecords, total: assignmentRecords.length };
-        }
         return { items: [], total: 0 };
       }),
     },
+    assignment: { list: vi.fn(async () => assignmentRecords) },
   };
   return (window as unknown as { nemis: MockNemis }).nemis;
 }
@@ -74,10 +77,13 @@ describe('Teacher dashboard (assigned classes)', () => {
     const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
     const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
 
+    // assignment:list is already self-scoped to the calling teacher
+    // server-side (see electron/ipc/handlers/teacher/assignments.ts) — the
+    // mock only needs to return this teacher's own rows, matching what the
+    // real channel would.
     const nemis = installBaseMock([
-      { id: 'hw-1', teacherId: STAFF_ID, classId: 'class-1', subjectId: 'sub-1', title: 'Math Quiz - Chapter 5', type: 'QUIZ', status: 'PUBLISHED', dueDate: tomorrow, createdAt: '2025-01-01T00:00:00.000Z', updatedAt: '2025-01-01T00:00:00.000Z' },
-      { id: 'hw-2', teacherId: 'other-staff', classId: 'class-2', subjectId: 'sub-2', title: 'Not mine', type: 'QUIZ', status: 'PUBLISHED', dueDate: tomorrow, createdAt: '2025-01-01T00:00:00.000Z', updatedAt: '2025-01-01T00:00:00.000Z' },
-      { id: 'hw-3', teacherId: STAFF_ID, classId: 'class-1', subjectId: 'sub-1', title: 'Already past due', type: 'QUIZ', status: 'PUBLISHED', dueDate: yesterday, createdAt: '2025-01-01T00:00:00.000Z', updatedAt: '2025-01-01T00:00:00.000Z' },
+      { id: 'hw-1', classId: 'class-1', className: 'Grade 10A', subjectId: 'sub-1', subjectName: 'Mathematics', teacherId: STAFF_ID, title: 'Math Quiz - Chapter 5', type: 'QUIZ', status: 'ACTIVE', dueDate: tomorrow, submittedCount: 0, totalStudents: 25, createdAt: '2025-01-01T00:00:00.000Z', updatedAt: '2025-01-01T00:00:00.000Z' },
+      { id: 'hw-3', classId: 'class-1', className: 'Grade 10A', subjectId: 'sub-1', subjectName: 'Mathematics', teacherId: STAFF_ID, title: 'Already past due', type: 'QUIZ', status: 'ACTIVE', dueDate: yesterday, submittedCount: 0, totalStudents: 25, createdAt: '2025-01-01T00:00:00.000Z', updatedAt: '2025-01-01T00:00:00.000Z' },
     ]);
 
     nemis.teacher.listAssignments = vi.fn(async () => [
@@ -108,7 +114,6 @@ describe('Teacher dashboard (assigned classes)', () => {
     await waitFor(() => expect(screen.getByText('1')).toBeInTheDocument()); // 1 class pending attendance (class-1)
 
     expect(await screen.findByText('Math Quiz - Chapter 5')).toBeInTheDocument();
-    expect(screen.queryByText('Not mine')).toBeNull();
     expect(screen.queryByText('Already past due')).toBeNull();
   });
 });

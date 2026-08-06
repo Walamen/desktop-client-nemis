@@ -22,6 +22,15 @@ const STATUS_STYLES: Record<string, string> = {
   Sick: 'bg-yellow-100 text-yellow-800',
 };
 
+/** A student can now have one attendance record per subject on the same day.
+ * For this day-level (subject-agnostic) view: if every subject agrees, show
+ * that status; otherwise show "Mixed" rather than an arbitrary one. */
+function resolveDayStatus(labels: string[]): string | undefined {
+  if (labels.length === 0) return undefined;
+  const distinct = new Set(labels);
+  return distinct.size === 1 ? labels[0] : 'Mixed';
+}
+
 function formatDateLong(iso: string) {
   return new Date(`${iso}T00:00:00`).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 }
@@ -30,10 +39,11 @@ function formatDateLong(iso: string) {
  * admins never mark or edit attendance here; that capability stays on the
  * Teacher module's AttendancePage, which uses the same ViewModel's write
  * path. Web's per-record "Recorded By" / "Time" columns and subject tabs are
- * dropped rather than faked: the desktop attendance table only ever stores
- * one general (subject-less) record per student per day with no recorder
- * attribution (see SqliteAttendanceRepository — subjectId and recordedBy are
- * always written as NULL), so those fields never carry real data here. */
+ * dropped rather than faked: this is a day-level view across every subject,
+ * not scoped to one. Since teacher attendance is now recorded per subject, a
+ * student can have more than one record for the same day (one per subject);
+ * see resolveDayStatus below for how those are collapsed into a single
+ * label. */
 export function AttendanceReportPage() {
   const academics = useAcademicFoundationViewModel();
   const attendance = useAttendanceViewModel();
@@ -85,13 +95,13 @@ export function AttendanceReportPage() {
     const studentRows = studentList.status === 'success' || studentList.status === 'refreshing' ? studentList.data : [];
     const recordRows = records.status === 'success' || records.status === 'refreshing' ? records.data : [];
     return studentRows.map((student) => {
-      const record = recordRows.find((r) => r.studentId === student.id);
+      const studentRecords = recordRows.filter((r) => r.studentId === student.id);
       return {
         id: student.id,
         fullName: student.fullName,
         admissionNumber: student.admissionNumber,
         gradeLevel: student.gradeLevel,
-        statusLabel: record?.status.label,
+        statusLabel: resolveDayStatus(studentRecords.map((r) => r.status.label)),
       };
     });
   }, [studentList, records]);

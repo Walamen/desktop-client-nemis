@@ -4,13 +4,13 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   BookOpen, Users, ClipboardCheck, Award, Calendar, Bell, AlertCircle,
 } from 'lucide-react';
-import type { SchoolAdminRecord } from '@nemis-desktop/types';
 import { ErrorState } from '@nemis-desktop/ui';
 import { useCurrentUserViewModel } from '@/lib/presentation/hooks/shared';
 import { useTeachingAssignmentViewModel } from '@/lib/presentation/hooks/school-admin';
 import { useViewModel } from '@/hooks/use-view-model';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
 import { studentBridge } from '@/services/nemis-bridge/school-admin/student-bridge';
+import { assignmentBridge } from '@/services/nemis-bridge/teacher/assignment-bridge';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { DashboardGreeting } from '@/components/dashboard/DashboardGreeting';
 import { DatabaseUnavailablePanel } from '@/components/dashboard/DatabaseUnavailablePanel';
@@ -136,29 +136,29 @@ export default function TeacherDashboardPage() {
   useEffect(() => {
     if (!staffId) return;
     let cancelled = false;
-    void sharedBridge.listSchoolAdminRecords({ collection: 'assignments', limit: 200 }).then((result) => {
+    // The assignment:list channel is already self-scoped to the calling
+    // teacher server-side (see electron/ipc/handlers/teacher/assignments.ts)
+    // — no client-side teacherId filter needed, and className/subjectName
+    // arrive pre-joined instead of having to cross-reference myClasses.
+    void assignmentBridge.listAssignments({}).then((items) => {
       if (cancelled) return;
       const today = todayIso();
-      const classLabel = (classId: unknown): string => {
-        const cls = myClasses.find((c) => c.classId === classId);
-        return cls ? `${cls.className}${cls.subjects[0] ? ` • ${cls.subjects[0]}` : ''}` : '';
-      };
-      const upcoming = result.items
-        .filter(
-          (r: SchoolAdminRecord) =>
-            r.teacherId === staffId && typeof r.dueDate === 'string' && r.dueDate >= today,
-        )
-        .sort((a, b) => String(a.dueDate).localeCompare(String(b.dueDate)))
+      const upcoming = items
+        .filter((a) => a.dueDate >= today)
+        .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
         .slice(0, 3)
-        .map((r) => ({
-          id: String(r.id), title: String(r.title), classLabel: classLabel(r.classId), dueDate: String(r.dueDate),
+        .map((a) => ({
+          id: a.id,
+          title: a.title,
+          classLabel: `${a.className}${a.subjectName ? ` • ${a.subjectName}` : ''}`,
+          dueDate: a.dueDate,
         }));
       setDueAssignments(upcoming);
     });
     return () => {
       cancelled = true;
     };
-  }, [staffId, myClasses]);
+  }, [staffId]);
 
   const name = user.status === 'success' ? user.data.fullName : 'Teacher';
 

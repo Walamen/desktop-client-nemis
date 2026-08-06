@@ -8,6 +8,8 @@ import type {
 import type { BackendProvisioningGateway } from '@app/provisioning/BackendProvisioningGateway';
 import type { ActiveWorkspace, WorkspaceManager } from '@app/workspace/WorkspaceManager';
 import { ProvisioningImporter } from '@app/provisioning/ProvisioningImporter';
+import { AssignmentSyncService } from './AssignmentSyncService';
+import { logger } from '@app/services/logger';
 
 const BACKOFF_SCHEDULE_MS = [30_000, 60_000, 300_000, 900_000] as const; // 30s, 1m, 5m, 15m
 const DEAD_LETTER_THRESHOLD = 5;
@@ -30,11 +32,15 @@ export class DesktopSyncWorker {
   #running = false;
   #lastPullAt = 0;
 
+  private readonly assignmentSync: AssignmentSyncService;
+
   constructor(
     private readonly workspaces: WorkspaceManager,
     private readonly gateway: BackendProvisioningGateway,
     private readonly connectivity: ConnectivitySource,
-  ) {}
+  ) {
+    this.assignmentSync = new AssignmentSyncService(gateway);
+  }
 
   async syncActive(): Promise<void> {
     if (this.#running) return;
@@ -65,6 +71,14 @@ export class DesktopSyncWorker {
     // rows at this point, and requestSingleInstanceLock rules out a second
     // process.
     this.recoverStaleInFlight();
+    // Own dedicated push path, deliberately outside the generic sync_queue
+    // claim/backoff/dead-letter machinery below — see AssignmentSyncService's
+    // doc comment. A failure here must never abort the generic cycle.
+    try {
+      await this.assignmentSync.pushPending(workspace.database.connection);
+    } catch (error) {
+      logger.error('AssignmentSyncService.pushPending failed', error);
+    }
     const claimed = await workspace.data.services.syncQueue.claim(50);
     const pullDue = Date.now() - this.#lastPullAt >= 5 * 60_000;
     if (claimed.length === 0 && !pullDue) {

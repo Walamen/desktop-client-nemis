@@ -45,6 +45,29 @@ describe('AttendanceViewModel', () => {
     expect(vm.store.getState().records.status).toBe('empty');
   });
 
+  it('scopes loadAttendance/recordAttendance to a subject when given', async () => {
+    const { vm, studentId } = await build();
+    await vm.recordAttendance({
+      studentId,
+      classId: 'cls-1',
+      subjectId: 'subj-math',
+      date: '2026-07-19',
+      status: AttendanceStatus.LATE,
+      remarks: 'Bus was late',
+    });
+    expect(vm.store.getState().subjectId).toBe('subj-math');
+    const records = vm.store.getState().records;
+    expect(records.status).toBe('success');
+    if (records.status === 'success') {
+      expect(records.data[0]?.subjectId).toBe('subj-math');
+      expect(records.data[0]?.remarks).toBe('Bus was late');
+    }
+
+    // A different subject on the same class/date sees no records of its own.
+    await vm.loadAttendance('cls-1', '2026-07-19', 'subj-science');
+    expect(vm.store.getState().records.status).toBe('empty');
+  });
+
   it('recording for an unknown student fails with an error notification', async () => {
     const { vm, notifications } = await build();
     const outcome = await vm.recordAttendance({

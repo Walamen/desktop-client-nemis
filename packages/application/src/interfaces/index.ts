@@ -14,3 +14,4 @@ export * from './infra';
 export * from './teachers';
 export * from './provisioning';
 export * from './timetables';
+export * from './assignments';

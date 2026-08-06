@@ -26,10 +26,11 @@ export const SCHOOL_ADMIN_COLLECTIONS = [
   'user_notifications',
   'reports',
   'alerts',
-  'assignments',
-  'assignment_submissions',
   'class_resources',
 ] as const;
+// NOTE: 'assignments' / 'assignment_submissions' intentionally NOT here —
+// they moved to a dedicated typed vertical (assignment:* IPC channels,
+// packages/types/src/assignments.ts) instead of the generic passthrough.
 
 export type SchoolAdminCollection = (typeof SCHOOL_ADMIN_COLLECTIONS)[number];
 export type SchoolAdminRecord = Record<string, string | number | boolean | null>;

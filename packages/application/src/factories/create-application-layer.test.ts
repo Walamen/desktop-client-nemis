@@ -25,6 +25,8 @@ import { InMemoryGradingConfigRepository } from '../testing/institution/in-memor
 import { InMemoryDeviceGateway } from '../testing/infra/in-memory-device-gateway';
 import { InMemorySettingsGateway } from '../testing/infra/in-memory-settings-gateway';
 import { InMemoryTeacherRepository } from '../testing/teachers/in-memory-teacher-repository';
+import { InMemoryAssignmentRepository } from '../testing/assignments/in-memory-assignment-repository';
+import { InMemoryAssignmentSubmissionRepository } from '../testing/assignments/in-memory-assignment-submission-repository';
 
 function buildLayer() {
   const subjects = new InMemorySubjectRepository();
@@ -55,6 +57,8 @@ function buildLayer() {
     logger: new RecordingLogger(),
     teachers: new InMemoryTeacherRepository(),
     timetables: new InMemoryTimetableRepository(),
+    assignments: new InMemoryAssignmentRepository(),
+    assignmentSubmissions: new InMemoryAssignmentSubmissionRepository(),
   });
 }
 

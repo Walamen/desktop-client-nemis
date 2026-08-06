@@ -9,3 +9,4 @@ export * from './attendance';
 export * from './assessments';
 export * from './teachers';
 export * from './timetables';
+export * from './assignments';

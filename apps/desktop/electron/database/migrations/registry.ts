@@ -16,6 +16,9 @@ import { createStaffDirectoryTable } from './014-create-staff-directory-table';
 import { createInstitutionAdminTable } from './015-create-institution-admin-table';
 import { createAssessmentTemplatesTable } from './016-create-assessment-templates-table';
 import { createAssessmentsTable } from './017-create-assessments-table';
+import { addAttendanceRemarksAndUpdateReason } from './018-add-attendance-remarks-and-update-reason';
+import { dropDeadAssignmentOutboxTriggers } from './019-drop-dead-assignment-outbox-triggers';
+import { addAssignmentSyncTracking } from './020-add-assignment-sync-tracking';
 
 /**
  * Every migration, ascending by version. Append only — never edit or reorder
@@ -39,4 +42,7 @@ export const migrations: readonly Migration[] = [
   createInstitutionAdminTable,
   createAssessmentTemplatesTable,
   createAssessmentsTable,
+  addAttendanceRemarksAndUpdateReason,
+  dropDeadAssignmentOutboxTriggers,
+  addAssignmentSyncTracking,
 ];

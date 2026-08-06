@@ -11,6 +11,7 @@ import type { AttendanceRowView } from './attendance-views';
 
 export interface AttendanceState {
   readonly classId: string | null;
+  readonly subjectId: string | null;
   readonly date: string | null;
   readonly records: AsyncState<readonly AttendanceRowView[]>;
   readonly submission: SubmissionStatus;
@@ -24,6 +25,7 @@ export interface AttendanceViewModelDeps {
 export class AttendanceViewModel {
   readonly store = createStore<AttendanceState>(() => ({
     classId: null,
+    subjectId: null,
     date: null,
     records: idleState(),
     submission: 'idle',
@@ -40,14 +42,14 @@ export class AttendanceViewModel {
     });
   }
 
-  async loadAttendance(classId: string, date: string): Promise<void> {
-    this.store.setState({ classId, date });
+  async loadAttendance(classId: string, date: string, subjectId?: string): Promise<void> {
+    this.store.setState({ classId, subjectId: subjectId ?? null, date });
     await trackQuery({
       access: {
         get: () => this.store.getState().records,
         set: (records) => this.store.setState({ records }),
       },
-      fetch: () => this.attendanceQuery.execute({ classId, date }),
+      fetch: () => this.attendanceQuery.execute({ classId, date, subjectId }),
       map: (rows) => rows.map(toAttendanceRowView),
       isEmpty: (rows) => rows.length === 0,
     });
@@ -57,7 +59,7 @@ export class AttendanceViewModel {
     this.store.setState({ submission: 'submitting' });
     const outcome = await this.recordCommand.execute(dto);
     this.store.setState({ submission: outcome.ok ? 'submitted' : 'failed' });
-    if (outcome.ok) await this.loadAttendance(dto.classId, dto.date);
+    if (outcome.ok) await this.loadAttendance(dto.classId, dto.date, dto.subjectId);
     return outcome;
   }
 }

@@ -7,7 +7,9 @@ export function toAttendanceRowView(dto: AttendanceOutput): AttendanceRowView {
   return {
     id: dto.id,
     studentId: dto.studentId,
+    subjectId: dto.subjectId,
     date: formatIsoDate(dto.date),
     status: presentAttendanceStatus(dto.status),
+    remarks: dto.remarks,
   };
 }

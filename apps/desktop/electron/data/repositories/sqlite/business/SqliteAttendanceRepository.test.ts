@@ -40,4 +40,55 @@ describe('SqliteAttendanceRepository', () => {
     expect(rows).toHaveLength(2);
     expect(rows.every((a) => a.classId === 'c-1' && a.date === '2026-07-20')).toBe(true);
   });
+
+  it('persists subjectId, recordedBy, remarks and updateReason', () => {
+    const attendance = Attendance.record({
+      id: 'att-sub', studentId: 'stu-sub', classId: 'c-1', subjectId: 'subj-1',
+      date: '2026-07-20', status: AttendanceStatus.LATE, recordedBy: 'teacher-1',
+      remarks: 'Bus was late', updateReason: 'Correcting register mix-up',
+      occurredAt: '2026-07-20T08:00:00.000Z',
+    });
+    repo.save(attendance);
+    const [row] = repo.findByClassAndDate('c-1', '2026-07-20', 'subj-1');
+    expect(row?.subjectId).toBe('subj-1');
+    expect(row?.recordedBy).toBe('teacher-1');
+    expect(row?.remarks).toBe('Bus was late');
+    expect(row?.updateReason).toBe('Correcting register mix-up');
+  });
+
+  it('findByClassAndDate with a subjectId only returns that subject\'s rows', () => {
+    repo.save(
+      Attendance.record({
+        id: 'att-a', studentId: 'stu-1', classId: 'c-1', subjectId: 'subj-1',
+        date: '2026-07-20', status: AttendanceStatus.PRESENT, occurredAt: '2026-07-20T08:00:00.000Z',
+      }),
+    );
+    repo.save(
+      Attendance.record({
+        id: 'att-b', studentId: 'stu-1', classId: 'c-1', subjectId: 'subj-2',
+        date: '2026-07-20', status: AttendanceStatus.ABSENT, occurredAt: '2026-07-20T08:00:00.000Z',
+      }),
+    );
+    const rows = repo.findByClassAndDate('c-1', '2026-07-20', 'subj-1');
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.status).toBe(AttendanceStatus.PRESENT);
+  });
+
+  it('save upserts by (studentId, subjectId, date) rather than duplicating rows', () => {
+    repo.save(
+      Attendance.record({
+        id: 'att-1', studentId: 'stu-1', classId: 'c-1', subjectId: 'subj-1',
+        date: '2026-07-20', status: AttendanceStatus.PRESENT, occurredAt: '2026-07-20T08:00:00.000Z',
+      }),
+    );
+    repo.save(
+      Attendance.record({
+        id: 'att-2', studentId: 'stu-1', classId: 'c-1', subjectId: 'subj-1',
+        date: '2026-07-20', status: AttendanceStatus.ABSENT, occurredAt: '2026-07-20T09:00:00.000Z',
+      }),
+    );
+    const rows = repo.findByClassAndDate('c-1', '2026-07-20', 'subj-1');
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.status).toBe(AttendanceStatus.ABSENT);
+  });
 });

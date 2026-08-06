@@ -125,4 +125,16 @@ describe('authorizeChannel', () => {
       expect(() => authorizeChannel(channel, workspace(SystemRole.DEO))).not.toThrow();
     }
   });
+
+  it('allows only TEACHER on assignment channels — not even the school admin', () => {
+    expect(() =>
+      authorizeChannel(IpcChannels.ASSIGNMENT_LIST, workspace(SystemRole.TEACHER)),
+    ).not.toThrow();
+    expect(() =>
+      authorizeChannel(IpcChannels.ASSIGNMENT_CREATE, workspace(SystemRole.INSTITUTION_ADMIN)),
+    ).toThrow(/teachers/);
+    expect(() =>
+      authorizeChannel(IpcChannels.ASSIGNMENT_GRADE_SUBMISSION, workspace(SystemRole.DEO)),
+    ).toThrow(/teachers/);
+  });
 });

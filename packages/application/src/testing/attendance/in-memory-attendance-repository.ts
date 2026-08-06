@@ -6,11 +6,23 @@ export class InMemoryAttendanceRepository implements IAttendanceRepository {
   readonly store = new Map<string, Attendance>();
 
   save(attendance: Attendance): void {
+    // Mirrors SqliteAttendanceRepository: one row per (studentId, subjectId, date).
+    for (const [id, existing] of this.store) {
+      if (
+        existing.studentId === attendance.studentId &&
+        existing.subjectId === attendance.subjectId &&
+        existing.date === attendance.date
+      ) {
+        this.store.delete(id);
+      }
+    }
     this.store.set(attendance.id, attendance);
   }
 
-  findByClassAndDate(classId: string, date: string): Attendance[] {
-    return [...this.store.values()].filter((a) => a.classId === classId && a.date === date);
+  findByClassAndDate(classId: string, date: string, subjectId?: string): Attendance[] {
+    return [...this.store.values()].filter(
+      (a) => a.classId === classId && a.date === date && (subjectId === undefined || a.subjectId === subjectId),
+    );
   }
 
   countByDate(date: string): { present: number; total: number } {

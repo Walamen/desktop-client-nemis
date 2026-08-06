@@ -35,6 +35,7 @@ import { registerTimetableHandlers } from '@app/ipc/handlers/school-admin/timeta
 
 // Teacher portal's own channels — see electron/ipc/handlers/teacher/.
 import { registerTeacherDashboardHandlers } from '@app/ipc/handlers/teacher/dashboard';
+import { registerAssignmentHandlers } from '@app/ipc/handlers/teacher/assignments';
 
 export type IpcValidator = (args: readonly unknown[]) => void;
 
@@ -76,6 +77,7 @@ export function registerIpcHandlers(
   registerTimetableHandlers(securedHandle, app, workspaces);
 
   registerTeacherDashboardHandlers(securedHandle, app);
+  registerAssignmentHandlers(securedHandle, app, workspaces);
 }
 
 /**

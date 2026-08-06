@@ -74,6 +74,15 @@ import type {
 } from './attendance';
 import type { DesktopSyncStatus, ResolveSyncConflictRequest, SyncConflictResult } from './sync';
 import type {
+  AssignmentResult,
+  AssignmentSubmissionResult,
+  CreateAssignmentRequest,
+  GradeSubmissionRequest,
+  ListAssignmentsRequest,
+  PickAttachmentResult,
+  UpdateAssignmentRequest,
+} from './assignments';
+import type {
   SchoolAdminDeleteRequest,
   SchoolAdminListRequest,
   SchoolAdminListResult,
@@ -197,6 +206,21 @@ export interface IpcContract {
   'timetable:dashboard': { args: [dayOfWeek: string]; result: TimetableDashboardResult };
   'attendance:list': { args: [request: AttendanceListRequest]; result: AttendanceResult[] };
   'attendance:record': { args: [request: RecordAttendanceRequest]; result: AttendanceResult };
+  'assignment:list': { args: [request: ListAssignmentsRequest]; result: AssignmentResult[] };
+  'assignment:get': { args: [id: string]; result: AssignmentResult | null };
+  'assignment:create': { args: [request: CreateAssignmentRequest]; result: AssignmentResult };
+  'assignment:update': { args: [request: UpdateAssignmentRequest]; result: AssignmentResult };
+  'assignment:delete': { args: [id: string]; result: { id: string } };
+  'assignment:list-submissions': {
+    args: [assignmentId: string];
+    result: AssignmentSubmissionResult[];
+  };
+  'assignment:grade-submission': {
+    args: [request: GradeSubmissionRequest];
+    result: AssignmentSubmissionResult;
+  };
+  'assignment:pick-attachment': { args: []; result: PickAttachmentResult | null };
+  'assignment:open-attachment': { args: [attachmentUrl: string]; result: { opened: boolean } };
   'school-admin:list': {
     args: [request: SchoolAdminListRequest];
     result: SchoolAdminListResult;
@@ -286,6 +310,15 @@ export const IpcChannels = {
   TIMETABLE_DASHBOARD: 'timetable:dashboard',
   ATTENDANCE_LIST: 'attendance:list',
   ATTENDANCE_RECORD: 'attendance:record',
+  ASSIGNMENT_LIST: 'assignment:list',
+  ASSIGNMENT_GET: 'assignment:get',
+  ASSIGNMENT_CREATE: 'assignment:create',
+  ASSIGNMENT_UPDATE: 'assignment:update',
+  ASSIGNMENT_DELETE: 'assignment:delete',
+  ASSIGNMENT_LIST_SUBMISSIONS: 'assignment:list-submissions',
+  ASSIGNMENT_GRADE_SUBMISSION: 'assignment:grade-submission',
+  ASSIGNMENT_PICK_ATTACHMENT: 'assignment:pick-attachment',
+  ASSIGNMENT_OPEN_ATTACHMENT: 'assignment:open-attachment',
   SCHOOL_ADMIN_LIST: 'school-admin:list',
   SCHOOL_ADMIN_SAVE: 'school-admin:save',
   SCHOOL_ADMIN_DELETE: 'school-admin:delete',

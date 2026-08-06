@@ -78,6 +78,7 @@ describe('DesktopSyncWorker retry policy', () => {
           database: manager,
           data: dataLayer,
           application: {} as ApplicationLayer,
+          workspaceDir: directory,
         };
       },
     } as unknown as WorkspaceManager;

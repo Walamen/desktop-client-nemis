@@ -65,4 +65,26 @@ describe('RecordAttendanceUseCase', () => {
       WorkflowException,
     );
   });
+
+  it('carries subjectId, remarks and updateReason through to the output', async () => {
+    const { useCase } = build();
+    const res = await useCase.execute({
+      ...dto,
+      subjectId: 'subj-1',
+      remarks: 'Arrived late',
+      updateReason: 'Correcting register mix-up',
+    });
+    expect(res.data.subjectId).toBe('subj-1');
+    expect(res.data.remarks).toBe('Arrived late');
+    expect(res.data.updateReason).toBe('Correcting register mix-up');
+  });
+
+  it('upserts by (studentId, subjectId, date) instead of duplicating rows', async () => {
+    const { attendance, useCase } = build();
+    await useCase.execute({ ...dto, subjectId: 'subj-1', status: AttendanceStatus.PRESENT });
+    await useCase.execute({ ...dto, subjectId: 'subj-1', status: AttendanceStatus.ABSENT });
+    const rows = attendance.findByClassAndDate('cls-1', '2026-07-18', 'subj-1');
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.status).toBe(AttendanceStatus.ABSENT);
+  });
 });

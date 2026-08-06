@@ -17,6 +17,10 @@ export interface ActiveWorkspace {
   readonly database: DatabaseManager;
   readonly data: DataLayer;
   readonly application: ApplicationLayer;
+  /** This workspace's private directory under userData — the same root the
+   * database and its backups live under (see resolveDatabasePaths). Local,
+   * not-yet-synced assignment attachments are staged in a subfolder here. */
+  readonly workspaceDir: string;
 }
 
 interface WorkspaceManagerOptions {
@@ -44,9 +48,10 @@ export class WorkspaceManager {
     if (this.#active?.identity === identity) return this.#active;
     this.close();
 
+    const workspaceDir = path.join(this.#options.userDataDir, 'workspaces', identity);
     const database = new DatabaseManager({
       userDataDir: this.#options.userDataDir,
-      workspaceDir: path.join(this.#options.userDataDir, 'workspaces', identity),
+      workspaceDir,
       encryptionKey: deriveWorkspaceKey(this.#options.masterKey, identity),
       device: this.#options.device,
       log: this.#options.log,
@@ -59,6 +64,7 @@ export class WorkspaceManager {
       database,
       data,
       application: createApplicationComposition(data, user.id),
+      workspaceDir,
     };
     return this.#active;
   }

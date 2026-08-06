@@ -92,6 +92,23 @@ const SCHOOL_STAFF_CHANNELS = new Set<IpcChannel>([
   IpcChannels.TERM_LIST,
 ]);
 
+// Teacher-exclusive channels — unlike attendance, the web app has no
+// school-admin-facing assignments screen at all, so these stay closed to
+// INSTITUTION_ADMIN rather than falling into SCHOOL_STAFF_CHANNELS. Ownership
+// (teacherId) is injected server-side from workspaces.active.user.staffId in
+// the handler, never trusted from the renderer — see handlers/teacher/assignments.ts.
+const TEACHER_ONLY_CHANNELS = new Set<IpcChannel>([
+  IpcChannels.ASSIGNMENT_LIST,
+  IpcChannels.ASSIGNMENT_GET,
+  IpcChannels.ASSIGNMENT_CREATE,
+  IpcChannels.ASSIGNMENT_UPDATE,
+  IpcChannels.ASSIGNMENT_DELETE,
+  IpcChannels.ASSIGNMENT_LIST_SUBMISSIONS,
+  IpcChannels.ASSIGNMENT_GRADE_SUBMISSION,
+  IpcChannels.ASSIGNMENT_PICK_ATTACHMENT,
+  IpcChannels.ASSIGNMENT_OPEN_ATTACHMENT,
+]);
+
 export function authorizeChannel(channel: IpcChannel, workspaces: WorkspaceManager): void {
   if (PUBLIC_CHANNELS.has(channel)) return;
   let role: string;
@@ -109,6 +126,9 @@ export function authorizeChannel(channel: IpcChannel, workspaces: WorkspaceManag
     role !== SystemRole.TEACHER
   ) {
     throw new ForbiddenError('Attendance is only available to school administrators and teachers.');
+  }
+  if (TEACHER_ONLY_CHANNELS.has(channel) && role !== SystemRole.TEACHER) {
+    throw new ForbiddenError('Assignments are only available to teachers.');
   }
   // Every other channel (identity, device, settings, sync, generic
   // schoolAdmin records, and TEACHER_GET_DASHBOARD) stays open to any

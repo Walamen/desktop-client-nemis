@@ -6,8 +6,12 @@ export function toAttendanceOutput(attendance: Attendance): AttendanceOutput {
     id: attendance.id,
     studentId: attendance.studentId,
     classId: attendance.classId,
+    subjectId: attendance.subjectId,
     date: attendance.date,
     status: attendance.status,
+    recordedBy: attendance.recordedBy,
+    remarks: attendance.remarks,
+    updateReason: attendance.updateReason,
     version: attendance.version,
     updatedAt: attendance.updatedAt,
   };

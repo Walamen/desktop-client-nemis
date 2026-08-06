@@ -253,8 +253,6 @@ const CONFIG: Record<
     ],
     scope: 'institution',
   },
-  assignments: { columns: [], scope: 'student' },
-  assignment_submissions: { columns: [], scope: 'student' },
   class_resources: { columns: [], scope: 'institution' },
 };
 
@@ -280,8 +278,6 @@ const ROLE_READ_COLLECTIONS: Readonly<Record<string, ReadonlySet<SchoolAdminColl
     'conversations',
     'messages',
     'user_notifications',
-    'assignments',
-    'assignment_submissions',
     'class_resources',
   ]),
   COUNTY_ADMIN: new Set([
@@ -364,8 +360,6 @@ export class SchoolAdminModuleService {
         'classes',
         'subjects',
         'timetable_entries',
-        'assignments',
-        'assignment_submissions',
         'class_resources',
         'guardians',
         'student_guardians',
@@ -505,8 +499,6 @@ export class SchoolAdminModuleService {
       request.collection === 'classes' ||
       request.collection === 'subjects' ||
       request.collection === 'timetable_entries'
-      || request.collection === 'assignments'
-      || request.collection === 'assignment_submissions'
       || request.collection === 'class_resources'
     ) {
       throw new ForbiddenError('This record type cannot be deleted offline.');

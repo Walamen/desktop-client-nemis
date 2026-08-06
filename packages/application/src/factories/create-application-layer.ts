@@ -20,6 +20,8 @@ import type { IEventPublisher } from '../interfaces/event-publisher';
 import type { IAppLogger } from '../interfaces/app-logger';
 import type { ITeacherRepository } from '../interfaces/teachers';
 import type { ITimetableRepository } from '../interfaces/timetables';
+import type { IAssignmentRepository } from '../interfaces/assignments/assignment-repository';
+import type { IAssignmentSubmissionRepository } from '../interfaces/assignments/assignment-submission-repository';
 
 import { CreateStudentUseCase } from '../use-cases/students/create-student';
 import { DeactivateStudentUseCase } from '../use-cases/students/deactivate-student';
@@ -117,6 +119,15 @@ import {
 } from '../use-cases/timetables/timetable-use-cases';
 import { TimetableApplicationService } from '../services/timetable-application-service';
 
+import { ListAssignmentsUseCase } from '../use-cases/assignments/list-assignments';
+import { GetAssignmentUseCase } from '../use-cases/assignments/get-assignment';
+import { CreateAssignmentUseCase } from '../use-cases/assignments/create-assignment';
+import { UpdateAssignmentUseCase as UpdateHomeworkAssignmentUseCase } from '../use-cases/assignments/update-assignment';
+import { DeleteAssignmentUseCase } from '../use-cases/assignments/delete-assignment';
+import { ListSubmissionsUseCase } from '../use-cases/assignments/list-submissions';
+import { GradeSubmissionUseCase } from '../use-cases/assignments/grade-submission';
+import { AssignmentsApplicationService } from '../services/assignments-application-service';
+
 export interface ApplicationPorts {
   students: IStudentRepository;
   guardians: IGuardianRepository;
@@ -142,6 +153,8 @@ export interface ApplicationPorts {
   logger: IAppLogger;
   teachers: ITeacherRepository;
   timetables: ITimetableRepository;
+  assignments: IAssignmentRepository;
+  assignmentSubmissions: IAssignmentSubmissionRepository;
 }
 
 export interface ApplicationLayer {
@@ -155,6 +168,7 @@ export interface ApplicationLayer {
   reporting: ReportingApplicationService;
   teachers: TeacherApplicationService;
   timetables: TimetableApplicationService;
+  assignments: AssignmentsApplicationService;
 }
 
 /** Composition root: constructs every use case from injected ports and groups
@@ -434,5 +448,42 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
     dashboard: new GetTimetableDashboard({ timetables: ports.timetables, clock, logger }),
   });
 
-  return { students, academics, attendance, assessments, identity, institution, infra, reporting, teachers, timetables };
+  const assignments = new AssignmentsApplicationService({
+    list: new ListAssignmentsUseCase({ assignments: ports.assignments, logger }),
+    get: new GetAssignmentUseCase({ assignments: ports.assignments, logger }),
+    create: new CreateAssignmentUseCase({
+      assignments: ports.assignments,
+      unitOfWork,
+      clock,
+      ids,
+      events,
+      logger,
+    }),
+    update: new UpdateHomeworkAssignmentUseCase({
+      assignments: ports.assignments,
+      unitOfWork,
+      clock,
+      logger,
+    }),
+    remove: new DeleteAssignmentUseCase({ assignments: ports.assignments, unitOfWork, logger }),
+    listSubmissions: new ListSubmissionsUseCase({
+      assignments: ports.assignments,
+      submissions: ports.assignmentSubmissions,
+      logger,
+    }),
+    gradeSubmission: new GradeSubmissionUseCase({
+      assignments: ports.assignments,
+      submissions: ports.assignmentSubmissions,
+      unitOfWork,
+      clock,
+      ids,
+      events,
+      logger,
+    }),
+  });
+
+  return {
+    students, academics, attendance, assessments, identity, institution, infra, reporting, teachers,
+    timetables, assignments,
+  };
 }

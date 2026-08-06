@@ -13,6 +13,10 @@ interface AttendanceState {
   date: string;
   status: AttendanceStatus;
   recordedBy?: string;
+  remarks?: string;
+  /** Audit note captured when a teacher edits an already-recorded, non-today
+   * date — see RecordAttendanceUseCase. */
+  updateReason?: string;
 }
 
 export interface RecordAttendanceInput {
@@ -23,6 +27,8 @@ export interface RecordAttendanceInput {
   date: string;
   status: AttendanceStatus;
   recordedBy?: string;
+  remarks?: string;
+  updateReason?: string;
   occurredAt: string;
 }
 
@@ -48,6 +54,8 @@ export class Attendance extends AggregateRoot<string> {
         date: input.date,
         status: input.status,
         recordedBy: input.recordedBy,
+        remarks: input.remarks,
+        updateReason: input.updateReason,
       },
       { version: 1, updatedAt: input.occurredAt, lastModifiedBy: input.recordedBy },
     );
@@ -69,11 +77,23 @@ export class Attendance extends AggregateRoot<string> {
   get classId(): string {
     return this.#state.classId;
   }
+  get subjectId(): string | undefined {
+    return this.#state.subjectId;
+  }
   get date(): string {
     return this.#state.date;
   }
   get status(): AttendanceStatus {
     return this.#state.status;
+  }
+  get recordedBy(): string | undefined {
+    return this.#state.recordedBy;
+  }
+  get remarks(): string | undefined {
+    return this.#state.remarks;
+  }
+  get updateReason(): string | undefined {
+    return this.#state.updateReason;
   }
 
   correct(status: AttendanceStatus, reason: string, by: string, at: string): void {

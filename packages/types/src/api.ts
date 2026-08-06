@@ -80,6 +80,15 @@ import type {
   RecordAttendanceRequest,
 } from './attendance';
 import type { DesktopSyncStatus, ResolveSyncConflictRequest, SyncConflictResult } from './sync';
+import type {
+  AssignmentResult,
+  AssignmentSubmissionResult,
+  CreateAssignmentRequest,
+  GradeSubmissionRequest,
+  ListAssignmentsRequest,
+  PickAttachmentResult,
+  UpdateAssignmentRequest,
+} from './assignments';
 
 export interface AuthenticationApi {
   getStatus(): Promise<ProvisioningStatus>;
@@ -197,6 +206,17 @@ export interface SchoolAdminApi {
   save(request: SchoolAdminSaveRequest): Promise<SchoolAdminRecord>;
   delete(request: SchoolAdminDeleteRequest): Promise<{ id: string }>;
 }
+export interface AssignmentApi {
+  list(request: ListAssignmentsRequest): Promise<AssignmentResult[]>;
+  get(id: string): Promise<AssignmentResult | null>;
+  create(request: CreateAssignmentRequest): Promise<AssignmentResult>;
+  update(request: UpdateAssignmentRequest): Promise<AssignmentResult>;
+  delete(id: string): Promise<{ id: string }>;
+  listSubmissions(assignmentId: string): Promise<AssignmentSubmissionResult[]>;
+  gradeSubmission(request: GradeSubmissionRequest): Promise<AssignmentSubmissionResult>;
+  pickAttachment(): Promise<PickAttachmentResult | null>;
+  openAttachment(attachmentUrl: string): Promise<{ opened: boolean }>;
+}
 
 export interface NemisApi {
   auth: AuthenticationApi;
@@ -217,4 +237,5 @@ export interface NemisApi {
   timetable: TimetableApi;
   attendance: AttendanceApi;
   schoolAdmin: SchoolAdminApi;
+  assignment: AssignmentApi;
 }

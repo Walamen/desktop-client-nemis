@@ -1,4 +1,5 @@
 export * from './dashboard-api';
+export * from './assignment-api';
 
 /** Everything the Teacher portal owns for itself. Attendance recording and
  * the generic record store are cross-portal (see

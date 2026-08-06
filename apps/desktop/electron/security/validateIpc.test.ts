@@ -18,6 +18,12 @@ import {
   assertClassSubjectPairArgs,
   assertMoveEnrollmentClassArgs,
   assertAuthenticateArgs,
+  assertAttendanceListArgs,
+  assertRecordAttendanceArgs,
+  assertListAssignmentsArgs,
+  assertCreateAssignmentArgs,
+  assertUpdateAssignmentArgs,
+  assertGradeSubmissionArgs,
 } from './validateIpc';
 
 describe('assertAuthenticateArgs', () => {
@@ -212,6 +218,99 @@ describe('assertMoveEnrollmentClassArgs', () => {
     expect(() =>
       assertMoveEnrollmentClassArgs([
         { enrollmentId: 'enr-1', targetClassId: 'class-2', extra: true },
+      ]),
+    ).toThrow();
+  });
+});
+
+describe('assertAttendanceListArgs', () => {
+  it('accepts an optional subjectId and rejects unknown keys', () => {
+    expect(() => assertAttendanceListArgs([{ classId: 'c-1', date: '2026-07-20' }])).not.toThrow();
+    expect(() =>
+      assertAttendanceListArgs([{ classId: 'c-1', date: '2026-07-20', subjectId: 'subj-1' }]),
+    ).not.toThrow();
+    expect(() =>
+      assertAttendanceListArgs([{ classId: 'c-1', date: '2026-07-20', extra: true }]),
+    ).toThrow();
+  });
+});
+
+describe('assertRecordAttendanceArgs', () => {
+  it('accepts remarks and updateReason and rejects unknown keys', () => {
+    expect(() =>
+      assertRecordAttendanceArgs([
+        {
+          studentId: 'stu-1', classId: 'c-1', subjectId: 'subj-1', date: '2026-07-20',
+          status: 'PRESENT', recordedBy: 'teacher-1', remarks: 'Arrived late',
+          updateReason: 'Correcting register mix-up',
+        },
+      ]),
+    ).not.toThrow();
+    expect(() =>
+      assertRecordAttendanceArgs([
+        { studentId: 'stu-1', classId: 'c-1', date: '2026-07-20', status: 'PRESENT', extra: true },
+      ]),
+    ).toThrow();
+  });
+});
+
+describe('assertListAssignmentsArgs', () => {
+  it('accepts optional classId/status and rejects unknown keys', () => {
+    expect(() => assertListAssignmentsArgs([{}])).not.toThrow();
+    expect(() =>
+      assertListAssignmentsArgs([{ classId: 'c-1', status: 'ACTIVE' }]),
+    ).not.toThrow();
+    expect(() => assertListAssignmentsArgs([{ status: 'NOPE' }])).toThrow();
+    expect(() => assertListAssignmentsArgs([{ teacherId: 'staff-1' }])).toThrow();
+  });
+});
+
+describe('assertCreateAssignmentArgs', () => {
+  it('requires classId/title/type/status/dueDate and only allows DRAFT/ACTIVE status', () => {
+    expect(() =>
+      assertCreateAssignmentArgs([
+        { classId: 'c-1', title: 'Ch5', type: 'HOMEWORK', status: 'DRAFT', dueDate: '2026-08-10' },
+      ]),
+    ).not.toThrow();
+    expect(() =>
+      assertCreateAssignmentArgs([
+        { classId: 'c-1', title: 'Ch5', type: 'HOMEWORK', status: 'CLOSED', dueDate: '2026-08-10' },
+      ]),
+    ).toThrow();
+    expect(() =>
+      assertCreateAssignmentArgs([{ title: 'Ch5', type: 'HOMEWORK', status: 'DRAFT', dueDate: '2026-08-10' }]),
+    ).toThrow();
+    expect(() =>
+      assertCreateAssignmentArgs([
+        {
+          classId: 'c-1', title: 'Ch5', type: 'HOMEWORK', status: 'DRAFT', dueDate: '2026-08-10',
+          totalMarks: -5,
+        },
+      ]),
+    ).toThrow();
+  });
+});
+
+describe('assertUpdateAssignmentArgs', () => {
+  it('requires only id and accepts a partial patch', () => {
+    expect(() => assertUpdateAssignmentArgs([{ id: 'a-1' }])).not.toThrow();
+    expect(() => assertUpdateAssignmentArgs([{ id: 'a-1', status: 'CLOSED' }])).not.toThrow();
+    expect(() => assertUpdateAssignmentArgs([{ status: 'CLOSED' }])).toThrow();
+    expect(() => assertUpdateAssignmentArgs([{ id: 'a-1', teacherId: 'staff-1' }])).toThrow();
+  });
+});
+
+describe('assertGradeSubmissionArgs', () => {
+  it('requires a non-negative grade and rejects unknown keys', () => {
+    expect(() =>
+      assertGradeSubmissionArgs([{ assignmentId: 'a-1', studentId: 'stu-1', grade: 85 }]),
+    ).not.toThrow();
+    expect(() =>
+      assertGradeSubmissionArgs([{ assignmentId: 'a-1', studentId: 'stu-1', grade: -1 }]),
+    ).toThrow();
+    expect(() =>
+      assertGradeSubmissionArgs([
+        { assignmentId: 'a-1', studentId: 'stu-1', grade: 85, teacherId: 'staff-1' },
       ]),
     ).toThrow();
   });

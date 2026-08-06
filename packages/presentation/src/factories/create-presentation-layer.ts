@@ -10,6 +10,7 @@ import { NavigationStore } from '../stores/navigation-store';
 import { NotificationStore } from '../stores/notification-store';
 import { SessionStore } from '../stores/session-store';
 import { AssessmentsViewModel } from '../view-models/assessments/assessments-view-model';
+import { AssignmentsViewModel } from '../view-models/assignments/assignments-view-model';
 import { AttendanceViewModel } from '../view-models/attendance/attendance-view-model';
 import { ClassRosterViewModel } from '../view-models/class-roster/class-roster-view-model';
 import { CurrentUserViewModel } from '../view-models/current-user/current-user-view-model';
@@ -46,6 +47,7 @@ export interface PresentationViewModels {
   readonly classRoster: ClassRosterViewModel;
   readonly attendance: AttendanceViewModel;
   readonly assessments: AssessmentsViewModel;
+  readonly assignments: AssignmentsViewModel;
   readonly settings: SettingsViewModel;
   readonly device: DeviceViewModel;
   readonly currentUser: CurrentUserViewModel;
@@ -109,6 +111,7 @@ export function createPresentationLayer(
     classRoster: new ClassRosterViewModel({ academics: app.academics, notifications }),
     attendance: new AttendanceViewModel({ attendance: app.attendance, notifications }),
     assessments: new AssessmentsViewModel({ assessments: app.assessments, notifications }),
+    assignments: new AssignmentsViewModel({ assignments: app.assignments, notifications }),
     settings: new SettingsViewModel({
       institution: app.institution,
       infra: app.infra,

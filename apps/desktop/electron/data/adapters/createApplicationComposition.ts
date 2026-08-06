@@ -55,6 +55,8 @@ export function createApplicationComposition(
     enrollments: dataLayer.repositories.enrollments,
     teachers: dataLayer.repositories.teachers,
     timetables: dataLayer.repositories.timetables,
+    assignments: dataLayer.repositories.assignments,
+    assignmentSubmissions: dataLayer.repositories.assignmentSubmissions,
     // Not built yet — throw if used.
     assessments: new Proxy({} as never, { get: () => () => notBuilt('Assessment') }),
     grades: new Proxy({} as never, { get: () => () => notBuilt('Grade') }),
