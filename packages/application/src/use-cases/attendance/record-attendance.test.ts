@@ -87,4 +87,18 @@ describe('RecordAttendanceUseCase', () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]?.status).toBe(AttendanceStatus.ABSENT);
   });
+
+  it('reuses the existing row\'s id when editing an already-recorded entry, instead of minting a new one', async () => {
+    const { useCase } = build();
+    const first = await useCase.execute({ ...dto, subjectId: 'subj-1', status: AttendanceStatus.PRESENT });
+    const second = await useCase.execute({ ...dto, subjectId: 'subj-1', status: AttendanceStatus.ABSENT });
+    expect(second.data.id).toBe(first.data.id);
+  });
+
+  it('still mints a new id for a different (studentId, subjectId, date) key', async () => {
+    const { useCase } = build();
+    const first = await useCase.execute({ ...dto, subjectId: 'subj-1' });
+    const second = await useCase.execute({ ...dto, subjectId: 'subj-2' });
+    expect(second.data.id).not.toBe(first.data.id);
+  });
 });

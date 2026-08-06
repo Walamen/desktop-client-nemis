@@ -39,8 +39,13 @@ export class RecordAttendanceUseCase implements CommandHandler<
       }
 
       const occurredAt = this.deps.clock.now();
+      const existingId = this.deps.attendance.findExistingId(
+        command.studentId,
+        command.subjectId,
+        command.date,
+      );
       const attendance = Attendance.record({
-        id: this.deps.ids.next(),
+        id: existingId ?? this.deps.ids.next(),
         studentId: command.studentId,
         classId: command.classId,
         subjectId: command.subjectId,
