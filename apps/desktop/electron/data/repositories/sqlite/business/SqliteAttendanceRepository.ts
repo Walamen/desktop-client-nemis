@@ -50,16 +50,20 @@ export class SqliteAttendanceRepository implements IAttendanceRepository {
       // One current record per (student, subject, date) — mirrors the web
       // backend's studentId_subjectId_date unique constraint (classId is not
       // part of the key: a student sits in one class, so it never varies for
-      // a given studentId). Replace the previous record inside the use case's
-      // unit-of-work transaction so repeated saves cannot inflate reports
-      // with duplicate rows. SQLite's `IS ?` (rather than `= ?`) correctly
-      // matches NULL when subjectId is unset (general, subject-less marking).
+      // a given studentId). The `id != ?` exclusion means a same-id edit (the
+      // common case — RecordAttendanceUseCase reuses the existing id) deletes
+      // nothing and the INSERT below falls through to its ON CONFLICT branch,
+      // firing only an update outbox trigger. This DELETE now only fires for
+      // a genuine stray duplicate under a different id (e.g. one written
+      // before this natural-key-reuse fix existed), self-healing it away.
+      // SQLite's `IS ?` (rather than `= ?`) correctly matches NULL when
+      // subjectId is unset (general, subject-less marking).
       this.#statements
         .get(
           `DELETE FROM ${TableNames.attendance}
-           WHERE studentId = ? AND subjectId IS ? AND date = ?`,
+           WHERE studentId = ? AND subjectId IS ? AND date = ? AND id != ?`,
         )
-        .run(attendance.studentId, attendance.subjectId ?? null, attendance.date);
+        .run(attendance.studentId, attendance.subjectId ?? null, attendance.date, attendance.id);
       this.#statements
         .get(
           `INSERT INTO ${TableNames.attendance}
@@ -89,6 +93,17 @@ export class SqliteAttendanceRepository implements IAttendanceRepository {
           attendance.updatedAt,
           attendance.lastModifiedBy ?? null,
         );
+    });
+  }
+
+  findExistingId(studentId: string, subjectId: string | undefined, date: string): string | undefined {
+    return guarded('SqliteAttendanceRepository.findExistingId', () => {
+      const row = this.#statements
+        .get(
+          `SELECT id FROM ${TableNames.attendance} WHERE studentId = ? AND subjectId IS ? AND date = ?`,
+        )
+        .get(studentId, subjectId ?? null, date) as { id: string } | undefined;
+      return row?.id;
     });
   }
 

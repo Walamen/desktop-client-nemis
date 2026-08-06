@@ -91,4 +91,37 @@ describe('SqliteAttendanceRepository', () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]?.status).toBe(AttendanceStatus.ABSENT);
   });
+
+  it('findExistingId returns undefined when no row exists for the natural key', () => {
+    expect(repo.findExistingId('stu-1', 'subj-1', '2026-07-20')).toBeUndefined();
+  });
+
+  it('findExistingId returns the id of the current row for (studentId, subjectId, date)', () => {
+    repo.save(
+      Attendance.record({
+        id: 'att-1', studentId: 'stu-1', classId: 'c-1', subjectId: 'subj-1',
+        date: '2026-07-20', status: AttendanceStatus.PRESENT, occurredAt: '2026-07-20T08:00:00.000Z',
+      }),
+    );
+    expect(repo.findExistingId('stu-1', 'subj-1', '2026-07-20')).toBe('att-1');
+  });
+
+  it('save() edits in place under the same id without deleting the row first', () => {
+    repo.save(
+      Attendance.record({
+        id: 'att-1', studentId: 'stu-1', classId: 'c-1', subjectId: 'subj-1',
+        date: '2026-07-20', status: AttendanceStatus.PRESENT, occurredAt: '2026-07-20T08:00:00.000Z',
+      }),
+    );
+    repo.save(
+      Attendance.record({
+        id: 'att-1', studentId: 'stu-1', classId: 'c-1', subjectId: 'subj-1',
+        date: '2026-07-20', status: AttendanceStatus.ABSENT, occurredAt: '2026-07-20T09:00:00.000Z',
+      }),
+    );
+    const rows = repo.findByClassAndDate('c-1', '2026-07-20', 'subj-1');
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.id).toBe('att-1');
+    expect(rows[0]?.status).toBe(AttendanceStatus.ABSENT);
+  });
 });
