@@ -25,6 +25,15 @@ export class InMemoryAttendanceRepository implements IAttendanceRepository {
     );
   }
 
+  findExistingId(studentId: string, subjectId: string | undefined, date: string): string | undefined {
+    for (const existing of this.store.values()) {
+      if (existing.studentId === studentId && existing.subjectId === subjectId && existing.date === date) {
+        return existing.id;
+      }
+    }
+    return undefined;
+  }
+
   countByDate(date: string): { present: number; total: number } {
     const onDate = [...this.store.values()].filter((a) => a.date === date);
     const present = onDate.filter((a) => a.status === AttendanceStatus.PRESENT).length;
