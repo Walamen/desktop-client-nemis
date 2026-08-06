@@ -41,6 +41,12 @@ export function AssignmentDetailPage({ assignmentId }: { assignmentId: string })
     if (teacherId && assignmentId) void assignmentsVm.loadAssignment(assignmentId, teacherId);
   }, [teacherId, assignmentId, assignmentsVm]);
 
+  useEffect(() => {
+    if (detail.status !== 'error' && detail.status !== 'empty') return;
+    const timer = setTimeout(() => router.push('/government/teacher/assignment'), 1500);
+    return () => clearTimeout(timer);
+  }, [detail.status, router]);
+
   async function handleDelete() {
     if (!teacherId) return;
     setDeleteError('');
@@ -67,7 +73,7 @@ export function AssignmentDetailPage({ assignmentId }: { assignmentId: string })
             <ArrowLeft className="w-4 h-4" />
             Back to Assignments
           </Link>
-          <Alert variant="error">Assignment not found or failed to load.</Alert>
+          <Alert variant="error">Assignment not found or failed to load. Returning to your assignments…</Alert>
         </div>
       );
     }

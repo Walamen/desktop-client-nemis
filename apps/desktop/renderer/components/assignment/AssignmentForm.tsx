@@ -82,6 +82,12 @@ export function AssignmentForm({ mode, assignmentId }: AssignmentFormProps) {
     }
   }, [mode, assignmentId, teacherId, assignmentsVm]);
 
+  useEffect(() => {
+    if (mode !== 'edit' || detail.status !== 'error') return;
+    const timer = setTimeout(() => router.push('/government/teacher/assignment'), 1500);
+    return () => clearTimeout(timer);
+  }, [mode, detail.status, router]);
+
   const hasTeachingData = teachingRows.status === 'success' || teachingRows.status === 'refreshing';
   const myClasses = useMemo(
     () => (hasTeachingData ? groupClassesWithSubjects(teachingRows.data) : []),
@@ -193,7 +199,7 @@ export function AssignmentForm({ mode, assignmentId }: AssignmentFormProps) {
     return <Skeleton className="h-96 w-full" />;
   }
   if (mode === 'edit' && detail.status === 'error') {
-    return <Alert variant="error">Assignment not found or failed to load.</Alert>;
+    return <Alert variant="error">Assignment not found or failed to load. Returning to your assignments…</Alert>;
   }
 
   return (

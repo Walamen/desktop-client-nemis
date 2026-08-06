@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Badge, EmptyState, Skeleton, Spinner } from '@nemis-desktop/ui';
+import { Alert, Badge, EmptyState, Skeleton, Spinner } from '@nemis-desktop/ui';
 import { useViewModel } from '@/hooks/use-view-model';
 import { useCurrentUserViewModel } from '@/lib/presentation/hooks/shared';
 import { useAssignmentsViewModel } from '@/lib/presentation/hooks/teacher';
@@ -21,6 +22,7 @@ const BADGE_VARIANT: Record<string, 'neutral' | 'primary' | 'success' | 'warning
 };
 
 export function SubmissionsTable({ assignmentId, totalMarks }: { assignmentId: string; totalMarks?: number }) {
+  const router = useRouter();
   const currentUser = useCurrentUserViewModel();
   const assignmentsVm = useAssignmentsViewModel();
   const user = useViewModel(currentUser.store, (s) => s.user);
@@ -30,6 +32,12 @@ export function SubmissionsTable({ assignmentId, totalMarks }: { assignmentId: s
   useEffect(() => {
     if (teacherId) void assignmentsVm.loadSubmissions(assignmentId, teacherId);
   }, [teacherId, assignmentId, assignmentsVm]);
+
+  useEffect(() => {
+    if (submissions.status !== 'error') return;
+    const timer = setTimeout(() => router.push('/government/teacher/assignment'), 1500);
+    return () => clearTimeout(timer);
+  }, [submissions.status, router]);
 
   const hasData = submissions.status === 'success' || submissions.status === 'refreshing';
   const rows = useMemo(() => (hasData ? submissions.data : []), [hasData, submissions]);
@@ -84,6 +92,9 @@ export function SubmissionsTable({ assignmentId, totalMarks }: { assignmentId: s
     }
   }
 
+  if (submissions.status === 'error') {
+    return <Alert variant="error">Could not load submissions. Returning to your assignments…</Alert>;
+  }
   if (!hasData) return <Skeleton className="h-56 w-full" />;
   if (rows.length === 0) {
     return <EmptyState title="No enrolled students" description="Enroll students in this class to collect submissions." />;
