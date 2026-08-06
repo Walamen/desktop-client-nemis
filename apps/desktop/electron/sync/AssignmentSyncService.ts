@@ -86,16 +86,34 @@ export class AssignmentSyncService {
 
     // UpdateAssignmentDto has no classId field on the backend (it never
     // changes after creation) — only include it on the first, create push.
-    const result = row.remoteId
-      ? await this.gateway.updateAssignment(row.remoteId, fields, filePath)
-      : await this.gateway.createAssignment({ ...fields, classId: row.classId }, filePath);
+    const isFirstPush = row.remoteId === null;
+    const result = isFirstPush
+      ? await this.gateway.createAssignment({ ...fields, classId: row.classId }, filePath)
+      : await this.gateway.updateAssignment(row.remoteId!, fields, filePath);
 
     const now = new Date().toISOString();
-    db.prepare(
-      `UPDATE assignments
-       SET remoteId = ?, attachmentUrl = COALESCE(?, attachmentUrl), attachmentName = COALESCE(?, attachmentName), syncedAt = ?
-       WHERE id = ?`,
-    ).run(result.id, result.attachmentUrl ?? null, result.attachmentName ?? null, now, row.id);
+    if (isFirstPush) {
+      // The backend mints its own id for a new assignment — it never accepts
+      // a client-supplied one (see migration 020's doc comment). Canonicalize
+      // this row's local primary key to that server id now, before this
+      // device can have created any local assignment_submissions rows for it
+      // (submissions only ever arrive from the server / a pull, never
+      // created offline). Without this, the next snapshot pull would insert
+      // a *second* row for this assignment under the server id — see this
+      // file's class-level doc comment and ProvisioningImporter's plain
+      // upsert-by-id merge.
+      db.prepare(
+        `UPDATE assignments
+         SET id = ?, remoteId = ?, attachmentUrl = COALESCE(?, attachmentUrl), attachmentName = COALESCE(?, attachmentName), syncedAt = ?
+         WHERE id = ?`,
+      ).run(result.id, result.id, result.attachmentUrl ?? null, result.attachmentName ?? null, now, row.id);
+    } else {
+      db.prepare(
+        `UPDATE assignments
+         SET attachmentUrl = COALESCE(?, attachmentUrl), attachmentName = COALESCE(?, attachmentName), syncedAt = ?
+         WHERE id = ?`,
+      ).run(result.attachmentUrl ?? null, result.attachmentName ?? null, now, row.id);
+    }
   }
 
   private async pushSubmission(db: SqliteDatabase, row: SubmissionRow): Promise<void> {

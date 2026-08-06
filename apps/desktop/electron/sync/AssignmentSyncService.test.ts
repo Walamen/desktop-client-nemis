@@ -32,7 +32,7 @@ describe('AssignmentSyncService', () => {
     `).run(row.id, row.status, row.updatedAt, row.updatedAt, row.remoteId, row.syncedAt);
   }
 
-  it('creates a never-synced assignment remotely and stores the returned remoteId', async () => {
+  it('creates a never-synced assignment remotely and canonicalizes its local id to the server id', async () => {
     insertAssignment();
     const gateway = buildGateway();
     await new AssignmentSyncService(gateway).pushPending(test.context.connection);
@@ -41,11 +41,31 @@ describe('AssignmentSyncService', () => {
       expect.objectContaining({ classId: 'cls-1', title: 'Chapter 5', status: 'DRAFT' }),
       undefined,
     );
-    const row = test.context.connection.prepare(`SELECT remoteId, syncedAt FROM assignments WHERE id='a1'`).get() as {
-      remoteId: string; syncedAt: string;
+    const byOldId = test.context.connection.prepare(`SELECT * FROM assignments WHERE id='a1'`).get();
+    expect(byOldId).toBeUndefined();
+    const row = test.context.connection.prepare(`SELECT id, remoteId, syncedAt FROM assignments WHERE id='remote-a1'`).get() as {
+      id: string; remoteId: string; syncedAt: string;
     };
+    expect(row.id).toBe('remote-a1');
     expect(row.remoteId).toBe('remote-a1');
     expect(row.syncedAt).toBeTruthy();
+  });
+
+  it('a second pull-merge for the same assignment after its first push updates the canonical row instead of duplicating it', async () => {
+    insertAssignment();
+    const gateway = buildGateway();
+    await new AssignmentSyncService(gateway).pushPending(test.context.connection);
+
+    // Simulates ProvisioningImporter's merge upsert for a pulled snapshot
+    // row describing this same assignment under the server's id.
+    test.context.connection.prepare(`
+      INSERT INTO assignments (id,classId,subjectId,teacherId,title,type,status,dueDate,createdAt,updatedAt,remoteId,syncedAt)
+      VALUES ('remote-a1','cls-1',NULL,'staff-1','Chapter 5','HOMEWORK','PUBLISHED','2026-08-10',?,?,NULL,NULL)
+      ON CONFLICT(id) DO UPDATE SET status=excluded.status
+    `).run('2026-08-01T00:00:00.000Z', '2026-08-01T00:00:00.000Z');
+
+    const count = test.context.connection.prepare(`SELECT COUNT(*) count FROM assignments`).get() as { count: number };
+    expect(count.count).toBe(1);
   });
 
   it('updates (not creates) an assignment that already has a remoteId', async () => {
