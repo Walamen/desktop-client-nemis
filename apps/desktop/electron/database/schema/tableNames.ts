@@ -11,6 +11,7 @@ export const TableNames = {
   auditLog: 'audit_log',
   // Business tables (Phase 8). Created empty; populated by sync/import in later phases.
   institutions: 'institutions',
+  districts: 'districts',
   users: 'users',
   userOrganizations: 'user_organizations',
   academicYears: 'academic_years',

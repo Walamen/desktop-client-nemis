@@ -19,6 +19,7 @@ import { createAssessmentsTable } from './017-create-assessments-table';
 import { addAttendanceRemarksAndUpdateReason } from './018-add-attendance-remarks-and-update-reason';
 import { dropDeadAssignmentOutboxTriggers } from './019-drop-dead-assignment-outbox-triggers';
 import { addAssignmentSyncTracking } from './020-add-assignment-sync-tracking';
+import { createDistrictsTable } from './021-create-districts-table';
 
 /**
  * Every migration, ascending by version. Append only — never edit or reorder
@@ -45,4 +46,5 @@ export const migrations: readonly Migration[] = [
   addAttendanceRemarksAndUpdateReason,
   dropDeadAssignmentOutboxTriggers,
   addAssignmentSyncTracking,
+  createDistrictsTable,
 ];
