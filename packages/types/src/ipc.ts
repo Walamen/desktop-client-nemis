@@ -26,6 +26,7 @@ import type {
   CurrentUserResult,
   DashboardOverviewResult,
   DeviceInfoResult,
+  InstitutionSummaryResult,
   SchoolSummaryResult,
 } from './dashboard';
 import type {
@@ -112,6 +113,7 @@ export interface IpcContract {
   'settings:get': { args: [key: string]; result: unknown };
   'dashboard:get-overview': { args: []; result: DashboardOverviewResult };
   'school:get-summary': { args: []; result: SchoolSummaryResult | null };
+  'institution:list': { args: []; result: InstitutionSummaryResult[] };
   'academic-year:get-current': { args: []; result: AcademicYearResult | null };
   'identity:get-current-user': { args: []; result: CurrentUserResult | null };
   'device:get-info': { args: []; result: DeviceInfoResult | null };
@@ -250,6 +252,7 @@ export const IpcChannels = {
   SETTINGS_GET: 'settings:get',
   DASHBOARD_GET_OVERVIEW: 'dashboard:get-overview',
   SCHOOL_GET_SUMMARY: 'school:get-summary',
+  INSTITUTION_LIST: 'institution:list',
   ACADEMIC_YEAR_GET_CURRENT: 'academic-year:get-current',
   IDENTITY_GET_CURRENT_USER: 'identity:get-current-user',
   DEVICE_GET_INFO: 'device:get-info',

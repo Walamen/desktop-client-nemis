@@ -25,6 +25,18 @@ export interface SchoolSummaryResult {
   communityTown?: string;
 }
 
+export interface InstitutionSummaryResult {
+  id: string;
+  code: string;
+  name: string;
+  type: InstitutionType;
+  ownership: OwnershipType;
+  districtId?: string;
+  districtName?: string;
+  approvalStatus: ApprovalStatus;
+  studentCount: number;
+}
+
 export interface AcademicYearResult {
   id: string;
   institutionId: string;

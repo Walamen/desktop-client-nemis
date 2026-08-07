@@ -26,6 +26,7 @@ import type {
   CurrentUserResult,
   DashboardOverviewResult,
   DeviceInfoResult,
+  InstitutionSummaryResult,
   SchoolSummaryResult,
 } from './dashboard';
 import type {
@@ -114,6 +115,14 @@ export interface DashboardApi {
 }
 export interface SchoolApi {
   getSummary(): Promise<SchoolSummaryResult | null>;
+}
+export interface InstitutionApi {
+  /** Every institution present in this device's local database — for
+   * School Admin/Teacher that's their own one institution; for County/DEO/
+   * Ministry it's every institution the backend scoped into their sync
+   * snapshot (see Nemis/apps/Server desktop-provisioning.service.ts). No
+   * role branching needed here: the local data is already scoped. */
+  list(): Promise<InstitutionSummaryResult[]>;
 }
 export interface AcademicYearApi {
   getCurrent(): Promise<AcademicYearResult | null>;
@@ -226,6 +235,7 @@ export interface NemisApi {
   settings: SettingsApi;
   dashboard: DashboardApi;
   school: SchoolApi;
+  institution: InstitutionApi;
   academicYear: AcademicYearApi;
   term: TermApi;
   classes: ClassesApi;
