@@ -26,6 +26,36 @@ It is **NOT** a replacement for the production web application.
 
 ---
 
+# Who Uses This App
+
+This is **NOT** a School Admin app with Teacher features bolted on. It is the offline-capable desktop client for every government-side NEMIS role. Treat `Nemis/apps/portal-web/src/app/government/<role>/` as the canonical reference for that role's workflows, screens, and data scope before designing the desktop equivalent.
+
+The role list, route, and data scope are already defined in code and MUST NOT drift from it:
+
+- Source of truth: `packages/types/src/enums.ts` (`SystemRole`) and `packages/types/src/desktop-portals.ts` (`DESKTOP_PORTAL_ROLES`, `DESKTOP_PORTALS`).
+
+| Role (`SystemRole`) | Desktop route | Scope | Mirrors (portal-web) |
+|---|---|---|---|
+| `MINISTRY_ADMIN` | `/government/ministry-portal` | National | `government/ministry-portal` |
+| `COUNTY_ADMIN` | `/government/county` | County (CEO) | `government/county` |
+| `DEO` | `/government/deo` | District | `government/deo` |
+| `INSTITUTION_ADMIN` | `/government/school-admin` | Own institution | `government/school-admin` |
+| `TEACHER` | `/government/teacher` | Own classes within institution | `government/teacher` |
+
+`PARENT` and `STUDENT` are valid `SystemRole` values but are **NOT** desktop portal roles — they are served by the separate SIS web app. Do not build desktop screens for them unless explicitly instructed.
+
+## Known Foundation Bias — Being Corrected
+
+Earlier phases of this repository (domain, application, presentation layers, IPC handlers) were designed institution-admin-first, with Teacher support retrofitted afterward. The `county`, `deo`, and `ministry-portal` routes currently exist mostly as routed UI shells without real domain/application wiring behind them.
+
+Treat that history as **legacy bias to correct, not a pattern to copy.** Going forward:
+
+- Design every new domain concept, use case, and IPC contract around *scope* (`NATIONAL` / `COUNTY` / `DISTRICT` / `INSTITUTION` / `TEACHER`), not around "the school."
+- Before assuming a feature is School-Admin-only, check whether County/DEO/Ministry need an aggregated, oversight, or approval version of it.
+- When a role's real-world workflow is unclear, read the matching folder under `Nemis/apps/portal-web/src/app/government/<role>/` before designing the desktop equivalent — don't guess from the School Admin/Teacher pattern already in this repo.
+
+---
+
 # Guiding Principle
 
 The Electron application should integrate with the existing production architecture.
@@ -351,6 +381,12 @@ apps/
         renderer/
 
             app/
+                government/
+                    ministry-portal/
+                    county/
+                    deo/
+                    school-admin/
+                    teacher/
             components/
             layouts/
             hooks/
@@ -540,33 +576,17 @@ Support:
 
 # Business Rules
 
-School Admin
+Role-based data scope (canonical table under "Who Uses This App"):
 
-Own school only.
+- Ministry Admin — national oversight: all counties, districts, institutions.
+- County Admin (CEO) — county oversight: districts and institutions within the assigned county.
+- DEO — district oversight: institutions within the assigned district.
+- Institution Admin (School Admin) — own institution only.
+- Teacher — own classes within their institution: attendance, grades, classroom activities.
 
-District Education Officer
+Ministry, County, and DEO are oversight roles — read, approve, escalate, and report over their scope, not day-to-day operational data entry for institutions they don't run. Their workflows include audit, data validation, enrollment oversight, escalations, finance, infrastructure, reporting, supervision, and transfers. Check the matching folder under `Nemis/apps/portal-web/src/app/government/<role>/` for the exact feature set before building a desktop equivalent.
 
-Schools in assigned district.
-
-County Education Officer
-
-Schools in assigned county.
-
-Teachers
-
-Attendance
-
-Grades
-
-Classroom activities
-
-Parents
-
-Read-only
-
-Students
-
-Read-only
+Parents and Students are read-only roles in the production system but are served by the separate SIS web app, not this desktop client.
 
 Academic hierarchy:
 
@@ -684,4 +704,4 @@ Suitable for nationwide deployment.
 
 # Mission
 
-The goal of this repository is to build a secure, scalable, enterprise-grade Electron desktop application that enables schools across Liberia to continue working seamlessly regardless of internet connectivity while remaining fully synchronized with the national NEMIS platform.
+The goal of this repository is to build a secure, scalable, enterprise-grade Electron desktop application that lets every NEMIS government role — Ministry, County, District, School Admin, and Teacher — continue working seamlessly regardless of internet connectivity, at whatever scope their role covers, while remaining fully synchronized with the national NEMIS platform.
