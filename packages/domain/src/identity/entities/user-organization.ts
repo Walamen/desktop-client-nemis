@@ -28,6 +28,12 @@ export class UserOrganization extends Entity<string> {
   get institutionId(): string | undefined {
     return this.#props.institutionId;
   }
+  get countyId(): string | undefined {
+    return this.#props.countyId;
+  }
+  get districtId(): string | undefined {
+    return this.#props.districtId;
+  }
   get isActive(): boolean {
     return this.#props.isActive;
   }

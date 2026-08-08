@@ -124,6 +124,31 @@ describe('User', () => {
   });
 });
 
+describe('UserOrganization', () => {
+  it('exposes countyId and districtId alongside institutionId', () => {
+    const org = UserOrganization.reconstitute({
+      id: 'org-2',
+      role: SystemRole.COUNTY_ADMIN,
+      countyId: 'county-1',
+      districtId: 'district-1',
+      isActive: true,
+    });
+    expect(org.countyId).toBe('county-1');
+    expect(org.districtId).toBe('district-1');
+  });
+
+  it('leaves countyId and districtId undefined when not provided', () => {
+    const org = UserOrganization.reconstitute({
+      id: 'org-3',
+      role: SystemRole.TEACHER,
+      institutionId: 'inst-1',
+      isActive: true,
+    });
+    expect(org.countyId).toBeUndefined();
+    expect(org.districtId).toBeUndefined();
+  });
+});
+
 describe('CanSyncEntity', () => {
   it('requires version >= 1 and a valid updatedAt', () => {
     const spec = new CanSyncEntity();
