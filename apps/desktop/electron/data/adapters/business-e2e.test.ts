@@ -70,6 +70,46 @@ describe('business application layer end-to-end against real SQLite', () => {
       .run(InstitutionType.SCHOOL, OwnershipType.GOVERNMENT);
   }
 
+  function seedInstitutionWith(id: string, code: string, name: string): void {
+    manager.connection
+      .prepare(
+        `INSERT INTO institutions (id, code, name, type, ownership, countyId, approvalStatus, version, updatedAt)
+         VALUES (?, ?, ?, ?, ?, 'county-1', 'APPROVED', 1, '2026-07-21T00:00:00.000Z')`,
+      )
+      .run(id, code, name, InstitutionType.SCHOOL, OwnershipType.GOVERNMENT);
+  }
+
+  it('keeps institutions and student counts separated when a device holds more than one institution (County/DEO/Ministry scope)', async () => {
+    // Two institutions land in the same local database — exactly what a
+    // COUNTY_ADMIN device's sync snapshot produces (see
+    // Nemis/apps/Server/src/desktop-provisioning/desktop-provisioning.service.ts
+    // authorizedInstitutionIds), which the old findFirst()-only
+    // IInstitutionRepository could never represent.
+    seedInstitutionWith('inst-1', 'SCH-1', 'Monrovia Central');
+    seedInstitutionWith('inst-2', 'SCH-2', 'Zorzor Elementary');
+
+    const app = createApplicationComposition(dataLayer, 'test-user', silent);
+    await app.students.create({
+      institutionId: 'inst-1', firstName: 'Grace', lastName: 'Toe',
+      admissionNumber: 'ADM-1', dateOfBirth: '2015-01-01', gender: Gender.FEMALE,
+    });
+    await app.students.create({
+      institutionId: 'inst-1', firstName: 'John', lastName: 'Doe',
+      admissionNumber: 'ADM-2', dateOfBirth: '2015-01-01', gender: Gender.MALE,
+    });
+    await app.students.create({
+      institutionId: 'inst-2', firstName: 'Mary', lastName: 'Kollie',
+      admissionNumber: 'ADM-3', dateOfBirth: '2015-01-01', gender: Gender.FEMALE,
+    });
+
+    const institutions = dataLayer.repositories.institutions.findAll();
+    expect(institutions.map((i) => i.id).sort()).toEqual(['inst-1', 'inst-2']);
+
+    const counts = dataLayer.repositories.students.countByInstitution();
+    expect(counts).toContainEqual({ institutionId: 'inst-1', studentCount: 2 });
+    expect(counts).toContainEqual({ institutionId: 'inst-2', studentCount: 1 });
+  });
+
   it('academic foundation: year -> term -> class -> subject -> assignment, real SQLite joins', async () => {
     seedInstitution();
     const app = createApplicationComposition(dataLayer, 'test-user', silent);
