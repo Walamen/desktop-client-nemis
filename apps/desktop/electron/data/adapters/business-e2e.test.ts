@@ -79,6 +79,12 @@ describe('business application layer end-to-end against real SQLite', () => {
       .run(id, code, name, InstitutionType.SCHOOL, OwnershipType.GOVERNMENT);
   }
 
+  function seedDistrict(id: string, name: string): void {
+    manager.connection
+      .prepare(`INSERT INTO districts (id, name, countyId) VALUES (?, ?, 'county-1')`)
+      .run(id, name);
+  }
+
   it('keeps institutions and student counts separated when a device holds more than one institution (County/DEO/Ministry scope)', async () => {
     // Two institutions land in the same local database — exactly what a
     // COUNTY_ADMIN device's sync snapshot produces (see
@@ -87,6 +93,10 @@ describe('business application layer end-to-end against real SQLite', () => {
     // IInstitutionRepository could never represent.
     seedInstitutionWith('inst-1', 'SCH-1', 'Monrovia Central');
     seedInstitutionWith('inst-2', 'SCH-2', 'Zorzor Elementary');
+    seedDistrict('district-1', 'Greater Monrovia District');
+    manager.connection
+      .prepare(`UPDATE institutions SET districtId = 'district-1' WHERE id = 'inst-1'`)
+      .run();
 
     const app = createApplicationComposition(dataLayer, 'test-user', silent);
     await app.students.create({
@@ -108,6 +118,16 @@ describe('business application layer end-to-end against real SQLite', () => {
     const counts = dataLayer.repositories.students.countByInstitution();
     expect(counts).toContainEqual({ institutionId: 'inst-1', studentCount: 2 });
     expect(counts).toContainEqual({ institutionId: 'inst-2', studentCount: 1 });
+
+    // Exercise the actual composed use case (ListInstitutionsUseCase), not just
+    // the repositories directly — this is what proves the district-name join
+    // and per-institution student counts work through the real application
+    // layer over real SQLite, not merely at the repository layer.
+    const listed = (await app.institution.listInstitutions()).data;
+    const listedInst1 = listed.find((i) => i.id === 'inst-1');
+    const listedInst2 = listed.find((i) => i.id === 'inst-2');
+    expect(listedInst1).toMatchObject({ districtName: 'Greater Monrovia District', studentCount: 2 });
+    expect(listedInst2).toMatchObject({ districtName: undefined, studentCount: 1 });
   });
 
   it('academic foundation: year -> term -> class -> subject -> assignment, real SQLite joins', async () => {
