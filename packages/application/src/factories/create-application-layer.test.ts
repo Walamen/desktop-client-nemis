@@ -21,6 +21,7 @@ import { InMemoryAssessmentRepository } from '../testing/assessments/in-memory-a
 import { InMemoryGradeRepository } from '../testing/assessments/in-memory-grade-repository';
 import { InMemoryUserRepository } from '../testing/identity/in-memory-user-repository';
 import { InMemoryInstitutionRepository } from '../testing/institution/in-memory-institution-repository';
+import { InMemoryDistrictRepository } from '../testing/institution/in-memory-district-repository';
 import { InMemoryGradingConfigRepository } from '../testing/institution/in-memory-grading-config-repository';
 import { InMemoryDeviceGateway } from '../testing/infra/in-memory-device-gateway';
 import { InMemorySettingsGateway } from '../testing/infra/in-memory-settings-gateway';
@@ -46,6 +47,7 @@ function buildLayer() {
     grades: new InMemoryGradeRepository(),
     users: new InMemoryUserRepository(),
     institutions: new InMemoryInstitutionRepository(),
+    districts: new InMemoryDistrictRepository(),
     gradingConfigs: new InMemoryGradingConfigRepository(),
     currentUserId: 'test-user',
     deviceGateway: new InMemoryDeviceGateway(),

@@ -1,6 +1,7 @@
 import type {
   IStudentRepository,
   IInstitutionRepository,
+  IDistrictRepository,
   IUserRepository,
   IAcademicYearRepository,
   IClassRepository,
@@ -28,6 +29,7 @@ import { SqliteClassRepository } from '../repositories/sqlite/business/SqliteCla
 import { SqliteTermRepository } from '../repositories/sqlite/business/SqliteTermRepository';
 import { SqliteSubjectRepository } from '../repositories/sqlite/business/SqliteSubjectRepository';
 import { SqliteInstitutionRepository } from '../repositories/sqlite/business/SqliteInstitutionRepository';
+import { SqliteDistrictRepository } from '../repositories/sqlite/business/SqliteDistrictRepository';
 import { SqliteStudentRepository } from '../repositories/sqlite/business/SqliteStudentRepository';
 import { SqliteUserRepository } from '../repositories/sqlite/business/SqliteUserRepository';
 import { SqliteGuardianRepository } from '../repositories/sqlite/business/SqliteGuardianRepository';
@@ -57,6 +59,7 @@ export interface DataLayer {
     auditLog: IAuditLogRepository;
     students: IStudentRepository;
     institutions: IInstitutionRepository;
+    districts: IDistrictRepository;
     users: IUserRepository;
     academicYears: IAcademicYearRepository;
     classes: IClassRepository;
@@ -119,6 +122,7 @@ export function createDataLayer(manager: DatabaseManager, log: DatabaseLogger): 
   const auditLog = new SqliteAuditLogRepository(context);
   const students = new SqliteStudentRepository(context);
   const institutions = new SqliteInstitutionRepository(context);
+  const districts = new SqliteDistrictRepository(context);
   const users = new SqliteUserRepository(context);
   const academicYears = new SqliteAcademicYearRepository(context);
   const classes = new SqliteClassRepository(context);
@@ -164,6 +168,7 @@ export function createDataLayer(manager: DatabaseManager, log: DatabaseLogger): 
       auditLog,
       students,
       institutions,
+      districts,
       users,
       academicYears,
       classes,

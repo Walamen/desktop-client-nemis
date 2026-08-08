@@ -2,6 +2,7 @@ import {
   createApplicationLayer,
   type ApplicationLayer,
   type ApplicationPorts,
+  type IDistrictRepository,
 } from '@nemis-desktop/application';
 import {
   ConsoleLogger,
@@ -45,6 +46,7 @@ export function createApplicationComposition(
     // Business — real SQLite (Phase 8 dashboard path + Phase 9 academic foundation).
     students: dataLayer.repositories.students,
     institutions: dataLayer.repositories.institutions,
+    districts: dataLayer.repositories.districts,
     users: dataLayer.repositories.users,
     academicYears: dataLayer.repositories.academicYears,
     classes: dataLayer.repositories.classes,

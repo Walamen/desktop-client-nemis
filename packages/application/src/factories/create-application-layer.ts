@@ -11,6 +11,7 @@ import type { IGradeRepository } from '../interfaces/assessments/grade-repositor
 import type { IUserRepository } from '../interfaces/identity/user-repository';
 import type { IInstitutionRepository } from '../interfaces/institution/institution-repository';
 import type { IGradingConfigRepository } from '../interfaces/institution/grading-config-repository';
+import type { IDistrictRepository } from '../interfaces/institution/district-repository';
 import type { IDeviceGateway } from '../interfaces/infra/device-gateway';
 import type { ISettingsGateway } from '../interfaces/infra/settings-gateway';
 import type { IUnitOfWork } from '../interfaces/unit-of-work';
@@ -80,6 +81,7 @@ import { IdentityApplicationService } from '../services/identity-application-ser
 import { GetInstitutionProfileUseCase } from '../use-cases/institution/get-institution-profile';
 import { UpdateGradingConfigUseCase } from '../use-cases/institution/update-grading-config';
 import { GetCurrentSchoolUseCase } from '../use-cases/institution/get-current-school';
+import { ListInstitutionsUseCase } from '../use-cases/institution/list-institutions';
 import { InstitutionApplicationService } from '../services/institution-application-service';
 
 import { RegisterDeviceUseCase } from '../use-cases/infra/register-device';
@@ -141,6 +143,7 @@ export interface ApplicationPorts {
   grades: IGradeRepository;
   users: IUserRepository;
   institutions: IInstitutionRepository;
+  districts: IDistrictRepository;
   gradingConfigs: IGradingConfigRepository;
   /** The authenticated user's id for this workspace (see GetCurrentUserDeps). */
   currentUserId: string;
@@ -385,6 +388,12 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
       logger,
     }),
     getCurrentSchool: new GetCurrentSchoolUseCase({ institutions: ports.institutions, logger }),
+    listInstitutions: new ListInstitutionsUseCase({
+      institutions: ports.institutions,
+      districts: ports.districts,
+      students: ports.students,
+      logger,
+    }),
   });
 
   const infra = new InfraApplicationService({
