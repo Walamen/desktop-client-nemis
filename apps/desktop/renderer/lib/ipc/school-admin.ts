@@ -19,6 +19,7 @@ export const schoolAdminIpc = {
   }),
   institution: group('institution', {
     getCurrentSchool: () => query(() => schoolAdminBridge.getSchoolSummary()),
+    listInstitutions: () => query(() => schoolAdminBridge.listInstitutions()),
   }),
   academics: group<AcademicsApplicationService>('academics', {
     enroll: (dto) => query(() => schoolAdminBridge.enrollStudent(dto)),

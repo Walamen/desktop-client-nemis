@@ -7,6 +7,7 @@ export * from './identity-api';
 export * from './device-api';
 export * from './attendance-api';
 export * from './school-admin-records-api';
+export * from './institution-api';
 
 import { authApi } from './auth-api';
 import { provisioningApi } from './provisioning-api';
@@ -17,6 +18,7 @@ import { identityApi } from './identity-api';
 import { deviceApi } from './device-api';
 import { attendanceApi } from './attendance-api';
 import { schoolAdminRecordsApi } from './school-admin-records-api';
+import { institutionApi } from './institution-api';
 
 /** The NemisApi slice every portal shares. */
 export const sharedApi = {
@@ -29,4 +31,5 @@ export const sharedApi = {
   device: deviceApi,
   attendance: attendanceApi,
   schoolAdmin: schoolAdminRecordsApi,
+  institution: institutionApi,
 };
