@@ -21,6 +21,10 @@ export interface IStudentRepository {
   countByGradeLevel(): { gradeLevel: GradeLevel; studentCount: number }[];
   /** Active-student counts grouped by gender, for stat tiles. */
   countByGender(): { gender: Gender; studentCount: number }[];
+  /** Active-student counts grouped by institution — the query that would
+   * have silently mixed institutions together under the old "one device =
+   * one institution" assumption. */
+  countByInstitution(): { institutionId: string; studentCount: number }[];
   /** Active students with admissionDate on/after `sinceDate` (YYYY-MM-DD). */
   countRecentAdmissions(sinceDate: string): number;
   findRecentlyUpdated(limit: number): Student[];

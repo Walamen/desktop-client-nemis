@@ -35,6 +35,7 @@ export class InMemoryStudentRepository implements IStudentRepository {
   }
   countByGradeLevel(): { gradeLevel: import('@nemis-desktop/types').GradeLevel; studentCount: number }[] { const counts = new Map<import('@nemis-desktop/types').GradeLevel, number>(); for (const s of this.store.values()) if (s.gradeLevel) counts.set(s.gradeLevel, (counts.get(s.gradeLevel) ?? 0) + 1); return [...counts].map(([gradeLevel, studentCount]) => ({ gradeLevel, studentCount })); }
   countByGender(): { gender: import('@nemis-desktop/types').Gender; studentCount: number }[] { const counts = new Map<import('@nemis-desktop/types').Gender, number>(); for (const s of this.store.values()) { if (!s.isActive) continue; counts.set(s.gender, (counts.get(s.gender) ?? 0) + 1); } return [...counts].map(([gender, studentCount]) => ({ gender, studentCount })); }
+  countByInstitution(): { institutionId: string; studentCount: number }[] { const counts = new Map<string, number>(); for (const s of this.store.values()) { if (!s.isActive) continue; counts.set(s.institutionId, (counts.get(s.institutionId) ?? 0) + 1); } return [...counts].map(([institutionId, studentCount]) => ({ institutionId, studentCount })); }
   countRecentAdmissions(sinceDate: string): number { let n = 0; for (const s of this.store.values()) { if (s.isActive && s.admissionDate && s.admissionDate >= sinceDate) n += 1; } return n; }
   findRecentlyUpdated(limit: number): Student[] { return [...this.store.values()].sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)).slice(0,limit); }
 }

@@ -20,11 +20,11 @@ function newStudent(id: string, admission: string): Student {
 function newStudentWith(
   id: string,
   admission: string,
-  overrides: { gender?: Gender; admissionDate?: string; isActive?: boolean } = {},
+  overrides: { gender?: Gender; admissionDate?: string; isActive?: boolean; institutionId?: string } = {},
 ): Student {
   const student = Student.create({
     id,
-    institutionId: 'inst-1',
+    institutionId: overrides.institutionId ?? 'inst-1',
     firstName: 'Grace',
     lastName: 'Toe',
     admissionNumber: admission,
@@ -92,6 +92,21 @@ describe('SqliteStudentRepository', () => {
       expect.arrayContaining([
         { gender: Gender.MALE, studentCount: 2 },
         { gender: Gender.FEMALE, studentCount: 1 },
+      ]),
+    );
+    expect(counts).toHaveLength(2);
+  });
+
+  it('countByInstitution groups active students by institution, ignoring inactive ones', () => {
+    repo.save(newStudentWith('s-1', 'ADM-1', { institutionId: 'inst-1' }));
+    repo.save(newStudentWith('s-2', 'ADM-2', { institutionId: 'inst-1' }));
+    repo.save(newStudentWith('s-3', 'ADM-3', { institutionId: 'inst-2' }));
+    repo.save(newStudentWith('s-4', 'ADM-4', { institutionId: 'inst-2', isActive: false }));
+    const counts = repo.countByInstitution();
+    expect(counts).toEqual(
+      expect.arrayContaining([
+        { institutionId: 'inst-1', studentCount: 2 },
+        { institutionId: 'inst-2', studentCount: 1 },
       ]),
     );
     expect(counts).toHaveLength(2);

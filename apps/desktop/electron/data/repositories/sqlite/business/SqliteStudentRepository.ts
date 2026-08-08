@@ -185,6 +185,9 @@ export class SqliteStudentRepository implements IStudentRepository {
   countByGender(): { gender: Gender; studentCount: number }[] {
     return guarded('SqliteStudentRepository.countByGender', () => this.#statements.get(`SELECT gender, COUNT(*) AS studentCount FROM ${TableNames.students} WHERE isActive = 1 GROUP BY gender`).all() as { gender: Gender; studentCount: number }[]);
   }
+  countByInstitution(): { institutionId: string; studentCount: number }[] {
+    return guarded('SqliteStudentRepository.countByInstitution', () => this.#statements.get(`SELECT institutionId, COUNT(*) AS studentCount FROM ${TableNames.students} WHERE isActive = 1 GROUP BY institutionId`).all() as { institutionId: string; studentCount: number }[]);
+  }
   countRecentAdmissions(sinceDate: string): number {
     return guarded('SqliteStudentRepository.countRecentAdmissions', () => {
       const row = this.#statements.get(`SELECT COUNT(*) AS n FROM ${TableNames.students} WHERE isActive = 1 AND admissionDate >= ?`).get(sinceDate) as { n: number };
