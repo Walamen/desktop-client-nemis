@@ -20,6 +20,7 @@ import { registerIdentityHandlers } from '@app/ipc/handlers/shared/identity';
 import { registerDeviceHandlers } from '@app/ipc/handlers/shared/device';
 import { registerAttendanceHandlers } from '@app/ipc/handlers/shared/attendance';
 import { registerSchoolAdminHandlers } from '@app/ipc/handlers/shared/schoolAdmin';
+import { registerInstitutionHandlers } from '@app/ipc/handlers/shared/institutions';
 
 // Institution Admin (school admin) portal — see
 // electron/ipc/handlers/school-admin/.
@@ -65,6 +66,7 @@ export function registerIpcHandlers(
   registerDeviceHandlers(securedHandle, app);
   registerAttendanceHandlers(securedHandle, app);
   registerSchoolAdminHandlers(securedHandle, schoolAdmin);
+  registerInstitutionHandlers(securedHandle, app);
 
   registerDashboardHandlers(securedHandle, app);
   registerSchoolHandlers(securedHandle, app);
