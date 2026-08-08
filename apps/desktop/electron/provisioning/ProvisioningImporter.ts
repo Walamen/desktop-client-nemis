@@ -35,6 +35,7 @@ interface TableSpec {
 }
 
 const SPECS: Record<ProvisioningCollection, TableSpec> = {
+  districts: spec('districts', ['id', 'name', 'countyId']),
   institutions: spec('institutions', ['id','code','name','type','ownership','countyId','districtId','approvalStatus','street','communityTown','latitude','longitude','rejectionReason','profile','version','updatedAt','lastModifiedBy']),
   users: spec('users', ['id','firstName','middleName','lastName','email','isActive','version','updatedAt','lastModifiedBy']),
   userOrganizations: spec('user_organizations', ['id','userId','role','institutionId','countyId','districtId','isActive']),
@@ -318,6 +319,7 @@ function verifyDatabase(
     }
   }
   const dependencies = [
+    ['institutions', 'districtId', 'districts'],
     ['academic_years', 'institutionId', 'institutions'],
     ['classes', 'institutionId', 'institutions'],
     ['classes', 'academicYearId', 'academic_years'],

@@ -255,6 +255,15 @@ describe('ProvisioningImporter', () => {
     expect(row.remoteId).toBeNull();
   });
 
+  it('imports districts and links institutions to them', () => {
+    const importer = new ProvisioningImporter(manager);
+    importer.import(snapshotOf(DISTRICT_FK_DATA), CONTEXT);
+    expect(countRows('districts')).toBe(1);
+    expect(
+      (manager.connection.prepare('SELECT districtId FROM institutions WHERE id=?').get('school-1') as { districtId: string }).districtId,
+    ).toBe('district-1');
+  });
+
   function countRows(table: string): number {
     return (manager.connection.prepare(`SELECT COUNT(*) count FROM ${table}`).get() as { count: number }).count;
   }
@@ -397,4 +406,10 @@ const ASSESSMENT_FK_DATA: Partial<ProvisioningData> = {
     weight: 30, date: '2026-01-15', createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
   }],
+};
+
+const DISTRICT_FK_DATA: Partial<ProvisioningData> = {
+  ...BASE_DATA,
+  districts: [{ id: 'district-1', name: 'Sinkor District', countyId: 'county-1' }],
+  institutions: [{ ...BASE_DATA.institutions![0], districtId: 'district-1' }],
 };
