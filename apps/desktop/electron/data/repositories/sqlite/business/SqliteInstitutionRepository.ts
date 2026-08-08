@@ -77,4 +77,13 @@ export class SqliteInstitutionRepository implements IInstitutionRepository {
       return row ? toInstitution(row) : null;
     });
   }
+
+  findAll(): Institution[] {
+    return guarded('SqliteInstitutionRepository.findAll', () => {
+      const rows = this.#statements
+        .get(`SELECT ${COLUMNS} FROM ${TableNames.institutions} ORDER BY name ASC, id ASC`)
+        .all() as InstitutionRow[];
+      return rows.map(toInstitution);
+    });
+  }
 }

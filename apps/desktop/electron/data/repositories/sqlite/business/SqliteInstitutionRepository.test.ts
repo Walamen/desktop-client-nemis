@@ -33,4 +33,12 @@ describe('SqliteInstitutionRepository', () => {
     expect(repo.findFirst()?.code.value).toBe('LIB-001');
     expect(repo.findFirst()?.address.communityTown).toBe('Sinkor');
   });
+
+  it('findAll returns every institution, ordered by name', () => {
+    seedInstitution(test.context.connection, 'inst-2');
+    test.context.connection.exec(`UPDATE institutions SET name='Zorzor Elementary' WHERE id='inst-2'`);
+    seedInstitution(test.context.connection, 'inst-1');
+    const names = repo.findAll().map((i) => i.name);
+    expect(names).toEqual(['Monrovia Central', 'Zorzor Elementary']);
+  });
 });

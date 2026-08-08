@@ -10,4 +10,7 @@ export class InMemoryInstitutionRepository implements IInstitutionRepository {
     for (const institution of this.store.values()) return institution;
     return null;
   }
+  findAll(): Institution[] {
+    return [...this.store.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }
 }
