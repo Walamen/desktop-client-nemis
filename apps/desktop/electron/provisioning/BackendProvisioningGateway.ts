@@ -207,9 +207,14 @@ function validateSnapshot(value: unknown): ProvisioningSnapshot {
   const data = asRecord(snapshot.data);
   const manifest = asRecord(snapshot.manifest);
   for (const collection of PROVISIONING_COLLECTIONS) {
-    const rows = data[collection];
+    // A collection the backend doesn't yet know about (e.g. desktop shipped
+    // ahead of a companion backend deploy) is legitimately absent, not
+    // malformed — treat "missing" as "empty" rather than hard-failing every
+    // sync for every role. A present-but-wrong-shaped value is still rejected.
+    const rows = data[collection] ?? [];
     if (!Array.isArray(rows)) throw new Error(`Snapshot collection ${collection} is invalid.`);
-    if (!Number.isInteger(manifest[collection]) || manifest[collection] !== rows.length) {
+    const manifestCount = manifest[collection] ?? 0;
+    if (!Number.isInteger(manifestCount) || manifestCount !== rows.length) {
       throw new Error(`Snapshot manifest count for ${collection} is invalid.`);
     }
     for (const row of rows) {
@@ -217,6 +222,8 @@ function validateSnapshot(value: unknown): ProvisioningSnapshot {
         throw new Error(`Snapshot collection ${collection} contains an invalid row.`);
       }
     }
+    data[collection] = rows;
+    manifest[collection] = manifestCount;
   }
   return snapshot as unknown as ProvisioningSnapshot;
 }

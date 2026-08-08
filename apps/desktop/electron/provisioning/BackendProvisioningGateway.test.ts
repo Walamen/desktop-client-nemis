@@ -60,6 +60,27 @@ describe('BackendProvisioningGateway', () => {
     await expect(buildGateway().downloadSnapshot('device-1')).rejects.toThrow(/manifest/i);
   });
 
+  it('tolerates a snapshot missing a collection entirely, treating it as empty rather than failing the whole sync', async () => {
+    // Simulates a desktop build shipping ahead of a backend deploy: the
+    // backend's response simply doesn't know about a newly-added collection
+    // (here, 'districts') yet, so the key is absent from both `data` and
+    // `manifest` — not present-but-empty. This must not hard-fail sync for
+    // every role, only for County/DEO/Ministry roles that actually need it.
+    const collections = PROVISIONING_COLLECTIONS.filter((key) => key !== 'districts');
+    const data = Object.fromEntries(collections.map((key) => [key, []]));
+    const manifest = Object.fromEntries(collections.map((key) => [key, 0]));
+    vi.stubGlobal('fetch', vi.fn(async () => response({
+      contractVersion: 1, snapshotId: 'snapshot-1', generatedAt: '2026-01-01',
+      userId: 'user-1', role: 'INSTITUTION_ADMIN', scopeType: 'INSTITUTION',
+      scopeId: 'school-1', institutionId: 'school-1', deviceId: 'device-1',
+      checksumAlgorithm: 'sha256',
+      checksum: 'a'.repeat(64), manifest, data,
+    })));
+    const snapshot = await buildGateway().downloadSnapshot('device-1');
+    expect(snapshot.data.districts).toEqual([]);
+    expect(snapshot.manifest.districts).toBe(0);
+  });
+
   it('downloadSnapshot includes since as a query param when provided', async () => {
     const data = Object.fromEntries(PROVISIONING_COLLECTIONS.map((key) => [key, []]));
     const manifest = Object.fromEntries(PROVISIONING_COLLECTIONS.map((key) => [key, 0]));

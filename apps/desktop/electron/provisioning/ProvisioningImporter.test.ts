@@ -264,6 +264,59 @@ describe('ProvisioningImporter', () => {
     ).toBe('district-1');
   });
 
+  it('tolerates a snapshot missing a collection entirely (e.g. desktop shipped ahead of backend), treating it as empty rather than failing the whole import', () => {
+    const importer = new ProvisioningImporter(manager);
+    const base = snapshotOf(BASE_DATA);
+    // 'districts' is absent from both data and manifest, not merely empty —
+    // simulating a backend response that predates the collection entirely.
+    const data = { ...base.data } as Record<string, unknown>;
+    delete data.districts;
+    const manifest = { ...base.manifest } as Record<string, unknown>;
+    delete manifest.districts;
+    const snapshot = {
+      ...base,
+      data,
+      manifest,
+      checksum: createHash('sha256').update(JSON.stringify(data)).digest('hex'),
+    } as unknown as ProvisioningSnapshot;
+
+    expect(() => importer.import(snapshot, CONTEXT)).not.toThrow();
+    expect(countRows('districts')).toBe(0);
+    expect(countRows('institutions')).toBe(1);
+  });
+
+  it('does not enforce the institutions.districtId -> districts dependency during a delta merge, per the design spec fallback', () => {
+    // The districts table can legitimately be an incomplete subset (or, per
+    // the missing-collection fix above, empty) during a delta merge — full
+    // enforcement only holds when a full resync guarantees districts is
+    // complete. The mapper falls back to '—' for the district name rather
+    // than throwing, so the importer must not throw here either.
+    const importer = new ProvisioningImporter(manager);
+    importer.import(snapshotOf(BASE_DATA), CONTEXT);
+    expect(() =>
+      importer.import(
+        snapshotOf({ institutions: [{ ...BASE_DATA.institutions![0], districtId: 'ghost-district' }] }),
+        CONTEXT,
+        { merge: true },
+      ),
+    ).not.toThrow();
+    expect(
+      (manager.connection.prepare('SELECT districtId FROM institutions WHERE id=?').get('school-1') as { districtId: string }).districtId,
+    ).toBe('ghost-district');
+  });
+
+  it('still enforces the institutions.districtId -> districts dependency during a full (non-merge) resync', () => {
+    // Full resyncs guarantee the districts table is complete, so a dangling
+    // districtId there is real corruption and must still fail loudly.
+    const importer = new ProvisioningImporter(manager);
+    expect(() =>
+      importer.import(
+        snapshotOf({ institutions: [{ ...BASE_DATA.institutions![0], districtId: 'ghost-district' }] }),
+        CONTEXT,
+      ),
+    ).toThrow(/Missing dependency institutions\.districtId/);
+  });
+
   function countRows(table: string): number {
     return (manager.connection.prepare(`SELECT COUNT(*) count FROM ${table}`).get() as { count: number }).count;
   }

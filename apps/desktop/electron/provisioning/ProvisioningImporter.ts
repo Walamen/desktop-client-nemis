@@ -160,9 +160,11 @@ export class ProvisioningImporter {
           }
         }
         for (const collection of PROVISIONING_COLLECTIONS) {
-          upsertRows(db, SPECS[collection], snapshot.data[collection], options.merge ?? false);
+          // A collection absent from the snapshot entirely (see validateEnvelope
+          // above) is treated as an empty delta for that collection, not an error.
+          upsertRows(db, SPECS[collection], snapshot.data[collection] ?? [], options.merge ?? false);
         }
-        markPulledAssignmentsSynced(db, snapshot.data.assignments);
+        markPulledAssignmentsSynced(db, snapshot.data.assignments ?? []);
         verifyDatabase(db, snapshot, { skipCounts: options.merge ?? false });
         if (options.preserveConflicts) {
           db.prepare(`DELETE FROM sync_queue WHERE status='completed'`).run();
@@ -260,7 +262,12 @@ function validateEnvelope(snapshot: ProvisioningSnapshot, context: ImportContext
   const actual = createHash('sha256').update(JSON.stringify(snapshot.data)).digest('hex');
   if (actual !== snapshot.checksum) throw new Error('Provisioning snapshot checksum verification failed.');
   for (const collection of PROVISIONING_COLLECTIONS) {
-    if (snapshot.data[collection].length !== snapshot.manifest[collection]) {
+    // A collection the sender doesn't know about yet (e.g. this desktop build
+    // shipped ahead of a companion backend deploy) is legitimately absent,
+    // not malformed — missing means empty, not a mismatch.
+    const rowCount = (snapshot.data[collection] ?? []).length;
+    const manifestCount = snapshot.manifest[collection] ?? 0;
+    if (rowCount !== manifestCount) {
       throw new Error(`Provisioning snapshot manifest mismatch for ${collection}.`);
     }
   }
@@ -313,7 +320,7 @@ function verifyDatabase(
     for (const collection of PROVISIONING_COLLECTIONS) {
       const table = SPECS[collection].table;
       const row = db.prepare(`SELECT COUNT(*) count FROM ${table}`).get() as { count: number };
-      if (row.count !== snapshot.manifest[collection]) {
+      if (row.count !== (snapshot.manifest[collection] ?? 0)) {
         throw new Error(`Imported row count mismatch for ${collection}.`);
       }
     }
@@ -340,6 +347,16 @@ function verifyDatabase(
     ['attendance', 'classId', 'classes'],
   ] as const;
   for (const [child, foreignKey, parent] of dependencies) {
+    // institutions.districtId -> districts is deliberately softened during a
+    // delta merge: the design spec's error-handling policy treats a districtId
+    // with no matching row (e.g. a snapshot synced before this dependency
+    // shipped) as tolerable — the mapper falls back to '—' for the district
+    // name rather than throwing. That guarantee only holds when the districts
+    // table is complete, which is true for a full resync (skipCounts=false)
+    // but not for a delta merge, where districts may legitimately be a subset
+    // (or, per the missing-collection fix above, empty) of the full set.
+    // Every other dependency here still enforces in every mode.
+    if (options.skipCounts && child === 'institutions' && foreignKey === 'districtId') continue;
     const missing = db.prepare(
       `SELECT COUNT(*) count FROM ${child} c LEFT JOIN ${parent} p ON p.id=c.${foreignKey}
        WHERE c.${foreignKey} IS NOT NULL AND p.id IS NULL`,
