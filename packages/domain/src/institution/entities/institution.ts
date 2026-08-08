@@ -120,6 +120,9 @@ export class Institution extends AggregateRoot<InstitutionId> {
   get ownership(): OwnershipType {
     return this.#state.ownership;
   }
+  get districtId(): string | undefined {
+    return this.#state.districtId;
+  }
   get approvalStatus(): ApprovalStatus {
     return this.#state.approvalStatus;
   }

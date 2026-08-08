@@ -87,6 +87,7 @@ export * from './services/reporting-application-service';
 export * from './use-cases/academics/get-current-academic-year';
 export * from './use-cases/identity/get-current-user';
 export * from './use-cases/institution/get-current-school';
+export * from './use-cases/institution/list-institutions';
 export * from './use-cases/infra/get-device-information';
 export * from './factories';
 export * from './dto/teachers/teacher-dto';

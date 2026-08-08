@@ -12,6 +12,18 @@ export interface InstitutionProfileOutput {
   communityTown?: string;
 }
 
+export interface InstitutionSummaryOutput {
+  id: string;
+  code: string;
+  name: string;
+  type: InstitutionType;
+  ownership: OwnershipType;
+  districtId?: string;
+  districtName?: string;
+  approvalStatus: ApprovalStatus;
+  studentCount: number;
+}
+
 export interface UpdateGradingConfigDto {
   id: string;
   maxMarks: number;
