@@ -22,7 +22,7 @@ describe('County Schools page', () => {
         <CountySchoolsPage />
       </PresentationProvider>,
     );
-    await waitFor(() => expect(screen.getByText('No schools found matching your criteria.')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('No schools have synced to this device yet.')).toBeInTheDocument());
   });
 
   it('renders a synced institution with its district and enrollment', async () => {

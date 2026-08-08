@@ -34,7 +34,7 @@ export default function CountySchoolsPage() {
           </div>
         ) : institutions.status === 'empty' ? (
           <div className="bg-white border border-slate-300 rounded-card p-12 text-center text-sm text-slate-400">
-            No schools found matching your criteria.
+            No schools have synced to this device yet.
           </div>
         ) : (
           <div className="bg-white border rounded-lg border-slate-300 overflow-hidden">
