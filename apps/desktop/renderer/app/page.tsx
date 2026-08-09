@@ -14,9 +14,11 @@ import {
 } from 'lucide-react';
 import { desktopPortalRoute, type ProvisioningStatus } from '@nemis-desktop/types';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
+import { usePresentation } from '@/lib/presentation/presentation-provider';
 
 export default function ProvisioningPage() {
   const router = useRouter();
+  const layer = usePresentation();
   const [status, setStatus] = useState<ProvisioningStatus | null>(null);
   const [showLogin, setShowLogin] = useState(false);
   const [email, setEmail] = useState('');
@@ -46,6 +48,20 @@ export default function ProvisioningPage() {
       setPassword('');
       setStatus(next);
       setShowLogin(false);
+      if (next.isProvisioned && next.user) {
+        // RootProviders' bootstrap.run() already fired once, at initial app
+        // load, before this login ever happened — against a workspace that
+        // was still inactive, every task legitimately came back empty (see
+        // the doc comment on that effect). Nothing else re-triggers it, so
+        // without this, currentUser/school/dashboard stay stuck at that
+        // premature, empty result until a full reload remounts RootProviders
+        // and reruns bootstrap against the now-active workspace. A returning,
+        // already-provisioned user hits this on every login, not just the
+        // one-time provisioning flow (which separately runs bootstrap again
+        // below for the same reason).
+        await layer.bootstrap.run();
+        router.replace(desktopPortalRoute(next.user.role) ?? '/');
+      }
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : '';
       setError(
@@ -70,6 +86,9 @@ export default function ProvisioningPage() {
       const next = await sharedBridge.startProvisioning();
       setStatus(next);
       if (next.isProvisioned && next.user) {
+        // Same reasoning as login() above — the workspace only just became
+        // active, so the premature bootstrap pass at app load found nothing.
+        await layer.bootstrap.run();
         router.replace(desktopPortalRoute(next.user.role) ?? '/');
       }
     } catch {
