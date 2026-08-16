@@ -306,6 +306,21 @@ export class DesktopSyncWorker {
     connection
       .prepare(`UPDATE OR IGNORE student_guardians SET guardianId = ? WHERE guardianId = ?`)
       .run(newId, oldId);
+    // Promote the surviving link to isPrimary if the soon-to-be-deleted link was
+    // primary. This preserves the semantic "this student has a primary guardian"
+    // across the merge. If the old link was primary and a (studentId, newId) row
+    // already exists, promote that surviving row to primary before we delete the
+    // evidence of the old link's status.
+    connection
+      .prepare(
+        `UPDATE student_guardians
+            SET isPrimary = 1
+          WHERE guardianId = ?
+            AND studentId IN (
+              SELECT studentId FROM student_guardians WHERE guardianId = ? AND isPrimary = 1
+            )`,
+      )
+      .run(newId, oldId);
     // Remove any student_guardians rows that still reference oldId (either
     // because they conflicted with an existing (studentId, newId) unique key or
     // because the canonical guardian already existed and the rename above was

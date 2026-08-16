@@ -344,9 +344,14 @@ describe('DesktopSyncWorker retry policy', () => {
     // Exactly one student_guardians row should link s1 to g-canonical
     // (the pre-existing duplicate was preserved, the orphaned one was removed).
     const links = manager.connection
-      .prepare(`SELECT id FROM student_guardians WHERE studentId = 's1' AND guardianId = 'g-canonical'`)
-      .all() as Array<{ id: string }>;
+      .prepare(`SELECT id, isPrimary FROM student_guardians WHERE studentId = 's1' AND guardianId = 'g-canonical'`)
+      .all() as Array<{ id: string; isPrimary: number }>;
     expect(links).toHaveLength(1);
+
+    // The surviving link should have been promoted to isPrimary, since the
+    // deleted link (sg-local) was primary. This preserves the semantic that
+    // the student still has a primary guardian after canonicalization.
+    expect(links[0].isPrimary).toBe(1);
   });
 
   it('does not touch the network or the queue while offline', async () => {
