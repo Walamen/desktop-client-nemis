@@ -171,6 +171,81 @@ describe('DesktopSyncWorker retry policy', () => {
     ).toBe(0);
   });
 
+  it('canonicalizes a redirected guardian id locally, cascading the link and any still-queued payload', async () => {
+    manager.connection.prepare(`UPDATE sync_runtime SET captureEnabled=0 WHERE id='singleton'`).run();
+    manager.connection.prepare(`
+      INSERT INTO institutions (id,code,name,type,ownership,countyId,approvalStatus,version,updatedAt)
+      VALUES ('school-1','SCH-1','Central High','SECONDARY','PUBLIC','county-1','APPROVED',1,?)
+    `).run('2026-07-01T00:00:00.000Z');
+    manager.connection.prepare(`
+      INSERT INTO students (id,institutionId,firstName,lastName,admissionNumber,dateOfBirth,gender,isActive,version,updatedAt)
+      VALUES ('s1','school-1','Ada','Learner','ADM-1','2012-05-04','FEMALE',1,1,?)
+    `).run('2026-07-01T00:00:00.000Z');
+    manager.connection.prepare(`
+      INSERT INTO guardians (id,firstName,lastName,relationship,phoneNumber,email,version,updatedAt)
+      VALUES ('g-local','Grace','Hopper','Mother','0770000000','grace@example.com',1,?)
+    `).run('2026-07-01T00:00:00.000Z');
+    manager.connection.prepare(`
+      INSERT INTO student_guardians (id,studentId,guardianId,isPrimary,createdAt)
+      VALUES ('sg-1','s1','g-local',1,?)
+    `).run('2026-07-01T00:00:00.000Z');
+    // A second, not-yet-pushed link for a later sibling reusing the same
+    // local guardian id — backed off to a future retry, so claim() will not
+    // pick it up in this cycle (simulates a push split across cycles).
+    const future = new Date(Date.now() + 60 * 60_000).toISOString();
+    manager.connection.prepare(`
+      INSERT INTO sync_queue (id,entityType,entityId,operationType,payload,retryCount,status,nextAttemptAt,createdAt,updatedAt)
+      VALUES ('op-link-2','student_guardians','sg-2','create',?,0,'pending',?,?,?)
+    `).run(
+      JSON.stringify({ record: { id: 'sg-2', studentId: 's2', guardianId: 'g-local', isPrimary: 0, createdAt: '2026-08-01T00:00:00.000Z' } }),
+      future,
+      '2026-08-01T00:00:00.000Z',
+      '2026-08-01T00:00:00.000Z',
+    );
+
+    const item = await dataLayer.services.syncQueue.enqueue({
+      entityType: 'guardians',
+      entityId: 'g-local',
+      operationType: 'create',
+      payload: { record: { id: 'g-local', email: 'grace@example.com' } },
+    });
+    const gateway = {
+      pushChanges: vi.fn().mockResolvedValue({
+        processedAt: '2026-08-16T00:00:00.000Z',
+        results: [
+          {
+            operationId: item.id,
+            entityType: 'guardians',
+            entityId: 'g-local',
+            status: 'accepted',
+            redirectedTo: 'g-canonical',
+          },
+        ],
+      }),
+      downloadSnapshot: vi.fn(),
+    } as unknown as BackendProvisioningGateway;
+    const worker = new DesktopSyncWorker(workspaces, gateway, alwaysOnline());
+
+    await worker.syncActive();
+
+    expect(
+      manager.connection.prepare(`SELECT id FROM guardians WHERE id = 'g-canonical'`).get(),
+    ).toBeDefined();
+    expect(
+      manager.connection.prepare(`SELECT id FROM guardians WHERE id = 'g-local'`).get(),
+    ).toBeUndefined();
+
+    const linkRow = manager.connection
+      .prepare(`SELECT guardianId FROM student_guardians WHERE id = 'sg-1'`)
+      .get() as { guardianId: string };
+    expect(linkRow.guardianId).toBe('g-canonical');
+
+    const queuedPayload = manager.connection
+      .prepare(`SELECT payload FROM sync_queue WHERE id = 'op-link-2'`)
+      .get() as { payload: string };
+    expect(JSON.parse(queuedPayload.payload).record.guardianId).toBe('g-canonical');
+  });
+
   it('does not touch the network or the queue while offline', async () => {
     const item = await dataLayer.services.syncQueue.enqueue({
       entityType: 'students',

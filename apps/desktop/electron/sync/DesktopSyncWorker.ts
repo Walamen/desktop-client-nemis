@@ -5,6 +5,7 @@ import type {
   ResolveSyncConflictRequest,
   SyncConflictResult,
 } from '@nemis-desktop/types';
+import type { Database as SqliteDatabase } from 'better-sqlite3';
 import type { BackendProvisioningGateway } from '@app/provisioning/BackendProvisioningGateway';
 import type { ActiveWorkspace, WorkspaceManager } from '@app/workspace/WorkspaceManager';
 import { ProvisioningImporter } from '@app/provisioning/ProvisioningImporter';
@@ -122,6 +123,10 @@ export class DesktopSyncWorker {
               result.reason ?? 'The server rejected this offline change.',
               pushed.processedAt,
             );
+          }
+          for (const result of pushed.results) {
+            if (result.entityType !== 'guardians' || !result.redirectedTo) continue;
+            this.#canonicalizeGuardian(workspace.database.connection, result.entityId, result.redirectedTo);
           }
           workspace.database.connection.prepare(`
             UPDATE sync_queue SET status='completed',updatedAt=?
@@ -275,6 +280,32 @@ export class DesktopSyncWorker {
     } catch {
       return null;
     }
+  }
+
+  /**
+   * A guardian create the server redirected to an existing account's
+   * canonical row (see DesktopSyncApplier.guardian() in the Nemis repo) —
+   * rewrite this device's local copy to match. Without this, the next
+   * snapshot pull would leave the local row diverging from Postgres, and
+   * any not-yet-pushed link operation still referencing the old id would
+   * fail server-side once it's finally sent.
+   */
+  #canonicalizeGuardian(connection: SqliteDatabase, oldId: string, newId: string): void {
+    if (oldId === newId) return;
+    connection.prepare(`PRAGMA defer_foreign_keys = ON`).run();
+    connection.prepare(`UPDATE guardians SET id = ? WHERE id = ?`).run(newId, oldId);
+    connection
+      .prepare(`UPDATE OR IGNORE student_guardians SET guardianId = ? WHERE guardianId = ?`)
+      .run(newId, oldId);
+    connection
+      .prepare(
+        `UPDATE sync_queue
+            SET payload = json_set(payload, '$.record.guardianId', ?)
+          WHERE entityType = 'student_guardians'
+            AND status IN ('pending','in_flight')
+            AND json_extract(payload, '$.record.guardianId') = ?`,
+      )
+      .run(newId, oldId);
   }
 
   getStatus(): DesktopSyncStatus {
