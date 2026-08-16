@@ -13,6 +13,9 @@ export interface DesktopSyncOperationResult {
   status: 'accepted' | 'conflict';
   reason?: string;
   remotePayload?: Readonly<Record<string, unknown>> | null;
+  /** Set when the server reused an existing record instead of creating one
+   *  at `entityId` — the canonical id the local device should adopt. */
+  redirectedTo?: string;
 }
 
 export interface DesktopSyncPushResult {
