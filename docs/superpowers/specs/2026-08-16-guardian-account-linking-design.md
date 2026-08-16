@@ -32,12 +32,12 @@ client:
 
 ## Goals
 
-- A guardian's email (and the already-columned `address`, `occupation`,
-  `isEmergencyContact`) is captured in the desktop wizard and reaches the
+- A guardian's email is captured in the desktop wizard and reaches the
   backend via the existing sync outbox — no SQLite schema or
   outbox-trigger changes needed on the desktop side, since outbox triggers
-  already snapshot every column via `PRAGMA table_info`. (The backend does
-  need one small Postgres migration — see Design §2.)
+  already snapshot every column via `PRAGMA table_info` and the `email`
+  column already exists (migration 004). (The backend does need one small
+  Postgres migration — see Design §2.)
 - When that email already belongs to an account (with or without a
   guardian profile), the new student is linked to the **existing** guardian
   record — never a second, disconnected one — matching web's behavior.
@@ -63,32 +63,41 @@ client:
 
 ### 1. Desktop: capture the guardian's email
 
+Scope note: the original draft of this section also threaded `address`,
+`occupation`, and `isEmergencyContact` through, reasoning that the SQLite
+columns already exist. On closer trace, nothing actually reads those three
+today — `GuardiansDirectoryPage` (the one place that displays them) reads
+raw SQLite rows through its own "generic collection bridge"
+(`apps/desktop/renderer/components/guardians/shared.tsx`), not through
+`SqliteGuardianRepository`, so wiring them through the repository/domain
+layer here would be plumbing nothing consumes. Trimmed to `email` only —
+the one field the account-linking fix actually depends on.
+
 - `packages/domain/src/students/entities/guardian.ts`: `Guardian` gains
-  optional `email`, `address`, `occupation`, and `isEmergencyContact`
-  (default `false`), on both `create()` and `reconstitute()`, following the
-  same optional-field pattern already used by `Student`.
+  an optional `email`, on both `create()` and `reconstitute()`, following
+  the same optional-field pattern already used by `Student`.
 - `packages/application/src/dto/students/student-dto.ts`:
-  `CreateGuardianDto` gains the same four fields.
+  `CreateGuardianDto` gains `email?: string`.
 - `packages/application/src/use-cases/students/create-guardian.ts`: passes
-  the new fields into `Guardian.create()`.
+  `email` into `Guardian.create()`.
 - `apps/desktop/electron/data/repositories/sqlite/business/SqliteGuardianRepository.ts`:
   `Row`, `map()`, `findById`, `save` (its `INSERT ... ON CONFLICT` column
-  list), and `findByStudentId` all gain the four columns. The columns
-  already exist in SQLite (migration 004); this is purely wiring.
+  list), and `findByStudentId` all gain `email`. The column already exists
+  in SQLite (migration 004); this is purely wiring.
+- `apps/desktop/electron/security/validateIpc.ts`: `assertCreateGuardianArgs`
+  uses an allow-list (`assertKnownKeys`) that would reject an `email` field
+  on the wire — it gains `email` alongside the existing keys, validated
+  with the same `assertOptionalString` helper already used for the
+  student-create IPC args.
 - `apps/desktop/renderer/components/students/StudentFormPage.tsx`:
   `GuardianDraft` gains `email` (string); `GuardianStep` gets one more
   `<Input type="email">` alongside the existing name/phone fields;
-  `submitCreate()`'s `createGuardian(...)` call passes it through. (Address
-  and occupation stay unexposed in the *creation* wizard — the web
-  creation flow doesn't collect them either; they exist on the entity
-  purely because the SQLite/view layer already expects them, and could be
-  added to an edit surface later if ever needed. Only `email` is required
-  for this fix.)
+  `submitCreate()`'s `createGuardian(...)` call passes it through.
 - No outbox or migration changes: `installOutboxTriggers` derives its
-  column list from `PRAGMA table_info` at trigger-creation time, and these
-  columns already exist in that table, so `email` etc. are already being
-  captured into `sync_queue.payload` on every insert/update — they've just
-  always been `NULL` because nothing wrote them.
+  column list from `PRAGMA table_info` at trigger-creation time, and the
+  `email` column already exists in that table, so it's already being
+  captured into `sync_queue.payload` on every insert/update — it's just
+  always been `NULL` because nothing wrote it.
 
 ### 2. Backend: check-then-link, not create-then-catch
 
@@ -236,11 +245,11 @@ cascade targets exist today.
 
 ## Testing
 
-- `Guardian.create`/`reconstitute` unit tests cover the four new fields.
+- `Guardian.create`/`reconstitute` unit tests cover the new `email` field.
 - `CreateGuardianUseCase` test asserts `email` flows from DTO through to
   the saved entity.
-- `SqliteGuardianRepository` round-trip test: save with all new fields,
-  `findById`/`findByStudentId` return them.
+- `SqliteGuardianRepository` round-trip test: save with `email`,
+  `findById`/`findByStudentId` return it.
 - `StudentFormPage.tsx` test: guardian email input renders and is included
   in the `createGuardian` call.
 - `desktop-sync-applier.spec.ts` (Nemis repo) gains cases: new email
