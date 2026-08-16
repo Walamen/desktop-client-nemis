@@ -37,6 +37,7 @@ export class CreateGuardianUseCase implements CommandHandler<
         lastName: command.lastName,
         relationship: command.relationship,
         phoneNumber: command.phoneNumber,
+        email: command.email,
         occurredAt: at,
       });
       student.addGuardian(

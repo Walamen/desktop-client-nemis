@@ -41,6 +41,7 @@ export interface CreateGuardianDto {
   lastName: string;
   relationship: string;
   phoneNumber: string;
+  email?: string;
   isPrimary: boolean;
   actorId?: string;
 }
