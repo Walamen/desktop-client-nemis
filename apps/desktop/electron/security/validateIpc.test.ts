@@ -24,6 +24,7 @@ import {
   assertCreateAssignmentArgs,
   assertUpdateAssignmentArgs,
   assertGradeSubmissionArgs,
+  assertCreateGuardianArgs,
 } from './validateIpc';
 
 describe('assertAuthenticateArgs', () => {
@@ -311,6 +312,49 @@ describe('assertGradeSubmissionArgs', () => {
     expect(() =>
       assertGradeSubmissionArgs([
         { assignmentId: 'a-1', studentId: 'stu-1', grade: 85, teacherId: 'staff-1' },
+      ]),
+    ).toThrow();
+  });
+});
+
+describe('assertCreateGuardianArgs', () => {
+  it('accepts an optional email and rejects unknown keys', () => {
+    expect(() =>
+      assertCreateGuardianArgs([
+        {
+          studentId: 's-1',
+          firstName: 'John',
+          lastName: 'Doe',
+          relationship: 'Father',
+          phoneNumber: '0770000000',
+          email: 'john@example.com',
+          isPrimary: true,
+        },
+      ]),
+    ).not.toThrow();
+    expect(() =>
+      assertCreateGuardianArgs([
+        {
+          studentId: 's-1',
+          firstName: 'John',
+          lastName: 'Doe',
+          relationship: 'Father',
+          phoneNumber: '0770000000',
+          isPrimary: true,
+        },
+      ]),
+    ).not.toThrow();
+    expect(() =>
+      assertCreateGuardianArgs([
+        {
+          studentId: 's-1',
+          firstName: 'John',
+          lastName: 'Doe',
+          relationship: 'Father',
+          phoneNumber: '0770000000',
+          isPrimary: true,
+          unexpected: 'nope',
+        },
       ]),
     ).toThrow();
   });
