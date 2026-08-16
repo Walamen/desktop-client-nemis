@@ -292,11 +292,29 @@ export class DesktopSyncWorker {
    */
   #canonicalizeGuardian(connection: SqliteDatabase, oldId: string, newId: string): void {
     if (oldId === newId) return;
+    // PRAGMA defer_foreign_keys = ON postpones FK enforcement to COMMIT (rather
+    // than waiving it). This is necessary because deleting oldId guardian would
+    // immediately violate the FK from rows still referencing it; we need to
+    // defer that check until all updates complete. However, the UPDATE OR IGNORE
+    // cascade can still skip rows if (studentId, newId) already exists, leaving
+    // orphaned references to oldId; the DELETE below cleans those up.
     connection.prepare(`PRAGMA defer_foreign_keys = ON`).run();
-    connection.prepare(`UPDATE guardians SET id = ? WHERE id = ?`).run(newId, oldId);
+    // Try to rename the guardian ID in case the canonical doesn't exist yet.
+    // If it does exist (UNIQUE key violation), skip this update; we'll delete the
+    // old row later. Using OR IGNORE allows both cases to proceed smoothly.
+    connection.prepare(`UPDATE OR IGNORE guardians SET id = ? WHERE id = ?`).run(newId, oldId);
     connection
       .prepare(`UPDATE OR IGNORE student_guardians SET guardianId = ? WHERE guardianId = ?`)
       .run(newId, oldId);
+    // Remove any student_guardians rows that still reference oldId (either
+    // because they conflicted with an existing (studentId, newId) unique key or
+    // because the canonical guardian already existed and the rename above was
+    // skipped). These are duplicates or orphaned — the student is already linked
+    // to the canonical guardian via the row that exists.
+    connection.prepare(`DELETE FROM student_guardians WHERE guardianId = ?`).run(oldId);
+    // Finally, delete the old guardian row if it still exists (in case the
+    // rename failed because the canonical ID already existed).
+    connection.prepare(`DELETE FROM guardians WHERE id = ?`).run(oldId);
     connection
       .prepare(
         `UPDATE sync_queue

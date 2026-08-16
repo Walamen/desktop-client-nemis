@@ -246,6 +246,109 @@ describe('DesktopSyncWorker retry policy', () => {
     expect(JSON.parse(queuedPayload.payload).record.guardianId).toBe('g-canonical');
   });
 
+  it('removes orphaned student_guardian rows from UPDATE OR IGNORE collisions during canonicalization', async () => {
+    manager.connection.prepare(`UPDATE sync_runtime SET captureEnabled=0 WHERE id='singleton'`).run();
+    manager.connection.prepare(`
+      INSERT INTO institutions (id,code,name,type,ownership,countyId,approvalStatus,version,updatedAt)
+      VALUES ('school-1','SCH-1','Central High','SECONDARY','PUBLIC','county-1','APPROVED',1,?)
+    `).run('2026-07-01T00:00:00.000Z');
+    manager.connection.prepare(`
+      INSERT INTO students (id,institutionId,firstName,lastName,admissionNumber,dateOfBirth,gender,isActive,version,updatedAt)
+      VALUES ('s1','school-1','Ada','Learner','ADM-1','2012-05-04','FEMALE',1,1,?)
+    `).run('2026-07-01T00:00:00.000Z');
+    // Create the canonical guardian (pulled from the server in a prior sync).
+    manager.connection.prepare(`
+      INSERT INTO guardians (id,firstName,lastName,relationship,phoneNumber,email,version,updatedAt)
+      VALUES ('g-canonical','Gandalf','Grey','Mentor','0770000001','gandalf@example.com',1,?)
+    `).run('2026-07-01T00:00:00.000Z');
+    // Create the local guardian offline
+    manager.connection.prepare(`
+      INSERT INTO guardians (id,firstName,lastName,relationship,phoneNumber,email,version,updatedAt)
+      VALUES ('g-local','Grace','Hopper','Mother','0770000000','grace@example.com',1,?)
+    `).run('2026-07-01T00:00:00.000Z');
+    // Link the student to the local guardian
+    manager.connection.prepare(`
+      INSERT INTO student_guardians (id,studentId,guardianId,isPrimary,createdAt)
+      VALUES ('sg-local','s1','g-local',1,?)
+    `).run('2026-07-01T00:00:00.000Z');
+    // Simulate another offline operation that creates a link to the canonical
+    // guardian (e.g., the user discovered the canonical one exists and added them).
+    // This row will cause UPDATE OR IGNORE to skip when trying to update sg-local,
+    // leaving an orphaned reference to g-local that the DELETE must clean up.
+    manager.connection.prepare(`
+      INSERT INTO student_guardians (id,studentId,guardianId,isPrimary,createdAt)
+      VALUES ('sg-duplicate','s1','g-canonical',0,?)
+    `).run('2026-07-01T00:00:00.000Z');
+    // Set up sync metadata so the pull does a delta merge instead of a full
+    // resync (which would delete the guardian rows we've set up).
+    const recently = new Date().toISOString();
+    manager.connection.prepare(`
+      UPDATE sync_metadata SET lastDeltaAt=?, lastFullResyncAt=? WHERE id='singleton'
+    `).run(recently, recently);
+
+    const item = await dataLayer.services.syncQueue.enqueue({
+      entityType: 'guardians',
+      entityId: 'g-local',
+      operationType: 'create',
+      payload: { record: { id: 'g-local', email: 'grace@example.com' } },
+    });
+    const emptySnapshotData = Object.fromEntries(PROVISIONING_COLLECTIONS.map((key) => [key, []]));
+    const emptySnapshot = {
+      contractVersion: 1,
+      snapshotId: 'snap-1',
+      generatedAt: '2026-07-28T18:30:45.123Z',
+      userId: 'user-1',
+      role: 'INSTITUTION_ADMIN',
+      scopeType: 'INSTITUTION',
+      scopeId: 'school-1',
+      institutionId: 'school-1',
+      deviceId: 'device-1',
+      checksumAlgorithm: 'sha256',
+      checksum: createHash('sha256').update(JSON.stringify(emptySnapshotData)).digest('hex'),
+      manifest: Object.fromEntries(PROVISIONING_COLLECTIONS.map((key) => [key, 0])),
+      data: emptySnapshotData,
+    };
+    const gateway = {
+      pushChanges: vi.fn().mockResolvedValue({
+        processedAt: '2026-08-16T00:00:00.000Z',
+        results: [
+          {
+            operationId: item.id,
+            entityType: 'guardians',
+            entityId: 'g-local',
+            status: 'accepted',
+            redirectedTo: 'g-canonical',
+          },
+        ],
+      }),
+      downloadSnapshot: vi.fn().mockResolvedValue(emptySnapshot),
+    } as unknown as BackendProvisioningGateway;
+    const worker = new DesktopSyncWorker(workspaces, gateway, alwaysOnline());
+
+    // This should not throw, despite the orphaned row scenario.
+    await worker.syncActive();
+
+    // The local guardian should have been renamed to the canonical one.
+    expect(
+      manager.connection.prepare(`SELECT id FROM guardians WHERE id = 'g-canonical'`).get(),
+    ).toBeDefined();
+    expect(
+      manager.connection.prepare(`SELECT id FROM guardians WHERE id = 'g-local'`).get(),
+    ).toBeUndefined();
+
+    // No student_guardians row should reference g-local (the orphaned row was deleted).
+    expect(
+      (manager.connection.prepare(`SELECT COUNT(*) count FROM student_guardians WHERE guardianId = 'g-local'`).get() as { count: number }).count,
+    ).toBe(0);
+
+    // Exactly one student_guardians row should link s1 to g-canonical
+    // (the pre-existing duplicate was preserved, the orphaned one was removed).
+    const links = manager.connection
+      .prepare(`SELECT id FROM student_guardians WHERE studentId = 's1' AND guardianId = 'g-canonical'`)
+      .all() as Array<{ id: string }>;
+    expect(links).toHaveLength(1);
+  });
+
   it('does not touch the network or the queue while offline', async () => {
     const item = await dataLayer.services.syncQueue.enqueue({
       entityType: 'students',
