@@ -135,6 +135,7 @@ describe('StudentFormPage create wizard submit', () => {
     await user.type(textboxNear(/guardian last name/i), 'Toe');
     await user.type(textboxNear(/relationship/i), 'Father');
     await user.type(textboxNear(/guardian phone/i), '0770000000');
+    await user.type(textboxNear(/guardian email/i), 'john@example.com');
     await user.click(screen.getByRole('button', { name: /next/i }));
 
     await waitFor(() =>
@@ -159,6 +160,7 @@ describe('StudentFormPage create wizard submit', () => {
           lastName: 'Toe',
           relationship: 'Father',
           phoneNumber: '0770000000',
+          email: 'john@example.com',
           isPrimary: true,
         }),
       ),

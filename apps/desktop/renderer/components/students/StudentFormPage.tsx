@@ -21,6 +21,7 @@ interface GuardianDraft {
   lastName: string;
   relationship: string;
   phoneNumber: string;
+  email: string;
   isPrimary: boolean;
 }
 
@@ -47,7 +48,7 @@ export function StudentFormPage({ edit = false }: { edit?: boolean }) {
   const [currentStep, setCurrentStep] = useState(1);
   const [stepError, setStepError] = useState('');
   const [guardians, setGuardians] = useState<GuardianDraft[]>([
-    { firstName: '', lastName: '', relationship: '', phoneNumber: '', isPrimary: true },
+    { firstName: '', lastName: '', relationship: '', phoneNumber: '', email: '', isPrimary: true },
   ]);
   const [createdStudentId, setCreatedStudentId] = useState<string | null>(null);
   const updateGuardian = (index: number, field: keyof GuardianDraft, value: string | boolean) => {
@@ -56,7 +57,7 @@ export function StudentFormPage({ edit = false }: { edit?: boolean }) {
   const addGuardian = () =>
     setGuardians((prev) => [
       ...prev,
-      { firstName: '', lastName: '', relationship: '', phoneNumber: '', isPrimary: false },
+      { firstName: '', lastName: '', relationship: '', phoneNumber: '', email: '', isPrimary: false },
     ]);
   const removeGuardian = (index: number) => setGuardians((prev) => prev.filter((_, i) => i !== index));
   useEffect(() => {
@@ -123,6 +124,7 @@ export function StudentFormPage({ edit = false }: { edit?: boolean }) {
         lastName: g.lastName,
         relationship: g.relationship,
         phoneNumber: g.phoneNumber,
+        email: g.email || undefined,
         isPrimary: g.isPrimary,
       });
     }
@@ -467,6 +469,12 @@ function GuardianStep({
               label="Guardian phone"
               value={g.phoneNumber}
               onChange={(e) => updateGuardian(index, 'phoneNumber', e.target.value)}
+            />
+            <Input
+              label="Guardian email"
+              type="email"
+              value={g.email}
+              onChange={(e) => updateGuardian(index, 'email', e.target.value)}
             />
           </div>
           <label className="flex items-center gap-2 text-sm text-gray-700">
