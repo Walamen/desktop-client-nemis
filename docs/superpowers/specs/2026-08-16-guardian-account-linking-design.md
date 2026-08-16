@@ -143,10 +143,13 @@ web service's normalization):
   Return `{ ...accepted(), redirectedTo: user.guardianProfile.id }`.
 - **Matching user without a `guardianProfile`** (e.g. a staff account
   that later becomes a parent) → upsert the row at `operation.entityId`
-  as today, and link it to that user's `id` via `createLinkedUserAccount`'s
-  existing "reuse user, create profile" path (mirrors
-  `students.service.ts`'s third branch). No redirect — this row *is* the
-  canonical one now.
+  as today, then link it to that user's `id` directly
+  (`prisma.guardian.update({ data: { userId: existingUser.id } })`) —
+  *not* via `createLinkedUserAccount`, which unconditionally throws if any
+  user owns the email (verified against its current implementation; it has
+  no "reuse user" branch, unlike `students.service.ts`'s web logic). No
+  credential to report back (no new account/password was created). No
+  redirect — this row *is* the canonical one now.
 - A **race** (two devices register the same brand-new email concurrently)
   can still make `createLinkedUserAccount` throw
   `EmailAlreadyRegisteredError` even after the pre-check passed. On that
