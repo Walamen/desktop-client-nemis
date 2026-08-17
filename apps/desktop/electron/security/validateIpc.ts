@@ -253,7 +253,7 @@ export function assertCreateGuardianArgs(args: readonly unknown[]): void {
   ]);
   for (const k of ['studentId', 'firstName', 'lastName', 'relationship', 'phoneNumber'] as const)
     assertString(r[k], k, NAME_MAX_LENGTH);
-  assertOptionalString(r.email, 'email', NAME_MAX_LENGTH);
+  assertOptionalString(r.email, 'email', EMAIL_MAX_LENGTH);
   assertBoolean(r.isPrimary, 'isPrimary');
 }
 export function assertEnrollStudentArgs(args: readonly unknown[]): void {

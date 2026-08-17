@@ -78,6 +78,7 @@ export interface CreateGuardianRequest {
   lastName: string;
   relationship: string;
   phoneNumber: string;
+  email?: string;
   isPrimary: boolean;
 }
 export interface EnrollStudentRequest {

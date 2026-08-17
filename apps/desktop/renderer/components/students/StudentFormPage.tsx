@@ -124,7 +124,7 @@ export function StudentFormPage({ edit = false }: { edit?: boolean }) {
         lastName: g.lastName,
         relationship: g.relationship,
         phoneNumber: g.phoneNumber,
-        email: g.email || undefined,
+        email: g.email?.trim() || undefined,
         isPrimary: g.isPrimary,
       });
     }

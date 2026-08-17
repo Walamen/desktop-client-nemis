@@ -124,9 +124,28 @@ export class DesktopSyncWorker {
               pushed.processedAt,
             );
           }
-          for (const result of pushed.results) {
-            if (result.entityType !== 'guardians' || !result.redirectedTo) continue;
-            this.#canonicalizeGuardian(workspace.database.connection, result.entityId, result.redirectedTo);
+          const redirects = pushed.results.filter(
+            (result) => result.entityType === 'guardians' && result.redirectedTo,
+          );
+          if (redirects.length > 0) {
+            workspace.database.connection.prepare(`UPDATE sync_runtime SET captureEnabled=0 WHERE id='singleton'`).run();
+            try {
+              for (const result of redirects) {
+                try {
+                  this.#canonicalizeGuardian(workspace.database.connection, result.entityId, result.redirectedTo!);
+                } catch (error) {
+                  // One malformed/unexpected redirect must not abort the whole
+                  // push-acknowledgement transaction — every other already-applied
+                  // operation in this batch still needs to be marked completed.
+                  logger.error(
+                    `DesktopSyncWorker: failed to canonicalize guardian ${result.entityId} -> ${result.redirectedTo}`,
+                    error,
+                  );
+                }
+              }
+            } finally {
+              workspace.database.connection.prepare(`UPDATE sync_runtime SET captureEnabled=1 WHERE id='singleton'`).run();
+            }
           }
           workspace.database.connection.prepare(`
             UPDATE sync_queue SET status='completed',updatedAt=?

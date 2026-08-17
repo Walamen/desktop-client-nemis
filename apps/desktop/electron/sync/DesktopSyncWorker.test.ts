@@ -246,6 +246,62 @@ describe('DesktopSyncWorker retry policy', () => {
     expect(JSON.parse(queuedPayload.payload).record.guardianId).toBe('g-canonical');
   });
 
+  it('does not let its own canonicalization writes re-enter the sync queue via the outbox triggers', async () => {
+    manager.connection.prepare(`UPDATE sync_runtime SET captureEnabled=0 WHERE id='singleton'`).run();
+    manager.connection.prepare(`
+      INSERT INTO institutions (id,code,name,type,ownership,countyId,approvalStatus,version,updatedAt)
+      VALUES ('school-1','SCH-1','Central High','SECONDARY','PUBLIC','county-1','APPROVED',1,?)
+    `).run('2026-07-01T00:00:00.000Z');
+    manager.connection.prepare(`
+      INSERT INTO students (id,institutionId,firstName,lastName,admissionNumber,dateOfBirth,gender,isActive,version,updatedAt)
+      VALUES ('s1','school-1','Ada','Learner','ADM-1','2012-05-04','FEMALE',1,1,?)
+    `).run('2026-07-01T00:00:00.000Z');
+    manager.connection.prepare(`
+      INSERT INTO guardians (id,firstName,lastName,relationship,phoneNumber,email,version,updatedAt)
+      VALUES ('g-local2','Grace','Hopper','Mother','0770000000','grace2@example.com',1,?)
+    `).run('2026-07-01T00:00:00.000Z');
+    manager.connection.prepare(`
+      INSERT INTO student_guardians (id,studentId,guardianId,isPrimary,createdAt)
+      VALUES ('sg-cap-1','s1','g-local2',1,?)
+    `).run('2026-07-01T00:00:00.000Z');
+    // Re-enable capture before the sync cycle runs — this is the exact scenario
+    // Fix 2 guards: canonicalization must not let its own writes re-enter the
+    // outbox while capture is on, which is how a real sync cycle always runs.
+    manager.connection.prepare(`UPDATE sync_runtime SET captureEnabled=1 WHERE id='singleton'`).run();
+
+    const item = await dataLayer.services.syncQueue.enqueue({
+      entityType: 'guardians',
+      entityId: 'g-local2',
+      operationType: 'create',
+      payload: { record: { id: 'g-local2', email: 'grace2@example.com' } },
+    });
+    const gateway = {
+      pushChanges: vi.fn().mockResolvedValue({
+        processedAt: '2026-08-17T00:00:00.000Z',
+        results: [
+          {
+            operationId: item.id,
+            entityType: 'guardians',
+            entityId: 'g-local2',
+            status: 'accepted',
+            redirectedTo: 'g-canonical2',
+          },
+        ],
+      }),
+      downloadSnapshot: vi.fn().mockResolvedValue(emptySnapshot()),
+    } as unknown as BackendProvisioningGateway;
+    const worker = new DesktopSyncWorker(workspaces, gateway, alwaysOnline());
+
+    await worker.syncActive();
+
+    const pendingGuardianRows = manager.connection
+      .prepare(
+        `SELECT COUNT(*) count FROM sync_queue WHERE entityType IN ('guardians','student_guardians') AND status='pending'`,
+      )
+      .get() as { count: number };
+    expect(pendingGuardianRows.count).toBe(0);
+  });
+
   it('removes orphaned student_guardian rows from UPDATE OR IGNORE collisions during canonicalization', async () => {
     manager.connection.prepare(`UPDATE sync_runtime SET captureEnabled=0 WHERE id='singleton'`).run();
     manager.connection.prepare(`
@@ -351,7 +407,7 @@ describe('DesktopSyncWorker retry policy', () => {
     // The surviving link should have been promoted to isPrimary, since the
     // deleted link (sg-local) was primary. This preserves the semantic that
     // the student still has a primary guardian after canonicalization.
-    expect(links[0].isPrimary).toBe(1);
+    expect(links[0]?.isPrimary).toBe(1);
   });
 
   it('does not touch the network or the queue while offline', async () => {
