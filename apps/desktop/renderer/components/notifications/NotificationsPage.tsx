@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Bell, Check, Filter } from 'lucide-react';
 import { Spinner } from '@nemis-desktop/ui';
 import { useCurrentUserViewModel } from '@/lib/presentation/hooks/shared';
@@ -8,6 +8,7 @@ import { useViewModel } from '@/hooks/use-view-model';
 import { schoolAdminBridge } from '@/services/nemis-bridge/school-admin';
 import type { SchoolSummaryResult } from '@nemis-desktop/types';
 import { getNotificationMeta, listMyNotifications, markNotificationRead, relativeTime, type NotificationRow } from './shared';
+import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 
 type FilterRead = 'ALL' | 'UNREAD' | 'READ';
 
@@ -21,10 +22,10 @@ export function NotificationsPage() {
   const [notifications, setNotifications] = useState<NotificationRow[] | null>(null);
   const [markingAll, setMarkingAll] = useState(false);
 
-  useEffect(() => {
+  useRevalidateOnSync(() => {
     currentUser.loadCurrentUser();
     schoolAdminBridge.getSchoolSummary().then(setSchool).catch(() => setSchool(null));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   const load = useCallback(async () => {
@@ -33,7 +34,7 @@ export function NotificationsPage() {
     setNotifications(rows);
   }, [userId]);
 
-  useEffect(() => { load(); }, [load]);
+  useRevalidateOnSync(() => { void load(); }, [load]);
 
   const isLoading = userId !== null && notifications === null;
   const all = notifications ?? [];

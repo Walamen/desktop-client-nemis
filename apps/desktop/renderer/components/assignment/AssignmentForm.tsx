@@ -4,12 +4,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertTriangle, ArrowLeft, Paperclip, X } from 'lucide-react';
 import { AssignmentType, type PickAttachmentResult } from '@nemis-desktop/types';
-import { Alert, RichTextEditor, Select, Skeleton } from '@nemis-desktop/ui';
+import { Alert, Input, RichTextEditor, Select, Skeleton } from '@nemis-desktop/ui';
 import { useViewModel } from '@/hooks/use-view-model';
 import { useCurrentUserViewModel } from '@/lib/presentation/hooks/shared';
 import { useTeachingAssignmentViewModel } from '@/lib/presentation/hooks/school-admin';
 import { useAssignmentsViewModel } from '@/lib/presentation/hooks/teacher';
 import { assignmentBridge } from '@/services/nemis-bridge/teacher/assignment-bridge';
+import { sharedBridge } from '@/services/nemis-bridge/shared';
+import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 import { groupClassesWithSubjects } from './shared';
 
 const ASSIGNMENT_TYPES: { value: AssignmentType; label: string }[] = [
@@ -72,9 +74,31 @@ export function AssignmentForm({ mode, assignmentId }: AssignmentFormProps) {
 
   const teacherId = user.status === 'success' ? user.data.id : undefined;
 
+  // The signed-in identity (`teacherId`, the `users` table) and the id every
+  // teaching-assignment record is keyed by (`staff.id`) are different id
+  // spaces — `staff.userId` is the (unique) bridge between them. Mirrors
+  // government/teacher/page.tsx. `teacherId` itself stays in use for the
+  // assignment calls below, whose ownership is re-injected server-side from
+  // the caller's own staff id regardless of what's sent (see
+  // handlers/teacher/assignments.ts), so the mismatch is harmless there.
+  const [staffId, setStaffId] = useState<string | undefined>(undefined);
+
   useEffect(() => {
-    if (teacherId && teachingRows.status === 'idle') void teachingAssignments.load(teacherId);
-  }, [teacherId, teachingRows.status, teachingAssignments]);
+    if (!teacherId) return;
+    let cancelled = false;
+    void sharedBridge.listSchoolAdminRecords({ collection: 'staff', limit: 250 }).then((result) => {
+      if (cancelled) return;
+      const mine = result.items.find((r) => r.userId === teacherId);
+      setStaffId(mine ? String(mine.id) : undefined);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [teacherId]);
+
+  useRevalidateOnSync(() => {
+    if (staffId) void teachingAssignments.load(staffId);
+  }, [staffId, teachingAssignments]);
 
   useEffect(() => {
     if (mode === 'edit' && assignmentId && teacherId) {
@@ -236,16 +260,14 @@ export function AssignmentForm({ mode, assignmentId }: AssignmentFormProps) {
       {submitError && <Alert variant="error">{submitError}</Alert>}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div>
-          <Label required>Title</Label>
-          <input
-            className={fieldClass}
-            value={form.title}
-            onChange={(e) => set('title', e.target.value)}
-            placeholder="e.g. Chapter 5 Homework"
-          />
-          {errors.title && <p className="text-xs text-error mt-1">{errors.title}</p>}
-        </div>
+        <Input
+          label="Title"
+          required
+          value={form.title}
+          onChange={(e) => set('title', e.target.value)}
+          placeholder="e.g. Chapter 5 Homework"
+          error={errors.title}
+        />
         <div>
           <Label required>Class</Label>
           <select
@@ -282,27 +304,22 @@ export function AssignmentForm({ mode, assignmentId }: AssignmentFormProps) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div>
-          <Label required>Due Date</Label>
-          <input
-            type="date"
-            className={fieldClass}
-            value={form.dueDate}
-            onChange={(e) => set('dueDate', e.target.value)}
-          />
-          {errors.dueDate && <p className="text-xs text-error mt-1">{errors.dueDate}</p>}
-        </div>
-        <div>
-          <Label>Total Marks</Label>
-          <input
-            type="number"
-            min="0"
-            className={fieldClass}
-            value={form.totalMarks}
-            onChange={(e) => set('totalMarks', e.target.value === '' ? '' : Number(e.target.value))}
-            placeholder="e.g. 100"
-          />
-        </div>
+        <Input
+          label="Due Date"
+          required
+          type="date"
+          value={form.dueDate}
+          onChange={(e) => set('dueDate', e.target.value)}
+          error={errors.dueDate}
+        />
+        <Input
+          label="Total Marks"
+          type="number"
+          min="0"
+          value={form.totalMarks}
+          onChange={(e) => set('totalMarks', e.target.value === '' ? '' : Number(e.target.value))}
+          placeholder="e.g. 100"
+        />
         <div>
           <Label>Assignment Type</Label>
           <Select

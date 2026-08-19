@@ -1,17 +1,18 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, BookOpen, Info } from 'lucide-react';
 import type { SchoolAdminRecord } from '@nemis-desktop/types';
 import { computeFeeRuleSummary, formatCurrency, LEVEL_LABEL, listFeeRules, listObligationsForRule, parseLevels, type FeeRuleSummary } from './shared';
 import { BulkAssignDrawer } from './BulkAssignDrawer';
+import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 
 function FeeRuleCard({ rule, onPrepare }: { rule: SchoolAdminRecord; onPrepare: (rule: SchoolAdminRecord) => void }) {
   const [summary, setSummary] = useState<FeeRuleSummary | null>(null);
   const [showInfo, setShowInfo] = useState(false);
 
-  useEffect(() => {
+  useRevalidateOnSync(() => {
     void listObligationsForRule(String(rule.id)).then((rows) => setSummary(computeFeeRuleSummary(rows)));
   }, [rule.id]);
 
@@ -99,7 +100,7 @@ export function FinancialHomePage() {
 
   const reload = () => void listFeeRules().then((rows) => setRules(rows.filter((r) => r.isActive)));
 
-  useEffect(() => { reload(); }, []);
+  useRevalidateOnSync(() => { reload(); }, []);
 
   return (
     <div className="min-h-screen bg-slate-100">

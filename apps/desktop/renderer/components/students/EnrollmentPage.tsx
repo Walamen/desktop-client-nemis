@@ -1,11 +1,14 @@
 'use client';
 import { useEffect, useState, type FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAcademicFoundationViewModel, useEnrollmentViewModel } from '@/lib/presentation/hooks/school-admin';
 import { Button, Input, Select } from '@nemis-desktop/ui';
 import { useViewModel } from '@/hooks/use-view-model';
 import { human, Page, queryId } from './shared';
+import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 
 export function EnrollmentPage() {
+  const router = useRouter();
   const students = useEnrollmentViewModel();
   const foundation = useAcademicFoundationViewModel();
   const years = useViewModel(foundation.store, (s) => s.academicYears);
@@ -16,7 +19,7 @@ export function EnrollmentPage() {
   const [term, setTerm] = useState('');
   const [clazz, setClazz] = useState('');
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
-  useEffect(() => {
+  useRevalidateOnSync(() => {
     setId(queryId());
     void foundation.loadAcademicYears();
   }, [foundation]);
@@ -26,7 +29,7 @@ export function EnrollmentPage() {
       if (y) setYear(y.id);
     }
   }, [years, year]);
-  useEffect(() => {
+  useRevalidateOnSync(() => {
     if (year) {
       void foundation.loadTerms(year);
       foundation.setClassFilters({ academicYearId: year });
@@ -42,7 +45,7 @@ export function EnrollmentPage() {
       classId: clazz,
       enrollmentDate: date,
     });
-    if (r.ok) window.location.href = `/government/school-admin/students/profile?id=${id}`;
+    if (r.ok) router.push(`/government/school-admin/students/profile?id=${id}`);
   };
   const yearOptions =
     years.status === 'success' || years.status === 'refreshing'

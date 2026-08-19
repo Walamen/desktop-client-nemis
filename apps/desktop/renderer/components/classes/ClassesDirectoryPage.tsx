@@ -23,6 +23,7 @@ import { schoolAdminBridge } from '@/services/nemis-bridge/school-admin';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { fetchAllPages, formatGrade, getUnassignedStudents, type UnassignedStudent } from './shared';
 import { normalizeLimit } from '@/components/pageLimitNormalizer';
+import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 /** Classes & Unassigned Students — mirrors portal-web's Class Management
  * page (header band, 4 stat tiles, tabbed table, edit/assign drawers). The
  * web reference sources "With/Without Teachers" and enrolled counts from
@@ -61,13 +62,13 @@ export function ClassesDirectoryPage() {
   const [selectedTermId, setSelectedTermId] = useState('');
   const terms = useViewModel(vm.store, (s) => s.terms);
 
-  useEffect(() => {
+  useRevalidateOnSync(() => {
     void vm.loadClasses();
     void academicYear.loadCurrent();
     void schoolAdminBridge.listClasses({ limit: normalizeLimit(1) }).then((r) => setTotalClasses(r.total));
     void refreshUnassigned();
     void refreshTeacherCoverage();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   async function refreshUnassigned() {
@@ -312,17 +313,16 @@ export function ClassesDirectoryPage() {
         {activeTab === 'classes' && (
           <div className="bg-secondary/20 rounded-lg border border-slate-300 overflow-hidden">
             <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="relative w-full sm:max-w-xs">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
+              <div className="w-full sm:max-w-xs">
+                <Input
                   type="text"
+                  icon={<Search className="w-4 h-4 text-gray-400" />}
                   placeholder="Search by class name..."
                   value={filters.keyword ?? ''}
                   onChange={(e) => {
                     vm.setClassFilters({ ...filters, keyword: e.target.value });
                     void vm.loadClasses();
                   }}
-                  className="pl-9 w-full px-3 py-2 rounded-full focus:outline-none border border-gray-300 focus:ring-2 focus:ring-secondary/5 focus:border-sky-500 text-sm"
                 />
               </div>
               <select
@@ -496,14 +496,13 @@ export function ClassesDirectoryPage() {
             )}
 
             <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="relative w-full sm:max-w-xs">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
+              <div className="w-full sm:max-w-xs">
+                <Input
                   type="text"
+                  icon={<Search className="w-4 h-4 text-gray-400" />}
                   placeholder="Search by name or admission #..."
                   value={unassignedSearch}
                   onChange={(e) => setUnassignedSearch(e.target.value)}
-                  className="pl-9 w-full px-3 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-1 focus:ring-secondary/10 focus:border-sky-500 text-sm"
                 />
               </div>
             </div>

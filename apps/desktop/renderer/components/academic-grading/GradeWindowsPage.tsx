@@ -5,9 +5,11 @@ import Link from 'next/link';
 import { CheckCircle, Eye, FileText, Lock, Plus, RotateCcw, Unlock } from 'lucide-react';
 import { useViewModel } from '@/hooks/use-view-model';
 import { useAcademicFoundationViewModel, useAcademicYearViewModel } from '@/lib/presentation/hooks/school-admin';
+import { Input } from '@nemis-desktop/ui';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
 import type { SchoolAdminRecord } from '@nemis-desktop/types';
 import { formatDateShort, listAllWindows, listPeriodsForTerm, WINDOW_STATUS_CHIP, WINDOW_STATUS_RAIL } from './shared';
+import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 
 const EMPTY_FORM = { gradingPeriodId: '', name: '', description: '', openDate: '', closeDate: '' };
 
@@ -32,7 +34,7 @@ export function GradeWindowsPage() {
 
   const reload = async () => setWindows(await listAllWindows());
 
-  useEffect(() => {
+  useRevalidateOnSync(() => {
     void reload();
     void academicYear.loadCurrent();
   }, [academicYear]);
@@ -266,7 +268,7 @@ export function GradeWindowsPage() {
                   </span>{' '}
                   to confirm
                 </label>
-                <input
+                <Input
                   type="text"
                   value={unpublishInput}
                   onChange={(e) => setUnpublishInput(e.target.value)}
@@ -275,7 +277,7 @@ export function GradeWindowsPage() {
                   }}
                   placeholder="unpublish this window"
                   autoFocus
-                  className="w-full rounded-full border border-slate-300 px-3 py-2 font-mono text-sm outline-none focus:border-error focus:ring-2 focus:ring-error"
+                  className="font-mono"
                 />
               </div>
               <div className="flex justify-end gap-3 pt-1">
@@ -345,16 +347,13 @@ export function GradeWindowsPage() {
                   </select>
                 </div>
 
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">Window Name</label>
-                  <input
-                    value={form.name}
-                    onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                    placeholder="e.g., Period 1 Grade Entry"
-                    required
-                    className="w-full rounded-full border border-slate-300 px-3 py-2 text-sm outline-none focus:border-secondary focus:ring-2 focus:ring-secondary"
-                  />
-                </div>
+                <Input
+                  label="Window Name"
+                  value={form.name}
+                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                  placeholder="e.g., Period 1 Grade Entry"
+                  required
+                />
 
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700">Description</label>
@@ -367,26 +366,20 @@ export function GradeWindowsPage() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-slate-700">Open Date</label>
-                    <input
-                      type="date"
-                      value={form.openDate}
-                      onChange={(e) => setForm((f) => ({ ...f, openDate: e.target.value }))}
-                      required
-                      className="w-full rounded-full border border-slate-300 px-3 py-2 text-sm outline-none focus:border-secondary focus:ring-2 focus:ring-secondary"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-slate-700">Close Date</label>
-                    <input
-                      type="date"
-                      value={form.closeDate}
-                      onChange={(e) => setForm((f) => ({ ...f, closeDate: e.target.value }))}
-                      required
-                      className="w-full rounded-full border border-slate-300 px-3 py-2 text-sm outline-none focus:border-secondary focus:ring-2 focus:ring-secondary"
-                    />
-                  </div>
+                  <Input
+                    label="Open Date"
+                    type="date"
+                    value={form.openDate}
+                    onChange={(e) => setForm((f) => ({ ...f, openDate: e.target.value }))}
+                    required
+                  />
+                  <Input
+                    label="Close Date"
+                    type="date"
+                    value={form.closeDate}
+                    onChange={(e) => setForm((f) => ({ ...f, closeDate: e.target.value }))}
+                    required
+                  />
                 </div>
 
                 <div className="flex justify-end gap-3">

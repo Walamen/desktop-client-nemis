@@ -3,10 +3,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Alert, Badge, EmptyState, Skeleton, Spinner } from '@nemis-desktop/ui';
+import { Alert, Badge, EmptyState, Input, Skeleton, Spinner } from '@nemis-desktop/ui';
 import { useViewModel } from '@/hooks/use-view-model';
 import { useCurrentUserViewModel } from '@/lib/presentation/hooks/shared';
 import { useAssignmentsViewModel } from '@/lib/presentation/hooks/teacher';
+import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 
 interface RowState {
   grade: string;
@@ -29,7 +30,7 @@ export function SubmissionsTable({ assignmentId, totalMarks }: { assignmentId: s
   const submissions = useViewModel(assignmentsVm.store, (s) => s.submissions);
   const teacherId = user.status === 'success' ? user.data.id : undefined;
 
-  useEffect(() => {
+  useRevalidateOnSync(() => {
     if (teacherId) void assignmentsVm.loadSubmissions(assignmentId, teacherId);
   }, [teacherId, assignmentId, assignmentsVm]);
 
@@ -159,27 +160,26 @@ export function SubmissionsTable({ assignmentId, totalMarks }: { assignmentId: s
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
-                      <input
+                      <Input
                         type="number"
                         min="0"
                         max={totalMarks}
                         value={row.grade}
                         onChange={(e) => updateRow(s.studentId, 'grade', e.target.value)}
                         disabled={!canGrade}
-                        className="w-14 px-2 py-1.5 border border-gray-300 rounded text-sm text-center focus:ring-2 focus:ring-secondary focus:border-secondary disabled:bg-gray-100 disabled:text-gray-400"
+                        className="text-center"
                         placeholder="—"
                       />
                       {totalMarks != null && <span className="text-xs text-gray-400">/ {totalMarks}</span>}
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <input
+                    <Input
                       type="text"
                       value={row.feedback}
                       onChange={(e) => updateRow(s.studentId, 'feedback', e.target.value)}
                       disabled={!canGrade}
                       placeholder={canGrade ? 'Add feedback…' : 'Not submitted'}
-                      className="w-44 px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-secondary focus:border-secondary disabled:bg-gray-100 disabled:text-gray-400 disabled:placeholder-gray-300"
                     />
                   </td>
                   <td className="px-4 py-3">

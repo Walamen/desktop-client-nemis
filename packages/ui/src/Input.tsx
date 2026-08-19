@@ -32,7 +32,7 @@ export const Input: React.FC<InputProps> = ({
           </div>
         )}
         <input
-          className={`w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-sm text-gray-900 placeholder:text-gray-400 transition-all duration-300 ease-out outline-none focus:border-none focus:ring-1 focus:ring-primary/20 focus:shadow-[0_0_0_4px_rgba(59,130,246,0.15),0_0_20px_rgba(59,130,246,0.35)] ${
+          className={`w-full px-4 py-3 rounded-full border border-slate-300 bg-white text-sm text-gray-900 placeholder:text-gray-400 transition-all duration-300 ease-out outline-none focus:border-none focus:ring-1 focus:ring-primary/20 focus:shadow-[0_0_0_4px_rgba(59,130,246,0.15),0_0_20px_rgba(59,130,246,0.35)] ${
             error ? "border-error" : "border-border"
           } ${icon ? "pl-10" : ""} ${className}`}
           {...props}

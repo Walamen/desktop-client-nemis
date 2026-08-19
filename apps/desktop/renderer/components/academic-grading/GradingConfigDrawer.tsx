@@ -140,40 +140,36 @@ export function GradingConfigDrawer({ isOpen, onClose }: { isOpen: boolean; onCl
                 </div>
                 {scale.map((row, index) => (
                   <div key={index} className="grid grid-cols-[70px_1fr_70px_70px_80px_36px] items-center gap-2">
-                    <input
+                    <Input
                       value={row.letter}
                       onChange={(e) => updateRow(index, { letter: e.target.value })}
                       maxLength={3}
                       required
                       placeholder="A"
-                      className="w-full rounded-md border border-slate-300 px-2 py-2 text-center text-sm font-bold text-slate-900"
                     />
-                    <input
+                    <Input
                       value={row.description}
                       onChange={(e) => updateRow(index, { description: e.target.value })}
                       required
                       placeholder="e.g. Excellent"
-                      className="w-full rounded-md border border-slate-300 px-2 py-2 text-sm text-slate-900"
                     />
-                    <input
+                    <Input
                       type="number"
                       value={row.min}
                       onChange={(e) => updateRow(index, { min: Number(e.target.value) })}
                       min={0}
                       max={100}
                       required
-                      className="w-full rounded-md border border-slate-300 px-2 py-2 text-center text-sm text-slate-900"
                     />
-                    <input
+                    <Input
                       type="number"
                       value={row.max}
                       onChange={(e) => updateRow(index, { max: Number(e.target.value) })}
                       min={0}
                       max={100}
                       required
-                      className="w-full rounded-md border border-slate-300 px-2 py-2 text-center text-sm text-slate-900"
                     />
-                    <input
+                    <Input
                       type="number"
                       step={0.1}
                       value={row.gradePoint}
@@ -181,7 +177,6 @@ export function GradingConfigDrawer({ isOpen, onClose }: { isOpen: boolean; onCl
                       min={0}
                       max={4}
                       required
-                      className="w-full rounded-md border border-slate-300 px-2 py-2 text-center text-sm text-slate-900"
                     />
                     <button
                       type="button"

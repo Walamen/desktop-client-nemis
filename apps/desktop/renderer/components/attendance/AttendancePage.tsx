@@ -10,7 +10,9 @@ import { useViewModel } from '@/hooks/use-view-model';
 import { hasData } from '@nemis-desktop/presentation';
 import { useCurrentUserViewModel, useAttendanceViewModel } from '@/lib/presentation/hooks/shared';
 import { useStudentsViewModel, useTeachingAssignmentViewModel } from '@/lib/presentation/hooks/school-admin';
+import { sharedBridge } from '@/services/nemis-bridge/shared';
 import { DatabaseUnavailablePanel } from '@/components/dashboard/DatabaseUnavailablePanel';
+import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 
 interface ClassOption {
   classId: string;
@@ -51,6 +53,26 @@ export function AttendancePage() {
 
   const teacherId = user.status === 'success' ? user.data.id : undefined;
 
+  // The signed-in identity (`teacherId`, the `users` table) and the id every
+  // teaching-assignment record is keyed by (`staff.id`) are different id
+  // spaces — `staff.userId` is the (unique) bridge between them. Mirrors
+  // government/teacher/page.tsx. `teacherId` itself stays in use for
+  // `recordedBy` below, which is the signed-in user, not the staff record.
+  const [staffId, setStaffId] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (!teacherId) return;
+    let cancelled = false;
+    void sharedBridge.listSchoolAdminRecords({ collection: 'staff', limit: 250 }).then((result) => {
+      if (cancelled) return;
+      const mine = result.items.find((r) => r.userId === teacherId);
+      setStaffId(mine ? String(mine.id) : undefined);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [teacherId]);
+
   const [classId, setClassId] = useState('');
   const [subjectId, setSubjectId] = useState('');
   const [date, setDate] = useState(today);
@@ -64,9 +86,9 @@ export function AttendancePage() {
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
 
-  useEffect(() => {
-    if (teacherId && assignments.status === 'idle') void teachingAssignments.load(teacherId);
-  }, [teacherId, assignments.status, teachingAssignments]);
+  useRevalidateOnSync(() => {
+    if (staffId) void teachingAssignments.load(staffId);
+  }, [staffId, teachingAssignments]);
 
   const assignmentsLoaded =
     assignments.status === 'success' || assignments.status === 'refreshing' || assignments.status === 'empty';
@@ -238,7 +260,7 @@ export function AttendancePage() {
   if (assignments.status === 'error' && assignments.error.kind === 'database-unavailable') {
     return (
       <div className="p-6">
-        <DatabaseUnavailablePanel onRetry={() => teacherId && void teachingAssignments.load(teacherId)} />
+        <DatabaseUnavailablePanel onRetry={() => staffId && void teachingAssignments.load(staffId)} />
       </div>
     );
   }
@@ -247,7 +269,7 @@ export function AttendancePage() {
       <div className="p-6">
         <ErrorState
           message={assignments.error.userMessage}
-          onRetry={() => teacherId && void teachingAssignments.load(teacherId)}
+          onRetry={() => staffId && void teachingAssignments.load(staffId)}
         />
       </div>
     );
@@ -287,16 +309,13 @@ export function AttendancePage() {
               onChange={(e) => setSubjectId(e.target.value)}
               disabled={subjectOptions.length === 0}
             />
-            <label className="text-small font-medium text-neutral-dark">
-              Date
-              <input
-                type="date"
-                value={date}
-                max={today}
-                onChange={(e) => setDate(e.target.value)}
-                className="mt-2 block w-full rounded-lg border border-gray-300 px-4 py-3 text-sm"
-              />
-            </label>
+            <Input
+              label="Date"
+              type="date"
+              value={date}
+              max={today}
+              onChange={(e) => setDate(e.target.value)}
+            />
           </div>
 
           {isLocked && (

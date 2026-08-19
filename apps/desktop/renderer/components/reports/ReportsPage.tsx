@@ -18,6 +18,7 @@ import {
   loadClassAggregates, buildEnrollmentReport, buildAttendanceReport, buildAcademicReport, buildStaffReport, buildFinancialReport,
   downloadCsv, SummaryCard, ReportTable, ReportEmptyState, BarListChart, DonutChart, CHART_COLORS,
 } from './shared';
+import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 
 const REPORT_TYPES: { id: ReportType; name: string; icon: typeof Users }[] = [
   { id: 'ENROLLMENT', name: 'Enrollment', icon: Users },
@@ -55,12 +56,12 @@ export function ReportsPage() {
   const [termId, setTermId] = useState('');
   const [reportState, setReportState] = useState<ReportState>({ status: 'idle' });
 
-  useEffect(() => {
+  useRevalidateOnSync(() => {
     foundation.loadClasses();
     foundation.loadAcademicYears();
     foundation.loadCurrentTerm();
     schoolAdminBridge.getSchoolSummary().then(setSchool).catch(() => setSchool(null));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   const classes = useMemo(() => (hasData(classesState) ? [...classesState.data] : []), [classesState]);

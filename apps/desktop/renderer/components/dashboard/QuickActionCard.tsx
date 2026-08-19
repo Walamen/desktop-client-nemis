@@ -36,7 +36,7 @@ export default function QuickActionCard({
           <Icon className="w-5 h-5" />
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-neutral-dark mb-1">{title}</h3>
+          <h3 className="font-semibold text-neutral-dark mb-1">{title}s</h3>
           <p className="text-xs text-gray-600 line-clamp-2">{description}</p>
         </div>
       </div>

@@ -32,6 +32,7 @@ import {
   useStudentStatisticsViewModel,
 } from '@/lib/presentation/hooks/school-admin';
 import { genders, grades, human } from './shared';
+import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 
 /**
  * Windows a page-button strip down to a bounded set: page 1, page `total`,
@@ -153,7 +154,7 @@ export function StudentsDirectoryPage() {
       if (keywordDebounce.current) clearTimeout(keywordDebounce.current);
     };
   }, []);
-  useEffect(() => {
+  useRevalidateOnSync(() => {
     void vm.setPageSize(12);
     void stats.loadStatistics();
   }, [stats, vm]);
@@ -243,24 +244,19 @@ export function StudentsDirectoryPage() {
 
                 {/* Search */}
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-widest text-slate-400 mb-2">
-                    Search
-                  </label>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                    <input
-                      type="text"
-                      placeholder="Name or student number"
-                      defaultValue={filters.keyword ?? ''}
-                      onChange={(e) => {
-                        const keyword = e.target.value;
-                        search.setFilters({ ...filters, keyword: keyword || undefined });
-                        if (keywordDebounce.current) clearTimeout(keywordDebounce.current);
-                        keywordDebounce.current = setTimeout(() => void search.search(), 300);
-                      }}
-                      className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none text-slate-700 placeholder:text-slate-300"
-                    />
-                  </div>
+                  <Input
+                    label="Search"
+                    type="text"
+                    icon={<Search className="w-3.5 h-3.5 text-slate-400" />}
+                    placeholder="Name or student number"
+                    defaultValue={filters.keyword ?? ''}
+                    onChange={(e) => {
+                      const keyword = e.target.value;
+                      search.setFilters({ ...filters, keyword: keyword || undefined });
+                      if (keywordDebounce.current) clearTimeout(keywordDebounce.current);
+                      keywordDebounce.current = setTimeout(() => void search.search(), 300);
+                    }}
+                  />
                 </div>
 
                 {/* Grade Level */}

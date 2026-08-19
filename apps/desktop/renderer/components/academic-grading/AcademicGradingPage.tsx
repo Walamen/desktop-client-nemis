@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { CalendarRange, ClipboardList, DoorOpen, PenLine } from 'lucide-react';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
 import type { SchoolAdminRecord } from '@nemis-desktop/types';
 import { GradingConfigDrawer } from './GradingConfigDrawer';
 import { GradingPeriodsDrawer } from './GradingPeriodsDrawer';
+import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 
 type ModalKey = 'setup' | 'periods' | null;
 
@@ -38,7 +39,7 @@ export function AcademicGradingPage() {
   const [windows, setWindows] = useState<SchoolAdminRecord[] | null>(null);
   const [activeModal, setActiveModal] = useState<ModalKey>(null);
 
-  useEffect(() => {
+  useRevalidateOnSync(() => {
     void sharedBridge
       .listSchoolAdminRecords({ collection: 'grade_entry_windows', limit: 250 })
       .then((result) => setWindows(result.items));

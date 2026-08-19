@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
-import { Avatar } from '@nemis-desktop/ui';
+import { Avatar, Input } from '@nemis-desktop/ui';
 import { Search, ChevronLeft, ChevronRight, CheckCircle2, XCircle, Clock, MinusCircle } from 'lucide-react';
 import { useViewModel } from '@/hooks/use-view-model';
 import {
@@ -9,6 +9,7 @@ import {
   useStudentsViewModel,
 } from '@/lib/presentation/hooks/school-admin';
 import { useAttendanceViewModel } from '@/lib/presentation/hooks/shared';
+import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 
 const RECORDS_PER_PAGE = 15;
 
@@ -64,10 +65,10 @@ export function AttendanceReportPage() {
 
   const schoolName = profile.status === 'success' || profile.status === 'refreshing' ? profile.data.name : 'School';
 
-  useEffect(() => {
+  useRevalidateOnSync(() => {
     void academics.loadClasses();
     void settings.loadCurrentSchool();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   useEffect(() => {
@@ -80,7 +81,7 @@ export function AttendanceReportPage() {
     setCurrentPage(1);
   }, [classId, date, searchQuery, statusFilter]);
 
-  useEffect(() => {
+  useRevalidateOnSync(() => {
     if (!classId) return;
     students.setFilters({ classId, isActive: true, sort: 'name' });
     void Promise.all([students.loadStudents(), attendance.loadAttendance(classId, date)]);
@@ -170,24 +171,23 @@ export function AttendanceReportPage() {
               ))}
             </select>
 
-            <input
+            <Input
               type="date"
               value={date}
               max={today}
               onChange={(e) => setDate(e.target.value)}
-              className="px-3 py-2 border border-slate-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-secondary/5 focus:border-blue-500"
+              className="w-auto"
             />
 
             <div className="flex-1" />
 
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-              <input
+            <div className="w-48">
+              <Input
                 type="text"
                 placeholder="Search student…"
+                icon={<Search className="text-slate-400 w-4 h-4" />}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-3 py-2 border border-slate-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-secondary/5 focus:border-blue-500 w-48"
               />
             </div>
 

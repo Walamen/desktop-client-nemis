@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { ProvisioningStatus } from '@nemis-desktop/types';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
+import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 
 export function ScopedPortalDashboard({
   title,
@@ -12,7 +13,7 @@ export function ScopedPortalDashboard({
   description: string;
 }) {
   const [status, setStatus] = useState<ProvisioningStatus | null>(null);
-  useEffect(() => {
+  useRevalidateOnSync(() => {
     void sharedBridge.getProvisioningStatus().then(setStatus);
   }, []);
   const user = status?.user;

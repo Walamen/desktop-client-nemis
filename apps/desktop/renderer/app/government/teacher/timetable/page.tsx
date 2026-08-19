@@ -12,6 +12,7 @@ import {
 import { useViewModel } from '@/hooks/use-view-model';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
 import { DatabaseUnavailablePanel } from '@/components/dashboard/DatabaseUnavailablePanel';
+import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 
 const DAYS = [DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY] as const;
 const DAY_LABELS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
@@ -61,11 +62,11 @@ export default function TeacherTimetablePage() {
     };
   }, [userId]);
 
-  useEffect(() => {
-    if (staffId && entries.status === 'idle') void teacherSchedule.load(staffId);
-    if (periods.status === 'idle') void teacherSchedule.core.loadPeriods();
-    if (staffId && assignments.status === 'idle') void teachingAssignments.load(staffId);
-  }, [staffId, entries.status, periods.status, assignments.status, teacherSchedule, teachingAssignments]);
+  useRevalidateOnSync(() => {
+    if (staffId) void teacherSchedule.load(staffId);
+    void teacherSchedule.core.loadPeriods();
+    if (staffId) void teachingAssignments.load(staffId);
+  }, [staffId, teacherSchedule, teachingAssignments]);
 
   const [selectedDay, setSelectedDay] = useState<(typeof DAYS)[number]>(getTodayDay());
   const [viewMode, setViewMode] = useState<'table' | 'card'>('table');

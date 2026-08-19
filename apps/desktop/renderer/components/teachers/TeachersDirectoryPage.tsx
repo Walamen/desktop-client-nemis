@@ -1,8 +1,8 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { StaffPosition } from '@nemis-desktop/types';
-import { Avatar, Button, Card, EmptyState, ErrorState, Skeleton } from '@nemis-desktop/ui';
+import { Avatar, Button, Card, EmptyState, ErrorState, Input, Skeleton } from '@nemis-desktop/ui';
 import type { TeacherRowView } from '@nemis-desktop/presentation';
 import {
   Search,
@@ -27,6 +27,7 @@ import {
 } from '@/lib/presentation/hooks/school-admin';
 import { useTeacherDashboardViewModel } from '@/lib/presentation/hooks/teacher';
 import { StatCard } from '@/components/dashboard/StatCard';
+import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 import { human } from './shared';
 
 /** Teachers & Staff directory — mirrors portal-web's Teacher Management page
@@ -50,11 +51,11 @@ export function TeachersDirectoryPage() {
     profile.status === 'success' || profile.status === 'refreshing' ? profile.data.name : 'School';
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('grid');
 
-  useEffect(() => {
+  useRevalidateOnSync(() => {
     search.setFilters({ ...filters, position: StaffPosition.TEACHER });
     void vm.loadTeachers();
     void teacherDashboard.load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   const dashboardReady = dashboard.status === 'success' || dashboard.status === 'refreshing';
@@ -98,17 +99,16 @@ export function TeachersDirectoryPage() {
           {/* Toolbar */}
           <div className="bg-secondary/20 p-4">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-              <div className="md:col-span-2 relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
+              <div className="md:col-span-2">
+                <Input
                   type="text"
+                  icon={<Search className="w-4 h-4 text-gray-400" />}
                   placeholder="Search by name or teacher ID..."
                   defaultValue={filters.keyword ?? ''}
                   onChange={(e) => {
                     search.setKeyword(e.target.value);
                     void search.search();
                   }}
-                  className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 text-sm"
                 />
               </div>
               <div>

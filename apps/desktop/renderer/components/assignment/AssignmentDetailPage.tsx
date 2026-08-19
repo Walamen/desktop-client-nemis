@@ -11,6 +11,7 @@ import { useCurrentUserViewModel } from '@/lib/presentation/hooks/shared';
 import { useAssignmentsViewModel } from '@/lib/presentation/hooks/teacher';
 import { assignmentBridge } from '@/services/nemis-bridge/teacher/assignment-bridge';
 import { SubmissionsTable } from './SubmissionsTable';
+import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 
 const TYPE_LABELS: Record<string, string> = {
   HOMEWORK: 'Homework',
@@ -37,7 +38,7 @@ export function AssignmentDetailPage({ assignmentId }: { assignmentId: string })
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleteError, setDeleteError] = useState('');
 
-  useEffect(() => {
+  useRevalidateOnSync(() => {
     if (teacherId && assignmentId) void assignmentsVm.loadAssignment(assignmentId, teacherId);
   }, [teacherId, assignmentId, assignmentsVm]);
 

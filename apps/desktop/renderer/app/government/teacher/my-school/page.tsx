@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   School, Users, BookOpen, User, Phone, Mail, MapPin,
 } from 'lucide-react';
@@ -15,6 +15,7 @@ import {
 import { useTeacherDashboardViewModel } from '@/lib/presentation/hooks/teacher';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
 import { StatCard } from '@/components/dashboard/StatCard';
+import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 import { human, rows } from '@/components/teachers/shared';
 
 interface StaffMember {
@@ -156,11 +157,9 @@ export default function MySchoolPage() {
 
   const userId = user.status === 'success' ? user.data.id : undefined;
 
-  useEffect(() => {
-    if (teacherStats.status === 'idle') void teacherDashboard.load();
-  }, [teacherStats.status, teacherDashboard]);
+  useRevalidateOnSync(() => void teacherDashboard.load(), [teacherDashboard]);
 
-  useEffect(() => {
+  useRevalidateOnSync(() => {
     if (!userId) return;
     let cancelled = false;
     void sharedBridge.listSchoolAdminRecords({ collection: 'staff', limit: 250 }).then((result) => {
@@ -176,7 +175,7 @@ export default function MySchoolPage() {
     };
   }, [userId]);
 
-  useEffect(() => {
+  useRevalidateOnSync(() => {
     if (!userId) return;
     let cancelled = false;
     setDirectoryStatus('loading');
@@ -192,7 +191,7 @@ export default function MySchoolPage() {
     };
   }, [userId]);
 
-  useEffect(() => {
+  useRevalidateOnSync(() => {
     if (!userId) return;
     let cancelled = false;
     setAdminStatus('loading');
@@ -208,7 +207,7 @@ export default function MySchoolPage() {
     };
   }, [userId]);
 
-  useEffect(() => {
+  useRevalidateOnSync(() => {
     if (!userId) return;
     let cancelled = false;
     setSchoolStatus('loading');
@@ -237,10 +236,9 @@ export default function MySchoolPage() {
   const own = staff.find((t) => t.userId === userId);
   const staffId = own?.id;
 
-  useEffect(() => {
-    if (!staffId) return;
-    if (assignments.status === 'idle') void teachingAssignments.load(staffId);
-  }, [staffId, assignments.status, teachingAssignments]);
+  useRevalidateOnSync(() => {
+    if (staffId) void teachingAssignments.load(staffId);
+  }, [staffId, teachingAssignments]);
 
   const directory = useMemo(() => directoryRecords.map(toStaffMember), [directoryRecords]);
   const directoryLoading = directoryStatus === 'idle' || directoryStatus === 'loading';

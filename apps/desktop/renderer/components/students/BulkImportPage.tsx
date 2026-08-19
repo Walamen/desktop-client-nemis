@@ -8,6 +8,7 @@ import * as XLSX from 'xlsx';
 import type { GradeLevel as GradeLevelValue } from '@nemis-desktop/types';
 import { useViewModel } from '@/hooks/use-view-model';
 import { useSettingsViewModel, useStudentProfileViewModel, useStudentsListViewModel } from '@/lib/presentation/hooks/school-admin';
+import { Input } from '@nemis-desktop/ui';
 import { grades, human } from './shared';
 
 interface BulkRow {
@@ -433,28 +434,24 @@ export function BulkImportPage() {
                       <tr key={row.id} className={hasErrors ? 'bg-red-50/40' : 'bg-white'}>
                         <td className="px-3 py-2 pt-3 align-top text-xs text-gray-400">{i + 1}</td>
                         <td className="px-3 py-2 align-top">
-                          <input type="text" value={row.admissionNumber} placeholder="STU-001"
+                          <Input type="text" value={row.admissionNumber} placeholder="STU-001"
                             onChange={(e) => updateRow(row.id, { admissionNumber: e.target.value })}
-                            className={inputClass(Boolean(row.errors.admissionNumber))} />
-                          {row.errors.admissionNumber && <p className="mt-0.5 text-xs text-red-500">{row.errors.admissionNumber}</p>}
+                            error={row.errors.admissionNumber} />
                         </td>
                         <td className="px-3 py-2 align-top">
-                          <input type="text" value={row.firstName} placeholder="First name"
+                          <Input type="text" value={row.firstName} placeholder="First name"
                             onChange={(e) => updateRow(row.id, { firstName: e.target.value })}
-                            className={inputClass(Boolean(row.errors.firstName))} />
-                          {row.errors.firstName && <p className="mt-0.5 text-xs text-red-500">{row.errors.firstName}</p>}
+                            error={row.errors.firstName} />
                         </td>
                         <td className="px-3 py-2 align-top">
-                          <input type="text" value={row.lastName} placeholder="Last name"
+                          <Input type="text" value={row.lastName} placeholder="Last name"
                             onChange={(e) => updateRow(row.id, { lastName: e.target.value })}
-                            className={inputClass(Boolean(row.errors.lastName))} />
-                          {row.errors.lastName && <p className="mt-0.5 text-xs text-red-500">{row.errors.lastName}</p>}
+                            error={row.errors.lastName} />
                         </td>
                         <td className="px-3 py-2 align-top">
-                          <input type="date" value={row.dateOfBirth}
+                          <Input type="date" value={row.dateOfBirth}
                             onChange={(e) => updateRow(row.id, { dateOfBirth: e.target.value })}
-                            className={inputClass(Boolean(row.errors.dateOfBirth))} />
-                          {row.errors.dateOfBirth && <p className="mt-0.5 text-xs text-red-500">{row.errors.dateOfBirth}</p>}
+                            error={row.errors.dateOfBirth} />
                         </td>
                         <td className="px-3 py-2 align-top">
                           <select value={row.gender} onChange={(e) => updateRow(row.id, { gender: e.target.value })}
@@ -466,10 +463,9 @@ export function BulkImportPage() {
                           {row.errors.gender && <p className="mt-0.5 text-xs text-red-500">{row.errors.gender}</p>}
                         </td>
                         <td className="px-3 py-2 align-top">
-                          <input type="date" value={row.admissionDate}
+                          <Input type="date" value={row.admissionDate}
                             onChange={(e) => updateRow(row.id, { admissionDate: e.target.value })}
-                            className={inputClass(Boolean(row.errors.admissionDate))} />
-                          {row.errors.admissionDate && <p className="mt-0.5 text-xs text-red-500">{row.errors.admissionDate}</p>}
+                            error={row.errors.admissionDate} />
                         </td>
                         <td className="px-3 py-2 align-top">
                           <select value={row.gradeLevel} onChange={(e) => updateRow(row.id, { gradeLevel: e.target.value })}
@@ -480,34 +476,29 @@ export function BulkImportPage() {
                           {row.errors.gradeLevel && <p className="mt-0.5 text-xs text-red-500">{row.errors.gradeLevel}</p>}
                         </td>
                         <td className="px-3 py-2 align-top">
-                          <input type="text" value={row.guardianFirstName} placeholder="First name"
+                          <Input type="text" value={row.guardianFirstName} placeholder="First name"
                             onChange={(e) => updateRow(row.id, { guardianFirstName: e.target.value })}
-                            className={inputClass(Boolean(row.errors.guardianFirstName))} />
-                          {row.errors.guardianFirstName && <p className="mt-0.5 text-xs text-red-500">{row.errors.guardianFirstName}</p>}
+                            error={row.errors.guardianFirstName} />
                         </td>
                         <td className="px-3 py-2 align-top">
-                          <input type="text" value={row.guardianLastName} placeholder="Last name"
+                          <Input type="text" value={row.guardianLastName} placeholder="Last name"
                             onChange={(e) => updateRow(row.id, { guardianLastName: e.target.value })}
-                            className={inputClass(Boolean(row.errors.guardianLastName))} />
-                          {row.errors.guardianLastName && <p className="mt-0.5 text-xs text-red-500">{row.errors.guardianLastName}</p>}
+                            error={row.errors.guardianLastName} />
                         </td>
                         <td className="px-3 py-2 align-top">
-                          <input type="text" value={row.guardianRelationship} placeholder="Mother"
+                          <Input type="text" value={row.guardianRelationship} placeholder="Mother"
                             onChange={(e) => updateRow(row.id, { guardianRelationship: e.target.value })}
-                            className={inputClass(Boolean(row.errors.guardianRelationship))} />
-                          {row.errors.guardianRelationship && <p className="mt-0.5 text-xs text-red-500">{row.errors.guardianRelationship}</p>}
+                            error={row.errors.guardianRelationship} />
                         </td>
                         <td className="px-3 py-2 align-top">
-                          <input type="tel" value={row.guardianPhone} placeholder="+231770000000"
+                          <Input type="tel" value={row.guardianPhone} placeholder="+231770000000"
                             onChange={(e) => updateRow(row.id, { guardianPhone: e.target.value })}
-                            className={inputClass(Boolean(row.errors.guardianPhone))} />
-                          {row.errors.guardianPhone && <p className="mt-0.5 text-xs text-red-500">{row.errors.guardianPhone}</p>}
+                            error={row.errors.guardianPhone} />
                         </td>
                         <td className="px-3 py-2 align-top">
-                          <input type="email" value={row.studentEmail} placeholder="student@email.com"
+                          <Input type="email" value={row.studentEmail} placeholder="student@email.com"
                             onChange={(e) => updateRow(row.id, { studentEmail: e.target.value })}
-                            className={inputClass(Boolean(row.errors.studentEmail))} />
-                          {row.errors.studentEmail && <p className="mt-0.5 text-xs text-red-500">{row.errors.studentEmail}</p>}
+                            error={row.errors.studentEmail} />
                         </td>
                         <td className="px-3 py-2 pt-2.5 text-center align-top">
                           {hasErrors ? <AlertCircle className="mx-auto h-5 w-5 text-red-400" /> : <CheckCircle className="mx-auto h-5 w-5 text-green-500" />}

@@ -6,7 +6,7 @@ import {
   AlertCircle, Award, CheckCircle, Info, Lock, Save, Send,
 } from 'lucide-react';
 import type { SchoolAdminRecord } from '@nemis-desktop/types';
-import { Alert, Button, ErrorState, Spinner } from '@nemis-desktop/ui';
+import { Alert, Button, ErrorState, Input, Spinner } from '@nemis-desktop/ui';
 import { useCurrentUserViewModel } from '@/lib/presentation/hooks/shared';
 import {
   useAcademicFoundationViewModel,
@@ -17,6 +17,7 @@ import {
 import { useViewModel } from '@/hooks/use-view-model';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
 import { DatabaseUnavailablePanel } from '@/components/dashboard/DatabaseUnavailablePanel';
+import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 import {
   GRADE_STATUS_STYLE,
   getGradingConfig,
@@ -122,10 +123,10 @@ export default function TeacherGradesPage() {
     };
   }, [userId]);
 
-  useEffect(() => {
-    if (staffId && assignments.status === 'idle') void teachingAssignments.load(staffId);
-    if (year.status === 'idle') void academicYear.loadCurrent();
-  }, [staffId, assignments.status, teachingAssignments, year.status, academicYear]);
+  useRevalidateOnSync(() => {
+    if (staffId) void teachingAssignments.load(staffId);
+    void academicYear.loadCurrent();
+  }, [staffId, teachingAssignments, academicYear]);
 
   useEffect(() => {
     if (year.status === 'success' || year.status === 'refreshing') void foundation.loadTerms(year.data.id);
@@ -154,7 +155,10 @@ export default function TeacherGradesPage() {
     return Array.from(byClass.values());
   }, [hasAssignmentData, assignments]);
 
-  const termOptions = terms.status === 'success' || terms.status === 'refreshing' ? terms.data : [];
+  const termOptions = useMemo(
+    () => (terms.status === 'success' || terms.status === 'refreshing' ? terms.data : []),
+    [terms],
+  );
 
   const [selectedTermId, setSelectedTermId] = useState('');
   const [selectedClassId, setSelectedClassId] = useState('');
@@ -875,36 +879,33 @@ export default function TeacherGradesPage() {
                     const { percentage, letterGrade } = computeTotals(scores);
                     const locked = isLocked(student.id);
                     const grade = gradeFor(student.id);
-                    const inputClass = `w-24 text-center p-2 border rounded-md focus:ring-2 focus:ring-primary focus:border-primary ${
-                      locked ? 'bg-slate-100 cursor-not-allowed text-slate-500' : ''
-                    }`;
                     return (
                       <tr key={student.id} className="border-b hover:bg-slate-50/70">
                         <td className="px-3 py-2 text-sm text-slate-500 border-r text-center">{index + 1}</td>
                         <td className="px-4 py-2 text-sm font-medium text-slate-900 border-r">{student.fullName}</td>
                         {isExamPeriod ? (
                           <td className="px-2 py-1 border-r">
-                            <input
+                            <Input
                               type="number"
                               value={scores.exam ?? ''}
                               onChange={(e) => setScore(student.id, 'exam', e.target.value)}
                               disabled={locked}
                               min="0"
                               max={maxMarks}
-                              className={inputClass}
+                              className="text-center"
                             />
                           </td>
                         ) : (
                           templates.map((template) => (
                             <td key={template.id} className="px-2 py-1 border-r">
-                              <input
+                              <Input
                                 type="number"
                                 value={templateScores[student.id]?.[template.id] ?? ''}
                                 onChange={(e) => setTemplateScore(student.id, template.id, e.target.value, template)}
                                 disabled={scoresPublished}
                                 min="0"
                                 max={template.totalMarks}
-                                className={`w-24 text-center p-2 border rounded-md focus:ring-2 focus:ring-primary focus:border-primary ${scoresPublished ? 'bg-slate-100 cursor-not-allowed text-slate-500' : ''}`}
+                                className="text-center"
                               />
                             </td>
                           ))

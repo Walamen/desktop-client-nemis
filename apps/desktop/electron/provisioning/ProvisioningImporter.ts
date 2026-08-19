@@ -32,6 +32,30 @@ interface ImportOptions {
 interface TableSpec {
   table: string;
   columns: readonly string[];
+  /**
+   * A secondary UNIQUE constraint that is this table's true business
+   * identity — `id` is a server-minted surrogate key that can legitimately
+   * change across an unassign+reassign cycle (Prisma `create()` mints a
+   * fresh id every call). Only set this for collections the server always
+   * sends in full, never delta-filtered (see desktop-provisioning.service.ts
+   * — these join tables have no `updatedAt` column to filter on), so an
+   * incoming row set is complete current truth, not a partial delta. On
+   * merge, `upsertRows` prunes every local row absent from that incoming set
+   * before upserting — this both clears a plain unassign (no successor row
+   * ever arrives to overwrite it) and, as a side effect, frees a stale row's
+   * natural-key slot before a reassigned row lands under a new id, so the
+   * insert never collides with the old row's still-live natural-key unique
+   * index. A row with a pending, not-yet-pushed local mutation (sync_queue
+   * status 'pending'/'in_flight' — possible on an INSTITUTION_ADMIN device
+   * that assigned/removed a teacher offline, see
+   * SqliteTeacherRepository.assign/removeAssignment) is left alone even if
+   * absent from the incoming set, the same "don't clobber a local write the
+   * server hasn't seen yet" guarantee `markPulledAssignmentsSynced` gives
+   * assignments. Every other collection keeps the "merge never deletes rows
+   * the delta omits" behaviour (true deltas, and staleness self-heals via
+   * the 24h full resync).
+   */
+  naturalKey?: readonly string[];
 }
 
 const SPECS: Record<ProvisioningCollection, TableSpec> = {
@@ -54,9 +78,9 @@ const SPECS: Record<ProvisioningCollection, TableSpec> = {
   institutionAdmin: spec('institution_admin', ['id','institutionId','firstName','lastName','position','photoUrl','email','phoneNumber','isActive']),
   assessmentTemplates: spec('assessment_templates', ['id','classId','subjectId','name','type','totalMarks','weight','date','createdAt','updatedAt']),
   assessments: spec('assessments', ['id','templateId','classId','subjectId','gradingPeriodId','name','type','totalMarks','weight','date','createdAt','updatedAt']),
-  subjectTeachers: spec('subject_teachers', ['id','subjectId','staffId','assignedAt','version','updatedAt','lastModifiedBy']),
-  classTeachers: spec('class_teachers', ['id','classId','staffId','isClassTeacher','assignedAt','version','updatedAt','lastModifiedBy']),
-  classSubjectTeachers: spec('class_subject_teachers', ['id','classId','subjectId','staffId','assignedAt','version','updatedAt','lastModifiedBy']),
+  subjectTeachers: spec('subject_teachers', ['id','subjectId','staffId','assignedAt','version','updatedAt','lastModifiedBy'], ['subjectId','staffId']),
+  classTeachers: spec('class_teachers', ['id','classId','staffId','isClassTeacher','assignedAt','version','updatedAt','lastModifiedBy'], ['classId','staffId']),
+  classSubjectTeachers: spec('class_subject_teachers', ['id','classId','subjectId','staffId','assignedAt','version','updatedAt','lastModifiedBy'], ['classId','subjectId']),
   timetableEntries: spec('timetable_entries', ['id','institutionId','classId','subjectId','staffId','dayOfWeek','startTime','endTime','room','isBreak','assignmentId','createdAt','updatedAt','version','lastModifiedBy']),
   studentTransfers: spec('student_transfers', ['id','studentId','fromInstitutionId','toInstitutionId','requestedBy','reason','status','reviewedBy','reviewedAt','reviewNotes','requestedDate','toGradeLevel','createdAt','updatedAt']),
   institutionGradingConfigs: spec('institution_grading_configs', ['id','institutionId','maxMarks','passingMarks','periodsPerTerm','termsPerYear','hasExams','calculationMethod','gradeScale','allowLateSubmission','lateSubmissionPenalty','requireAdminApproval','createdAt','updatedAt']),
@@ -219,8 +243,8 @@ export class ProvisioningImporter {
   }
 }
 
-function spec(table: string, columns: readonly string[]): TableSpec {
-  return { table, columns };
+function spec(table: string, columns: readonly string[], naturalKey?: readonly string[]): TableSpec {
+  return { table, columns, naturalKey };
 }
 
 /** `remoteId`/`syncedAt` are desktop-only push-tracking columns (migration
@@ -288,12 +312,41 @@ function upsertRows(
     ? `INSERT INTO ${table.table} (${table.columns.join(',')}) VALUES (${placeholders})
        ON CONFLICT(id) DO UPDATE SET ${updateSet}`
     : `INSERT INTO ${table.table} (${table.columns.join(',')}) VALUES (${placeholders})`;
+  if (merge && table.naturalKey) pruneRowsAbsentFromFullSnapshot(db, table, rows);
   const statement = db.prepare(sql);
   for (const row of rows) {
     if (typeof row.id !== 'string' || row.id.length === 0) {
       throw new Error(`Provisioning row for ${table.table} has no valid id.`);
     }
     statement.run(...table.columns.map((column) => sqliteValue(row[column], column)));
+  }
+}
+
+/** For a `naturalKey` collection, `rows` is the complete current truth for
+ * this device's scope (see the `naturalKey` doc comment on `TableSpec`), so
+ * any local row whose id isn't in it was genuinely deleted server-side (a
+ * plain unassign, or the loser of a reassign that minted a new id for the
+ * same natural key) — delete it here before the upsert loop runs, which
+ * both realizes the unassign and frees the natural-key slot for a
+ * reassigned row to land in without colliding. Skips a row that has a
+ * pending, not-yet-pushed local mutation (sync_queue status
+ * 'pending'/'in_flight'): the server cannot have mentioned a write it
+ * hasn't received yet, so absence here doesn't mean deletion. */
+function pruneRowsAbsentFromFullSnapshot(
+  db: SqliteDatabase,
+  table: TableSpec,
+  rows: readonly ProvisioningRow[],
+): void {
+  const incomingIds = new Set(rows.map((row) => String(row.id)));
+  const localIds = db.prepare(`SELECT id FROM ${table.table}`).all() as { id: string }[];
+  const hasPendingWrite = db.prepare(
+    `SELECT 1 FROM sync_queue WHERE entityType=? AND entityId=? AND status IN ('pending','in_flight') LIMIT 1`,
+  );
+  const deleteRow = db.prepare(`DELETE FROM ${table.table} WHERE id=?`);
+  for (const { id } of localIds) {
+    if (incomingIds.has(id)) continue;
+    if (hasPendingWrite.get(table.table, id)) continue;
+    deleteRow.run(id);
   }
 }
 

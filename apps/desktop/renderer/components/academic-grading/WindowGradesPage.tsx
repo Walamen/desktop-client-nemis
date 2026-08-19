@@ -3,12 +3,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, BookOpen, Download, Search, Users } from 'lucide-react';
+import { Input } from '@nemis-desktop/ui';
 import { useViewModel } from '@/hooks/use-view-model';
 import { useAcademicFoundationViewModel, useStudentsViewModel } from '@/lib/presentation/hooks/school-admin';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
 import type { SchoolAdminRecord } from '@nemis-desktop/types';
 import { queryId } from '@/components/classes/shared';
 import { GRADE_STATUS_STYLE, listGradesForPeriod, pctTone } from './shared';
+import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 
 /** Read-only grade review for a single window — mirrors portal-web's
  * windows/[id]/grades page. Desktop's `grades` table already stores one row
@@ -31,12 +33,12 @@ export function WindowGradesPage() {
   const [selectedSubjectId, setSelectedSubjectId] = useState('');
   const [search, setSearch] = useState('');
 
-  useEffect(() => {
+  useRevalidateOnSync(() => {
     void foundation.loadClasses();
     void foundation.loadSubjects();
   }, [foundation]);
 
-  useEffect(() => {
+  useRevalidateOnSync(() => {
     if (!windowId) {
       setLoading(false);
       return;
@@ -247,14 +249,13 @@ export function WindowGradesPage() {
                           ))}
                         </div>
                         <div className="border-b border-slate-100 px-4 py-3">
-                          <div className="relative max-w-sm">
-                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                            <input
+                          <div className="max-w-sm">
+                            <Input
                               type="text"
+                              icon={<Search className="h-4 w-4 text-slate-400" />}
                               placeholder="Search student name or admission #…"
                               value={search}
                               onChange={(e) => setSearch(e.target.value)}
-                              className="w-full rounded-button border border-slate-300 bg-white py-2 pl-9 pr-4 text-sm outline-none focus:border-secondary focus:ring-2 focus:ring-secondary"
                             />
                           </div>
                         </div>

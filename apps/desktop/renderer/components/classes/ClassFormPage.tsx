@@ -2,6 +2,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { type GradeLevel as GradeLevelValue } from '@nemis-desktop/types';
+import { Input } from '@nemis-desktop/ui';
 import { useViewModel } from '@/hooks/use-view-model';
 import { useAcademicFoundationViewModel, useAcademicYearViewModel, useSettingsViewModel } from '@/lib/presentation/hooks/school-admin';
 import { ArrowLeft, Check } from 'lucide-react';
@@ -162,27 +163,23 @@ export function ClassFormPage() {
             )}
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Section</label>
-                <input
+                <Input
+                  label="Section"
                   value={section}
                   onChange={(e) => setSection(e.target.value.toUpperCase())}
                   placeholder="e.g., A, B, C, Arts, Science"
                   maxLength={20}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 text-sm"
                 />
                 <p className="text-xs text-gray-500 mt-1">Optional — leave blank for a single class at this grade level.</p>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Class Capacity (Optional)</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={capacity}
-                  onChange={(e) => setCapacity(e.target.value)}
-                  placeholder="e.g., 40"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 text-sm"
-                />
-              </div>
+              <Input
+                label="Class Capacity (Optional)"
+                type="number"
+                min="1"
+                value={capacity}
+                onChange={(e) => setCapacity(e.target.value)}
+                placeholder="e.g., 40"
+              />
             </div>
           </div>
 

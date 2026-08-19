@@ -1,10 +1,11 @@
 'use client';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import type { SubjectRowView } from '@nemis-desktop/presentation';
-import { Card, Drawer } from '@nemis-desktop/ui';
+import { Card, Drawer, Input } from '@nemis-desktop/ui';
 import { Plus, Trash2, Edit, BookOpen, RotateCcw } from 'lucide-react';
 import { useViewModel } from '@/hooks/use-view-model';
 import { useAcademicFoundationViewModel } from '@/lib/presentation/hooks/school-admin';
+import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 
 /** Subjects — mirrors portal-web's Subject Management page (dark header
  * band, all-subjects table, create/edit drawer). Web's "Bulk Import" (.xlsx
@@ -22,9 +23,9 @@ export function SubjectsDirectoryPage() {
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
+  useRevalidateOnSync(() => {
     void vm.loadSubjects();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   const begin = (item?: SubjectRowView) => {
@@ -69,14 +70,13 @@ export function SubjectsDirectoryPage() {
 
       <div className="px-6 py-6 space-y-5">
         <div className="bg-white border border-slate-300 rounded-lg p-4 grid grid-cols-1 md:grid-cols-3 gap-3">
-          <input
+          <Input
             placeholder="Search by name or code"
             value={filters.keyword ?? ''}
             onChange={(e) => {
               vm.setSubjectFilters({ ...filters, keyword: e.target.value });
               void vm.loadSubjects();
             }}
-            className="px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm"
           />
           <label className="text-sm flex items-center gap-2 text-slate-600">
             <input
@@ -181,32 +181,22 @@ export function SubjectsDirectoryPage() {
         }
       >
         <form id="subject-form" onSubmit={(e) => void submit(e)} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Subject Name <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              required
-              placeholder="e.g., Mathematics"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Subject Code <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              required
-              placeholder="e.g., MATH101"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 text-sm"
-            />
-          </div>
+          <Input
+            label="Subject Name"
+            type="text"
+            required
+            placeholder="e.g., Mathematics"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+          <Input
+            label="Subject Code"
+            type="text"
+            required
+            placeholder="e.g., MATH101"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+          />
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
             <textarea

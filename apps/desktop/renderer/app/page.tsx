@@ -7,12 +7,12 @@ import {
   CheckCircle2,
   CloudDownload,
   Database,
-  Laptop,
   LockKeyhole,
   ShieldCheck,
-  Wifi,
+
 } from 'lucide-react';
 import { desktopPortalRoute, type ProvisioningStatus } from '@nemis-desktop/types';
+import { Input } from '@nemis-desktop/ui';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
 import { usePresentation } from '@/lib/presentation/presentation-provider';
 
@@ -104,14 +104,12 @@ export default function ProvisioningPage() {
   if (!status) return <LoadingScreen />;
 
   return (
-    <main className="min-h-screen bg-[#071a33] text-white overflow-hidden">
-      <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_20%_15%,#167c80_0,transparent_34%),radial-gradient(circle_at_85%_80%,#0c4a6e_0,transparent_32%)]" />
+    <main className="min-h-screen bg-primary text-white overflow-hidden">
+      <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_20%_15%,#1874A8_0,transparent_34%),radial-gradient(circle_at_85%_80%,#025A8C_0,transparent_32%)]" />
       <div className="relative min-h-screen grid lg:grid-cols-[1.05fr_.95fr]">
         <section className="px-8 py-10 lg:px-16 lg:py-14 flex flex-col">
           <div className="flex items-center gap-3">
-            <span className="grid h-11 w-11 place-items-center rounded-xl bg-[#16a6a0]">
-              <ShieldCheck className="h-6 w-6" />
-            </span>
+            <img src="/logo.png" alt="NEMIS" className="h-11 w-11 object-contain" />
             <div>
               <p className="font-bold tracking-wide">NEMIS Desktop</p>
               <p className="text-xs text-slate-300">National Education Management Information System</p>
@@ -119,11 +117,9 @@ export default function ProvisioningPage() {
           </div>
 
           <div className="my-auto max-w-xl py-14">
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-cyan-100">
-              <Wifi className="h-3.5 w-3.5" /> One-time secure setup
-            </span>
+            
             <h1 className="mt-6 text-4xl lg:text-6xl font-semibold leading-[1.08]">
-              Your school, ready to work <span className="text-[#43d4c9]">offline.</span>
+              Your school, ready to work <span className="text-accent-300">offline.</span>
             </h1>
             <p className="mt-6 text-lg leading-8 text-slate-300">
               Connect this computer to the national platform, verify your school, and prepare the
@@ -138,7 +134,7 @@ export default function ProvisioningPage() {
           <p className="text-xs text-slate-400">Device {status.device.name} · NEMIS {status.device.appVersion}</p>
         </section>
 
-        <section className="bg-slate-200 text-slate-900  flex items-center">
+        <section className="bg-slate-100 text-slate-900 flex items-center">
           <div className="w-full max-w-lg mx-auto ">
             {status.stage === 'backend_gap' ? (
               <BackendGap status={status} onLogout={async () => setStatus(await sharedBridge.logout())} />
@@ -149,6 +145,7 @@ export default function ProvisioningPage() {
             ) : !showLogin && status.stage === 'welcome' ? (
               <Welcome onContinue={() => setShowLogin(true)} />
             ) : showLogin || status.authentication !== 'authenticated' ? (
+              <div className="space-y-6 bg-white p-8 rounded-lg border border-slate-300">
               <LoginForm
                 email={email}
                 password={password}
@@ -162,6 +159,7 @@ export default function ProvisioningPage() {
                   setError(null);
                 }}
               />
+              </div>
             ) : (
               <Verification status={status} busy={busy} error={error} onContinue={provision} />
             )}
@@ -175,16 +173,14 @@ export default function ProvisioningPage() {
 function Welcome({ onContinue }: { onContinue: () => void }) {
   return (
     <div>
-      <div className="grid h-14 w-14 place-items-center rounded-2xl bg-cyan-50 text-cyan-700">
-        <Laptop className="h-7 w-7" />
-      </div>
-      <p className="mt-8 text-sm font-semibold text-cyan-700">INITIAL DEVICE PROVISIONING</p>
+     
+      <p className="mt-8 text-sm font-semibold text-secondary-700">INITIAL DEVICE PROVISIONING</p>
       <h2 className="mt-2 text-3xl font-semibold">Welcome to NEMIS Desktop</h2>
       <p className="mt-4 leading-7 text-slate-600">
         You will need an active Institution Administrator account and a stable internet connection
         for this one-time setup.
       </p>
-      <button onClick={onContinue} className="mt-8 w-full rounded-xl bg-[#0d6570] px-5 py-3.5 font-semibold text-white hover:bg-[#0a5660]">
+      <button onClick={onContinue} className="mt-8 w-full rounded-full bg-secondary px-5 py-3.5 font-semibold text-white hover:bg-primary-400">
         Begin secure setup <ArrowRight className="ml-2 inline h-4 w-4" />
       </button>
     </div>
@@ -200,17 +196,31 @@ interface LoginProps {
 function LoginForm(props: LoginProps) {
   return (
     <form onSubmit={props.onSubmit}>
-      <p className="text-sm font-semibold text-cyan-700">AUTHENTICATE</p>
+      <p className="text-sm font-semibold text-secondary-700">AUTHENTICATE</p>
       <h2 className="mt-2 text-3xl font-semibold">Sign in to your school</h2>
       <p className="mt-3 text-slate-600">Use the same administrator account as the national NEMIS platform.</p>
-      <label className="mt-8 block text-sm font-semibold">Email address</label>
-      <input type="email" autoComplete="username" required value={props.email} onChange={(e) => props.onEmail(e.target.value)}
-        className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-cyan-700 focus:outline-none" />
-      <label className="mt-5 block text-sm font-semibold">Password</label>
-      <input type="password" autoComplete="current-password" required value={props.password} onChange={(e) => props.onPassword(e.target.value)}
-        className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-cyan-700 focus:outline-none" />
-      {props.error && <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{props.error}</p>}
-      <button disabled={props.busy} className="mt-7 w-full rounded-xl bg-[#0d6570] px-5 py-3.5 font-semibold text-white disabled:opacity-60">
+      <div className="mt-8">
+        <Input
+          type="email"
+          label="Email address"
+          autoComplete="username"
+          required
+          value={props.email}
+          onChange={(e) => props.onEmail(e.target.value)}
+        />
+      </div>
+      <div className="mt-5">
+        <Input
+          type="password"
+          label="Password"
+          autoComplete="current-password"
+          required
+          value={props.password}
+          onChange={(e) => props.onPassword(e.target.value)}
+        />
+      </div>
+      {props.error && <p role="alert" className="mt-4 rounded-lg bg-error/10 p-3 text-sm text-error">{props.error}</p>}
+      <button disabled={props.busy} className="mt-7 w-full rounded-full bg-secondary px-5 py-3.5 font-semibold text-white hover:bg-primary-400 disabled:opacity-60">
         {props.busy ? 'Signing in securely…' : 'Sign in and verify'}
       </button>
       <button type="button" onClick={props.onBack} className="mt-4 w-full text-sm text-slate-500">Back</button>
@@ -222,8 +232,8 @@ function LoginForm(props: LoginProps) {
 function Verification({ status, busy, error, onContinue }: { status: ProvisioningStatus; busy: boolean; error: string | null; onContinue(): void }) {
   return (
     <div>
-      <CheckCircle2 className="h-14 w-14 text-emerald-600" />
-      <p className="mt-7 text-sm font-semibold text-emerald-700">IDENTITY VERIFIED</p>
+      <CheckCircle2 className="h-14 w-14 text-success" />
+      <p className="mt-7 text-sm font-semibold text-success">IDENTITY VERIFIED</p>
       <h2 className="mt-2 text-3xl font-semibold">Confirm this device</h2>
       <div className="mt-6 space-y-3 rounded-2xl bg-slate-50 p-5 text-sm">
         <Row label="Administrator" value={`${status.user?.firstName} ${status.user?.lastName}`} />
@@ -231,8 +241,8 @@ function Verification({ status, busy, error, onContinue }: { status: Provisionin
         <Row label="Device" value={status.device.name} />
         <Row label="Operating system" value={`${status.device.platform} ${status.device.osVersion}`} />
       </div>
-      {error && <p className="mt-4 text-sm text-red-700">{error}</p>}
-      <button onClick={onContinue} disabled={busy} className="mt-7 w-full rounded-xl bg-[#0d6570] px-5 py-3.5 font-semibold text-white disabled:opacity-60">
+      {error && <p className="mt-4 text-sm text-error">{error}</p>}
+      <button onClick={onContinue} disabled={busy} className="mt-7 w-full rounded-xl bg-primary px-5 py-3.5 font-semibold text-white hover:bg-primary-400 disabled:opacity-60">
         {busy ? 'Checking backend capabilities…' : 'Register device and download'}
       </button>
     </div>
@@ -242,13 +252,13 @@ function Verification({ status, busy, error, onContinue }: { status: Provisionin
 function BackendGap({ status, onLogout }: { status: ProvisioningStatus; onLogout(): void }) {
   return (
     <div>
-      <div className="grid h-14 w-14 place-items-center rounded-2xl bg-amber-50 text-amber-700"><ShieldCheck /></div>
-      <p className="mt-7 text-sm font-semibold text-amber-700">SAFE PAUSE</p>
+      <div className="grid h-14 w-14 place-items-center rounded-2xl bg-pending/10 text-pending"><ShieldCheck /></div>
+      <p className="mt-7 text-sm font-semibold text-pending">SAFE PAUSE</p>
       <h2 className="mt-2 text-3xl font-semibold">Backend support is required</h2>
       <p className="mt-4 leading-7 text-slate-600">{status.message}</p>
       <ul className="mt-6 space-y-3">
         {status.missingCapabilities?.map((capability) => (
-          <li key={capability} className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm">{capability}</li>
+          <li key={capability} className="rounded-xl border border-pending/30 bg-pending/10 px-4 py-3 text-sm">{capability}</li>
         ))}
       </ul>
       <p className="mt-5 text-sm text-slate-500">No school data was written and the existing offline database remains unchanged.</p>
@@ -262,17 +272,17 @@ function ProgressCard({ status }: { status: ProvisioningStatus }) {
   const current = Math.max(0, steps.indexOf(status.stage));
   return (
     <div>
-      <p className="text-sm font-semibold text-cyan-700">SECURE PROVISIONING</p>
+      <p className="text-sm font-semibold text-secondary-700">SECURE PROVISIONING</p>
       <h2 className="mt-2 text-3xl font-semibold">Preparing offline mode</h2>
       <p className="mt-4 text-slate-600">{status.message ?? 'Working…'}</p>
       <div className="mt-7 h-2 overflow-hidden rounded-full bg-slate-100">
-        <div className="h-full rounded-full bg-[#16a6a0] transition-all duration-500" style={{ width: `${status.progress ?? 0}%` }} />
+        <div className="h-full rounded-full bg-secondary transition-all duration-500" style={{ width: `${status.progress ?? 0}%` }} />
       </div>
-      <p className="mt-2 text-right text-sm font-semibold text-cyan-700">{status.progress ?? 0}%</p>
+      <p className="mt-2 text-right text-sm font-semibold text-secondary-700">{status.progress ?? 0}%</p>
       <ol className="mt-7 space-y-3">
         {steps.slice(0, -1).map((step, index) => (
           <li key={step} className={`flex items-center gap-3 text-sm ${index <= current ? 'text-slate-900' : 'text-slate-400'}`}>
-            <span className={`grid h-6 w-6 place-items-center rounded-full text-xs ${index < current ? 'bg-emerald-100 text-emerald-700' : index === current ? 'bg-cyan-100 text-cyan-700' : 'bg-slate-100'}`}>
+            <span className={`grid h-6 w-6 place-items-center rounded-full text-xs ${index < current ? 'bg-success/10 text-success' : index === current ? 'bg-secondary-100 text-secondary-700' : 'bg-slate-100'}`}>
               {index < current ? '✓' : index + 1}
             </span>
             {step.charAt(0).toUpperCase() + step.slice(1)}
@@ -287,7 +297,7 @@ function ProgressCard({ status }: { status: ProvisioningStatus }) {
 function OfflineReady() {
   return (
     <div className="text-center">
-      <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-emerald-100 text-emerald-700"><CheckCircle2 className="h-8 w-8" /></div>
+      <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-success/10 text-success"><CheckCircle2 className="h-8 w-8" /></div>
       <h2 className="mt-6 text-3xl font-semibold">Offline mode is ready</h2>
       <p className="mt-3 text-slate-600">Opening your school workspace…</p>
     </div>
@@ -295,11 +305,18 @@ function OfflineReady() {
 }
 
 function LoadingScreen() {
-  return <main className="grid min-h-screen place-items-center bg-[#071a33] text-white"><p className="animate-pulse">Restoring secure session…</p></main>;
+  return (
+    <main className="grid min-h-screen place-items-center bg-primary text-white">
+      <div className="flex flex-col items-center gap-4">
+        <img src="/logo.png" alt="NEMIS" className="h-12 w-12 object-contain animate-pulse" />
+        <p className="animate-pulse text-sm text-slate-300">Restoring secure session…</p>
+      </div>
+    </main>
+  );
 }
 
 function Feature({ icon, title, text }: { icon: ReactNode; title: string; text: string }) {
-  return <div className="rounded-2xl border border-white/10 bg-white/5 p-4">{<span className="[&>svg]:h-5 [&>svg]:w-5 text-cyan-300">{icon}</span>}<p className="mt-3 font-semibold">{title}</p><p className="mt-1 text-xs text-slate-400">{text}</p></div>;
+  return <div className="rounded-2xl border border-white/10 bg-white/5 p-4">{<span className="[&>svg]:h-5 [&>svg]:w-5 text-accent-200">{icon}</span>}<p className="mt-3 font-semibold">{title}</p><p className="mt-1 text-xs text-slate-400">{text}</p></div>;
 }
 
 function Row({ label, value }: { label: string; value: string }) {

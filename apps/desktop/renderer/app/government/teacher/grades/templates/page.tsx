@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, CheckCircle, Copy, Edit2, Hash, Plus, Trash2, X } from 'lucide-react';
-import { Alert, Card, Button, Drawer, Spinner } from '@nemis-desktop/ui';
+import { Alert, Card, Button, Drawer, Input, Spinner } from '@nemis-desktop/ui';
 import { PieChart, Pie, Cell, Legend, ResponsiveContainer } from 'recharts';
 import { useCurrentUserViewModel } from '@/lib/presentation/hooks/shared';
 import { useTeachingAssignmentViewModel } from '@/lib/presentation/hooks/school-admin';
@@ -14,6 +14,7 @@ import {
   listTemplatesForSubject,
   totalWeight,
 } from '@/components/academic-grading/assessments';
+import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 
 const CHART_COLORS = ['#000e21', '#26556A', '#146316', '#a6731c', '#8099A8', '#c10021'];
 
@@ -89,9 +90,9 @@ export default function AssessmentSetupPage() {
     };
   }, [userId]);
 
-  useEffect(() => {
-    if (staffId && assignments.status === 'idle') void teachingAssignments.load(staffId);
-  }, [staffId, assignments.status, teachingAssignments]);
+  useRevalidateOnSync(() => {
+    if (staffId) void teachingAssignments.load(staffId);
+  }, [staffId, teachingAssignments]);
 
   const myClasses = useMemo<ClassOption[]>(() => {
     const byClass = new Map<string, ClassOption>();
@@ -276,7 +277,7 @@ export default function AssessmentSetupPage() {
     }
   };
 
-  useEffect(() => {
+  useRevalidateOnSync(() => {
     if (!selectedClassId || !selectedSubjectId) {
       setTemplates([]);
       return;
@@ -459,17 +460,14 @@ export default function AssessmentSetupPage() {
       >
         {editingId ? (
           <form id="assessment-template-form" onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Assessment Name *</label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="e.g., Quiz 1, Midterm Exam"
-                required
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-              />
-            </div>
+            <Input
+              label="Assessment Name"
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder="e.g., Quiz 1, Midterm Exam"
+              required
+            />
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Type *</label>
               <select
@@ -483,40 +481,31 @@ export default function AssessmentSetupPage() {
                 ))}
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Total Marks *</label>
-              <input
-                type="number"
-                value={formData.totalMarks}
-                onChange={(e) => setFormData({ ...formData, totalMarks: e.target.value })}
-                min="0"
-                step="0.1"
-                required
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Weight (%)</label>
-              <input
-                type="number"
-                value={formData.weight}
-                onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
-                min="0"
-                max="100"
-                step="0.1"
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Date *</label>
-              <input
-                type="date"
-                value={formData.date}
-                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                required
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-              />
-            </div>
+            <Input
+              label="Total Marks"
+              type="number"
+              value={formData.totalMarks}
+              onChange={(e) => setFormData({ ...formData, totalMarks: e.target.value })}
+              min="0"
+              step="0.1"
+              required
+            />
+            <Input
+              label="Weight (%)"
+              type="number"
+              value={formData.weight}
+              onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
+              min="0"
+              max="100"
+              step="0.1"
+            />
+            <Input
+              label="Date"
+              type="date"
+              value={formData.date}
+              onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+              required
+            />
           </form>
         ) : (
           <div className="space-y-3">
@@ -544,8 +533,7 @@ export default function AssessmentSetupPage() {
                     return (
                       <tr key={row.id} className="border-b border-slate-100">
                         <td className="py-1.5 pr-2">
-                          <input type="text" value={row.name} onChange={(e) => handleBulkRowChange(row.id, 'name', e.target.value)} placeholder="Quiz 1" className={`w-full px-2 py-1.5 border rounded text-sm ${errs.name ? 'border-red-400' : 'border-slate-300'}`} />
-                          {errs.name && <p className="text-xs text-red-600 mt-0.5">{errs.name}</p>}
+                          <Input type="text" value={row.name} onChange={(e) => handleBulkRowChange(row.id, 'name', e.target.value)} placeholder="Quiz 1" error={errs.name} />
                         </td>
                         <td className="py-1.5 pr-2">
                           <select value={row.type} onChange={(e) => handleBulkRowChange(row.id, 'type', e.target.value)} className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm">
@@ -553,15 +541,13 @@ export default function AssessmentSetupPage() {
                           </select>
                         </td>
                         <td className="py-1.5 pr-2">
-                          <input type="number" value={row.totalMarks} onChange={(e) => handleBulkRowChange(row.id, 'totalMarks', e.target.value)} placeholder="100" min="0" step="0.1" className={`w-full px-2 py-1.5 border rounded text-sm ${errs.totalMarks ? 'border-red-400' : 'border-slate-300'}`} />
-                          {errs.totalMarks && <p className="text-xs text-red-600 mt-0.5">{errs.totalMarks}</p>}
+                          <Input type="number" value={row.totalMarks} onChange={(e) => handleBulkRowChange(row.id, 'totalMarks', e.target.value)} placeholder="100" min="0" step="0.1" error={errs.totalMarks} />
                         </td>
                         <td className="py-1.5 pr-2">
-                          <input type="number" value={row.weight} onChange={(e) => handleBulkRowChange(row.id, 'weight', e.target.value)} placeholder="20" min="0" max="100" step="0.1" className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
+                          <Input type="number" value={row.weight} onChange={(e) => handleBulkRowChange(row.id, 'weight', e.target.value)} placeholder="20" min="0" max="100" step="0.1" />
                         </td>
                         <td className="py-1.5 pr-2">
-                          <input type="date" value={row.date} onChange={(e) => handleBulkRowChange(row.id, 'date', e.target.value)} className={`w-full px-2 py-1.5 border rounded text-sm ${errs.date ? 'border-red-400' : 'border-slate-300'}`} />
-                          {errs.date && <p className="text-xs text-red-600 mt-0.5">{errs.date}</p>}
+                          <Input type="date" value={row.date} onChange={(e) => handleBulkRowChange(row.id, 'date', e.target.value)} error={errs.date} />
                         </td>
                         <td className="py-1.5">
                           <button type="button" onClick={() => handleRemoveBulkRow(row.id)} disabled={bulkRows.length === 1} className="text-red-400 disabled:opacity-30 p-1">

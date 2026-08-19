@@ -22,19 +22,27 @@ export function StatusBar() {
   const { version } = useAppVersion();
   const pathname = usePathname();
   const [localSync, setLocalSync] = useState<DesktopSyncStatus | null>(null);
+  // Also the trigger for useRevalidateOnSync: writing a new lastSyncAt into
+  // the shared ConnectivityStore is how every other screen in the app finds
+  // out a background/manual sync just landed fresh data, since the
+  // presentation layer's ViewModels are otherwise built once per session
+  // (see app/providers.tsx) and never refetch on their own.
+  const applyStatus = useCallback((status: DesktopSyncStatus) => {
+    setLocalSync(status);
+    connectivity.setOnline(status.isOnline);
+    if (status.lastSyncAt && status.lastSyncAt !== connectivity.store.getState().lastSyncAt) {
+      connectivity.markSyncCompleted(status.lastSyncAt);
+    } else {
+      connectivity.setSyncStatus(status.status === 'syncing' || status.status === 'failed' ? status.status : 'idle');
+    }
+  }, [connectivity]);
   const refresh = useCallback(() => {
     try {
-      void nemisBridge
-        .getSyncStatus()
-        .then((status) => {
-          setLocalSync(status);
-          connectivity.setOnline(status.isOnline);
-        })
-        .catch(() => setLocalSync(null));
+      void nemisBridge.getSyncStatus().then(applyStatus).catch(() => setLocalSync(null));
     } catch {
       setLocalSync(null);
     }
-  }, [connectivity]);
+  }, [applyStatus]);
   useEffect(() => {
     refresh();
     const timer = window.setInterval(refresh, 5_000);
@@ -56,7 +64,7 @@ export function StatusBar() {
         <button
           type="button"
           className="flex items-center gap-1.5 hover:text-blue-700"
-          onClick={() => void nemisBridge.runSync().then(setLocalSync).catch(refresh)}
+          onClick={() => void nemisBridge.runSync().then(applyStatus).catch(refresh)}
         >
           <RefreshCw className="w-3.5 h-3.5" />
           {localSync?.status === 'syncing' ? 'Syncing' : syncLabel}

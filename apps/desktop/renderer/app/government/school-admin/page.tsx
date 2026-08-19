@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect } from 'react';
 import {
   Users, UserCog2, Layers3, UserPlus, CalendarCheck, BookOpen, GraduationCap, Bell, Settings, Calendar,
   ClipboardClock, CheckCircle, UsersIcon,
@@ -18,6 +17,7 @@ import { useViewModel } from '@/hooks/use-view-model';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { InfoTile } from '@/components/dashboard/InfoTile';
 import { DatabaseUnavailablePanel } from '@/components/dashboard/DatabaseUnavailablePanel';
+import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 import { DashboardGreeting } from '@/components/dashboard/DashboardGreeting';
 import QuickActionCard from '@/components/dashboard/QuickActionCard';
 import RecentActivityFeed from '@/components/dashboard/RecentActivityFeed';
@@ -42,13 +42,14 @@ export default function DashboardPage() {
   const timetable = useViewModel(timetableDashboard.core.store, (s) => s.dashboard);
   const studentStats = useViewModel(studentStatistics.store, (s) => s.stats);
 
-  // Bootstrap loads this on startup; only self-load if the store is still idle
-  // (e.g. navigated here before bootstrap ran).
-  useEffect(() => {
-    if (summary.status === 'idle') void dashboard.loadOverview();
-    if (timetable.status === 'idle') void timetableDashboard.load();
-    if (studentStats.status === 'idle') void studentStatistics.loadStatistics();
-  }, [dashboard, summary.status, timetable.status, timetableDashboard, studentStats.status, studentStatistics]);
+  // Bootstrap already loads these once on startup; this covers navigating
+  // here before bootstrap ran, and (via useRevalidateOnSync) refreshing them
+  // whenever a background/manual sync lands fresh data afterward.
+  useRevalidateOnSync(() => {
+    void dashboard.loadOverview();
+    void timetableDashboard.load();
+    void studentStatistics.loadStatistics();
+  }, [dashboard, timetableDashboard, studentStatistics]);
 
   const name = user.status === 'success' ? user.data.fullName : 'Principal';
 

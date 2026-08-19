@@ -4,6 +4,10 @@ import { PresentationProvider } from '@/lib/presentation/presentation-provider';
 import { createRendererPresentation } from '@/lib/presentation/create-renderer-presentation';
 import TeacherDashboardPage from './page';
 
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
 // The signed-in identity (`users.id`) and the id every teaching record is
 // keyed by (`staff.id`, backend Assignment.teacherId / TeachingAssignment
 // staffId) are different id spaces — the dashboard resolves one from the

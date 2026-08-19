@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
-import { Avatar, Card } from '@nemis-desktop/ui';
+import { Avatar, Card, Input } from '@nemis-desktop/ui';
 import {
   Search,
   LayoutGrid,
@@ -229,14 +229,13 @@ export function GuardiansDirectoryPage() {
         <div className="bg-white border rounded-lg border-slate-300 overflow-hidden">
           <div className="px-5 pt-4 pb-3 bg-secondary/20 border-b border-gray-100 flex flex-col gap-3">
             <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div className="relative flex-1 min-w-[180px] max-w-xs">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                <input
+              <div className="flex-1 min-w-[180px] max-w-xs">
+                <Input
                   type="text"
+                  icon={<Search className="w-3.5 h-3.5 text-slate-400" />}
                   placeholder="Search name, email, phone…"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-8 pr-3 py-2 text-xs border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400"
                 />
               </div>
               <div className="flex items-center gap-2 flex-wrap">

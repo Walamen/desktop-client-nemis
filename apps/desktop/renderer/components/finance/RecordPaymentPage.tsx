@@ -6,7 +6,7 @@ import {
   ArrowLeft, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Clock, MinusCircle, Plus, Search, Shield, XCircle,
 } from 'lucide-react';
 import type { SchoolAdminRecord } from '@nemis-desktop/types';
-import { Drawer } from '@nemis-desktop/ui';
+import { Drawer, Input } from '@nemis-desktop/ui';
 import { useViewModel } from '@/hooks/use-view-model';
 import { useAcademicFoundationViewModel } from '@/lib/presentation/hooks/school-admin';
 import { schoolAdminBridge } from '@/services/nemis-bridge/school-admin';
@@ -93,11 +93,10 @@ function PaymentModal({ student, currency, academicYearId, termId, onClose, onSu
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Amount <span className="text-error">*</span></label>
-              <input
-                type="number" step="0.01" min="0.01" max={maxAmount} value={amount}
+              <Input
+                label="Amount" type="number" step="0.01" min="0.01" max={maxAmount} value={amount}
                 onChange={(e) => { const v = parseFloat(e.target.value); if (!Number.isNaN(v) && v > maxAmount) return; setAmount(e.target.value); }}
-                placeholder="0.00" required className="w-full rounded-button border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-secondary"
+                placeholder="0.00" required
               />
             </div>
             <div>
@@ -108,10 +107,10 @@ function PaymentModal({ student, currency, academicYearId, termId, onClose, onSu
             </div>
           </div>
           {needsRef && (
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Reference <span className="text-error">*</span></label>
-              <input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="Transaction / cheque reference" required className="w-full rounded-button border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-secondary" />
-            </div>
+            <Input
+              label="Reference" value={reference} onChange={(e) => setReference(e.target.value)}
+              placeholder="Transaction / cheque reference" required
+            />
           )}
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">Notes</label>
@@ -326,11 +325,10 @@ export function RecordPaymentPage() {
               </button>
             ))}
           </div>
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
+          <div className="flex-1">
+            <Input
               value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name or admission number…"
-              className="w-full rounded-button border border-slate-300 bg-white py-2 pl-9 pr-4 text-sm outline-none placeholder:text-slate-300 focus:border-secondary focus:ring-2 focus:ring-secondary"
+              icon={<Search className="h-4 w-4 text-slate-400" />}
             />
           </div>
           <div className="relative shrink-0">

@@ -9,7 +9,9 @@ import { useViewModel } from '@/hooks/use-view-model';
 import { useCurrentUserViewModel } from '@/lib/presentation/hooks/shared';
 import { useTeachingAssignmentViewModel } from '@/lib/presentation/hooks/school-admin';
 import { useAssignmentsViewModel } from '@/lib/presentation/hooks/teacher';
+import { sharedBridge } from '@/services/nemis-bridge/shared';
 import { DatabaseUnavailablePanel } from '@/components/dashboard/DatabaseUnavailablePanel';
+import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 import { groupClassesWithSubjects } from './shared';
 
 const STATUS_OPTIONS = [
@@ -33,15 +35,37 @@ export function AssignmentListPage() {
 
   const teacherId = user.status === 'success' ? user.data.id : undefined;
 
+  // The signed-in identity (`teacherId`, the `users` table) and the id every
+  // teaching-assignment record is keyed by (`staff.id`) are different id
+  // spaces — `staff.userId` is the (unique) bridge between them. Mirrors
+  // government/teacher/page.tsx. `teacherId` itself stays in use for the
+  // assignment calls below, whose ownership is re-injected server-side from
+  // the caller's own staff id regardless of what's sent (see
+  // handlers/teacher/assignments.ts), so the mismatch is harmless there.
+  const [staffId, setStaffId] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (!teacherId) return;
+    let cancelled = false;
+    void sharedBridge.listSchoolAdminRecords({ collection: 'staff', limit: 250 }).then((result) => {
+      if (cancelled) return;
+      const mine = result.items.find((r) => r.userId === teacherId);
+      setStaffId(mine ? String(mine.id) : undefined);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [teacherId]);
+
   const [classId, setClassId] = useState('');
   const [status, setStatus] = useState<AssignmentStatus | ''>('');
   const [subjectId, setSubjectId] = useState('');
 
-  useEffect(() => {
-    if (teacherId && teachingRows.status === 'idle') void teachingAssignments.load(teacherId);
-  }, [teacherId, teachingRows.status, teachingAssignments]);
+  useRevalidateOnSync(() => {
+    if (staffId) void teachingAssignments.load(staffId);
+  }, [staffId, teachingAssignments]);
 
-  useEffect(() => {
+  useRevalidateOnSync(() => {
     if (!teacherId) return;
     assignmentsVm.setFilters({ classId: classId || undefined, status: status || undefined });
     void assignmentsVm.loadAssignments(teacherId);

@@ -13,6 +13,7 @@ import { useViewModel } from '@/hooks/use-view-model';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
 import { studentBridge } from '@/services/nemis-bridge/school-admin/student-bridge';
 import { genderBadgeClass, genderLabel, human, queryId } from '@/components/teachers/shared';
+import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 
 interface ClassHeader {
   classId: string;
@@ -48,16 +49,35 @@ export default function ClassDetailPage() {
   const user = useViewModel(currentUser.store, (s) => s.user);
   const assignments = useViewModel(teachingAssignments.store, (s) => s.assignments);
 
-  const teacherId = user.status === 'success' ? user.data.id : undefined;
+  const userId = user.status === 'success' ? user.data.id : undefined;
   const [classId, setClassId] = useState('');
 
   useEffect(() => {
     setClassId(queryId());
   }, []);
 
+  // The signed-in identity (`userId`, the `users` table) and the id every
+  // teaching-assignment record is keyed by (`staff.id`) are different id
+  // spaces — `staff.userId` is the (unique) bridge between them. Mirrors
+  // government/teacher/page.tsx.
+  const [staffId, setStaffId] = useState<string | undefined>(undefined);
+
   useEffect(() => {
-    if (teacherId && assignments.status === 'idle') void teachingAssignments.load(teacherId);
-  }, [teacherId, assignments.status, teachingAssignments]);
+    if (!userId) return;
+    let cancelled = false;
+    void sharedBridge.listSchoolAdminRecords({ collection: 'staff', limit: 250 }).then((result) => {
+      if (cancelled) return;
+      const mine = result.items.find((r) => r.userId === userId);
+      setStaffId(mine ? String(mine.id) : undefined);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  useRevalidateOnSync(() => {
+    if (staffId) void teachingAssignments.load(staffId);
+  }, [staffId, teachingAssignments]);
 
   const hasAssignmentData = assignments.status === 'success' || assignments.status === 'refreshing';
   const assignmentsLoaded = hasAssignmentData || assignments.status === 'empty';
@@ -80,7 +100,7 @@ export default function ClassDetailPage() {
   const [roster, setRoster] = useState<readonly StudentListItemResult[] | null>(null);
   const [rosterLoading, setRosterLoading] = useState(false);
 
-  useEffect(() => {
+  useRevalidateOnSync(() => {
     if (!classId) return;
     let cancelled = false;
     setRosterLoading(true);
@@ -97,7 +117,7 @@ export default function ClassDetailPage() {
   // undefined = still loading, null = loaded but nothing recorded today.
   const [attendanceRate, setAttendanceRate] = useState<number | null | undefined>(undefined);
 
-  useEffect(() => {
+  useRevalidateOnSync(() => {
     if (!classId) return;
     let cancelled = false;
     void sharedBridge.listAttendance({ classId, date: todayIso() }).then((records) => {

@@ -5,10 +5,11 @@ import {
   AlertTriangle, Calendar, Clock3, Coffee, Copy, Download, Plus, Printer, Trash2, Users,
 } from 'lucide-react';
 import { DayOfWeek, type DayOfWeek as DayValue, type TimetableEntryResult } from '@nemis-desktop/types';
-import { Avatar, Button, Modal, Select } from '@nemis-desktop/ui';
+import { Avatar, Button, Input, Modal, Select } from '@nemis-desktop/ui';
 import { useViewModel } from '@/hooks/use-view-model';
 import { useAcademicFoundationViewModel, useAcademicYearViewModel, useSettingsViewModel, useTimetableViewModel } from '@/lib/presentation/hooks/school-admin';
 import { downloadTimetableCsv, formatClassName, getClassTeacherSubjects, human, type ClassTeacherOption } from './shared';
+import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 
 const WEEKDAYS: DayValue[] = [DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY];
 const WEEKEND_DAYS: DayValue[] = [DayOfWeek.SATURDAY, DayOfWeek.SUNDAY];
@@ -74,13 +75,13 @@ export function ClassSchedulePage() {
   );
   const selectedClass = classes.find((c) => c.id === selectedClassId);
 
-  useEffect(() => {
+  useRevalidateOnSync(() => {
     void foundation.loadClasses();
     void academicYear.loadCurrent();
     void foundation.loadCurrentTerm();
     void settings.loadCurrentSchool();
     void timetable.loadDashboard();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   useEffect(() => {
@@ -491,14 +492,12 @@ export function ClassSchedulePage() {
         <div className="space-y-4">
           {addPeriodError && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{addPeriodError}</div>}
           <div className="flex items-center gap-3">
-            <label className="flex-1 text-sm font-medium text-gray-700">
-              Start Time
-              <input type="time" value={newStart} onChange={(e) => setNewStart(e.target.value)} className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
-            </label>
-            <label className="flex-1 text-sm font-medium text-gray-700">
-              End Time
-              <input type="time" value={newEnd} onChange={(e) => setNewEnd(e.target.value)} className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
-            </label>
+            <div className="flex-1">
+              <Input label="Start Time" type="time" value={newStart} onChange={(e) => setNewStart(e.target.value)} />
+            </div>
+            <div className="flex-1">
+              <Input label="End Time" type="time" value={newEnd} onChange={(e) => setNewEnd(e.target.value)} />
+            </div>
           </div>
           <label className="flex items-center gap-3 text-sm text-gray-700">
             <input type="checkbox" checked={newIsBreak} onChange={(e) => setNewIsBreak(e.target.checked)} className="h-4 w-4 rounded border-gray-300" />

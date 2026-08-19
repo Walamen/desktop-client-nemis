@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   EmploymentType,
   Gender,
@@ -39,6 +40,7 @@ function SectionCard({
  * (dark header band, sectioned cards, primary/secondary action pair) while
  * keeping the desktop's real offline create/update flow unchanged. */
 export function TeacherFormPage({ edit = false }: { edit?: boolean }) {
+  const router = useRouter();
   const list = useTeachersListViewModel();
   const profileVm = useTeacherProfileViewModel();
   const settings = useSettingsViewModel();
@@ -112,7 +114,7 @@ export function TeacherFormPage({ edit = false }: { edit?: boolean }) {
         ? await list.createTeacher({ institutionId: school.data.id, ...common })
         : null;
     setSaving(false);
-    if (result?.ok) window.location.href = `/government/school-admin/teachers-staff/profile?id=${result.data.id}`;
+    if (result?.ok) router.push('/government/school-admin/teachers-staff');
   };
 
   return (

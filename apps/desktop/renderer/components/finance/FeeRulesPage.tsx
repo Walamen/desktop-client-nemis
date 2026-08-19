@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, BookOpen, Edit, Plus, PowerOff, Trash2 } from 'lucide-react';
 import type { SchoolAdminRecord } from '@nemis-desktop/types';
 import { Button, Drawer, Input, Textarea } from '@nemis-desktop/ui';
 import { FEE_CATEGORIES, formatCurrency, human, LEVEL_LABEL, listFeeRules, parseLevels, saveFeeRule, stringifyLevels } from './shared';
+import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 
 const SCHOOL_LEVELS = ['PRE_PRIMARY', 'PRIMARY', 'SECONDARY'];
 
@@ -73,7 +74,7 @@ export function FeeRulesPage() {
   const [saving, setSaving] = useState(false);
 
   const reload = () => void listFeeRules().then(setRules);
-  useEffect(() => { reload(); }, []);
+  useRevalidateOnSync(() => { reload(); }, []);
 
   const openCreate = () => {
     setEditTarget(null);

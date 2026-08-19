@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MessageSquare, Search, Send, Loader2, Plus, X } from 'lucide-react';
-import { Avatar, Spinner } from '@nemis-desktop/ui';
+import { Avatar, Input, Spinner } from '@nemis-desktop/ui';
 import { useCurrentUserViewModel } from '@/lib/presentation/hooks/shared';
 import { useViewModel } from '@/hooks/use-view-model';
 import { schoolAdminBridge } from '@/services/nemis-bridge/school-admin';
@@ -11,6 +11,7 @@ import {
   SENDER_ROLE_LABEL, loadConversations, loadMessagesForConversation, getOrCreateConversation,
   sendMessage, markMessagesRead, relativeTime, type ConversationRow, type MessageRow,
 } from './shared';
+import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 
 function splitName(name: string): { firstName: string; lastName: string } {
   const parts = name.trim().split(/\s+/);
@@ -67,16 +68,17 @@ function NewConversationModal({ onClose, onCreated }: { onClose: () => void; onC
         </div>
         <div className="space-y-4 px-5 py-4">
           <div>
-            <label className="mb-1 block text-xs font-semibold uppercase tracking-widest text-slate-400">About Student</label>
             {selectedStudent ? (
-              <div className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm">
-                <span>{selectedStudent.fullName}</span>
-                <button onClick={() => setSelectedStudent(null)} className="text-xs text-slate-400 hover:text-slate-600">Change</button>
-              </div>
+              <>
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-widest text-slate-400">About Student</label>
+                <div className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                  <span>{selectedStudent.fullName}</span>
+                  <button onClick={() => setSelectedStudent(null)} className="text-xs text-slate-400 hover:text-slate-600">Change</button>
+                </div>
+              </>
             ) : (
               <>
-                <input value={studentQuery} onChange={(e) => setStudentQuery(e.target.value)} placeholder="Search students…"
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-secondary" />
+                <Input label="About Student" value={studentQuery} onChange={(e) => setStudentQuery(e.target.value)} placeholder="Search students…" />
                 <div className="mt-1 max-h-32 overflow-y-auto rounded-lg border border-slate-100">
                   {students.map((s) => (
                     <button key={s.id} onClick={() => setSelectedStudent(s)} className="block w-full px-3 py-1.5 text-left text-sm hover:bg-slate-50">
@@ -88,16 +90,17 @@ function NewConversationModal({ onClose, onCreated }: { onClose: () => void; onC
             )}
           </div>
           <div>
-            <label className="mb-1 block text-xs font-semibold uppercase tracking-widest text-slate-400">Teacher</label>
             {selectedTeacher ? (
-              <div className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm">
-                <span>{selectedTeacher.firstName} {selectedTeacher.lastName}</span>
-                <button onClick={() => setSelectedTeacher(null)} className="text-xs text-slate-400 hover:text-slate-600">Change</button>
-              </div>
+              <>
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-widest text-slate-400">Teacher</label>
+                <div className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                  <span>{selectedTeacher.firstName} {selectedTeacher.lastName}</span>
+                  <button onClick={() => setSelectedTeacher(null)} className="text-xs text-slate-400 hover:text-slate-600">Change</button>
+                </div>
+              </>
             ) : (
               <>
-                <input value={teacherQuery} onChange={(e) => setTeacherQuery(e.target.value)} placeholder="Search teachers…"
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-secondary" />
+                <Input label="Teacher" value={teacherQuery} onChange={(e) => setTeacherQuery(e.target.value)} placeholder="Search teachers…" />
                 <div className="mt-1 max-h-32 overflow-y-auto rounded-lg border border-slate-100">
                   {teachers.map((t) => (
                     <button key={t.id} onClick={() => setSelectedTeacher(t)} className="block w-full px-3 py-1.5 text-left text-sm hover:bg-slate-50">
@@ -108,11 +111,7 @@ function NewConversationModal({ onClose, onCreated }: { onClose: () => void; onC
               </>
             )}
           </div>
-          <div>
-            <label className="mb-1 block text-xs font-semibold uppercase tracking-widest text-slate-400">Subject (optional)</label>
-            <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="e.g. Attendance concern"
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-secondary" />
-          </div>
+          <Input label="Subject (optional)" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="e.g. Attendance concern" />
         </div>
         <div className="flex justify-end gap-2 border-t border-gray-200 px-5 py-4">
           <button onClick={onClose} className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">Cancel</button>
@@ -140,9 +139,9 @@ export function MessagesPage() {
   const [showNewModal, setShowNewModal] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  useRevalidateOnSync(() => {
     currentUser.loadCurrentUser();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   const reloadConversations = useCallback(async () => {
@@ -151,7 +150,7 @@ export function MessagesPage() {
     setConversations(rows);
   }, [userId]);
 
-  useEffect(() => { reloadConversations(); }, [reloadConversations]);
+  useRevalidateOnSync(() => { void reloadConversations(); }, [reloadConversations]);
 
   const openConversation = useCallback(async (id: string) => {
     setSelectedId(id);
@@ -226,11 +225,13 @@ export function MessagesPage() {
             </div>
 
             <div className="px-3 pb-1 pt-2">
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
-                <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search students & teachers…"
-                  className="w-full rounded-lg border border-gray-200 bg-gray-50 py-1.5 pl-8 pr-3 text-xs focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20" />
-              </div>
+              <Input
+                type="text"
+                icon={<Search className="h-3.5 w-3.5 text-gray-400" />}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search students & teachers…"
+              />
             </div>
 
             <div className="flex-1 overflow-y-auto border-t border-gray-100">

@@ -1,10 +1,10 @@
 'use client';
-import { useEffect } from 'react';
 import { Card, ErrorState, Skeleton, EmptyState, Avatar } from '@nemis-desktop/ui';
 import { Users, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { useTeacherDashboardViewModel } from '@/lib/presentation/hooks/teacher';
 import { useViewModel } from '@/hooks/use-view-model';
+import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 
 const human = (v: string) => v.replaceAll('_', ' ');
 
@@ -16,9 +16,7 @@ const human = (v: string) => v.replaceAll('_', ' ');
 export default function TeachersListSection() {
   const vm = useTeacherDashboardViewModel();
   const state = useViewModel(vm.store, (s) => s.dashboard);
-  useEffect(() => {
-    if (state.status === 'idle') void vm.load();
-  }, [vm, state.status]);
+  useRevalidateOnSync(() => void vm.load(), [vm]);
 
   if (state.status === 'loading' || state.status === 'idle') {
     return <Skeleton className="h-48 w-full rounded-card" />;

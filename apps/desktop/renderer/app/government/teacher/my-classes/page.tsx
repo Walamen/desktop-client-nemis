@@ -9,8 +9,10 @@ import { Button, EmptyState, ErrorState, Spinner } from '@nemis-desktop/ui';
 import { useCurrentUserViewModel } from '@/lib/presentation/hooks/shared';
 import { useTeachingAssignmentViewModel } from '@/lib/presentation/hooks/school-admin';
 import { useViewModel } from '@/hooks/use-view-model';
+import { sharedBridge } from '@/services/nemis-bridge/shared';
 import { studentBridge } from '@/services/nemis-bridge/school-admin/student-bridge';
 import { DatabaseUnavailablePanel } from '@/components/dashboard/DatabaseUnavailablePanel';
+import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 
 interface MyClass {
   classId: string;
@@ -39,11 +41,30 @@ export default function MyClassesPage() {
   const user = useViewModel(currentUser.store, (s) => s.user);
   const assignments = useViewModel(teachingAssignments.store, (s) => s.assignments);
 
-  const teacherId = user.status === 'success' ? user.data.id : undefined;
+  const userId = user.status === 'success' ? user.data.id : undefined;
+
+  // The signed-in identity (`userId`, the `users` table) and the id every
+  // teaching-assignment record is keyed by (`staff.id`) are different id
+  // spaces — `staff.userId` is the (unique) bridge between them. Mirrors
+  // government/teacher/page.tsx.
+  const [staffId, setStaffId] = useState<string | undefined>(undefined);
 
   useEffect(() => {
-    if (teacherId && assignments.status === 'idle') void teachingAssignments.load(teacherId);
-  }, [teacherId, assignments.status, teachingAssignments]);
+    if (!userId) return;
+    let cancelled = false;
+    void sharedBridge.listSchoolAdminRecords({ collection: 'staff', limit: 250 }).then((result) => {
+      if (cancelled) return;
+      const mine = result.items.find((r) => r.userId === userId);
+      setStaffId(mine ? String(mine.id) : undefined);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  useRevalidateOnSync(() => {
+    if (staffId) void teachingAssignments.load(staffId);
+  }, [staffId, teachingAssignments]);
 
   const hasAssignmentData = assignments.status === 'success' || assignments.status === 'refreshing';
   // A teacher with zero assigned classes lands on 'empty' (no `data` field),
@@ -93,7 +114,7 @@ export default function MyClassesPage() {
   if (assignments.status === 'error' && assignments.error.kind === 'database-unavailable') {
     return (
       <div className="min-h-full bg-slate-100 px-6 py-6">
-        <DatabaseUnavailablePanel onRetry={() => teacherId && void teachingAssignments.load(teacherId)} />
+        <DatabaseUnavailablePanel onRetry={() => staffId && void teachingAssignments.load(staffId)} />
       </div>
     );
   }
@@ -102,7 +123,7 @@ export default function MyClassesPage() {
       <div className="min-h-full bg-slate-100 px-6 py-6">
         <ErrorState
           message={assignments.error.userMessage}
-          onRetry={() => teacherId && void teachingAssignments.load(teacherId)}
+          onRetry={() => staffId && void teachingAssignments.load(staffId)}
         />
       </div>
     );

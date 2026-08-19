@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Map, LogOut } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import type { DesktopPortalRole } from '@nemis-desktop/types';
 import { sidebarConfigs, type SidebarBadge } from './sidebarConfig';
 import { useNotificationStore } from '../../lib/presentation/hooks/shared';
@@ -11,10 +11,8 @@ import { sharedBridge } from '@/services/nemis-bridge/shared';
 
 export function Sidebar({
   role,
-  institutionName,
 }: {
   role: DesktopPortalRole;
-  institutionName?: string;
 }) {
   const config = sidebarConfigs[role];
   const pathname = usePathname();
@@ -25,7 +23,6 @@ export function Sidebar({
   const unreadNotifications = useViewModel(notifications.store, (s) => s.notifications.length);
   const getBadgeCount = (badge?: SidebarBadge) => (badge === 'notifications' ? unreadNotifications : 0);
 
-  const headerTitle = config.headerTitle ?? institutionName ?? 'NEMIS';
 
   const handleLogout = () => {
     void sharedBridge.logout().finally(() => router.replace('/'));
@@ -35,12 +32,12 @@ export function Sidebar({
     <div className="w-[230px] bg-primary h-full flex flex-col" aria-label="Primary">
       <div className="p-6 border-b border-white/10">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-white/10 flex items-center justify-center">
-            <Map className="w-6 h-6 text-white" />
+          <div className="w-10 h-10 flex items-center justify-center">
+          <img src="/logo.png" alt="NEMIS" className="h-11 w-11 object-contain" />
           </div>
           <div className="w-[80%]">
-            <h2 className="font-heading font-bold text-md text-white truncate">{headerTitle}</h2>
-            {config.headerSubtitle && <p className="text-xs text-white/50">{config.headerSubtitle}</p>}
+            <h2 className="font-heading font-bold text-md text-white truncate">Dashboard</h2>
+        
           </div>
         </div>
       </div>

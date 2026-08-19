@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Check } from 'lucide-react';
 import {
   Gender,
@@ -26,6 +27,7 @@ interface GuardianDraft {
 }
 
 export function StudentFormPage({ edit = false }: { edit?: boolean }) {
+  const router = useRouter();
   const listVm = useStudentsListViewModel();
   const profileVm = useStudentProfileViewModel();
   const settings = useSettingsViewModel();
@@ -96,7 +98,7 @@ export function StudentFormPage({ edit = false }: { edit?: boolean }) {
         email: email || undefined,
         address: address || undefined,
       });
-      if (r.ok) window.location.href = `/government/school-admin/students/profile?id=${id}`;
+      if (r.ok) router.push(`/government/school-admin/students/profile?id=${id}`);
     }
   };
   const submitCreate = async () => {

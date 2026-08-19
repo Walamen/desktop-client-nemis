@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   BookOpen, Users, ClipboardCheck, Award, Calendar, Bell, AlertCircle,
 } from 'lucide-react';
-import { ErrorState } from '@nemis-desktop/ui';
+import { Button, ErrorState } from '@nemis-desktop/ui';
 import { useCurrentUserViewModel } from '@/lib/presentation/hooks/shared';
 import { useTeachingAssignmentViewModel } from '@/lib/presentation/hooks/school-admin';
 import { useViewModel } from '@/hooks/use-view-model';
@@ -14,7 +15,7 @@ import { assignmentBridge } from '@/services/nemis-bridge/teacher/assignment-bri
 import { StatCard } from '@/components/dashboard/StatCard';
 import { DashboardGreeting } from '@/components/dashboard/DashboardGreeting';
 import { DatabaseUnavailablePanel } from '@/components/dashboard/DatabaseUnavailablePanel';
-import QuickActionCard from '@/components/dashboard/QuickActionCard';
+import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 
 interface MyClass {
   classId: string;
@@ -54,6 +55,7 @@ function dueLabel(dueDate: string): string {
 }
 
 export default function TeacherDashboardPage() {
+  const router = useRouter();
   const currentUser = useCurrentUserViewModel();
   const teachingAssignments = useTeachingAssignmentViewModel();
 
@@ -81,9 +83,9 @@ export default function TeacherDashboardPage() {
     };
   }, [userId]);
 
-  useEffect(() => {
-    if (staffId && assignments.status === 'idle') void teachingAssignments.load(staffId);
-  }, [staffId, assignments.status, teachingAssignments]);
+  useRevalidateOnSync(() => {
+    if (staffId) void teachingAssignments.load(staffId);
+  }, [staffId, teachingAssignments]);
 
   const hasAssignmentData = assignments.status === 'success' || assignments.status === 'refreshing';
   // A teacher with zero assigned classes lands on 'empty' (no `data` field),
@@ -133,7 +135,7 @@ export default function TeacherDashboardPage() {
 
   const [dueAssignments, setDueAssignments] = useState<DueAssignment[] | null>(null);
 
-  useEffect(() => {
+  useRevalidateOnSync(() => {
     if (!staffId) return;
     let cancelled = false;
     // The assignment:list channel is already self-scoped to the calling
@@ -225,10 +227,19 @@ export default function TeacherDashboardPage() {
                       </span>
                       <span className="text-xs">{cls.academicYearName}</span>
                     </div>
-                    <div className="flex gap-2">
-                      <QuickActionCard title="Students" description="" icon={Users} href="/government/teacher/my-classes" />
-                      <QuickActionCard title="Attendance" description="" icon={ClipboardCheck} href="/government/teacher/attendance" />
-                      <QuickActionCard title="Final Grades" description="" icon={Award} href="/government/teacher/grades" />
+                    <div className="flex flex-wrap gap-2">
+                      <Button size="sm" variant="secondary" onClick={() => router.push('/government/teacher/my-classes')}>
+                        <Users className="w-4 h-4 mr-1.5" />
+                        Students
+                      </Button>
+                      <Button size="sm" variant="secondary" onClick={() => router.push('/government/teacher/attendance')}>
+                        <ClipboardCheck className="w-4 h-4 mr-1.5" />
+                        Attendance
+                      </Button>
+                      <Button size="sm" variant="secondary" onClick={() => router.push('/government/teacher/grades')}>
+                        <Award className="w-4 h-4 mr-1.5" />
+                        Final Grades
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -267,10 +278,22 @@ export default function TeacherDashboardPage() {
             <div className="bg-white border border-slate-300 rounded-card p-6">
               <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-4">Quick Actions</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <QuickActionCard title="Mark Attendance" description="Today's attendance" icon={ClipboardCheck} href="/government/teacher/attendance" variant="primary" />
-                <QuickActionCard title="Enter Grades" description="Record assessments" icon={Award} href="/government/teacher/grades" />
-                <QuickActionCard title="View Timetable" description="Weekly schedule" icon={Calendar} href="/government/teacher/timetable" />
-                <QuickActionCard title="Notifications" description="Messages & alerts" icon={Bell} href="/government/teacher/notifications" />
+                <Button variant="primary" fullWidth onClick={() => router.push('/government/teacher/attendance')}>
+                  <ClipboardCheck className="w-4 h-4 mr-2" />
+                  Mark Attendance
+                </Button>
+                <Button variant="secondary" fullWidth onClick={() => router.push('/government/teacher/grades')}>
+                  <Award className="w-4 h-4 mr-2" />
+                  Enter Grades
+                </Button>
+                <Button variant="secondary" fullWidth onClick={() => router.push('/government/teacher/timetable')}>
+                  <Calendar className="w-4 h-4 mr-2" />
+                  View Timetable
+                </Button>
+                <Button variant="secondary" fullWidth onClick={() => router.push('/government/teacher/notifications')}>
+                  <Bell className="w-4 h-4 mr-2" />
+                  Notifications
+                </Button>
               </div>
             </div>
           </div>

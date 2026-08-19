@@ -1,17 +1,15 @@
 'use client';
 
-import { useEffect } from 'react';
 import { ErrorState } from '@nemis-desktop/ui';
 import { useSchoolsViewModel } from '@/lib/presentation/hooks/county';
 import { useViewModel } from '@/hooks/use-view-model';
+import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 
 export default function CountySchoolsPage() {
   const schools = useSchoolsViewModel();
   const institutions = useViewModel(schools.store, (s) => s.institutions);
 
-  useEffect(() => {
-    if (institutions.status === 'idle') void schools.loadInstitutions();
-  }, [schools, institutions.status]);
+  useRevalidateOnSync(() => void schools.loadInstitutions(), [schools]);
 
   return (
     <div className="min-h-full bg-slate-100">

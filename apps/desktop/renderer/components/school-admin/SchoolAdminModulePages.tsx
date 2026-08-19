@@ -1,9 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useMemo, useState, type FormEvent } from 'react';
 import type { SchoolAdminCollection, SchoolAdminRecord } from '@nemis-desktop/types';
+import { Input } from '@nemis-desktop/ui';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
 import { studentBridge } from '@/services/nemis-bridge/school-admin/student-bridge';
+import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 
 type Section = {
   collection: SchoolAdminCollection;
@@ -50,7 +52,7 @@ export function SchoolAdminCollectionPage({
     }
   }, [active]);
 
-  useEffect(() => {
+  useRevalidateOnSync(() => {
     setItems(null);
     void load();
   }, [load]);
@@ -196,7 +198,7 @@ export function RecordPaymentPage() {
     () => obligations.filter((item) => item.status !== 'PAID_IN_FULL' && item.status !== 'WAIVED'),
     [obligations],
   );
-  useEffect(() => {
+  useRevalidateOnSync(() => {
     void sharedBridge
       .listSchoolAdminRecords({ collection: 'fee_obligations', limit: 250 })
       .then((result) => setObligations(result.items));
@@ -260,17 +262,7 @@ export function RecordPaymentPage() {
           </select>
         </label>
         <div className="grid gap-4 md:grid-cols-2">
-          <label className="text-sm font-medium">
-            Amount
-            <input
-              name="amount"
-              type="number"
-              min="0.01"
-              step="0.01"
-              required
-              className="mt-1 w-full rounded-lg border px-3 py-2"
-            />
-          </label>
+          <Input label="Amount" name="amount" type="number" min="0.01" step="0.01" required />
           <label className="text-sm font-medium">
             Method
             <select name="method" required className="mt-1 w-full rounded-lg border px-3 py-2">
@@ -280,10 +272,7 @@ export function RecordPaymentPage() {
             </select>
           </label>
         </div>
-        <label className="block text-sm font-medium">
-          Reference
-          <input name="reference" className="mt-1 w-full rounded-lg border px-3 py-2" />
-        </label>
+        <Input label="Reference" name="reference" />
         <label className="block text-sm font-medium">
           Notes
           <textarea name="notes" className="mt-1 w-full rounded-lg border px-3 py-2" />

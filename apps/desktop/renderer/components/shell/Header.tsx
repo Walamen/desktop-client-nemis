@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { Search, ChevronDown, Bell, LogOut, User2, Settings } from 'lucide-react';
-import { Avatar, Breadcrumbs, Dropdown, DropdownItem } from '@nemis-desktop/ui';
+import { Avatar, Breadcrumbs, Dropdown, DropdownItem, Input } from '@nemis-desktop/ui';
 import { useCurrentUserViewModel, useNotificationStore } from '../../lib/presentation/hooks/shared';
 import { useViewModel } from '../../hooks/use-view-model';
 import type { DesktopPortalRole } from '@nemis-desktop/types';
@@ -35,15 +35,14 @@ export function Header({ role }: { role: DesktopPortalRole }) {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="relative hidden md:block w-70 border-r border-gray-200">
-            <input
+          <div className="hidden md:block w-70">
+            <Input
               type="text"
               placeholder="Quick Search..."
               aria-label="Quick search (coming soon)"
               disabled
-              className="peer w-full bg-gray-50 pl-11 pr-4 py-2 border-b border-gray-300 focus:outline-none disabled:cursor-not-allowed"
+              icon={<Search className="w-4 h-4 text-gray-400" />}
             />
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
           </div>
 
           <button

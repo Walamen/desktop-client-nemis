@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from 'react';
 import { Calendar, Plus, RefreshCw, Settings } from 'lucide-react';
-import { Button, Drawer } from '@nemis-desktop/ui';
+import { Button, Drawer, Input } from '@nemis-desktop/ui';
 import { useViewModel } from '@/hooks/use-view-model';
 import { useAcademicFoundationViewModel, useAcademicYearViewModel } from '@/lib/presentation/hooks/school-admin';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
@@ -212,15 +212,12 @@ export function GradingPeriodsDrawer({ isOpen, onClose }: { isOpen: boolean; onC
               <form onSubmit={(e) => void submit(e)} className="mb-6 space-y-4 rounded-lg bg-slate-50 p-4">
                 <h4 className="font-medium text-slate-900">{editing ? 'Edit Period' : 'Create New Period'}</h4>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <label className="text-sm font-medium text-slate-700">
-                    Period Name
-                    <input
-                      required
-                      value={form.name}
-                      onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                      className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                    />
-                  </label>
+                  <Input
+                    label="Period Name"
+                    required
+                    value={form.name}
+                    onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                  />
                   <label className="text-sm font-medium text-slate-700">
                     Type
                     <select
@@ -235,38 +232,29 @@ export function GradingPeriodsDrawer({ isOpen, onClose }: { isOpen: boolean; onC
                       ))}
                     </select>
                   </label>
-                  <label className="text-sm font-medium text-slate-700">
-                    Start Date
-                    <input
-                      type="date"
-                      required
-                      value={form.startDate}
-                      onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))}
-                      className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                    />
-                  </label>
-                  <label className="text-sm font-medium text-slate-700">
-                    End Date
-                    <input
-                      type="date"
-                      required
-                      value={form.endDate}
-                      onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value }))}
-                      className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                    />
-                  </label>
-                  <label className="text-sm font-medium text-slate-700">
-                    Weight (%)
-                    <input
-                      type="number"
-                      min={1}
-                      max={100}
-                      required
-                      value={form.weight}
-                      onChange={(e) => setForm((f) => ({ ...f, weight: Number(e.target.value) }))}
-                      className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                    />
-                  </label>
+                  <Input
+                    label="Start Date"
+                    type="date"
+                    required
+                    value={form.startDate}
+                    onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))}
+                  />
+                  <Input
+                    label="End Date"
+                    type="date"
+                    required
+                    value={form.endDate}
+                    onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value }))}
+                  />
+                  <Input
+                    label="Weight (%)"
+                    type="number"
+                    min={1}
+                    max={100}
+                    required
+                    value={form.weight}
+                    onChange={(e) => setForm((f) => ({ ...f, weight: Number(e.target.value) }))}
+                  />
                 </div>
                 <div className="flex justify-end gap-2">
                   <Button type="button" variant="secondary" size="sm" onClick={resetForm}>

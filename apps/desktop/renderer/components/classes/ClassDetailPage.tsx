@@ -3,7 +3,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import type { StudentListItemResult } from '@nemis-desktop/types';
 import { GradeLevel, type GradeLevel as GradeLevelValue } from '@nemis-desktop/types';
-import { Drawer, EmptyState, ErrorState, Select, Skeleton } from '@nemis-desktop/ui';
+import { Drawer, EmptyState, ErrorState, Input, Select, Skeleton } from '@nemis-desktop/ui';
 import { ArrowLeft, Users, BookOpen, UserCheck, Plus, Trash2, AlertTriangle } from 'lucide-react';
 import { useViewModel } from '@/hooks/use-view-model';
 import { useAcademicFoundationViewModel, useTeachersListViewModel, useTeachingAssignmentViewModel } from '@/lib/presentation/hooks/school-admin';
@@ -426,28 +426,20 @@ export function ClassDetailPage() {
                   value={gradeLevel}
                   onChange={(e) => setGradeLevel(e.target.value as GradeLevelValue)}
                 />
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Section</label>
-                  <input
-                    value={section}
-                    onChange={(e) => setSection(e.target.value)}
-                    placeholder="e.g., A, B, Arts"
-                    maxLength={20}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-1 focus:ring-sky-500 focus:border-sky-500 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Capacity <span className="text-gray-400 font-normal">(optional)</span>
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={capacity}
-                    onChange={(e) => setCapacity(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-1 focus:ring-sky-500 focus:border-sky-500 text-sm"
-                  />
-                </div>
+                <Input
+                  label="Section"
+                  value={section}
+                  onChange={(e) => setSection(e.target.value)}
+                  placeholder="e.g., A, B, Arts"
+                  maxLength={20}
+                />
+                <Input
+                  label="Capacity (optional)"
+                  type="number"
+                  min="1"
+                  value={capacity}
+                  onChange={(e) => setCapacity(e.target.value)}
+                />
                 <div className="pt-2">
                   <button
                     type="submit"

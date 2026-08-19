@@ -177,6 +177,144 @@ describe('ProvisioningImporter', () => {
     expect(metadata.lastError).toMatch(/UNIQUE/i);
   });
 
+  it('self-heals a class_teachers row reassigned under a new id on delta merge, instead of colliding on the (classId,staffId) unique index', () => {
+    // Unlike students.admissionNumber above, class_teachers has no
+    // "legitimately still colliding, wait for the 24h resync" case: the
+    // server sends this whole collection in full on every pull (no
+    // updatedAt column to delta-filter on), so an incoming row's
+    // (classId,staffId) pair IS the complete current truth, not a partial
+    // delta. A school admin unassigning then reassigning the same teacher
+    // mints a brand-new server-side id for the same pair (Prisma
+    // classTeacher.create() default), which must replace the stale local
+    // row, not collide with it.
+    const importer = new ProvisioningImporter(manager);
+    importer.import(
+      snapshotOf({
+        ...TEACHER_FIXTURE_DATA,
+        classTeachers: [classTeacherRow('ct-1', 'class-1', 'staff-1')],
+      }),
+      CONTEXT,
+    );
+    expect(countRows('class_teachers')).toBe(1);
+
+    expect(() =>
+      importer.import(
+        snapshotOf({ classTeachers: [classTeacherRow('ct-2', 'class-1', 'staff-1')] }),
+        CONTEXT,
+        { merge: true },
+      ),
+    ).not.toThrow();
+
+    expect(manager.connection.prepare('SELECT id FROM class_teachers').all()).toEqual([
+      { id: 'ct-2' },
+    ]);
+  });
+
+  it('prunes a class_teachers row genuinely unassigned server-side (no successor row) on delta merge', () => {
+    // The bug this covers: a school admin unassigns a teacher on the web
+    // portal with no reassignment. The next delta merge's classTeachers
+    // array (always the full current truth for this scope, per
+    // desktop-provisioning.service.ts) simply omits the pair — there is no
+    // successor row to trigger the id-collision self-heal above. Without an
+    // explicit prune, "merge never deletes rows the delta omits" left this
+    // row stranded locally forever, so the teacher's desktop kept showing a
+    // class they'd been removed from until the 24h full resync.
+    const importer = new ProvisioningImporter(manager);
+    importer.import(
+      snapshotOf({
+        ...TEACHER_FIXTURE_DATA,
+        classTeachers: [classTeacherRow('ct-1', 'class-1', 'staff-1')],
+      }),
+      CONTEXT,
+    );
+    expect(countRows('class_teachers')).toBe(1);
+
+    importer.import(snapshotOf({}), CONTEXT, { merge: true });
+
+    expect(countRows('class_teachers')).toBe(0);
+  });
+
+  it('does not prune a locally-pending class_teachers row the delta says nothing about (not yet pushed)', () => {
+    // Mirrors the assignments "does not touch a locally-created assignment"
+    // guarantee: an INSTITUTION_ADMIN device can assign/remove a teacher
+    // offline (SqliteTeacherRepository.assign/removeAssignment), and that
+    // local write cannot be in any snapshot the server sends until it's been
+    // pushed — pruning it on the next pull would silently lose the admin's
+    // offline change.
+    const importer = new ProvisioningImporter(manager);
+    importer.import(snapshotOf(TEACHER_FIXTURE_DATA), CONTEXT);
+
+    // Simulates the local write path: captureEnabled is 1 outside of
+    // import(), so this insert fires the real outbox trigger (migration
+    // 010), leaving a genuine 'pending' sync_queue row behind — the same
+    // signal SqliteTeacherRepository.assign() would produce.
+    manager.connection.prepare(`
+      INSERT INTO class_teachers (id,classId,staffId,isClassTeacher,assignedAt,updatedAt)
+      VALUES ('local-ct-1','class-1','staff-2',0,'2026-01-01T00:00:00.000Z','2026-01-01T00:00:00.000Z')
+    `).run();
+    expect(
+      (manager.connection.prepare(
+        `SELECT COUNT(*) count FROM sync_queue WHERE entityType='class_teachers' AND entityId='local-ct-1' AND status='pending'`,
+      ).get() as { count: number }).count,
+    ).toBe(1);
+
+    // A delta pull that says nothing about class-1/staff-2 — the server has
+    // never seen this device's offline assignment yet.
+    importer.import(snapshotOf({}), CONTEXT, { merge: true });
+
+    expect(countRows('class_teachers')).toBe(1);
+  });
+
+  it('self-heals a subject_teachers row reassigned under a new id on delta merge', () => {
+    const importer = new ProvisioningImporter(manager);
+    importer.import(
+      snapshotOf({
+        ...TEACHER_FIXTURE_DATA,
+        subjectTeachers: [subjectTeacherRow('st-1', 'subject-1', 'staff-1')],
+      }),
+      CONTEXT,
+    );
+    expect(countRows('subject_teachers')).toBe(1);
+
+    expect(() =>
+      importer.import(
+        snapshotOf({ subjectTeachers: [subjectTeacherRow('st-2', 'subject-1', 'staff-1')] }),
+        CONTEXT,
+        { merge: true },
+      ),
+    ).not.toThrow();
+
+    expect(manager.connection.prepare('SELECT id FROM subject_teachers').all()).toEqual([
+      { id: 'st-2' },
+    ]);
+  });
+
+  it('self-heals a class_subject_teachers row reassigned under a new id on delta merge', () => {
+    const importer = new ProvisioningImporter(manager);
+    importer.import(
+      snapshotOf({
+        ...TEACHER_FIXTURE_DATA,
+        classSubjectTeachers: [classSubjectTeacherRow('cst-1', 'class-1', 'subject-1', 'staff-1')],
+      }),
+      CONTEXT,
+    );
+    expect(countRows('class_subject_teachers')).toBe(1);
+
+    expect(() =>
+      importer.import(
+        snapshotOf({
+          classSubjectTeachers: [classSubjectTeacherRow('cst-2', 'class-1', 'subject-1', 'staff-2')],
+        }),
+        CONTEXT,
+        { merge: true },
+      ),
+    ).not.toThrow();
+
+    expect(manager.connection.prepare('SELECT id FROM class_subject_teachers').all()).toEqual([
+      { id: 'cst-2' },
+    ]);
+  });
+
   it('imports assessments referencing a grading period without an FK violation, both on first import and on re-provisioning', () => {
     // PROVISIONING_COLLECTIONS must insert assessments AFTER gradingPeriods
     // (assessments.gradingPeriodId REFERENCES grading_periods(id)) and delete
@@ -460,6 +598,72 @@ const ASSESSMENT_FK_DATA: Partial<ProvisioningData> = {
     updatedAt: '2026-01-01T00:00:00.000Z',
   }],
 };
+
+/** BASE_DATA plus an academicYear/class/subject/staff chain, enough to
+ * satisfy class_teachers/subject_teachers/class_subject_teachers' real
+ * SQLite foreign keys (classId -> classes, subjectId -> subjects,
+ * staffId -> staff), so the self-heal tests can focus purely on the
+ * natural-key reconciliation behaviour. */
+const TEACHER_FIXTURE_DATA: Partial<ProvisioningData> = {
+  ...BASE_DATA,
+  academicYears: [{
+    id: 'ay-1', institutionId: 'school-1', code: '2026',
+    startDate: '2026-01-01', endDate: '2026-12-31', isCurrent: true,
+    status: 'ACTIVE', version: 1, updatedAt: '2026-01-01T00:00:00.000Z',
+    lastModifiedBy: null,
+  }],
+  classes: [{
+    id: 'class-1', institutionId: 'school-1', academicYearId: 'ay-1',
+    name: 'Grade 7A', gradeLevel: 'GRADE_7', capacity: 30, isActive: true,
+    section: 'A', version: 1, updatedAt: '2026-01-01T00:00:00.000Z',
+    lastModifiedBy: null,
+  }],
+  subjects: [{
+    id: 'subject-1', institutionId: 'school-1', name: 'Mathematics',
+    code: 'MATH', description: null, isActive: true, version: 1,
+    updatedAt: '2026-01-01T00:00:00.000Z', lastModifiedBy: null,
+  }],
+  staff: [staffMember('staff-1'), staffMember('staff-2')],
+};
+
+function staffMember(id: string): ProvisioningRow {
+  return {
+    id, institutionId: 'school-1', userId: null, firstName: 'Teach',
+    lastName: id, middleName: null, dateOfBirth: '1990-01-01', gender: 'FEMALE',
+    nationalId: null, phoneNumber: '0770000000', email: null, address: null,
+    employeeNumber: `EMP-${id}`, position: 'Teacher', employmentType: 'FULL_TIME',
+    dateOfJoining: '2020-01-01', dateOfLeaving: null, qualifications: null,
+    isActive: true, photoUrl: null, approvalStatus: 'APPROVED', approvedBy: null,
+    approvedAt: null, approvalNotes: null, createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z', version: 1, lastModifiedBy: null,
+  };
+}
+
+function classTeacherRow(id: string, classId: string, staffId: string): ProvisioningRow {
+  return {
+    id, classId, staffId, isClassTeacher: false,
+    assignedAt: '2026-01-01T00:00:00.000Z', version: 1,
+    updatedAt: '2026-01-01T00:00:00.000Z', lastModifiedBy: null,
+  };
+}
+
+function subjectTeacherRow(id: string, subjectId: string, staffId: string): ProvisioningRow {
+  return {
+    id, subjectId, staffId,
+    assignedAt: '2026-01-01T00:00:00.000Z', version: 1,
+    updatedAt: '2026-01-01T00:00:00.000Z', lastModifiedBy: null,
+  };
+}
+
+function classSubjectTeacherRow(
+  id: string, classId: string, subjectId: string, staffId: string,
+): ProvisioningRow {
+  return {
+    id, classId, subjectId, staffId,
+    assignedAt: '2026-01-01T00:00:00.000Z', version: 1,
+    updatedAt: '2026-01-01T00:00:00.000Z', lastModifiedBy: null,
+  };
+}
 
 const DISTRICT_FK_DATA: Partial<ProvisioningData> = {
   ...BASE_DATA,

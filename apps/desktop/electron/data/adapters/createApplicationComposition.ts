@@ -2,7 +2,6 @@ import {
   createApplicationLayer,
   type ApplicationLayer,
   type ApplicationPorts,
-  type IDistrictRepository,
 } from '@nemis-desktop/application';
 import {
   ConsoleLogger,

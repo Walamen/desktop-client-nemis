@@ -23,29 +23,28 @@ import { sharedBridge } from '@/services/nemis-bridge/shared';
 
 describe('Sidebar', () => {
   it('renders school-admin nav groups and items with correct hrefs', () => {
-    render(<Sidebar role={SystemRole.INSTITUTION_ADMIN} institutionName="Monrovia Central School" />);
+    render(<Sidebar role={SystemRole.INSTITUTION_ADMIN} />);
     expect(screen.getByText('Overview')).toBeInTheDocument();
     expect(screen.getByText('Students').closest('a')).toHaveAttribute('href', '/government/school-admin/students');
     expect(screen.getByText('Attendence Management')).toBeInTheDocument();
     expect(screen.getByText('School Settings')).toBeInTheDocument();
-    expect(screen.getByText('Monrovia Central School')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
   });
 
   it('marks the active route', () => {
-    render(<Sidebar role={SystemRole.INSTITUTION_ADMIN} institutionName="X" />);
+    render(<Sidebar role={SystemRole.INSTITUTION_ADMIN} />);
     expect(screen.getByText('Overview').closest('a')).toHaveClass('bg-slate-800');
   });
 
-  it('renders a second role from its own config, with a static header title', () => {
+  it('renders a second role from its own config, with the static header title', () => {
     render(<Sidebar role={SystemRole.COUNTY_ADMIN} />);
-    expect(screen.getByText('NEMIS')).toBeInTheDocument();
-    expect(screen.getByText('CEO PANEL')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
     expect(screen.getByText('Districts').closest('a')).toHaveAttribute('href', '/government/county/districts');
     expect(screen.getByText('Audit Trail').closest('a')).toHaveAttribute('href', '/government/county/audit');
   });
 
   it('calls sharedBridge.logout() when the Logout button is clicked', () => {
-    render(<Sidebar role={SystemRole.INSTITUTION_ADMIN} institutionName="X" />);
+    render(<Sidebar role={SystemRole.INSTITUTION_ADMIN} />);
     fireEvent.click(screen.getByText('Logout'));
     expect(sharedBridge.logout).toHaveBeenCalled();
   });

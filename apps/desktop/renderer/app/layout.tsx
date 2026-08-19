@@ -11,12 +11,13 @@ const poppins = Poppins({ subsets: ['latin'], weight: ['400', '500', '600', '700
 export const metadata: Metadata = {
   title: 'NEMIS Desktop',
   description: 'Offline-first desktop client for the NEMIS platform',
+  icons: { icon: '/logo.png' },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body className={`${creteRound.variable} ${lato.variable} ${poppins.variable} font-sans antialiased bg-neutral-light text-slate-900`}>
+      <body className={`${creteRound.variable} ${lato.variable} ${poppins.variable} font-sans antialiased bg-slate-100 text-slate-900`}>
         <RootProviders>{children}</RootProviders>
       </body>
     </html>

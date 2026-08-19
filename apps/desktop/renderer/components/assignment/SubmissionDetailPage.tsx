@@ -4,11 +4,12 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import DOMPurify from 'dompurify';
 import { ArrowLeft, Paperclip } from 'lucide-react';
-import { Alert, Badge, Skeleton } from '@nemis-desktop/ui';
+import { Alert, Badge, Input, Skeleton } from '@nemis-desktop/ui';
 import { useViewModel } from '@/hooks/use-view-model';
 import { useCurrentUserViewModel } from '@/lib/presentation/hooks/shared';
 import { useAssignmentsViewModel } from '@/lib/presentation/hooks/teacher';
 import { assignmentBridge } from '@/services/nemis-bridge/teacher/assignment-bridge';
+import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 
 const BADGE_VARIANT: Record<string, 'neutral' | 'primary' | 'success' | 'warning'> = {
   Pending: 'neutral',
@@ -27,7 +28,7 @@ export function SubmissionDetailPage({ assignmentId, studentId }: { assignmentId
 
   const teacherId = user.status === 'success' ? user.data.id : undefined;
 
-  useEffect(() => {
+  useRevalidateOnSync(() => {
     if (!teacherId) return;
     void assignmentsVm.loadAssignment(assignmentId, teacherId);
     void assignmentsVm.loadSubmissions(assignmentId, teacherId);
@@ -169,11 +170,9 @@ export function SubmissionDetailPage({ assignmentId, studentId }: { assignmentId
           <div className="bg-white border border-gray-200 rounded-lg px-6 py-5 space-y-4">
             {error && <p className="text-xs text-error">{error}</p>}
             <div className="flex items-start gap-6">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-gray-500">
-                  Grade{a.totalMarks != null ? ` (out of ${a.totalMarks})` : ''}
-                </label>
-                <input
+              <div className="w-24">
+                <Input
+                  label={`Grade${a.totalMarks != null ? ` (out of ${a.totalMarks})` : ''}`}
                   type="number"
                   min="0"
                   max={a.totalMarks}
@@ -182,7 +181,7 @@ export function SubmissionDetailPage({ assignmentId, studentId }: { assignmentId
                     setGrade(e.target.value);
                     setDirty(true);
                   }}
-                  className="w-20 px-3 py-2 border border-gray-300 rounded-lg text-sm text-center focus:ring-2 focus:ring-secondary focus:border-secondary"
+                  className="text-center"
                   placeholder="—"
                 />
               </div>
