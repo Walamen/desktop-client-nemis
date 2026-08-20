@@ -16,6 +16,7 @@ export function toInstitutionProfileView(dto: InstitutionProfileOutput): Institu
     ownershipLabel: humanizeEnum(dto.ownership),
     approval: presentApprovalStatus(dto.approvalStatus),
     address: address === '' ? '—' : address,
+    allowedGrades: dto.allowedGrades,
   };
 }
 

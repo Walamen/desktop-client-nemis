@@ -1,4 +1,6 @@
-import { GradeLevel, type GradeLevel as GradeLevelValue } from '@nemis-desktop/types';
+import {
+  INSTITUTION_LEVEL_GRADES, InstitutionLevel, type GradeLevel as GradeLevelValue,
+} from '@nemis-desktop/types';
 import { schoolAdminBridge } from '@/services/nemis-bridge/school-admin';
 import { normalizeLimit } from '@/components/pageLimitNormalizer';
 
@@ -12,17 +14,33 @@ export const queryId = () =>
     ? ''
     : (new URLSearchParams(window.location.search).get('id') ?? '');
 
-export const GRADE_GROUPS: { label: string; grades: GradeLevelValue[] }[] = [
-  { label: 'Early Years', grades: [GradeLevel.KG, GradeLevel.K1, GradeLevel.K2] },
-  {
-    label: 'Grades 1–12',
-    grades: [
-      GradeLevel.GRADE_1, GradeLevel.GRADE_2, GradeLevel.GRADE_3, GradeLevel.GRADE_4,
-      GradeLevel.GRADE_5, GradeLevel.GRADE_6, GradeLevel.GRADE_7, GradeLevel.GRADE_8,
-      GradeLevel.GRADE_9, GradeLevel.GRADE_10, GradeLevel.GRADE_11, GradeLevel.GRADE_12,
-    ],
-  },
+interface GradeGroup {
+  label: string;
+  grades: GradeLevelValue[];
+}
+
+/** All grade groups, unfiltered — the safe fallback when a school has no
+ * registered levels yet (or hasn't synced them). Grouping mirrors
+ * portal-web's getGroupedGradeLevels exactly. */
+const ALL_GRADE_GROUPS: GradeGroup[] = [
+  { label: 'Pre-Primary', grades: INSTITUTION_LEVEL_GRADES[InstitutionLevel.PRE_PRIMARY] ?? [] },
+  { label: 'Primary', grades: INSTITUTION_LEVEL_GRADES[InstitutionLevel.PRIMARY] ?? [] },
+  { label: 'Secondary', grades: INSTITUTION_LEVEL_GRADES[InstitutionLevel.SECONDARY] ?? [] },
 ];
+
+/** Grade groups filtered down to the school's allowed grades — mirrors
+ * portal-web's getFilteredGroupedGradeLevels. Groups with zero allowed
+ * grades are dropped entirely (e.g. a secondary school shows only
+ * "Secondary"). Falls back to every group when `allowedGrades` is empty or
+ * undefined (school has no levels configured / not yet synced). */
+export function getFilteredGradeGroups(allowedGrades?: readonly GradeLevelValue[]): GradeGroup[] {
+  if (!allowedGrades || allowedGrades.length === 0) return ALL_GRADE_GROUPS;
+  const allowedSet = new Set<string>(allowedGrades);
+  return ALL_GRADE_GROUPS.map((group) => ({
+    ...group,
+    grades: group.grades.filter((g) => allowedSet.has(g)),
+  })).filter((group) => group.grades.length > 0);
+}
 
 export interface TeacherOnClass {
   teacherId: string;

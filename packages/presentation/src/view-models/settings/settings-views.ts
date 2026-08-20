@@ -1,3 +1,4 @@
+import type { GradeLevel } from '@nemis-desktop/types';
 import type { StatusPresentation } from '../../presenters/status-presentation';
 
 export interface InstitutionProfileView {
@@ -8,6 +9,7 @@ export interface InstitutionProfileView {
   readonly ownershipLabel: string;
   readonly approval: StatusPresentation;
   readonly address: string;
+  readonly allowedGrades: readonly GradeLevel[];
 }
 
 export interface GradingConfigView {

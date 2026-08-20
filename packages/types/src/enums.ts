@@ -101,6 +101,39 @@ export const GradeLevel = {
 } as const;
 export type GradeLevel = (typeof GradeLevel)[keyof typeof GradeLevel];
 
+// Maps each InstitutionLevel to the GradeLevel values it authorizes.
+// Mirrored from @nemis/types INSTITUTION_LEVEL_GRADES — keep in sync.
+export const INSTITUTION_LEVEL_GRADES: Record<string, GradeLevel[]> = {
+  [InstitutionLevel.PRE_PRIMARY]: [GradeLevel.KG, GradeLevel.K1, GradeLevel.K2],
+  [InstitutionLevel.PRIMARY]: [
+    GradeLevel.GRADE_1,
+    GradeLevel.GRADE_2,
+    GradeLevel.GRADE_3,
+    GradeLevel.GRADE_4,
+    GradeLevel.GRADE_5,
+    GradeLevel.GRADE_6,
+  ],
+  [InstitutionLevel.SECONDARY]: [
+    GradeLevel.GRADE_7,
+    GradeLevel.GRADE_8,
+    GradeLevel.GRADE_9,
+    GradeLevel.GRADE_10,
+    GradeLevel.GRADE_11,
+    GradeLevel.GRADE_12,
+  ],
+};
+
+/**
+ * Returns the grade levels allowed for the given institution levels.
+ * If no levels are provided (school has none configured), returns ALL grades
+ * as a safe fallback. Mirrored from @nemis/types getAllowedGradesForLevels.
+ */
+export function getAllowedGradesForLevels(institutionLevels: InstitutionLevel[]): GradeLevel[] {
+  const known = institutionLevels.filter((l) => l in INSTITUTION_LEVEL_GRADES);
+  if (known.length === 0) return Object.values(GradeLevel);
+  return known.flatMap((l) => INSTITUTION_LEVEL_GRADES[l] ?? []);
+}
+
 export const EnrollmentStatus = {
   ACTIVE: 'ACTIVE',
   COMPLETED: 'COMPLETED',

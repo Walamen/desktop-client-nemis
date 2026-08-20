@@ -6,13 +6,13 @@ import { Input } from '@nemis-desktop/ui';
 import { useViewModel } from '@/hooks/use-view-model';
 import { useAcademicFoundationViewModel, useAcademicYearViewModel, useSettingsViewModel } from '@/lib/presentation/hooks/school-admin';
 import { ArrowLeft, Check } from 'lucide-react';
-import { formatGrade, GRADE_GROUPS } from './shared';
+import { formatGrade, getFilteredGradeGroups } from './shared';
 
 /** Create Class — mirrors portal-web's create page (grade-level picker with
- * live name preview, section/capacity fields, header band). Desktop groups
- * the real GradeLevel enum into "Early Years" / "Grades 1-12" instead of
- * web's subscription-driven "allowed grades" list, since no such concept
- * exists on this device. */
+ * live name preview, section/capacity fields, header band). The grade
+ * groups are filtered to the school's registered education levels, same as
+ * portal-web's allowed-grades logic — e.g. a secondary school only sees
+ * Grades 7-12. */
 export function ClassFormPage() {
   const router = useRouter();
   const vm = useAcademicFoundationViewModel();
@@ -45,6 +45,8 @@ export function ClassFormPage() {
 
   const schoolName = profile.status === 'success' || profile.status === 'refreshing' ? profile.data.name : 'School';
   const yearOptions = years.status === 'success' || years.status === 'refreshing' ? years.data : [];
+  const allowedGrades = profile.status === 'success' || profile.status === 'refreshing' ? profile.data.allowedGrades : undefined;
+  const gradeGroups = getFilteredGradeGroups(allowedGrades);
 
   const previewName = selectedGrade ? (section.trim() ? `${formatGrade(selectedGrade)} ${section.trim()}` : formatGrade(selectedGrade)) : '';
 
@@ -123,7 +125,7 @@ export function ClassFormPage() {
             </h2>
             <p className="text-sm text-gray-600 mb-6">Select the grade level for this class.</p>
             <div className="space-y-8">
-              {GRADE_GROUPS.map((group) => (
+              {gradeGroups.map((group) => (
                 <div key={group.label}>
                   <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">{group.label}</h3>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">

@@ -1,4 +1,4 @@
-import type { ApprovalStatus, InstitutionType, OwnershipType } from '@nemis-desktop/types';
+import type { ApprovalStatus, GradeLevel, InstitutionType, OwnershipType } from '@nemis-desktop/types';
 
 export interface InstitutionProfileOutput {
   id: string;
@@ -10,6 +10,7 @@ export interface InstitutionProfileOutput {
   isApproved: boolean;
   street?: string;
   communityTown?: string;
+  allowedGrades: GradeLevel[];
 }
 
 export interface InstitutionSummaryOutput {
