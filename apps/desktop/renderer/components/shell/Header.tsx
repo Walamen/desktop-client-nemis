@@ -22,6 +22,7 @@ export function Header({ role }: { role: DesktopPortalRole }) {
   const userState = useViewModel(currentUser.store, (s) => s.user);
   const fullName = userState.status === 'success' ? userState.data.fullName : 'User';
   const roleLabel = userState.status === 'success' ? (userState.data.roleLabels[0] ?? '—') : '—';
+  console.log(`roleLabel: ${roleLabel}, fullName: ${fullName}`);
 
   const notifications = useNotificationStore();
   const unread = useViewModel(notifications.store, (s) => s.notifications.length);

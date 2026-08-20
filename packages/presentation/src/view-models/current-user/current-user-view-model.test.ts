@@ -40,7 +40,7 @@ describe('CurrentUserViewModel', () => {
     expect(user.status).toBe('success');
     if (user.status === 'success') {
       expect(user.data.fullName).toBe('Joseph Boakai');
-      expect(user.data.roleLabels).toEqual(['Institution admin']);
+      expect(user.data.roleLabels).toEqual(['Principal']);
       expect(user.data.status.label).toBe('Active');
     }
     expect(session.store.getState().currentUserId).toBe('usr-1');

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { GradeLevel } from '@nemis-desktop/types';
+import { GradeLevel, SystemRole } from '@nemis-desktop/types';
 import { formatIsoDate, formatIsoDateTime } from './format-date';
-import { formatFullName, formatGradeLevel, humanizeEnum } from './format-text';
+import { formatFullName, formatGradeLevel, humanizeEnum, humanizeRole } from './format-text';
 import { formatMarks, formatPercent } from './format-marks';
 
 describe('formatters', () => {
@@ -20,6 +20,12 @@ describe('formatters', () => {
   it('humanizes enum values', () => {
     expect(humanizeEnum('UNDER_REVIEW')).toBe('Under review');
     expect(humanizeEnum('PRESENT')).toBe('Present');
+  });
+
+  it('humanizes roles, overriding INSTITUTION_ADMIN with the friendly job title', () => {
+    expect(humanizeRole(SystemRole.INSTITUTION_ADMIN)).toBe('Principal');
+    expect(humanizeRole(SystemRole.DEO)).toBe('Deo');
+    expect(humanizeRole(SystemRole.TEACHER)).toBe('Teacher');
   });
 
   it('formats grade levels', () => {

@@ -9,7 +9,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 const notificationStore = createStore(() => ({ notifications: [{ id: 'n1', kind: 'info', message: 'x', autoDismissMs: null, createdAt: 0 }] }));
-const currentUserStore = createStore(() => ({ user: { status: 'success', data: { fullName: 'Joseph Boakai', roleLabels: ['Institution admin'] } } }));
+const currentUserStore = createStore(() => ({ user: { status: 'success', data: { fullName: 'Joseph Boakai', roleLabels: ['Principal'] } } }));
 
 vi.mock('../../lib/presentation/hooks/shared', () => ({
   useCurrentUserViewModel: () => ({ store: currentUserStore, loadUser: vi.fn() }),

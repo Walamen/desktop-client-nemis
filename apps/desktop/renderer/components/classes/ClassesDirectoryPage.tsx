@@ -648,20 +648,20 @@ export function ClassesDirectoryPage() {
           title={studentsToEnroll.length === 1 ? `Assign ${studentsToEnroll[0]?.fullName} to a Class` : `Assign ${studentsToEnroll.length} Students to a Class`}
           size="md"
           footer={
-            <div className="flex justify-end gap-2">
+            <div className="flex w-full justify-between mb-8  gap-2">
               <button
                 type="button"
                 onClick={() => setEnrollOpen(false)}
                 disabled={enrolling}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                className="px-4 py-2 text-sm font-medium w-full text-gray-700 bg-white border border-slate-300 rounded-full hover:bg-gray-50 disabled:opacity-50"
               >
-                Cancel
+                Cancels
               </button>
               <button
                 type="button"
                 disabled={enrolling || !enrollClassId || !currentYearId || !selectedTermId}
                 onClick={() => void submitEnroll()}
-                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-50"
+                className="inline-flex  w-full items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-slate-900 rounded-full hover:bg-slate-800 disabled:opacity-50"
               >
                 {enrolling ? 'Assigning…' : 'Assign to Class'}
               </button>
