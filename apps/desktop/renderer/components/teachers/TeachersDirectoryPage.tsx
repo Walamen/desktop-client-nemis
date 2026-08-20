@@ -6,6 +6,7 @@ import { Avatar, Button, Card, EmptyState, ErrorState, Input, Skeleton } from '@
 import type { TeacherRowView } from '@nemis-desktop/presentation';
 import {
   Search,
+  Upload,
   UserPlus,
   GraduationCap,
   Users,
@@ -77,12 +78,20 @@ export function TeachersDirectoryPage() {
           </p>
           <h1 className="text-xl font-bold mt-0.5">Teacher Management</h1>
         </div>
-        <Link href="/government/school-admin/teachers-staff/create">
-          <button className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-slate-600 border border-slate-500 rounded-button hover:bg-slate-700">
-            <UserPlus className="w-4 h-4" />
-            Add Teacher
-          </button>
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link href="/government/school-admin/teachers-staff/createbulk">
+            <button className="inline-flex items-center gap-2 rounded-button border border-slate-600 bg-slate-800 px-3 py-1.5 text-sm font-medium text-slate-300 hover:bg-slate-700">
+              <Upload className="w-4 h-4" />
+              Bulk Import
+            </button>
+          </Link>
+          <Link href="/government/school-admin/teachers-staff/create">
+            <button className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-slate-600 border border-slate-500 rounded-button hover:bg-slate-700">
+              <UserPlus className="w-4 h-4" />
+              Add Teacher
+            </button>
+          </Link>
+        </div>
       </div>
 
       <div className="px-6 py-6 space-y-5">
