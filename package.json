@@ -17,7 +17,14 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "rebuild:node": "cd node_modules/better-sqlite3 && npx prebuild-install --verbose",
-    "rebuild:electron": "cd node_modules/better-sqlite3 && npx prebuild-install --runtime=electron --target=42.7.0 --verbose"
+    "rebuild:electron": "cd node_modules/better-sqlite3 && npx prebuild-install --runtime=electron --target=42.7.0 --verbose",
+    "version:patch": "node scripts/bump-desktop-version.mjs patch",
+    "version:minor": "node scripts/bump-desktop-version.mjs minor",
+    "version:major": "node scripts/bump-desktop-version.mjs major",
+    "publish:desktop": "pnpm --filter @nemis-desktop/app run publish:forge",
+    "release:patch": "pnpm run version:patch && pnpm run publish:desktop",
+    "release:minor": "pnpm run version:minor && pnpm run publish:desktop",
+    "release:major": "pnpm run version:major && pnpm run publish:desktop"
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",
