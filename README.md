@@ -30,8 +30,14 @@ pnpm workspace:
 | `pnpm lint`         | ESLint across the workspace                         |
 | `pnpm format:check` | Prettier check                                      |
 | `pnpm test`         | Run unit tests (Vitest)                             |
+| `pnpm release:patch`| Bump the desktop app's patch version and publish a draft GitHub Release |
 
 ## Architecture
 
 See `docs/architecture.md`, `docs/conventions.md` for coding/IPC conventions,
 and the Phase 1 spec in `docs/superpowers/specs/2026-07-14-phase1-foundation-design.md`.
+
+## Releases
+
+See `docs/releases.md` for the full release workflow (version bump commands,
+`GITHUB_TOKEN` setup, and what to do if publishing fails partway through).
