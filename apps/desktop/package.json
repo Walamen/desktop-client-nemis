@@ -18,6 +18,7 @@
     "build:renderer": "next build renderer",
     "package": "pnpm run build:renderer && electron-forge package",
     "make": "pnpm run build:renderer && node scripts/fix-squirrel-7z.mjs && electron-forge make",
+    "publish:forge": "pnpm run build:renderer && node scripts/fix-squirrel-7z.mjs && electron-forge publish",
     "typecheck": "tsc --noEmit && tsc --noEmit -p renderer/tsconfig.json",
     "generate-icons": "electron-icon-maker --input=assets/icon-master.png --output=assets"
   },
@@ -49,6 +50,7 @@
     "@electron-forge/plugin-auto-unpack-natives": "^7.11.2",
     "@electron-forge/plugin-fuses": "^7.11.2",
     "@electron-forge/plugin-vite": "^7.11.2",
+    "@electron-forge/publisher-github": "^7.11.2",
     "@electron/fuses": "^1.8.0",
     "@types/better-sqlite3": "^7.6.13",
     "@types/electron-squirrel-startup": "^1.0.2",
