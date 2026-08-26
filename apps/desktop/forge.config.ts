@@ -5,6 +5,7 @@ import { MakerSquirrel } from '@electron-forge/maker-squirrel';
 import { MakerZIP } from '@electron-forge/maker-zip';
 import { MakerDeb } from '@electron-forge/maker-deb';
 import { MakerRpm } from '@electron-forge/maker-rpm';
+import { PublisherGithub } from '@electron-forge/publisher-github';
 import { VitePlugin } from '@electron-forge/plugin-vite';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { AutoUnpackNativesPlugin } from '@electron-forge/plugin-auto-unpack-natives';
@@ -59,6 +60,21 @@ const config: ForgeConfig = {
     new MakerZIP({}, ['darwin']),
     new MakerRpm({}),
     new MakerDeb({}),
+  ],
+  // Publishes the artifacts from every maker above to a DRAFT, non-prerelease
+  // GitHub Release on Walamen/desktop-client-nemis. Only runs when a
+  // developer explicitly invokes `pnpm publish:desktop` (or `release:*`).
+  // Auth comes from the GITHUB_TOKEN environment variable — never set a
+  // token here. See docs/releases.md for required token permissions.
+  publishers: [
+    new PublisherGithub({
+      repository: {
+        owner: 'Walamen',
+        name: 'desktop-client-nemis',
+      },
+      draft: true,
+      prerelease: false,
+    }),
   ],
   plugins: [
     new AutoUnpackNativesPlugin({}),
