@@ -63,7 +63,10 @@ export function GradeWindowsPage() {
           openDate: form.openDate,
           closeDate: form.closeDate,
           status: 'DRAFT',
-          allowedRoles: null,
+          // Matches the server's own default (grade-entry-window.service.ts) and the
+          // desktop's JSON-stringified storage convention for array-shaped fields in
+          // this generic collection API; the column is NOT NULL so this can't be null.
+          allowedRoles: JSON.stringify(['TEACHER']),
         },
       });
       setShowCreate(false);

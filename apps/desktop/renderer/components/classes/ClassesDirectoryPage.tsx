@@ -7,6 +7,7 @@ import { Drawer, Input, Select } from '@nemis-desktop/ui';
 import {
   BookOpen,
   Plus,
+  Layers,
   Edit,
   RotateCcw,
   Ban,
@@ -261,12 +262,20 @@ export function ClassesDirectoryPage() {
           <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">School Admin Portal</p>
           <h1 className="text-xl font-bold mt-0.5">Class Management</h1>
         </div>
-        <Link href="/government/school-admin/classes/create">
-          <button className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-slate-600 border border-slate-500 rounded-button hover:bg-slate-700">
-            <Plus className="w-4 h-4" />
-            Create Class
-          </button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href="/government/school-admin/classes/createbulk">
+            <button className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-slate-600 border border-slate-500 rounded-button hover:bg-slate-700">
+              <Layers className="w-4 h-4" />
+              Create Multiple
+            </button>
+          </Link>
+          <Link href="/government/school-admin/classes/create">
+            <button className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-slate-600 border border-slate-500 rounded-button hover:bg-slate-700">
+              <Plus className="w-4 h-4" />
+              Create Class
+            </button>
+          </Link>
+        </div>
       </div>
 
       <div className="px-6 py-6 space-y-5">
