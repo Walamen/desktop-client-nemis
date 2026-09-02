@@ -197,7 +197,7 @@ function LoginForm(props: LoginProps) {
   return (
     <form onSubmit={props.onSubmit}>
       <p className="text-sm font-semibold text-secondary-700">AUTHENTICATE</p>
-      <h2 className="mt-2 text-3xl font-semibold">Sign in to your school</h2>
+      <h2 className="mt-2 text-3xl font-semibold">User Login</h2>
       <p className="mt-3 text-slate-600">Use the same administrator account as the national NEMIS platform.</p>
       <div className="mt-8">
         <Input
