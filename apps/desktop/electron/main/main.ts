@@ -24,6 +24,9 @@ import type { DataLayer } from '@app/data/factories/createDataLayer';
 import { DesktopSyncWorker } from '@app/sync/DesktopSyncWorker';
 import { NetworkMonitor } from '@app/sync/NetworkMonitor';
 import { SchoolAdminModuleService } from '@app/data/services/SchoolAdminModuleService';
+import {updateElectronApp} from 'update-electron-app';
+
+updateElectronApp();
 
 // Squirrel.Windows shortcut events during install/update: quit immediately.
 if (started) {

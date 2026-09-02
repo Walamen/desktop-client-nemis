@@ -1,7 +1,7 @@
 {
   "name": "@nemis-desktop/app",
   "productName": "NEMIS Desktop",
-  "version": "1.0.1",
+  "version": "1.2.0",
   "description": "NEMIS Desktop client — offline-first Electron shell for the NEMIS platform",
   "private": true,
   "main": ".vite/build/main.js",
@@ -39,6 +39,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "recharts": "^3.10.1",
+    "update-electron-app": "^3.3.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
