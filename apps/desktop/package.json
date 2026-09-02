@@ -1,7 +1,11 @@
 {
   "name": "@nemis-desktop/app",
   "productName": "NEMIS Desktop",
-  "version": "1.2.0",
+  "version": "1.1.0",
+    "repository": {
+    "type": "git",
+    "url": "https://github.com/Walamen/desktop-client-nemis.git"
+  },
   "description": "NEMIS Desktop client — offline-first Electron shell for the NEMIS platform",
   "private": true,
   "main": ".vite/build/main.js",
