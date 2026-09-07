@@ -84,7 +84,7 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
             <StatCard label="Total Students" value={totalStudents} icon={Users} />
             <StatCard label="Total Teachers" value={totalTeachers} icon={UserCog2} />
-            <StatCard label="Total Enrollment" value={totalEnrollment} icon={ClipboardClock} />
+            <StatCard label="Recent Enrollment" value={totalEnrollment} icon={ClipboardClock} />
             <StatCard label="Total Classes" value={totalClasses} icon={Layers3} />
             <StatCard label="Male Students" value={maleStudents} icon={Users} valueClassName="text-secondary" />
             <StatCard label="Female Students" value={femaleStudents} icon={Users} valueClassName="text-pending" />

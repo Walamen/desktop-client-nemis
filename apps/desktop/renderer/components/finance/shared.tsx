@@ -36,7 +36,7 @@ export function parseLevels(value: SchoolAdminRecord[string] | undefined): strin
 }
 
 export function stringifyLevels(levels: readonly string[]): string {
-  return levels.join(',');
+    return JSON.stringify(levels);
 }
 
 export const PAYMENT_METHODS = [

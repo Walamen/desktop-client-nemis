@@ -389,6 +389,9 @@ export class SchoolAdminModuleService {
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     };
+    if (!existing && ['fee_rules', 'fee_obligations'].includes(request.collection)) {
+  record.createdBy = userId;
+}
     if (role === 'INSTITUTION_ADMIN' && config.scope === 'institution')
       record.institutionId = scopeId;
     if (role === 'INSTITUTION_ADMIN' && request.collection === 'reports') record.schoolId = scopeId;

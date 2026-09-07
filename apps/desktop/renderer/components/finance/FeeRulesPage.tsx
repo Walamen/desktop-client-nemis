@@ -122,7 +122,6 @@ export function FeeRulesPage() {
           applicableLevels: stringifyLevels(editForm.applicableLevels),
           isMandatory: true,
           isActive: true,
-          createdBy: String(editTarget.createdBy ?? ''),
         });
       } else {
         for (const form of batchForms) {
@@ -135,7 +134,6 @@ export function FeeRulesPage() {
             applicableLevels: stringifyLevels(form.applicableLevels),
             isMandatory: true,
             isActive: true,
-            createdBy: '',
           });
         }
       }
@@ -153,6 +151,7 @@ export function FeeRulesPage() {
 
   const activeRules = (rules ?? []).filter((r) => r.isActive);
   const inactiveRules = (rules ?? []).filter((r) => !r.isActive);
+
 
   return (
     <div className="min-h-screen bg-slate-100">

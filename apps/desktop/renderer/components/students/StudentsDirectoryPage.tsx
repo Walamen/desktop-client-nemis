@@ -111,7 +111,7 @@ function StatCards({ stats }: { stats: StudentStatisticsViewModel }) {
       </Card>
       <Card className="bg-white border border-slate-300">
         <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">
-          New This Quarter
+          New This Month
         </p>
         <StatValue
           status={state.status}
@@ -386,13 +386,14 @@ export function StudentsDirectoryPage() {
                                     event.target.checked,
                                   )
                                 }
+                                
                               />
                             </th>
                             <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-widest text-slate-500">
                               Student
                             </th>
                             <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-widest text-slate-500">
-                              Student number
+                              Admission #
                             </th>
                             <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-widest text-slate-500">
                               Grade
