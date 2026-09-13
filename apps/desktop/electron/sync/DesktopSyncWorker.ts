@@ -11,6 +11,7 @@ import type { ActiveWorkspace, WorkspaceManager } from '@app/workspace/Workspace
 import { ProvisioningImporter } from '@app/provisioning/ProvisioningImporter';
 import { AssignmentSyncService } from './AssignmentSyncService';
 import { logger } from '@app/services/logger';
+import { hasRealDisagreement, unwrapLocalPayload } from '@nemis-desktop/shared';
 
 const BACKOFF_SCHEDULE_MS = [30_000, 60_000, 300_000, 900_000] as const; // 30s, 1m, 5m, 15m
 const DEAD_LETTER_THRESHOLD = 5;
@@ -107,7 +108,28 @@ export class DesktopSyncWorker {
         workspace.database.transactions.runImmediate(() => {
           for (const result of pushed.results) {
             if (result.status !== 'conflict') continue;
-            const local = byId.get(result.operationId)?.payload;
+            const queued = byId.get(result.operationId);
+            const local = queued?.payload;
+            // The national server is the source of truth: a "conflict" that
+            // only exists because of clock skew (sync metadata or a
+            // server-assigned field the offline entry couldn't have known —
+            // typically a create that already reached the server, or an edit
+            // whose base predates it) has nothing for the admin to actually
+            // decide. Silently keep the server's version — the same outcome
+            // as choosing "accept remote" in the Sync Conflicts screen —
+            // instead of interrupting them with a conflict to review. A
+            // genuine disagreement (including every delete, where silently
+            // picking a side risks losing data either way) still gets
+            // recorded below for a human decision.
+            if (
+              queued?.operationType !== 'delete' &&
+              hasRealDisagreement(unwrapLocalPayload(local).edited, result.remotePayload) === false
+            ) {
+              logger.info(
+                `DesktopSyncWorker: auto-resolved a false-positive conflict for ${result.entityType}/${result.entityId} in favor of the server (${result.reason ?? 'no reason given'}).`,
+              );
+              continue;
+            }
             workspace.database.connection.prepare(`
             INSERT INTO sync_conflicts
                 (id,operationId,entityType,entityId,operationType,localPayload,remotePayload,reason,status,createdAt,resolvedAt)
@@ -117,7 +139,7 @@ export class DesktopSyncWorker {
               result.operationId,
               result.entityType,
               result.entityId,
-              byId.get(result.operationId)?.operationType ?? 'update',
+              queued?.operationType ?? 'update',
               local == null ? null : JSON.stringify(local),
               result.remotePayload == null ? null : JSON.stringify(result.remotePayload),
               result.reason ?? 'The server rejected this offline change.',

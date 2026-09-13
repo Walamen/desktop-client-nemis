@@ -1,7 +1,15 @@
 /** Pure presentation helpers for the sync-conflicts screen — turning raw
  * entity payloads (shape varies per entityType, hence `unknown`) into
  * something a person can actually read and compare. No business logic
- * lives here, only formatting of data the backend already produced. */
+ * lives here, only formatting of data the backend already produced. The
+ * underlying "what counts as a real disagreement" rules (isPlainObject,
+ * unwrapLocalPayload, valuesEqual, the ignored/metadata key sets) live in
+ * @nemis-desktop/shared instead of being redefined here, so this screen's
+ * diff and DesktopSyncWorker's own silent auto-resolution of false-positive
+ * conflicts can never quietly drift apart on the same question. */
+import { DIFF_IGNORED_KEYS, SYNC_METADATA_KEYS, isEmptyish, isPlainObject, unwrapLocalPayload, valuesEqual } from '@nemis-desktop/shared';
+
+export { isPlainObject, unwrapLocalPayload };
 
 /** - 'content': the two sides genuinely disagree on something a person set —
  *    the only bucket that actually needs a decision.
@@ -19,40 +27,6 @@ export interface DiffRow {
   local: string;
   remote: string;
   bucket: DiffBucket;
-}
-
-export function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-/** Every mutable-table row queued for offline sync is wrapped by the SQLite
- * outbox trigger (electron/database/migrations/010-create-sync-outbox.ts) as
- * `{ record: <new row> }` for creates, `{ base: <row before>, record: <row
- * after> }` for updates, and `{ base: <row before> }` for deletes — it is
- * never the bare entity row. `sync_conflicts.localPayload` and the
- * dead-letter queue's payload are both this same envelope, unlike
- * `remotePayload`, which the server always returns as a flat record.
- * `edited` is what the offline change actually produced — the thing to
- * compare against the server. `original` is the pre-edit snapshot, useful
- * only when there's no edited value to show (a delete has no `record`). */
-export function unwrapLocalPayload(payload: unknown): { edited: unknown; original: unknown } {
-  if (isPlainObject(payload) && ('record' in payload || 'base' in payload)) {
-    return { edited: payload['record'] ?? null, original: payload['base'] ?? null };
-  }
-  return { edited: payload, original: null };
-}
-
-// Pure sync plumbing — never meaningful for a person deciding between two
-// versions of the same record.
-const DIFF_IGNORED_KEYS = new Set(['id', 'deviceId']);
-
-// CLAUDE.md's own "every synchronized entity should contain metadata" list
-// (minus id/deviceId, already ignored above). Real, but never the thing a
-// person is being asked to arbitrate — folded into the details disclosure.
-const SYNC_METADATA_KEYS = new Set(['version', 'updatedAt', 'createdAt', 'lastModifiedBy']);
-
-function isEmptyish(value: unknown): boolean {
-  return value === null || value === undefined || value === '';
 }
 
 const NAME_KEYS = [
@@ -108,38 +82,6 @@ export function formatValue(value: unknown): string {
     }
   }
   return String(value);
-}
-
-function toComparableDate(value: unknown): number | null {
-  // Only coerce strings that already look date-shaped — Date.parse is too
-  // lenient otherwise (it happily "parses" plenty of non-date strings).
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}/.test(value)) return null;
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? null : parsed.getTime();
-}
-
-function toComparableBoolean(value: unknown): boolean | null {
-  if (typeof value === 'boolean') return value;
-  // SQLite has no boolean type — it stores 0/1. Only treat an actual 0 or 1
-  // as boolean-equivalent, never any other number.
-  if (value === 0 || value === 1) return Boolean(value);
-  return null;
-}
-
-/** True when two values represent the same real-world fact even though they
- * don't look identical — "" vs null, "2026-08-17" vs its ISO datetime form,
- * SQLite's `1` vs a real `true`. Avoids flagging formatting differences
- * between SQLite and Postgres as if they were actual disagreements. */
-export function valuesEqual(a: unknown, b: unknown): boolean {
-  if (isEmptyish(a) && isEmptyish(b)) return true;
-  if (JSON.stringify(a) === JSON.stringify(b)) return true;
-  const dateA = toComparableDate(a);
-  const dateB = toComparableDate(b);
-  if (dateA !== null && dateB !== null) return dateA === dateB;
-  const boolA = toComparableBoolean(a);
-  const boolB = toComparableBoolean(b);
-  if (boolA !== null && boolB !== null) return boolA === boolB;
-  return false;
 }
 
 /** Field-level comparison between the two preserved payloads, bucketed so

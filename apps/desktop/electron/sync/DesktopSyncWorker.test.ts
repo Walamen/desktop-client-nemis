@@ -171,6 +171,97 @@ describe('DesktopSyncWorker retry policy', () => {
     ).toBe(0);
   });
 
+  it('silently keeps the server version instead of surfacing a conflict when a rejected push has no real disagreement (clock-skew false positive)', async () => {
+    const item = await dataLayer.services.syncQueue.enqueue({
+      entityType: 'students',
+      entityId: 's1',
+      operationType: 'create',
+      payload: {
+        record: { id: 's1', firstName: 'Ada', lastName: 'Learner', admissionNumber: 'ADM-1' },
+      },
+    });
+    const gateway = {
+      pushChanges: vi.fn().mockResolvedValue({
+        processedAt: '2026-08-16T00:00:00.000Z',
+        results: [
+          {
+            operationId: item.id,
+            entityType: 'students',
+            entityId: 's1',
+            status: 'conflict',
+            reason: 'A server record already exists with this identifier.',
+            remotePayload: {
+              id: 's1',
+              firstName: 'Ada',
+              lastName: 'Learner',
+              admissionNumber: 'ADM-1',
+              createdAt: '2026-08-16T00:00:00.000Z',
+              updatedAt: '2026-08-16T00:00:00.000Z',
+              version: 1,
+            },
+          },
+        ],
+      }),
+      downloadSnapshot: vi.fn().mockResolvedValue(emptySnapshot()),
+    } as unknown as BackendProvisioningGateway;
+    const worker = new DesktopSyncWorker(workspaces, gateway, alwaysOnline());
+
+    await worker.syncActive();
+
+    expect(
+      (manager.connection.prepare(`SELECT COUNT(*) count FROM sync_conflicts`).get() as { count: number }).count,
+    ).toBe(0);
+    // The item was accepted as fully synced (no conflict raised), so the
+    // subsequent pull's "sweep completed rows out of the queue" step removes
+    // it entirely, same as any other successfully-pushed item — see
+    // "syncActive itself recovers a stranded in_flight row..." above.
+    expect(
+      manager.connection.prepare(`SELECT status FROM sync_queue WHERE id=?`).get(item.id),
+    ).toBeUndefined();
+  });
+
+  it('still surfaces a conflict for the admin to decide when the offline entry and the server genuinely disagree', async () => {
+    const item = await dataLayer.services.syncQueue.enqueue({
+      entityType: 'students',
+      entityId: 's1',
+      operationType: 'update',
+      payload: {
+        base: { id: 's1', firstName: 'Ada', lastName: 'Learner' },
+        record: { id: 's1', firstName: 'Adaeze', lastName: 'Learner' },
+      },
+    });
+    const gateway = {
+      pushChanges: vi.fn().mockResolvedValue({
+        processedAt: '2026-08-16T00:00:00.000Z',
+        results: [
+          {
+            operationId: item.id,
+            entityType: 'students',
+            entityId: 's1',
+            status: 'conflict',
+            reason: 'The server record changed after the offline edit began.',
+            remotePayload: { id: 's1', firstName: 'Chinwe', lastName: 'Learner' },
+          },
+        ],
+      }),
+      downloadSnapshot: vi.fn().mockResolvedValue(emptySnapshot()),
+    } as unknown as BackendProvisioningGateway;
+    const worker = new DesktopSyncWorker(workspaces, gateway, alwaysOnline());
+
+    await worker.syncActive();
+
+    // Queried by entityId/entityType rather than operationId: the subsequent
+    // pull's "sweep completed rows out of the queue" step deletes the
+    // now-done sync_queue row, which nulls sync_conflicts.operationId via its
+    // ON DELETE SET NULL foreign key (same as sync_errors.operationId does)
+    // — the conflict itself is preserved, only its link to that finished
+    // queue row is gone.
+    const conflictRow = manager.connection
+      .prepare(`SELECT reason FROM sync_conflicts WHERE entityType=? AND entityId=?`)
+      .get('students', 's1') as { reason: string } | undefined;
+    expect(conflictRow?.reason).toBe('The server record changed after the offline edit began.');
+  });
+
   it('canonicalizes a redirected guardian id locally, cascading the link and any still-queued payload', async () => {
     manager.connection.prepare(`UPDATE sync_runtime SET captureEnabled=0 WHERE id='singleton'`).run();
     manager.connection.prepare(`
