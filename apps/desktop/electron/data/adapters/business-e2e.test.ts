@@ -140,7 +140,7 @@ describe('business application layer end-to-end against real SQLite', () => {
     expect(year.data.isCurrent).toBe(true);
 
     const term = await app.academics.createTerm({
-      academicYearId: year.data.id, name: 'Term 1', startDate: '2025-09-01', endDate: '2025-12-19',
+      academicYearId: year.data.id, name: 'Term 1', sequence: 1, startDate: '2025-09-01', endDate: '2025-12-19',
       makeCurrent: true,
     });
     expect(term.data.isCurrent).toBe(true);

@@ -51,6 +51,23 @@ describe('createIpcApplicationLayer', () => {
     await expect(app.reporting.getDashboardOverview()).rejects.toBeInstanceOf(DatabaseUnavailableError);
   });
 
+  it('academics.createTerm/updateTerm forward the sequence field to the bridge', async () => {
+    const createTerm = vi.fn(async () => ({ id: 't-1' }));
+    const updateTerm = vi.fn(async () => ({ id: 't-1' }));
+    (window as unknown as { nemis: unknown }).nemis = fakeNemis({
+      term: { create: createTerm, update: updateTerm },
+    });
+    const app = createIpcApplicationLayer();
+
+    await app.academics.createTerm({
+      academicYearId: 'ay-1', name: 'Term 1', sequence: 1, startDate: '2025-09-01', endDate: '2025-12-19',
+    });
+    expect(createTerm).toHaveBeenCalledWith(expect.objectContaining({ sequence: 1 }));
+
+    await app.academics.updateTerm({ id: 't-1', sequence: 2 });
+    expect(updateTerm).toHaveBeenCalledWith(expect.objectContaining({ sequence: 2 }));
+  });
+
   it('an unwired method throws NotImplementedPresentationError', async () => {
     const app = createIpcApplicationLayer();
     await expect(

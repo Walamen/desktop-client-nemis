@@ -138,6 +138,12 @@ function assertOptionalInt(value: unknown, field: string, min: number, max: numb
   }
 }
 
+function assertInt(value: unknown, field: string, min: number, max: number): void {
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < min || value > max) {
+    throw new IPCError(`Expected "${field}" to be an integer between ${min} and ${max}.`);
+  }
+}
+
 /** Exactly one bounded, non-empty string argument: a domain entity id. */
 export function assertSingleIdArg(args: readonly unknown[]): void {
   assertArity(args, 1);
@@ -665,9 +671,10 @@ export function assertCreateTermArgs(args: readonly unknown[]): void {
   assertArity(args, 1);
   const [request] = args;
   if (!isPlainObject(request)) throw new IPCError('Expected a request object.');
-  assertKnownKeys(request, ['academicYearId', 'name', 'startDate', 'endDate', 'makeCurrent']);
+  assertKnownKeys(request, ['academicYearId', 'name', 'sequence', 'startDate', 'endDate', 'makeCurrent']);
   assertString(request.academicYearId, 'academicYearId', ID_MAX_LENGTH);
   assertString(request.name, 'name', NAME_MAX_LENGTH);
+  assertInt(request.sequence, 'sequence', 1, 20);
   assertIsoDate(request.startDate, 'startDate');
   assertIsoDate(request.endDate, 'endDate');
   assertOptionalBoolean(request.makeCurrent, 'makeCurrent');
@@ -677,9 +684,10 @@ export function assertUpdateTermArgs(args: readonly unknown[]): void {
   assertArity(args, 1);
   const [request] = args;
   if (!isPlainObject(request)) throw new IPCError('Expected a request object.');
-  assertKnownKeys(request, ['id', 'name', 'startDate', 'endDate']);
+  assertKnownKeys(request, ['id', 'name', 'sequence', 'startDate', 'endDate']);
   assertString(request.id, 'id', ID_MAX_LENGTH);
   assertOptionalString(request.name, 'name', NAME_MAX_LENGTH);
+  assertOptionalInt(request.sequence, 'sequence', 1, 20);
   assertOptionalIsoDate(request.startDate, 'startDate');
   assertOptionalIsoDate(request.endDate, 'endDate');
 }

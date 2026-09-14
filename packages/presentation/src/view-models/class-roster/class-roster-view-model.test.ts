@@ -27,6 +27,7 @@ async function build() {
       id: 'term-1',
       academicYearId: 'ay-1',
       name: 'Term 1',
+      sequence: 1,
       start: '2025-09-01',
       end: '2025-12-19',
       isCurrent: true,

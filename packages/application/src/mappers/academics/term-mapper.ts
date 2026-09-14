@@ -6,6 +6,7 @@ export function toTermOutput(term: Term): TermOutput {
     id: term.id,
     academicYearId: term.academicYearId,
     name: term.name,
+    sequence: term.sequence,
     startDate: term.period.start,
     endDate: term.period.end,
     isCurrent: term.isCurrent,

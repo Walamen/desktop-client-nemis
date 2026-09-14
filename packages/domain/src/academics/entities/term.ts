@@ -6,6 +6,9 @@ export interface CreateTermInput {
   id: string;
   academicYearId: string;
   name: string;
+  /** Explicit position within the academic year (1, 2, 3...) — the source
+   * of truth for display order everywhere, independent of name or dates. */
+  sequence: number;
   start: string;
   end: string;
   isCurrent?: boolean;
@@ -16,6 +19,7 @@ export interface ReconstituteTermInput {
   id: string;
   academicYearId: string;
   name: string;
+  sequence: number;
   start: string;
   end: string;
   isCurrent: boolean;
@@ -27,17 +31,19 @@ export interface ReconstituteTermInput {
 export class Term extends AggregateRoot<string> {
   #academicYearId: string;
   #name: string;
+  #sequence: number;
   #period: DateRange;
   #isCurrent: boolean;
 
   private constructor(
     id: string,
-    fields: { academicYearId: string; name: string; period: DateRange; isCurrent: boolean },
+    fields: { academicYearId: string; name: string; sequence: number; period: DateRange; isCurrent: boolean },
     metadata: { version: number; updatedAt: string; lastModifiedBy?: string },
   ) {
     super(id, metadata);
     this.#academicYearId = fields.academicYearId;
     this.#name = fields.name;
+    this.#sequence = fields.sequence;
     this.#period = fields.period;
     this.#isCurrent = fields.isCurrent;
   }
@@ -48,6 +54,7 @@ export class Term extends AggregateRoot<string> {
       {
         academicYearId: input.academicYearId,
         name: guard.againstEmpty(input.name, 'name'),
+        sequence: input.sequence,
         period: DateRange.create({ start: input.start, end: input.end }),
         isCurrent: input.isCurrent ?? false,
       },
@@ -70,6 +77,7 @@ export class Term extends AggregateRoot<string> {
       {
         academicYearId: input.academicYearId,
         name: guard.againstEmpty(input.name, 'name'),
+        sequence: input.sequence,
         period: DateRange.create({ start: input.start, end: input.end }),
         isCurrent: input.isCurrent,
       },
@@ -83,6 +91,9 @@ export class Term extends AggregateRoot<string> {
   get name(): string {
     return this.#name;
   }
+  get sequence(): number {
+    return this.#sequence;
+  }
   get period(): DateRange {
     return this.#period;
   }
@@ -94,6 +105,12 @@ export class Term extends AggregateRoot<string> {
     const next = guard.againstEmpty(name, 'name');
     if (next === this.#name) return;
     this.#name = next;
+    this.touch(by, at);
+  }
+
+  resequence(sequence: number, by: string | undefined, at: string): void {
+    if (sequence === this.#sequence) return;
+    this.#sequence = sequence;
     this.touch(by, at);
   }
 

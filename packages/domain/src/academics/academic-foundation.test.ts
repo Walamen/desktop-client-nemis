@@ -90,11 +90,12 @@ describe('AcademicYear lifecycle', () => {
 });
 
 describe('Term lifecycle', () => {
-  it('create() emits TermCreated', () => {
+  it('create() emits TermCreated and carries the explicit sequence tag', () => {
     const term = Term.create({
       id: 't-1',
       academicYearId: 'ay-1',
       name: 'Term 1',
+      sequence: 1,
       start: '2025-09-01',
       end: '2025-12-19',
       occurredAt: ISO,
@@ -102,6 +103,7 @@ describe('Term lifecycle', () => {
     expect(term.pullDomainEvents()[0]?.name).toBe('TermCreated');
     expect(term.isCurrent).toBe(false);
     expect(term.version).toBe(1);
+    expect(term.sequence).toBe(1);
   });
 
   it('rename/reschedule/makeCurrent/clearCurrent bump version and are idempotent', () => {
@@ -109,6 +111,7 @@ describe('Term lifecycle', () => {
       id: 't-1',
       academicYearId: 'ay-1',
       name: 'Term 1',
+      sequence: 1,
       start: '2025-09-01',
       end: '2025-12-19',
       isCurrent: false,
@@ -128,6 +131,26 @@ describe('Term lifecycle', () => {
     term.clearCurrent('admin', ISO);
     expect(term.isCurrent).toBe(false);
     expect(term.version).toBe(4);
+  });
+
+  it('resequence() changes the position and bumps version; is idempotent when unchanged', () => {
+    const term = Term.reconstitute({
+      id: 't-1',
+      academicYearId: 'ay-1',
+      name: 'Term 1',
+      sequence: 1,
+      start: '2025-09-01',
+      end: '2025-12-19',
+      isCurrent: false,
+      version: 1,
+      updatedAt: ISO,
+    });
+    term.resequence(2, 'admin', ISO);
+    expect(term.sequence).toBe(2);
+    expect(term.version).toBe(2);
+
+    term.resequence(2, 'admin', ISO); // idempotent
+    expect(term.version).toBe(2);
   });
 });
 
