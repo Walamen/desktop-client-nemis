@@ -35,6 +35,9 @@ export interface TermResult {
   id: string;
   academicYearId: string;
   name: string;
+  // Explicit position within the academic year (1, 2, 3...) — the source
+  // of truth for display order, independent of name or dates.
+  sequence: number;
   startDate: string;
   endDate: string;
   isCurrent: boolean;
@@ -43,6 +46,7 @@ export interface TermResult {
 export interface CreateTermRequest {
   academicYearId: string;
   name: string;
+  sequence: number;
   startDate: string;
   endDate: string;
   makeCurrent?: boolean;
@@ -51,6 +55,7 @@ export interface CreateTermRequest {
 export interface UpdateTermRequest {
   id: string;
   name?: string;
+  sequence?: number;
   startDate?: string;
   endDate?: string;
 }

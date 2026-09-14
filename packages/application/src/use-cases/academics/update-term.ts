@@ -38,9 +38,17 @@ export class UpdateTermUseCase implements CommandHandler<
           );
         }
       }
+      if (command.sequence !== undefined && command.sequence !== term.sequence) {
+        if (this.deps.terms.existsBySequence(term.academicYearId, command.sequence, term.id)) {
+          throw new WorkflowException(
+            `A term already occupies position ${command.sequence} in this academic year.`,
+          );
+        }
+      }
 
       const at = this.deps.clock.now();
       if (command.name !== undefined) term.rename(command.name, command.actorId, at);
+      if (command.sequence !== undefined) term.resequence(command.sequence, command.actorId, at);
       if (command.startDate !== undefined || command.endDate !== undefined) {
         const start = command.startDate ?? term.period.start;
         const end = command.endDate ?? term.period.end;

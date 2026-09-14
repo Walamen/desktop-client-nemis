@@ -20,6 +20,7 @@ import { addAttendanceRemarksAndUpdateReason } from './018-add-attendance-remark
 import { dropDeadAssignmentOutboxTriggers } from './019-drop-dead-assignment-outbox-triggers';
 import { addAssignmentSyncTracking } from './020-add-assignment-sync-tracking';
 import { createDistrictsTable } from './021-create-districts-table';
+import { addTermSequence } from './022-add-term-sequence';
 
 /**
  * Every migration, ascending by version. Append only — never edit or reorder
@@ -47,4 +48,5 @@ export const migrations: readonly Migration[] = [
   dropDeadAssignmentOutboxTriggers,
   addAssignmentSyncTracking,
   createDistrictsTable,
+  addTermSequence,
 ];

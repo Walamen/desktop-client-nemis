@@ -207,26 +207,39 @@ describe('Term use cases', () => {
   it('CreateTerm rejects dates outside the academic year and duplicate names', async () => {
     const useCase = new CreateTermUseCase(deps());
     await expect(
-      useCase.execute({ academicYearId: yearId, name: 'Term 1', startDate: '2025-08-01', endDate: '2025-12-19' }),
+      useCase.execute({ academicYearId: yearId, name: 'Term 1', sequence: 1, startDate: '2025-08-01', endDate: '2025-12-19' }),
     ).rejects.toThrow(WorkflowException);
 
     const term = await useCase.execute({
-      academicYearId: yearId, name: 'Term 1', startDate: '2025-09-01', endDate: '2025-12-19',
+      academicYearId: yearId, name: 'Term 1', sequence: 1, startDate: '2025-09-01', endDate: '2025-12-19',
     });
     expect(term.data.name).toBe('Term 1');
 
     await expect(
-      useCase.execute({ academicYearId: yearId, name: 'Term 1', startDate: '2026-01-05', endDate: '2026-04-01' }),
+      useCase.execute({ academicYearId: yearId, name: 'Term 1', sequence: 2, startDate: '2026-01-05', endDate: '2026-04-01' }),
+    ).rejects.toThrow(WorkflowException);
+  });
+
+  it('CreateTerm rejects a sequence already used by another term in the same year', async () => {
+    const useCase = new CreateTermUseCase(deps());
+    await useCase.execute({
+      academicYearId: yearId, name: 'Term 1', sequence: 1, startDate: '2025-09-01', endDate: '2025-12-19',
+    });
+
+    await expect(
+      useCase.execute({
+        academicYearId: yearId, name: 'Term Two', sequence: 1, startDate: '2026-01-05', endDate: '2026-04-01',
+      }),
     ).rejects.toThrow(WorkflowException);
   });
 
   it('CreateTerm with makeCurrent clears other current terms in the same year', async () => {
     const useCase = new CreateTermUseCase(deps());
     const t1 = await useCase.execute({
-      academicYearId: yearId, name: 'Term 1', startDate: '2025-09-01', endDate: '2025-12-19', makeCurrent: true,
+      academicYearId: yearId, name: 'Term 1', sequence: 1, startDate: '2025-09-01', endDate: '2025-12-19', makeCurrent: true,
     });
     const t2 = await useCase.execute({
-      academicYearId: yearId, name: 'Term 2', startDate: '2026-01-05', endDate: '2026-04-01', makeCurrent: true,
+      academicYearId: yearId, name: 'Term 2', sequence: 2, startDate: '2026-01-05', endDate: '2026-04-01', makeCurrent: true,
     });
     expect(t2.data.isCurrent).toBe(true);
     expect(ctx.terms.findById(t1.data.id)?.isCurrent).toBe(false);
@@ -235,7 +248,7 @@ describe('Term use cases', () => {
   it('ListTerms / GetCurrentTerm / UpdateTerm / SetCurrentTerm / DeleteTerm', async () => {
     const create = new CreateTermUseCase(deps());
     const term = await create.execute({
-      academicYearId: yearId, name: 'Term 1', startDate: '2025-09-01', endDate: '2025-12-19',
+      academicYearId: yearId, name: 'Term 1', sequence: 1, startDate: '2025-09-01', endDate: '2025-12-19',
     });
 
     const list = new ListTermsUseCase({ terms: ctx.terms, logger });
@@ -258,6 +271,24 @@ describe('Term use cases', () => {
     const del = new DeleteTermUseCase({ terms: ctx.terms, unitOfWork: ctx.unitOfWork, logger });
     await del.execute({ id: term.data.id });
     expect(ctx.terms.findById(term.data.id)).toBeNull();
+  });
+
+  it('UpdateTerm rejects resequencing onto a position another term already holds', async () => {
+    const create = new CreateTermUseCase(deps());
+    const t1 = await create.execute({
+      academicYearId: yearId, name: 'Term 1', sequence: 1, startDate: '2025-09-01', endDate: '2025-12-19',
+    });
+    const t2 = await create.execute({
+      academicYearId: yearId, name: 'Term 2', sequence: 2, startDate: '2026-01-05', endDate: '2026-04-01',
+    });
+
+    const update = new UpdateTermUseCase({
+      terms: ctx.terms, academicYears: ctx.academicYears, unitOfWork: ctx.unitOfWork, clock, logger,
+    });
+    await expect(update.execute({ id: t2.data.id, sequence: 1 })).rejects.toThrow(WorkflowException);
+
+    const resequenced = await update.execute({ id: t1.data.id, sequence: 5 });
+    expect(resequenced.data.sequence).toBe(5);
   });
 });
 

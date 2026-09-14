@@ -78,7 +78,12 @@ export function GradingPeriodsDrawer({ isOpen, onClose }: { isOpen: boolean; onC
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (!selectedTermId || year.status !== 'success' && year.status !== 'refreshing') return;
-    const nextSequence = editing ? Number(editing.sequence) : periods.length + 1;
+    // Uses the highest sequence in use (not periods.length), so a period
+    // deleted out of order can't hand out a sequence/code that collides
+    // with one still in use.
+    const nextSequence = editing
+      ? Number(editing.sequence)
+      : Math.max(0, ...periods.map((p) => Number(p.sequence))) + 1;
     await sharedBridge.saveSchoolAdminRecord({
       collection: 'grading_periods',
       record: {
@@ -120,6 +125,9 @@ export function GradingPeriodsDrawer({ isOpen, onClose }: { isOpen: boolean; onC
       const count = Math.max(1, Number(config.periodsPerTerm ?? 1));
       const span = Math.max(1, Math.floor((end - start) / count));
       const dayMs = 24 * 60 * 60 * 1000;
+      // Same collision fix as manual create: base off the highest sequence
+      // in use, not periods.length.
+      const base = Math.max(0, ...periods.map((p) => Number(p.sequence)));
       for (let i = 0; i < count; i += 1) {
         const periodStart = new Date(start + i * span);
         const periodEnd = new Date(i === count - 1 ? end : start + (i + 1) * span - dayMs);
@@ -129,9 +137,9 @@ export function GradingPeriodsDrawer({ isOpen, onClose }: { isOpen: boolean; onC
             academicYearId: year.data.id,
             termId: selectedTermId,
             name: `Period ${i + 1}`,
-            code: `P${periods.length + i + 1}`,
+            code: `P${base + i + 1}`,
             periodType: 'REGULAR_PERIOD',
-            sequence: periods.length + i + 1,
+            sequence: base + i + 1,
             maxMarks: config.maxMarks ?? 100,
             passingMarks: config.passingMarks ?? 50,
             weight: Math.round(100 / count),

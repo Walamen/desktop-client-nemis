@@ -33,7 +33,7 @@ export class CreateTermUseCase implements CommandHandler<
 
   execute(command: CreateTermDto): Promise<ApplicationResponse<TermOutput>> {
     return invokeUseCase('CreateTerm', this.deps.logger, async () => {
-      requireFields(command, ['academicYearId', 'name', 'startDate', 'endDate']);
+      requireFields(command, ['academicYearId', 'name', 'sequence', 'startDate', 'endDate']);
 
       const year = this.deps.academicYears.findById(command.academicYearId);
       if (!year) {
@@ -50,12 +50,18 @@ export class CreateTermUseCase implements CommandHandler<
           `A term named "${command.name}" already exists in this academic year.`,
         );
       }
+      if (this.deps.terms.existsBySequence(command.academicYearId, command.sequence)) {
+        throw new WorkflowException(
+          `A term already occupies position ${command.sequence} in this academic year.`,
+        );
+      }
 
       const occurredAt = this.deps.clock.now();
       const term = Term.create({
         id: this.deps.ids.next(),
         academicYearId: command.academicYearId,
         name: command.name,
+        sequence: command.sequence,
         start: command.startDate,
         end: command.endDate,
         isCurrent: command.makeCurrent ?? false,

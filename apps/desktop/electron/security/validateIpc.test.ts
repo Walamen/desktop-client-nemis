@@ -113,17 +113,31 @@ describe('assertSetAcademicYearStatusArgs', () => {
 });
 
 describe('assertCreateTermArgs / assertUpdateTermArgs', () => {
-  it('CreateTerm requires academicYearId/name/startDate/endDate', () => {
+  it('CreateTerm requires academicYearId/name/sequence/startDate/endDate', () => {
+    expect(() =>
+      assertCreateTermArgs([
+        { academicYearId: 'ay-1', name: 'Term 1', sequence: 1, startDate: '2025-09-01', endDate: '2025-12-19' },
+      ]),
+    ).not.toThrow();
     expect(() =>
       assertCreateTermArgs([
         { academicYearId: 'ay-1', name: 'Term 1', startDate: '2025-09-01', endDate: '2025-12-19' },
       ]),
-    ).not.toThrow();
+    ).toThrow();
     expect(() => assertCreateTermArgs([{ academicYearId: 'ay-1', name: 'Term 1' }])).toThrow();
+  });
+
+  it('CreateTerm rejects a non-integer or out-of-range sequence', () => {
+    const base = { academicYearId: 'ay-1', name: 'Term 1', startDate: '2025-09-01', endDate: '2025-12-19' };
+    expect(() => assertCreateTermArgs([{ ...base, sequence: 1.5 }])).toThrow();
+    expect(() => assertCreateTermArgs([{ ...base, sequence: 0 }])).toThrow();
+    expect(() => assertCreateTermArgs([{ ...base, sequence: '1' }])).toThrow();
   });
 
   it('UpdateTerm allows partial fields but requires id', () => {
     expect(() => assertUpdateTermArgs([{ id: 't-1', name: 'Term One' }])).not.toThrow();
+    expect(() => assertUpdateTermArgs([{ id: 't-1', sequence: 2 }])).not.toThrow();
+    expect(() => assertUpdateTermArgs([{ id: 't-1', sequence: 0 }])).toThrow();
     expect(() => assertUpdateTermArgs([{ name: 'Term One' }])).toThrow();
   });
 });

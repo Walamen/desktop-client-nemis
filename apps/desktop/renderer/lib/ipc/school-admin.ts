@@ -54,6 +54,7 @@ export const schoolAdminIpc = {
         schoolAdminBridge.createTerm({
           academicYearId: dto.academicYearId,
           name: dto.name,
+          sequence: dto.sequence,
           startDate: dto.startDate,
           endDate: dto.endDate,
           makeCurrent: dto.makeCurrent,
@@ -64,6 +65,7 @@ export const schoolAdminIpc = {
         schoolAdminBridge.updateTerm({
           id: dto.id,
           name: dto.name,
+          sequence: dto.sequence,
           startDate: dto.startDate,
           endDate: dto.endDate,
         }),

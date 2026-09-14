@@ -9,6 +9,7 @@ interface TermRow {
   id: string;
   academicYearId: string;
   name: string;
+  sequence: number;
   startDate: string;
   endDate: string;
   isCurrent: number;
@@ -22,6 +23,7 @@ function toTerm(row: TermRow): Term {
     id: row.id,
     academicYearId: row.academicYearId,
     name: row.name,
+    sequence: row.sequence,
     start: row.startDate,
     end: row.endDate,
     isCurrent: row.isCurrent === 1,
@@ -32,7 +34,7 @@ function toTerm(row: TermRow): Term {
 }
 
 const COLUMNS =
-  'id, academicYearId, name, startDate, endDate, isCurrent, version, updatedAt, lastModifiedBy';
+  'id, academicYearId, name, sequence, startDate, endDate, isCurrent, version, updatedAt, lastModifiedBy';
 
 /** SQLite adapter for ITermRepository. */
 export class SqliteTermRepository implements ITermRepository {
@@ -55,7 +57,7 @@ export class SqliteTermRepository implements ITermRepository {
     return guarded('SqliteTermRepository.findByYear', () => {
       const rows = this.#statements
         .get(
-          `SELECT ${COLUMNS} FROM ${TableNames.terms} WHERE academicYearId = ? ORDER BY startDate ASC`,
+          `SELECT ${COLUMNS} FROM ${TableNames.terms} WHERE academicYearId = ? ORDER BY sequence ASC`,
         )
         .all(academicYearId) as TermRow[];
       return rows.map(toTerm);
@@ -90,6 +92,18 @@ export class SqliteTermRepository implements ITermRepository {
     });
   }
 
+  existsBySequence(academicYearId: string, sequence: number, excludeId?: string): boolean {
+    return guarded('SqliteTermRepository.existsBySequence', () => {
+      const row = this.#statements
+        .get(
+          `SELECT id FROM ${TableNames.terms}
+           WHERE academicYearId = ? AND sequence = ? AND id != ? LIMIT 1`,
+        )
+        .get(academicYearId, sequence, excludeId ?? '');
+      return row !== undefined;
+    });
+  }
+
   findCurrentOthers(academicYearId: string, excludeId: string): Term[] {
     return guarded('SqliteTermRepository.findCurrentOthers', () => {
       const rows = this.#statements
@@ -107,11 +121,12 @@ export class SqliteTermRepository implements ITermRepository {
       this.#statements
         .get(
           `INSERT INTO ${TableNames.terms}
-           (id, academicYearId, name, startDate, endDate, isCurrent, version, updatedAt, lastModifiedBy, deviceId)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
+           (id, academicYearId, name, sequence, startDate, endDate, isCurrent, version, updatedAt, lastModifiedBy, deviceId)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
            ON CONFLICT(id) DO UPDATE SET
              academicYearId = excluded.academicYearId,
              name = excluded.name,
+             sequence = excluded.sequence,
              startDate = excluded.startDate,
              endDate = excluded.endDate,
              isCurrent = excluded.isCurrent,
@@ -123,6 +138,7 @@ export class SqliteTermRepository implements ITermRepository {
           term.id,
           term.academicYearId,
           term.name,
+          term.sequence,
           term.period.start,
           term.period.end,
           term.isCurrent ? 1 : 0,

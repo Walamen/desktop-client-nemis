@@ -11,7 +11,7 @@ export class InMemoryTermRepository implements ITermRepository {
   findByYear(academicYearId: string): Term[] {
     return [...this.store.values()]
       .filter((t) => t.academicYearId === academicYearId)
-      .sort((a, b) => a.period.start.localeCompare(b.period.start));
+      .sort((a, b) => a.sequence - b.sequence);
   }
 
   findCurrent(): Term | null {
@@ -24,6 +24,12 @@ export class InMemoryTermRepository implements ITermRepository {
   existsByName(academicYearId: string, name: string, excludeId?: string): boolean {
     return [...this.store.values()].some(
       (t) => t.academicYearId === academicYearId && t.name === name && t.id !== excludeId,
+    );
+  }
+
+  existsBySequence(academicYearId: string, sequence: number, excludeId?: string): boolean {
+    return [...this.store.values()].some(
+      (t) => t.academicYearId === academicYearId && t.sequence === sequence && t.id !== excludeId,
     );
   }
 
