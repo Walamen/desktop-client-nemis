@@ -66,7 +66,9 @@ describe('Teacher attendance page', () => {
     // "No subjects assigned" is the empty state shown when the assignments
     // load fails/comes back empty — its absence means the class this mock
     // returns (Grade 10A / Mathematics) actually made it into myClasses.
-    expect(await screen.findByText('Mathematics')).toBeInTheDocument();
+    // The subject name renders twice by design (sidebar entry + toolbar
+    // heading), matching portal-web's layout — hence findAllByText.
+    expect(await screen.findAllByText('Mathematics')).not.toHaveLength(0);
     expect(screen.queryByText('No subjects assigned')).toBeNull();
   });
 });
