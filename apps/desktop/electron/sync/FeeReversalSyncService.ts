@@ -80,6 +80,15 @@ export class FeeReversalSyncService {
   }
 
   #recordConflict(db: SqliteDatabase, row: ReversalRow, error: unknown): void {
+    // The 404 branch is always an Error thrown by the gateway (a transport
+    // string like "Provisioning request failed with status 404."), so the
+    // explanatory sentence here — the one the Sync Conflicts screen actually
+    // shows an operator — must never be replaced by that transport text.
+    // The error's message is kept only as trailing detail.
+    const reason =
+      error instanceof Error
+        ? `The server does not have the payment this reversal belongs to. (${error.message})`
+        : 'The server does not have the payment this reversal belongs to.';
     db.prepare(
       `INSERT INTO sync_conflicts
          (id,operationId,entityType,entityId,operationType,localPayload,remotePayload,reason,status,createdAt,resolvedAt)
@@ -88,9 +97,7 @@ export class FeeReversalSyncService {
       randomUUID(),
       row.paymentId,
       JSON.stringify({ reason: row.reason, notes: row.notes }),
-      error instanceof Error
-        ? error.message
-        : 'The server does not have the payment this reversal belongs to.',
+      reason,
       new Date().toISOString(),
     );
   }

@@ -693,6 +693,62 @@ describe('DesktopSyncWorker retry policy', () => {
     expect(row.deadLetter).toBe(0);
   });
 
+  it('resolveConflict with resolution "keep_local" still re-queues a conflict from a queue-backed table', () => {
+    // Regression guard for the fee-reversal fix below: an ordinary conflict
+    // that originated from the generic outbox (here 'students', which has
+    // outbox triggers) must keep working exactly as before.
+    const now = '2026-01-01T00:00:00.000Z';
+    manager.connection.prepare(`
+      INSERT INTO sync_conflicts
+        (id,operationId,entityType,entityId,operationType,localPayload,remotePayload,reason,status,createdAt,resolvedAt)
+      VALUES ('conflict-1',NULL,'students','s1','update','{"firstName":"Ada"}',NULL,'stale write','unresolved',?,NULL)
+    `).run(now);
+
+    const worker = new DesktopSyncWorker(workspaces, {} as BackendProvisioningGateway, alwaysOnline());
+    const result = worker.resolveConflict({ conflictId: 'conflict-1', resolution: 'keep_local' });
+
+    expect(result.status).toBe('keep_local');
+    const queued = manager.connection
+      .prepare(`SELECT entityType, entityId, operationType, payload, status FROM sync_queue WHERE entityType='students' AND entityId='s1'`)
+      .get() as { entityType: string; entityId: string; operationType: string; payload: string; status: string };
+    expect(queued).toEqual({
+      entityType: 'students',
+      entityId: 's1',
+      operationType: 'update',
+      payload: '{"firstName":"Ada"}',
+      status: 'pending',
+    });
+  });
+
+  it('resolveConflict with resolution "keep_local" rejects a conflict from a bespoke push path instead of queuing junk work', () => {
+    // FeeReversalSyncService writes sync_conflicts rows for fee_payment_reversals
+    // (entityId = the payment's id, not the reversal's, and no outbox triggers
+    // exist for that table). Re-queuing that verbatim into sync_queue would
+    // produce an item that can never apply and just dead-letters after
+    // burning its retries — see #recordConflict's doc comment.
+    const now = '2026-01-01T00:00:00.000Z';
+    manager.connection.prepare(`
+      INSERT INTO sync_conflicts
+        (id,operationId,entityType,entityId,operationType,localPayload,remotePayload,reason,status,createdAt,resolvedAt)
+      VALUES ('conflict-2',NULL,'fee_payment_reversals','pay-1','create','{"reason":"wrong amount","notes":null}',NULL,'The server does not have the payment this reversal belongs to. (Provisioning request failed with status 404.)','unresolved',?,NULL)
+    `).run(now);
+
+    const worker = new DesktopSyncWorker(workspaces, {} as BackendProvisioningGateway, alwaysOnline());
+
+    expect(() => worker.resolveConflict({ conflictId: 'conflict-2', resolution: 'keep_local' })).toThrow(
+      /does not sync through the generic queue/i,
+    );
+
+    const queued = manager.connection
+      .prepare(`SELECT COUNT(*) count FROM sync_queue WHERE entityType='fee_payment_reversals'`)
+      .get() as { count: number };
+    expect(queued.count).toBe(0);
+    const conflict = manager.connection
+      .prepare(`SELECT status FROM sync_conflicts WHERE id='conflict-2'`)
+      .get() as { status: string };
+    expect(conflict.status).toBe('unresolved');
+  });
+
   it('a delta pull merges the snapshot instead of wiping local rows it omits', async () => {
     // Seed local rows that a delta snapshot legitimately does not mention.
     // Capture has to be off first: the sync triggers would otherwise enqueue

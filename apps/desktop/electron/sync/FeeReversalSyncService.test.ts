@@ -100,6 +100,19 @@ describe('FeeReversalSyncService', () => {
     ]);
   });
 
+  it('records a human-readable conflict reason, not the bare transport error message', async () => {
+    seedReversal(connection);
+    const reverseFeePayment = vi
+      .fn()
+      .mockRejectedValue(Object.assign(new Error('Provisioning request failed with status 404.'), { status: 404 }));
+    await new FeeReversalSyncService({ reverseFeePayment }).pushPending(connection);
+    const conflict = connection
+      .prepare(`SELECT reason FROM sync_conflicts WHERE entityId='pay-1'`)
+      .get() as { reason: string };
+    expect(conflict.reason).toContain('The server does not have the payment this reversal belongs to.');
+    expect(conflict.reason).toContain('Provisioning request failed with status 404.');
+  });
+
   it('leaves the row dirty on a network error', async () => {
     seedReversal(connection);
     const reverseFeePayment = vi.fn().mockRejectedValue(new Error('offline'));

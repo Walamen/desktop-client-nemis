@@ -510,6 +510,26 @@ export class DesktopSyncWorker {
       if (!row) throw new Error('The synchronization conflict was not found or is already resolved.');
       const resolvedAt = new Date().toISOString();
       if (resolution === 'keep_local') {
+        // This re-insertion only makes sense for a conflict that originated
+        // from the generic outbox: it re-queues entityType/entityId/payload
+        // verbatim, and only a queue-backed table's payload matches what its
+        // outbox triggers actually emit (the {record:{...}} envelope). A
+        // conflict manufactured by a bespoke push path — e.g.
+        // FeeReversalSyncService's fee_payment_reversals rows, whose
+        // entityId is the *payment's* id, not the reversal's — would
+        // otherwise produce a sync_queue item that can never apply and just
+        // burns its retries into a dead letter. Queue-backed-ness is checked
+        // by presence of that table's outbox trigger rather than a
+        // hardcoded table list, since the trigger set grows with each new
+        // migration.
+        const queueBacked = db.connection
+          .prepare(`SELECT 1 FROM sqlite_master WHERE type='trigger' AND name=?`)
+          .get(`outbox_${row.entityType}_insert`);
+        if (!queueBacked) {
+          throw new Error(
+            `Cannot keep the local version of this ${row.entityType} conflict — it does not sync through the generic queue. Accept the remote version instead.`,
+          );
+        }
         db.connection.prepare(`
           INSERT INTO sync_queue
             (id,entityType,entityId,operationType,payload,retryCount,status,createdAt,updatedAt)

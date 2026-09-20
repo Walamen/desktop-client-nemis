@@ -164,6 +164,21 @@ describe('BackendProvisioningGateway', () => {
     }
   });
 
+  it('attaches the numeric HTTP status to a non-2xx error without changing its message', async () => {
+    // Locks in the correction that lets FeeReversalSyncService branch on 409
+    // ("already reversed") vs 404 ("payment unknown to the server"): without
+    // this, authorized() would throw a plain Error with no status property,
+    // and those branches would silently become dead code in production while
+    // every service test (which fabricates { status } on its mocks) kept
+    // passing.
+    const fetchMock = vi.fn(async () => new Response(null, { status: 404 }));
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(buildGateway().gradeSubmission('remote-a1', 'stu-1', { grade: 85 })).rejects.toMatchObject({
+      status: 404,
+      message: 'Provisioning request failed with status 404.',
+    });
+  });
+
   it('gradeSubmission posts to the nested submissions/grade endpoint', async () => {
     const fetchMock = vi.fn<(url: string | URL, init?: RequestInit) => Promise<Response>>(
       async () => response({ id: 'sub-1' }),
