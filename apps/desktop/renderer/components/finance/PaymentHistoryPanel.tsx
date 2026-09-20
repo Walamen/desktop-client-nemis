@@ -34,12 +34,108 @@ function SummaryLine({ label, value, className = 'text-slate-800' }: { label: st
   );
 }
 
+/** One payment's line plus its own reverse form. Owns its own open/reason/
+ * submitting/error state, so a reversal in flight on one payment never
+ * touches another's — mirrors PaymentRow's per-row ownership (see
+ * PaymentRow.tsx). Sharing that state at the panel level let Cancel or
+ * another row's toggle discard an in-flight submission's own state out from
+ * under it, dropping its error silently; keeping it per-row removes that
+ * class of bug instead of patching one interleaving. */
+function PaymentHistoryRow({ payment, currency, onReversed }: {
+  payment: SchoolAdminRecord;
+  currency: string;
+  onReversed: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleReverse = async () => {
+    if (!reason.trim()) return;
+    setSubmitting(true);
+    setError('');
+    try {
+      await reverseFeePayment({ paymentId: String(payment.id), reason: reason.trim() });
+      setOpen(false);
+      setReason('');
+      onReversed();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not reverse this payment.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="border-b border-slate-100 py-3 last:border-0">
+      <div className="flex items-start justify-between gap-2">
+        <div className={payment.isReversed ? 'opacity-40 line-through' : ''}>
+          <p className="text-sm font-semibold tabular-nums text-slate-800">
+            {formatCurrency(Number(payment.amount), currency)}
+          </p>
+          <p className="mt-0.5 text-xs text-slate-400">
+            {String(payment.method).replaceAll('_', ' ')}
+            {payment.reference ? ` · ${String(payment.reference)}` : ''}
+          </p>
+          <p className="text-xs text-slate-400">{formatDate(String(payment.paidAt))}</p>
+        </div>
+        {payment.isReversed ? (
+          <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-400">
+            Reversed
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={() => { setOpen(!open); setReason(''); setError(''); }}
+            aria-label="Reverse this payment"
+            className="shrink-0 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-500"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+      {open && (
+        <div className="mt-2 space-y-2">
+          <input
+            type="text"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Reason for reversal"
+            autoFocus
+            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-red-400"
+          />
+          {error && <p className="text-xs text-error">{error}</p>}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => { setOpen(false); setReason(''); setError(''); }}
+              className="flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleReverse()}
+              disabled={submitting || !reason.trim()}
+              className="flex-1 rounded-lg bg-red-500 px-3 py-1.5 text-xs text-white hover:bg-red-600 disabled:opacity-50"
+            >
+              {submitting ? 'Reversing…' : 'Confirm'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Student payment history — mirrors portal-web's StudentPaymentHistoryPanel
  * (same right-hand panel, obligation summary block and payment list).
  *
  * Payments are append-only and can never be edited or deleted; the only
  * correction is an audited reversal with a mandatory reason, recorded via
- * reverseFeePayment (see shared.tsx).
+ * reverseFeePayment (see shared.tsx) and rendered per-row by
+ * PaymentHistoryRow above.
  *
  * The obligation summary is read from the row the caller already resolved
  * rather than refetched — desktop has no single-obligation endpoint, and the
@@ -53,10 +149,6 @@ export function PaymentHistoryPanel({ student, currency, onClose, onReversed }: 
 }) {
   const [payments, setPayments] = useState<SchoolAdminRecord[] | null>(null);
   const obligationId = student?.obligationId ?? null;
-  const [reversingId, setReversingId] = useState<string | null>(null);
-  const [reason, setReason] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
 
   useEffect(() => {
     if (!obligationId) { setPayments(null); return; }
@@ -66,26 +158,9 @@ export function PaymentHistoryPanel({ student, currency, onClose, onReversed }: 
     return () => { cancelled = true; };
   }, [obligationId]);
 
-  const reload = () => {
-    if (!obligationId) return;
-    void listPaymentsForObligation(obligationId).then(setPayments);
-  };
-
-  const handleReverse = async (paymentId: string) => {
-    if (!reason.trim()) return;
-    setSubmitting(true);
-    setError('');
-    try {
-      await reverseFeePayment({ paymentId, reason: reason.trim() });
-      setReversingId(null);
-      setReason('');
-      reload();
-      onReversed();
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not reverse this payment.');
-    } finally {
-      setSubmitting(false);
-    }
+  const handleRowReversed = () => {
+    if (obligationId) void listPaymentsForObligation(obligationId).then(setPayments);
+    onReversed();
   };
 
   // Match the Drawer component's dismissal affordances, which this panel
@@ -151,68 +226,12 @@ export function PaymentHistoryPanel({ student, currency, onClose, onReversed }: 
             ) : (
               <div>
                 {payments.map((payment) => (
-                  <div key={String(payment.id)} className="border-b border-slate-100 py-3 last:border-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className={payment.isReversed ? 'opacity-40 line-through' : ''}>
-                        <p className="text-sm font-semibold tabular-nums text-slate-800">
-                          {formatCurrency(Number(payment.amount), currency)}
-                        </p>
-                        <p className="mt-0.5 text-xs text-slate-400">
-                          {String(payment.method).replaceAll('_', ' ')}
-                          {payment.reference ? ` · ${String(payment.reference)}` : ''}
-                        </p>
-                        <p className="text-xs text-slate-400">{formatDate(String(payment.paidAt))}</p>
-                      </div>
-                      {payment.isReversed ? (
-                        <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-400">
-                          Reversed
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setReversingId(reversingId === String(payment.id) ? null : String(payment.id));
-                            setReason('');
-                            setError('');
-                          }}
-                          aria-label="Reverse this payment"
-                          className="shrink-0 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-500"
-                        >
-                          <RotateCcw className="h-3.5 w-3.5" />
-                        </button>
-                      )}
-                    </div>
-                    {reversingId === String(payment.id) && (
-                      <div className="mt-2 space-y-2">
-                        <input
-                          type="text"
-                          value={reason}
-                          onChange={(e) => setReason(e.target.value)}
-                          placeholder="Reason for reversal"
-                          autoFocus
-                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-red-400"
-                        />
-                        {error && <p className="text-xs text-error">{error}</p>}
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => { setReversingId(null); setReason(''); setError(''); }}
-                            className="flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-50"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => void handleReverse(String(payment.id))}
-                            disabled={submitting || !reason.trim()}
-                            className="flex-1 rounded-lg bg-red-500 px-3 py-1.5 text-xs text-white hover:bg-red-600 disabled:opacity-50"
-                          >
-                            {submitting ? 'Reversing…' : 'Confirm'}
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  <PaymentHistoryRow
+                    key={String(payment.id)}
+                    payment={payment}
+                    currency={currency}
+                    onReversed={handleRowReversed}
+                  />
                 ))}
               </div>
             )}
