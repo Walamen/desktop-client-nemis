@@ -55,3 +55,9 @@ export interface SchoolAdminDeleteRequest {
   collection: SchoolAdminCollection;
   id: string;
 }
+
+export interface SchoolAdminReversePaymentRequest {
+  paymentId: string;
+  reason: string;
+  notes?: string;
+}

@@ -61,6 +61,7 @@ import type {
   SchoolAdminListRequest,
   SchoolAdminListResult,
   SchoolAdminRecord,
+  SchoolAdminReversePaymentRequest,
   SchoolAdminSaveRequest,
 } from './school-admin';
 import type {
@@ -214,6 +215,7 @@ export interface SchoolAdminApi {
   list(request: SchoolAdminListRequest): Promise<SchoolAdminListResult>;
   save(request: SchoolAdminSaveRequest): Promise<SchoolAdminRecord>;
   delete(request: SchoolAdminDeleteRequest): Promise<{ id: string }>;
+  reversePayment(request: SchoolAdminReversePaymentRequest): Promise<{ id: string }>;
 }
 export interface AssignmentApi {
   list(request: ListAssignmentsRequest): Promise<AssignmentResult[]>;

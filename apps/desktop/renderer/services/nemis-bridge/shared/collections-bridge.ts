@@ -1,6 +1,7 @@
 import type {
   SchoolAdminDeleteRequest,
   SchoolAdminListRequest,
+  SchoolAdminReversePaymentRequest,
   SchoolAdminSaveRequest,
 } from '@nemis-desktop/types';
 import { api } from '../api';
@@ -17,4 +18,6 @@ export const collectionsBridge = {
   listSchoolAdminRecords: (request: SchoolAdminListRequest) => api().schoolAdmin.list(request),
   saveSchoolAdminRecord: (request: SchoolAdminSaveRequest) => api().schoolAdmin.save(request),
   deleteSchoolAdminRecord: (request: SchoolAdminDeleteRequest) => api().schoolAdmin.delete(request),
+  reverseFeePayment: (request: SchoolAdminReversePaymentRequest) =>
+    api().schoolAdmin.reversePayment(request),
 };

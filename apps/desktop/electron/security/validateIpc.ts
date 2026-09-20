@@ -591,6 +591,16 @@ export function assertSchoolAdminDeleteArgs(args: readonly unknown[]): void {
   assertString(request.id, 'id', ID_MAX_LENGTH);
 }
 
+export function assertSchoolAdminReversePaymentArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const request = args[0];
+  if (!isPlainObject(request)) throw new IPCError('Expected a payment reversal request.');
+  assertKnownKeys(request, ['paymentId', 'reason', 'notes']);
+  assertString(request.paymentId, 'paymentId', ID_MAX_LENGTH);
+  assertString(request.reason, 'reason', DESCRIPTION_MAX_LENGTH);
+  if (request.notes !== undefined) assertString(request.notes, 'notes', DESCRIPTION_MAX_LENGTH);
+}
+
 function assertSchoolAdminCollection(value: unknown): void {
   if (
     typeof value !== 'string' ||

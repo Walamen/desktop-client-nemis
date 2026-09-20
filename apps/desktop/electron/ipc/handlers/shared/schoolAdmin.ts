@@ -2,6 +2,7 @@ import { IpcChannels } from '@nemis-desktop/types';
 import {
   assertSchoolAdminDeleteArgs,
   assertSchoolAdminListArgs,
+  assertSchoolAdminReversePaymentArgs,
   assertSchoolAdminSaveArgs,
 } from '@app/security/validateIpc';
 import type { SchoolAdminModuleService } from '@app/data/services/SchoolAdminModuleService';
@@ -23,5 +24,8 @@ export function registerSchoolAdminHandlers(
   );
   handle(IpcChannels.SCHOOL_ADMIN_DELETE, assertSchoolAdminDeleteArgs, (request) =>
     service.delete(request),
+  );
+  handle(IpcChannels.SCHOOL_ADMIN_REVERSE_PAYMENT, assertSchoolAdminReversePaymentArgs, (request) =>
+    service.reverseFeePayment(request),
   );
 }

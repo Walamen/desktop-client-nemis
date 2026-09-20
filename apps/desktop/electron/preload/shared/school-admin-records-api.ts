@@ -10,4 +10,5 @@ export const schoolAdminRecordsApi: SchoolAdminApi = {
   list: (request) => invoke(IpcChannels.SCHOOL_ADMIN_LIST, request),
   save: (request) => invoke(IpcChannels.SCHOOL_ADMIN_SAVE, request),
   delete: (request) => invoke(IpcChannels.SCHOOL_ADMIN_DELETE, request),
+  reversePayment: (request) => invoke(IpcChannels.SCHOOL_ADMIN_REVERSE_PAYMENT, request),
 };

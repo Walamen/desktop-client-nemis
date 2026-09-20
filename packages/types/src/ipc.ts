@@ -88,6 +88,7 @@ import type {
   SchoolAdminListRequest,
   SchoolAdminListResult,
   SchoolAdminRecord,
+  SchoolAdminReversePaymentRequest,
   SchoolAdminSaveRequest,
 } from './school-admin';
 
@@ -235,6 +236,10 @@ export interface IpcContract {
     args: [request: SchoolAdminDeleteRequest];
     result: { id: string };
   };
+  'school-admin:reverse-payment': {
+    args: [request: SchoolAdminReversePaymentRequest];
+    result: { id: string };
+  };
 }
 
 export type IpcChannel = keyof IpcContract;
@@ -325,6 +330,7 @@ export const IpcChannels = {
   SCHOOL_ADMIN_LIST: 'school-admin:list',
   SCHOOL_ADMIN_SAVE: 'school-admin:save',
   SCHOOL_ADMIN_DELETE: 'school-admin:delete',
+  SCHOOL_ADMIN_REVERSE_PAYMENT: 'school-admin:reverse-payment',
 } as const satisfies Record<string, IpcChannel>;
 
 // Compile-time exhaustiveness: adding a channel to IpcContract without
