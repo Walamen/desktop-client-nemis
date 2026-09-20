@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { RotateCcw, X } from 'lucide-react';
 import type { SchoolAdminRecord } from '@nemis-desktop/types';
 import { formatCurrency, listPaymentsForObligation, reverseFeePayment } from './shared';
@@ -149,8 +149,12 @@ export function PaymentHistoryPanel({ student, currency, onClose, onReversed }: 
 }) {
   const [payments, setPayments] = useState<SchoolAdminRecord[] | null>(null);
   const obligationId = student?.obligationId ?? null;
+  // Which obligation the list on screen belongs to, readable from a promise
+  // that settles long after the render that started it.
+  const shownObligationRef = useRef<string | null>(obligationId);
 
   useEffect(() => {
+    shownObligationRef.current = obligationId;
     if (!obligationId) { setPayments(null); return; }
     let cancelled = false;
     setPayments(null);
@@ -159,14 +163,31 @@ export function PaymentHistoryPanel({ student, currency, onClose, onReversed }: 
   }, [obligationId]);
 
   const handleRowReversed = () => {
-    if (obligationId) void listPaymentsForObligation(obligationId).then(setPayments);
+    const requested = obligationId;
+    if (requested) {
+      // The same race the effect above guards with `cancelled`: this reload
+      // can still be in flight when the panel moves to another student, and
+      // painting its rows there would list one student's payments under
+      // another's name.
+      void listPaymentsForObligation(requested).then((rows) => {
+        if (shownObligationRef.current === requested) setPayments(rows);
+      });
+    }
     onReversed();
   };
 
   // Match the Drawer component's dismissal affordances, which this panel
   // replaces: Escape closes, and the page behind it does not scroll.
+  //
+  // Keyed on whether the panel is open rather than on `student` itself: the
+  // caller derives `student` from live state, so it is a fresh object on
+  // every recompute and depending on it would tear down and rebuild both the
+  // listener and the scroll lock on every parent render. `onClose` is stable
+  // by contract — RecordPaymentPage memoizes it — so this pair changes only
+  // when the panel really opens or closes.
+  const isOpen = student !== null;
   useEffect(() => {
-    if (!student) return;
+    if (!isOpen) return;
     const onEscape = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', onEscape);
     document.body.style.overflow = 'hidden';
@@ -174,7 +195,7 @@ export function PaymentHistoryPanel({ student, currency, onClose, onReversed }: 
       document.removeEventListener('keydown', onEscape);
       document.body.style.overflow = 'unset';
     };
-  }, [student, onClose]);
+  }, [isOpen, onClose]);
 
   if (!student) return null;
 

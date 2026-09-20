@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, MinusCircle, Search, XCircle } from 'lucide-react';
 import type { SchoolAdminRecord } from '@nemis-desktop/types';
@@ -24,10 +24,10 @@ const TH_RIGHT = `${TH} text-right`;
  * fee_obligations/fee_payments collections; recording a payment automatically
  * rolls into the obligation's totalPaid/status server-side
  * (SchoolAdminModuleService's fee_payments save branch), so no separate
- * balance update is needed here. Payment "reversal" from web isn't reproduced
- * — the generic collection API explicitly rejects updates to an existing
- * payment ("append-only"), and no reversal use-case is wired up, so offering
- * that control would be dishonest about what actually happens.
+ * balance update is needed here. Payments stay append-only — the generic
+ * collection API rejects both updates and deletes on them — so the only
+ * correction is the audited reversal offered inside PaymentHistoryPanel,
+ * which re-aggregates the obligation and pushes through its own REST path.
  *
  * Entry is per-row (see PaymentRow): amount, method and a conditional
  * reference live in the student's line and each row saves independently. */
@@ -44,7 +44,12 @@ export function RecordPaymentPage() {
   const [selectedRuleId, setSelectedRuleId] = useState('');
   const [obligations, setObligations] = useState<SchoolAdminRecord[]>([]);
   const [students, setStudents] = useState<{ items: readonly { id: string; fullName: string; admissionNumber: string; gradeLevel?: string }[]; total: number } | null>(null);
-  const [historyStudent, setHistoryStudent] = useState<EnrichedStudent | null>(null);
+  // The id, never the row. A reversal re-aggregates the obligation, so a
+  // snapshot of the EnrichedStudent taken when the panel opened would keep
+  // showing the balance and status the reversal just invalidated, directly
+  // above the payment it struck through — while the table behind the panel
+  // showed the corrected ones.
+  const [historyStudentId, setHistoryStudentId] = useState<string | null>(null);
 
   useEffect(() => { void foundation.loadClasses(); void foundation.loadCurrentTerm(); }, [foundation]);
   useEffect(() => { void listFeeRules().then((rows) => setRules(rows.filter((r) => r.isActive))); }, []);
@@ -114,8 +119,14 @@ export function RecordPaymentPage() {
 
   const openHistory = (s: EnrichedStudent) => {
     if (!s.obligationId) return;
-    setHistoryStudent(s);
+    setHistoryStudentId(s.id);
   };
+  // Resolved from the live list on every render, so the panel's summary block
+  // tracks reloadObligations the same way the table does.
+  const historyStudent = enrichedStudents.find((s) => s.id === historyStudentId) ?? null;
+  // Stable identity: PaymentHistoryPanel keys its Escape/scroll-lock effect on
+  // it, and an inline arrow would re-run that effect on every render here.
+  const closeHistory = useCallback(() => setHistoryStudentId(null), []);
 
   return (
     <div className="min-h-screen bg-slate-100">
@@ -277,7 +288,7 @@ export function RecordPaymentPage() {
         )}
       </div>
 
-      <PaymentHistoryPanel student={historyStudent} currency={currency} onClose={() => setHistoryStudent(null)} onReversed={reloadObligations} />
+      <PaymentHistoryPanel student={historyStudent} currency={currency} onClose={closeHistory} onReversed={reloadObligations} />
     </div>
   );
 }

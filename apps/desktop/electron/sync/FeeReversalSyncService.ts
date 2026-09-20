@@ -51,8 +51,12 @@ export class FeeReversalSyncService {
         const status = statusOf(error);
         if (status === 409) {
           // The payment was already reversed elsewhere. Both sides agree on
-          // the outcome; only the reason differs, and the server's copy wins
-          // on the next pull. Nothing left to push.
+          // the outcome — the payment is reversed, and its isReversed flag
+          // comes down with the next pull either way. Only the reason and
+          // reversedBy differ, and they never converge: the server keeps
+          // whichever reversal landed first and never sends reversal rows
+          // down to desktop, so this local row simply keeps its own reason as
+          // a record of what this device was told. Nothing left to push.
           logger.info(
             `FeeReversalSyncService: payment ${row.paymentId} was already reversed remotely.`,
           );

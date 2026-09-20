@@ -749,6 +749,56 @@ describe('DesktopSyncWorker retry policy', () => {
     expect(conflict.status).toBe('unresolved');
   });
 
+  it('still pushes a pending reversal on a cycle with an empty queue and no pull due', async () => {
+    // A reversal travels on its own REST path and never enters sync_queue, so
+    // reversing a payment that came down from the server leaves the claim
+    // empty. Before the early return learned to look for pending reversals,
+    // such a cycle returned at the gate and never reached pushPending — and
+    // the renderer's "Sync now" routes straight here, so the user could press
+    // it all afternoon and watch nothing happen.
+    const gateway = {
+      pushChanges: vi.fn(),
+      downloadSnapshot: vi.fn().mockResolvedValue(emptySnapshot()),
+      reverseFeePayment: vi.fn().mockResolvedValue(undefined),
+    } as unknown as BackendProvisioningGateway;
+    const worker = new DesktopSyncWorker(workspaces, gateway, alwaysOnline());
+
+    // Nothing has ever been pulled, so this first cycle pulls — which is what
+    // makes the pull not due for the cycle under test below.
+    await worker.syncActive();
+    expect(gateway.downloadSnapshot).toHaveBeenCalledTimes(1);
+
+    // Seed with capture off so neither of these writes lands in sync_queue;
+    // the point of the test is a genuinely empty queue.
+    const at = '2026-07-29T00:00:00.000Z';
+    manager.connection.prepare(`UPDATE sync_runtime SET captureEnabled=0 WHERE id='singleton'`).run();
+    manager.connection.prepare(`
+      INSERT INTO fee_payments
+        (id,obligationId,studentId,institutionId,amount,method,reference,notes,receiptNumber,recordedBy,isReversed,paidAt,createdAt,updatedAt)
+      VALUES ('pay-1','ob-1','stu-1','school-1',5000,'CASH',NULL,NULL,'RCP-1','user-1',1,?,?,?)
+    `).run(at, at, at);
+    manager.connection.prepare(`
+      INSERT INTO fee_payment_reversals
+        (id,paymentId,institutionId,reason,notes,reversedBy,reversedAt,createdAt,updatedAt,syncedAt)
+      VALUES ('rev-1','pay-1','school-1','wrong amount',NULL,'user-1',?,?,?,NULL)
+    `).run(at, at, at);
+    manager.connection.prepare(`UPDATE sync_runtime SET captureEnabled=1 WHERE id='singleton'`).run();
+
+    await worker.syncActive();
+
+    expect(gateway.reverseFeePayment).toHaveBeenCalledWith('pay-1', {
+      reason: 'wrong amount',
+      notes: undefined,
+    });
+    const reversal = manager.connection
+      .prepare(`SELECT syncedAt FROM fee_payment_reversals WHERE id='rev-1'`)
+      .get() as { syncedAt: string | null };
+    expect(reversal.syncedAt).not.toBeNull();
+    // Keeping the cycle alive for the reversal must not also smuggle in a
+    // full delta download that was not due.
+    expect(gateway.downloadSnapshot).toHaveBeenCalledTimes(1);
+  });
+
   it('a delta pull merges the snapshot instead of wiping local rows it omits', async () => {
     // Seed local rows that a delta snapshot legitimately does not mention.
     // Capture has to be off first: the sync triggers would otherwise enqueue

@@ -86,7 +86,17 @@ export class DesktopSyncWorker {
     }
     const claimed = await workspace.data.services.syncQueue.claim(50);
     const pullDue = Date.now() - this.#lastPullAt >= 5 * 60_000;
-    if (claimed.length === 0 && !pullDue) {
+    // A reversal travels on its own REST path, so it never puts a row in
+    // sync_queue. Reversing a payment that came down from the server leaves
+    // the queue empty, and without this check a cycle inside the pull window
+    // would return right here — including the one a user triggers by pressing
+    // "Sync now" — and the reversal would never be attempted. The push itself
+    // deliberately stays below the queue drain (see feeReversalSync call), so
+    // this only keeps the cycle alive long enough to reach it.
+    const reversalPending = workspace.database.connection.prepare(
+      `SELECT 1 found FROM fee_payment_reversals WHERE syncedAt IS NULL LIMIT 1`,
+    ).get() as { found: number } | undefined;
+    if (claimed.length === 0 && !pullDue && !reversalPending) {
       this.#running = false;
       return;
     }
@@ -192,7 +202,11 @@ export class DesktopSyncWorker {
       const stillPending = workspace.database.connection.prepare(
         `SELECT COUNT(*) count FROM sync_queue WHERE status IN ('pending','in_flight')`,
       ).get() as { count: number };
-      if (stillPending.count === 0) {
+      // `claimed.length > 0 || pullDue` restates what the early return above
+      // used to guarantee on its own. A cycle kept alive only by a pending
+      // reversal has nothing to pull for, and must not turn every retry of a
+      // stuck reversal into a full delta download.
+      if (stillPending.count === 0 && (claimed.length > 0 || pullDue)) {
         const meta = workspace.database.connection.prepare(
           `SELECT lastDeltaAt, lastFullResyncAt FROM sync_metadata WHERE id='singleton'`,
         ).get() as { lastDeltaAt: string | null; lastFullResyncAt: string | null };

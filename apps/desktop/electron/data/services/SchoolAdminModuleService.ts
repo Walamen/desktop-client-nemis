@@ -568,9 +568,17 @@ export class SchoolAdminModuleService {
 
     const id = randomUUID();
     const now = new Date().toISOString();
-    db.prepare(`UPDATE sync_runtime SET captureEnabled=0 WHERE id='singleton'`).run();
-    try {
-      db.transaction(() => {
+    db.transaction(() => {
+      // Both toggles live INSIDE the transaction on purpose. A bare .run()
+      // before db.transaction() autocommits, so a crash between it and the
+      // restore would leave captureEnabled=0 on disk and silently stop the
+      // outbox capturing every local edit in every module, with nothing to
+      // put it back. Inside, the flag is uncommitted: the trigger bodies read
+      // it at statement time within this same transaction so suppression
+      // still holds, and a rollback — or the process dying — reverts it to 1
+      // for free. Same arrangement as the payment-create branch in save().
+      db.prepare(`UPDATE sync_runtime SET captureEnabled=0 WHERE id='singleton'`).run();
+      try {
         db.prepare(
           `INSERT INTO fee_payment_reversals
              (id,paymentId,institutionId,reason,notes,reversedBy,reversedAt,createdAt,updatedAt,syncedAt)
@@ -589,10 +597,10 @@ export class SchoolAdminModuleService {
           now,
           payment.obligationId,
         );
-      })();
-    } finally {
-      db.prepare(`UPDATE sync_runtime SET captureEnabled=1 WHERE id='singleton'`).run();
-    }
+      } finally {
+        db.prepare(`UPDATE sync_runtime SET captureEnabled=1 WHERE id='singleton'`).run();
+      }
+    })();
     return { id };
   }
 

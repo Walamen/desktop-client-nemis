@@ -72,7 +72,12 @@ export function PaymentRow({ index, student, currency, academicYearId, termId, c
   const needsRef = methodRequiresReference(method);
 
   const handleSave = async () => {
-    if (!rule || !canRecord) return;
+    // Payments are append-only, so a double submit is not an edit — it is a
+    // second fee_payments row (and, for a student with no obligation yet, a
+    // second fee_obligations row that hides half the money). The Save button
+    // is disabled while saving, but Enter is not a button press, so the guard
+    // has to live here too.
+    if (saving || !rule || !canRecord) return;
     const problem = validatePaymentDraft({ amount, method, reference }, maxAmount);
     if (problem) {
       setError(errorMessage(problem, currency));
@@ -108,6 +113,7 @@ export function PaymentRow({ index, student, currency, academicYearId, termId, c
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key !== 'Enter') return;
     event.preventDefault();
+    if (saving) return;
     void handleSave();
   };
 
