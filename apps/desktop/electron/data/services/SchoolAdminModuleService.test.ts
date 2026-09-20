@@ -334,8 +334,22 @@ describe('SchoolAdminModuleService', () => {
 
   it('restores sync capture even when the reversal fails', () => {
     const { workspaces, service } = setup();
-    expect(() => service.reverseFeePayment({ paymentId: 'missing', reason: 'x' })).toThrow();
-    const runtime = workspaces.active.database.connection
+    const { payments } = seedPaidObligation(service, [5000]);
+    const paymentId = String(payments[0]!.id);
+    const db = workspaces.active.database.connection;
+    // Fault-inject a failure *inside* the transaction, after captureEnabled
+    // has already been set to 0, so this test actually exercises the
+    // `finally` restore rather than one of the guards that throw earlier.
+    db.exec(`
+      CREATE TRIGGER boom BEFORE INSERT ON fee_payment_reversals
+      BEGIN SELECT RAISE(ABORT, 'boom'); END;
+    `);
+    try {
+      expect(() => service.reverseFeePayment({ paymentId, reason: 'x' })).toThrow();
+    } finally {
+      db.exec(`DROP TRIGGER boom;`);
+    }
+    const runtime = db
       .prepare(`SELECT captureEnabled FROM sync_runtime WHERE id='singleton'`)
       .get() as { captureEnabled: number };
     expect(runtime.captureEnabled).toBe(1);
