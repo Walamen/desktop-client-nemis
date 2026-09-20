@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { DesktopScopeType, SystemRole, type ProvisioningUser } from '@nemis-desktop/types';
 import { WorkspaceManager } from '@app/workspace/WorkspaceManager';
-import { SchoolAdminModuleService } from './SchoolAdminModuleService';
+import { SchoolAdminModuleService, computeObligationStatus } from './SchoolAdminModuleService';
 
 const admin: ProvisioningUser = {
   id: 'admin-1',
@@ -197,5 +197,17 @@ describe('SchoolAdminModuleService', () => {
         .get(),
     ).toEqual({ entityType: 'alerts', operationType: 'update' });
     workspaces.close();
+  });
+
+  it('computes obligation status with the same three-way rule as the server', () => {
+    expect(computeObligationStatus(0, 5000)).toBe('OUTSTANDING');
+    expect(computeObligationStatus(2000, 5000)).toBe('PARTIALLY_PAID');
+    expect(computeObligationStatus(5000, 5000)).toBe('PAID_IN_FULL');
+    expect(computeObligationStatus(6000, 5000)).toBe('PAID_IN_FULL');
+  });
+
+  it('never moves a waived obligation off WAIVED', () => {
+    expect(computeObligationStatus(0, 5000, 'WAIVED')).toBe('WAIVED');
+    expect(computeObligationStatus(5000, 5000, 'WAIVED')).toBe('WAIVED');
   });
 });

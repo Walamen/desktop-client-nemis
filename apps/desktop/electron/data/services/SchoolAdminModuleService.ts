@@ -329,6 +329,22 @@ const ROLE_WRITE_COLLECTIONS: Readonly<Record<string, ReadonlySet<SchoolAdminCol
   MINISTRY_ADMIN: new Set(['reports', 'alerts']),
 };
 
+/** The obligation status rule, mirroring the server's computeStatus in
+ * Nemis/apps/Server/src/fees/obligations.service.ts. Shared by the payment
+ * create path and the reversal path so a shrinking total can reach
+ * OUTSTANDING — a two-way `>= ? PAID_IN_FULL : PARTIALLY_PAID` rule is only
+ * correct while totals grow. A waived obligation stays waived regardless of
+ * what has been paid against it. */
+export function computeObligationStatus(
+  totalPaid: number,
+  requiredAmount: number,
+  currentStatus?: string,
+): string {
+  if (currentStatus === 'WAIVED') return 'WAIVED';
+  if (totalPaid >= requiredAmount) return 'PAID_IN_FULL';
+  return totalPaid > 0 ? 'PARTIALLY_PAID' : 'OUTSTANDING';
+}
+
 export class SchoolAdminModuleService {
   constructor(private readonly workspaces: WorkspaceManager) {}
 
@@ -475,7 +491,7 @@ export class SchoolAdminModuleService {
           `,
           ).run(
             totalPaid,
-            totalPaid >= obligation.requiredAmount ? 'PAID_IN_FULL' : 'PARTIALLY_PAID',
+            computeObligationStatus(totalPaid, obligation.requiredAmount),
             now,
             record.obligationId,
           );
