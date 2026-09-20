@@ -162,7 +162,15 @@ export class BackendProvisioningGateway {
     }
     if (response.status === 401) throw new UnauthorizedError();
     if (response.status === 403) throw new ForbiddenError('This device is not authorized.');
-    if (!response.ok) throw new Error(`Provisioning request failed with status ${response.status}.`);
+    if (!response.ok) {
+      // The numeric status is attached so callers can branch on it — FeeReversalSyncService
+      // treats 409 (already reversed) and 404 (payment unknown to the server) as terminal
+      // rather than retryable. The message is unchanged so any caller matching on text keeps
+      // working.
+      throw Object.assign(new Error(`Provisioning request failed with status ${response.status}.`), {
+        status: response.status,
+      });
+    }
     const root = asRecord(await response.json());
     return validate(root.data);
   }

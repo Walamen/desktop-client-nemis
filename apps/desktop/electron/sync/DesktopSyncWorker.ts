@@ -10,6 +10,7 @@ import type { BackendProvisioningGateway } from '@app/provisioning/BackendProvis
 import type { ActiveWorkspace, WorkspaceManager } from '@app/workspace/WorkspaceManager';
 import { ProvisioningImporter } from '@app/provisioning/ProvisioningImporter';
 import { AssignmentSyncService } from './AssignmentSyncService';
+import { FeeReversalSyncService } from './FeeReversalSyncService';
 import { logger } from '@app/services/logger';
 import { hasRealDisagreement, unwrapLocalPayload } from '@nemis-desktop/shared';
 
@@ -35,6 +36,7 @@ export class DesktopSyncWorker {
   #lastPullAt = 0;
 
   private readonly assignmentSync: AssignmentSyncService;
+  private readonly feeReversalSync: FeeReversalSyncService;
 
   constructor(
     private readonly workspaces: WorkspaceManager,
@@ -42,6 +44,7 @@ export class DesktopSyncWorker {
     private readonly connectivity: ConnectivitySource,
   ) {
     this.assignmentSync = new AssignmentSyncService(gateway);
+    this.feeReversalSync = new FeeReversalSyncService(gateway);
   }
 
   async syncActive(): Promise<void> {
@@ -174,6 +177,16 @@ export class DesktopSyncWorker {
             WHERE id IN (${pushed.results.map(() => '?').join(',')})
           `).run(pushed.processedAt, ...pushed.results.map((result) => result.operationId));
         });
+      }
+
+      // Runs after the generic queue push so a payment created in this same
+      // cycle is already marked 'completed', letting its reversal through the
+      // ordering gate immediately instead of waiting a full cycle. A failure
+      // here must never abort the pull below.
+      try {
+        await this.feeReversalSync.pushPending(workspace.database.connection);
+      } catch (error) {
+        logger.error('FeeReversalSyncService.pushPending failed', error);
       }
 
       const stillPending = workspace.database.connection.prepare(
