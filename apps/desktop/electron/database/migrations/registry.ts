@@ -21,6 +21,7 @@ import { dropDeadAssignmentOutboxTriggers } from './019-drop-dead-assignment-out
 import { addAssignmentSyncTracking } from './020-add-assignment-sync-tracking';
 import { createDistrictsTable } from './021-create-districts-table';
 import { addTermSequence } from './022-add-term-sequence';
+import { createFeePaymentReversals } from './023-create-fee-payment-reversals';
 
 /**
  * Every migration, ascending by version. Append only — never edit or reorder
@@ -49,4 +50,5 @@ export const migrations: readonly Migration[] = [
   addAssignmentSyncTracking,
   createDistrictsTable,
   addTermSequence,
+  createFeePaymentReversals,
 ];

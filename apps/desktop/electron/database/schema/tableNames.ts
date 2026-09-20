@@ -42,6 +42,7 @@ export const TableNames = {
   feeRules: 'fee_rules',
   feeObligations: 'fee_obligations',
   feePayments: 'fee_payments',
+  feePaymentReversals: 'fee_payment_reversals',
   announcements: 'announcements',
   conversations: 'conversations',
   messages: 'messages',
