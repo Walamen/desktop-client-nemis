@@ -51,6 +51,40 @@ describe('SchoolAdminModuleService', () => {
     return { workspaces, service: new SchoolAdminModuleService(workspaces) };
   }
 
+  function seedPaidObligation(
+    service: SchoolAdminModuleService,
+    amounts: readonly number[],
+    requiredAmount = 5000,
+  ) {
+    const obligation = service.save({
+      collection: 'fee_obligations',
+      record: {
+        studentId: 'student-1', feeRuleId: 'rule-1',
+        academicYearId: 'year-1', termId: 'term-1',
+        requiredAmount, totalPaid: 0, status: 'OUTSTANDING',
+        dueDate: null, notes: null,
+      },
+    });
+    const payments = amounts.map((amount, index) =>
+      service.save({
+        collection: 'fee_payments',
+        record: {
+          obligationId: String(obligation.id), studentId: 'student-1',
+          amount, method: 'CASH', reference: null, notes: null,
+          receiptNumber: `RCT-${index}`, recordedBy: '', isReversed: false,
+          paidAt: new Date().toISOString(),
+        },
+      }),
+    );
+    return { obligationId: String(obligation.id), payments };
+  }
+
+  function obligationRow(workspaces: WorkspaceManager, id: string) {
+    return workspaces.active.database.connection
+      .prepare(`SELECT totalPaid,status FROM fee_obligations WHERE id=?`)
+      .get(id) as { totalPaid: number; status: string };
+  }
+
   it('forces institution-owned records into the active scope and captures them for sync', () => {
     const { workspaces, service } = setup();
     const saved = service.save({
@@ -209,5 +243,102 @@ describe('SchoolAdminModuleService', () => {
   it('never moves a waived obligation off WAIVED', () => {
     expect(computeObligationStatus(0, 5000, 'WAIVED')).toBe('WAIVED');
     expect(computeObligationStatus(5000, 5000, 'WAIVED')).toBe('WAIVED');
+  });
+
+  it('re-aggregates the balance from the remaining non-reversed payments', () => {
+    const { workspaces, service } = setup();
+    const { obligationId, payments } = seedPaidObligation(service, [2000, 1000]);
+    service.reverseFeePayment({ paymentId: String(payments[0]!.id), reason: 'wrong amount' });
+    expect(obligationRow(workspaces, obligationId)).toEqual({
+      totalPaid: 1000,
+      status: 'PARTIALLY_PAID',
+    });
+    workspaces.close();
+  });
+
+  it('returns the obligation to OUTSTANDING when its only payment is reversed', () => {
+    const { workspaces, service } = setup();
+    const { obligationId, payments } = seedPaidObligation(service, [5000]);
+    service.reverseFeePayment({ paymentId: String(payments[0]!.id), reason: 'wrong student' });
+    expect(obligationRow(workspaces, obligationId)).toEqual({
+      totalPaid: 0,
+      status: 'OUTSTANDING',
+    });
+    workspaces.close();
+  });
+
+  it('marks the payment reversed and records the reason and actor', () => {
+    const { workspaces, service } = setup();
+    const { payments } = seedPaidObligation(service, [5000]);
+    const paymentId = String(payments[0]!.id);
+    service.reverseFeePayment({ paymentId, reason: 'duplicate entry', notes: 'receipt void' });
+    const db = workspaces.active.database.connection;
+    const payment = db.prepare(`SELECT isReversed FROM fee_payments WHERE id=?`).get(paymentId) as
+      { isReversed: number };
+    expect(payment.isReversed).toBe(1);
+    const reversal = db
+      .prepare(`SELECT reason,notes,reversedBy,syncedAt FROM fee_payment_reversals WHERE paymentId=?`)
+      .get(paymentId) as { reason: string; notes: string | null; reversedBy: string; syncedAt: string | null };
+    expect(reversal).toEqual({
+      reason: 'duplicate entry',
+      notes: 'receipt void',
+      reversedBy: 'admin-1',
+      syncedAt: null,
+    });
+    workspaces.close();
+  });
+
+  it('refuses to reverse the same payment twice', () => {
+    const { workspaces, service } = setup();
+    const { payments } = seedPaidObligation(service, [5000]);
+    const paymentId = String(payments[0]!.id);
+    service.reverseFeePayment({ paymentId, reason: 'first' });
+    expect(() => service.reverseFeePayment({ paymentId, reason: 'second' })).toThrow(
+      /already been reversed/i,
+    );
+    workspaces.close();
+  });
+
+  it('refuses a blank reason, which the server would reject anyway', () => {
+    const { workspaces, service } = setup();
+    const { payments } = seedPaidObligation(service, [5000]);
+    expect(() =>
+      service.reverseFeePayment({ paymentId: String(payments[0]!.id), reason: '   ' }),
+    ).toThrow(/reason is required/i);
+    workspaces.close();
+  });
+
+  it('refuses a payment outside the active institution', () => {
+    const { workspaces, service } = setup();
+    const { payments } = seedPaidObligation(service, [5000]);
+    const paymentId = String(payments[0]!.id);
+    workspaces.active.database.connection
+      .prepare(`UPDATE fee_payments SET institutionId='school-2' WHERE id=?`)
+      .run(paymentId);
+    expect(() => service.reverseFeePayment({ paymentId, reason: 'nope' })).toThrow(
+      /outside this institution/i,
+    );
+    workspaces.close();
+  });
+
+  it('writes no sync_queue rows — reversals push through their own path', () => {
+    const { workspaces, service } = setup();
+    const { payments } = seedPaidObligation(service, [5000]);
+    const db = workspaces.active.database.connection;
+    db.prepare(`DELETE FROM sync_queue`).run();
+    service.reverseFeePayment({ paymentId: String(payments[0]!.id), reason: 'wrong amount' });
+    const queued = db.prepare(`SELECT COUNT(*) count FROM sync_queue`).get() as { count: number };
+    expect(queued.count).toBe(0);
+    workspaces.close();
+  });
+
+  it('restores sync capture even when the reversal fails', () => {
+    const { workspaces, service } = setup();
+    expect(() => service.reverseFeePayment({ paymentId: 'missing', reason: 'x' })).toThrow();
+    const runtime = workspaces.active.database.connection
+      .prepare(`SELECT captureEnabled FROM sync_runtime WHERE id='singleton'`)
+      .get() as { captureEnabled: number };
+    expect(runtime.captureEnabled).toBe(1);
+    workspaces.close();
   });
 });

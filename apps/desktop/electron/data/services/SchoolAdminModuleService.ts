@@ -530,6 +530,72 @@ export class SchoolAdminModuleService {
     return { id: request.id };
   }
 
+  /** Reverses a recorded payment offline. Mirrors the server's
+   * ObligationsService.reversePayment: the payment is flagged rather than
+   * edited, the obligation's total is RE-AGGREGATED from the remaining
+   * non-reversed payments (never subtracted), and the reason is retained for
+   * the audited push.
+   *
+   * Sync capture is suppressed throughout. Both writes below would be
+   * rejected by the server's sync applier ("Payments are append-only"), and
+   * the server recomputes the obligation itself when the reversal is pushed —
+   * so the generic outbox must not carry either of them. The reversal reaches
+   * the backend through FeeReversalSyncService instead. */
+  reverseFeePayment(request: { paymentId: string; reason: string; notes?: string }): { id: string } {
+    const { db, scopeId, userId } = this.context('fee_payments');
+    const reason = request.reason.trim();
+    if (!reason) throw new IPCError('A reason is required to reverse a payment.');
+
+    const payment = db
+      .prepare(`SELECT id,obligationId,institutionId,isReversed FROM fee_payments WHERE id=?`)
+      .get(request.paymentId) as
+      | { id: string; obligationId: string; institutionId: string; isReversed: number }
+      | undefined;
+    if (!payment) throw new IPCError('Payment not found.');
+    if (payment.institutionId !== scopeId) {
+      throw new ForbiddenError('This payment is outside this institution.');
+    }
+    if (payment.isReversed) throw new IPCError('This payment has already been reversed.');
+    const existing = db
+      .prepare(`SELECT id FROM fee_payment_reversals WHERE paymentId=?`)
+      .get(request.paymentId) as { id: string } | undefined;
+    if (existing) throw new IPCError('This payment has already been reversed.');
+
+    const obligation = db
+      .prepare(`SELECT requiredAmount,status FROM fee_obligations WHERE id=?`)
+      .get(payment.obligationId) as { requiredAmount: number; status: string } | undefined;
+    if (!obligation) throw new IPCError('The payment obligation no longer exists.');
+
+    const id = randomUUID();
+    const now = new Date().toISOString();
+    db.prepare(`UPDATE sync_runtime SET captureEnabled=0 WHERE id='singleton'`).run();
+    try {
+      db.transaction(() => {
+        db.prepare(
+          `INSERT INTO fee_payment_reversals
+             (id,paymentId,institutionId,reason,notes,reversedBy,reversedAt,createdAt,updatedAt,syncedAt)
+           VALUES (?,?,?,?,?,?,?,?,?,NULL)`,
+        ).run(id, payment.id, scopeId, reason, request.notes ?? null, userId, now, now, now);
+        db.prepare(`UPDATE fee_payments SET isReversed=1 WHERE id=?`).run(payment.id);
+        const remaining = db
+          .prepare(
+            `SELECT COALESCE(SUM(amount),0) total FROM fee_payments
+             WHERE obligationId=? AND isReversed=0`,
+          )
+          .get(payment.obligationId) as { total: number };
+        db.prepare(`UPDATE fee_obligations SET totalPaid=?,status=?,updatedAt=? WHERE id=?`).run(
+          remaining.total,
+          computeObligationStatus(remaining.total, obligation.requiredAmount, obligation.status),
+          now,
+          payment.obligationId,
+        );
+      })();
+    } finally {
+      db.prepare(`UPDATE sync_runtime SET captureEnabled=1 WHERE id='singleton'`).run();
+    }
+    return { id };
+  }
+
   private context(collection: SchoolAdminCollection) {
     const active = this.workspaces.active;
     if (!ROLE_WRITE_COLLECTIONS[active.user.role]?.has(collection)) {
