@@ -277,7 +277,7 @@ export function RecordPaymentPage() {
         )}
       </div>
 
-      <PaymentHistoryPanel student={historyStudent} currency={currency} onClose={() => setHistoryStudent(null)} />
+      <PaymentHistoryPanel student={historyStudent} currency={currency} onClose={() => setHistoryStudent(null)} onReversed={reloadObligations} />
     </div>
   );
 }

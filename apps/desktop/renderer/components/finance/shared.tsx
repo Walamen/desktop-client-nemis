@@ -230,3 +230,14 @@ export async function recordPayment(params: {
     },
   });
 }
+
+/** Reverses a payment locally and queues it for the audited server-side
+ * reversal. The obligation's balance is recomputed by the main process in the
+ * same transaction, so callers only need to reload. */
+export async function reverseFeePayment(params: {
+  paymentId: string;
+  reason: string;
+  notes?: string;
+}): Promise<{ id: string }> {
+  return sharedBridge.reverseFeePayment(params);
+}

@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { X } from 'lucide-react';
+import { RotateCcw, X } from 'lucide-react';
 import type { SchoolAdminRecord } from '@nemis-desktop/types';
-import { formatCurrency, listPaymentsForObligation } from './shared';
+import { formatCurrency, listPaymentsForObligation, reverseFeePayment } from './shared';
 import type { EnrichedStudent } from './PaymentRow';
 
 const STATUS_LABEL: Record<string, string> = {
@@ -37,22 +37,26 @@ function SummaryLine({ label, value, className = 'text-slate-800' }: { label: st
 /** Student payment history — mirrors portal-web's StudentPaymentHistoryPanel
  * (same right-hand panel, obligation summary block and payment list).
  *
- * Portal's version offers a per-payment reversal control; this one deliberately
- * does not. The generic collection API rejects updates to an existing payment
- * ("append-only") and no reversal use-case is wired up on desktop, so the
- * button would be a control that cannot do what it says.
+ * Payments are append-only and can never be edited or deleted; the only
+ * correction is an audited reversal with a mandatory reason, recorded via
+ * reverseFeePayment (see shared.tsx).
  *
  * The obligation summary is read from the row the caller already resolved
  * rather than refetched — desktop has no single-obligation endpoint, and the
  * table's numbers come from the same fee_obligations rows the panel would
- * re-read. */
-export function PaymentHistoryPanel({ student, currency, onClose }: {
+ * re-read. onReversed lets the caller refresh that table after a reversal. */
+export function PaymentHistoryPanel({ student, currency, onClose, onReversed }: {
   student: EnrichedStudent | null;
   currency: string;
   onClose: () => void;
+  onReversed: () => void;
 }) {
   const [payments, setPayments] = useState<SchoolAdminRecord[] | null>(null);
   const obligationId = student?.obligationId ?? null;
+  const [reversingId, setReversingId] = useState<string | null>(null);
+  const [reason, setReason] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     if (!obligationId) { setPayments(null); return; }
@@ -61,6 +65,28 @@ export function PaymentHistoryPanel({ student, currency, onClose }: {
     void listPaymentsForObligation(obligationId).then((rows) => { if (!cancelled) setPayments(rows); });
     return () => { cancelled = true; };
   }, [obligationId]);
+
+  const reload = () => {
+    if (!obligationId) return;
+    void listPaymentsForObligation(obligationId).then(setPayments);
+  };
+
+  const handleReverse = async (paymentId: string) => {
+    if (!reason.trim()) return;
+    setSubmitting(true);
+    setError('');
+    try {
+      await reverseFeePayment({ paymentId, reason: reason.trim() });
+      setReversingId(null);
+      setReason('');
+      reload();
+      onReversed();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not reverse this payment.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   // Match the Drawer component's dismissal affordances, which this panel
   // replaces: Escape closes, and the page behind it does not scroll.
@@ -137,12 +163,55 @@ export function PaymentHistoryPanel({ student, currency, onClose }: {
                         </p>
                         <p className="text-xs text-slate-400">{formatDate(String(payment.paidAt))}</p>
                       </div>
-                      {Boolean(payment.isReversed) && (
+                      {payment.isReversed ? (
                         <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-400">
                           Reversed
                         </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setReversingId(reversingId === String(payment.id) ? null : String(payment.id));
+                            setReason('');
+                            setError('');
+                          }}
+                          aria-label="Reverse this payment"
+                          className="shrink-0 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" />
+                        </button>
                       )}
                     </div>
+                    {reversingId === String(payment.id) && (
+                      <div className="mt-2 space-y-2">
+                        <input
+                          type="text"
+                          value={reason}
+                          onChange={(e) => setReason(e.target.value)}
+                          placeholder="Reason for reversal"
+                          autoFocus
+                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-red-400"
+                        />
+                        {error && <p className="text-xs text-error">{error}</p>}
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => { setReversingId(null); setReason(''); setError(''); }}
+                            className="flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-50"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleReverse(String(payment.id))}
+                            disabled={submitting || !reason.trim()}
+                            className="flex-1 rounded-lg bg-red-500 px-3 py-1.5 text-xs text-white hover:bg-red-600 disabled:opacity-50"
+                          >
+                            {submitting ? 'Reversing…' : 'Confirm'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
