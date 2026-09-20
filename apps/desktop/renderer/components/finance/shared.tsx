@@ -87,6 +87,8 @@ export async function saveFeeRule(record: SchoolAdminRecord): Promise<SchoolAdmi
   return sharedBridge.saveSchoolAdminRecord({ collection: 'fee_rules', record });
 }
 
+export const listFeeObligations = () => listAll('fee_obligations');
+
 export async function listObligationsForRule(feeRuleId: string): Promise<SchoolAdminRecord[]> {
   const rows = await listAll('fee_obligations');
   return rows.filter((row) => row.feeRuleId === feeRuleId);

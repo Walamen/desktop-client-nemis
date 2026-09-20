@@ -1,10 +1,17 @@
 import {
   LayoutDashboard, Map, School, CheckCircle, BookOpen, CalendarCheck, Users,
-  Building2, FileText, UserPlus, CreditCard, Bell, MessageCircle,
+  Building2, FileText, CreditCard, Bell, MessageCircle,
   Settings2Icon, MessageSquare, DollarSign, ClipboardCheck, ShieldCheck, Settings, UserCog,
   GraduationCap, ArrowRightLeft, UserCircle2, AlertTriangle, FileBarChart,
-  type LucideIcon,
 } from 'lucide-react';
+import type { ComponentType } from 'react';
+import { FcDataConfiguration } from 'react-icons/fc';
+import { GiTeacher } from 'react-icons/gi';
+import { GrOverview } from 'react-icons/gr';
+import { MdSubject } from 'react-icons/md';
+import { PiClockUserBold, PiStudentDuotone } from 'react-icons/pi';
+import { RiParentFill } from 'react-icons/ri';
+import { SiGoogleclassroom } from 'react-icons/si';
 import { DESKTOP_PORTALS, SystemRole, type DesktopPortalRole } from '@nemis-desktop/types';
 import type { AvatarRole } from '@nemis-desktop/ui';
 
@@ -13,7 +20,7 @@ export type SidebarBadge = 'notifications';
 export interface SidebarNavItem {
   name: string;
   href: string;
-  icon: LucideIcon;
+  icon: ComponentType<{ className?: string }>;
   badge?: SidebarBadge;
 }
 
@@ -46,32 +53,32 @@ export const sidebarConfigs: Record<DesktopPortalRole, SidebarConfig> = {
     dashboardItem: {
       name: 'Overview',
       href: '/government/school-admin',
-      icon: LayoutDashboard,
+      icon: GrOverview,
     },
     navGroups: [
       {
         label: 'User Management',
         items: [
-          { name: 'Students', href: '/government/school-admin/students', icon: Map },
-          { name: 'Teachers & Staff', href: '/government/school-admin/teachers-staff', icon: School },
-          { name: 'Parents & Guardians', href: '/government/school-admin/parents-guardians', icon: CheckCircle },
+          { name: 'Students', href: '/government/school-admin/students', icon: PiStudentDuotone },
+          { name: 'Teachers & Staff', href: '/government/school-admin/teachers-staff', icon: GiTeacher },
+          { name: 'Parents & Guardians', href: '/government/school-admin/parents-guardians', icon: RiParentFill },
         ],
       },
       {
         label: 'ACADEMIC',
         items: [
-          { name: 'Classes Management', href: '/government/school-admin/classes', icon: BookOpen },
-          { name: 'Subjects Management', href: '/government/school-admin/subjects', icon: BookOpen },
+          { name: 'Classes Management', href: '/government/school-admin/classes', icon: SiGoogleclassroom },
+          { name: 'Subjects Management', href: '/government/school-admin/subjects', icon: MdSubject },
           { name: 'Attendence Management', href: '/government/school-admin/attendance', icon: CalendarCheck },
-          { name: 'Academic & Grading', href: '/government/school-admin/academic-grading', icon: Users },
-          { name: 'General Schedule Management', href: '/government/school-admin/timetable', icon: BookOpen },
+          { name: 'Academic & Grading', href: '/government/school-admin/academic-grading', icon: FcDataConfiguration },
+          { name: 'Schedule', href: '/government/school-admin/timetable', icon: PiClockUserBold },
           { name: 'Grade Windows', href: '/government/school-admin/academic-grading/windows', icon: FileText },
         ],
       },
       {
         label: 'FINANCIAL',
         items: [
-          { name: 'Financial / Fees', href: '/government/school-admin/financial', icon: UserPlus },
+          { name: 'All Fees', href: '/government/school-admin/financial', icon: DollarSign },
           { name: 'Record Payment', href: '/government/school-admin/financial/record-payment', icon: CreditCard },
         ],
       },
