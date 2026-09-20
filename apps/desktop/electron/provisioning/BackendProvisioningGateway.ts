@@ -107,6 +107,22 @@ export class BackendProvisioningGateway {
     );
   }
 
+  /** Audited payment reversal. Hits the same endpoint portal-web uses, so
+   * the server creates the FeePaymentReversal row, re-aggregates the
+   * obligation and writes the audit-log entry. The generic /desktop/sync/push
+   * route cannot carry this: its applier rejects every non-create operation
+   * on fee_payments. */
+  async reverseFeePayment(
+    paymentId: string,
+    payload: { reason: string; notes?: string },
+  ): Promise<void> {
+    await this.authorized(
+      `/finance/school-admin/fee-payments/${encodeURIComponent(paymentId)}/reverse`,
+      { method: 'POST', body: JSON.stringify(payload) },
+      () => undefined,
+    );
+  }
+
   private async authorized<T>(
     path: string,
     init: RequestInit,
