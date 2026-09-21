@@ -12,7 +12,7 @@ interface StudentRow {
   firstName: string;
   middleName: string | null;
   lastName: string;
-  admissionNumber: string;
+  nemisId: string;
   dateOfBirth: string;
   gender: string;
   gradeLevel: string | null;
@@ -33,7 +33,7 @@ function toStudent(row: StudentRow): Student {
     firstName: row.firstName,
     middleName: row.middleName ?? undefined,
     lastName: row.lastName,
-    admissionNumber: row.admissionNumber,
+    nemisId: row.nemisId,
     dateOfBirth: row.dateOfBirth,
     gender: row.gender as Gender,
     gradeLevel: (row.gradeLevel ?? undefined) as GradeLevel | undefined,
@@ -50,7 +50,7 @@ function toStudent(row: StudentRow): Student {
 }
 
 const COLUMNS =
-  'id, institutionId, firstName, middleName, lastName, admissionNumber, dateOfBirth, gender, gradeLevel, admissionDate, phoneNumber, email, address, isActive, version, updatedAt, lastModifiedBy';
+  'id, institutionId, firstName, middleName, lastName, nemisId, dateOfBirth, gender, gradeLevel, admissionDate, phoneNumber, email, address, isActive, version, updatedAt, lastModifiedBy';
 
 /** SQLite adapter for IStudentRepository. Guardians are not persisted this
  * phase (no guardian tables yet); students reconstitute with an empty guardian
@@ -70,7 +70,7 @@ export class SqliteStudentRepository implements IStudentRepository {
       if (!row) return null;
       const student = toStudent(row);
       const links = this.#statements.get(`SELECT id, guardianId, isPrimary FROM ${TableNames.studentGuardians} WHERE studentId = ?`).all(id) as { id: string; guardianId: string; isPrimary: number }[];
-      return Student.reconstitute({ id: student.id, institutionId: student.institutionId, firstName: student.name.firstName, middleName: student.name.middleName, lastName: student.name.lastName, admissionNumber: student.admissionNumber.value, dateOfBirth: student.dateOfBirth.value, gender: student.gender, gradeLevel: student.gradeLevel, admissionDate: student.admissionDate, phoneNumber: student.phoneNumber, email: student.email, address: student.address, isActive: student.isActive, guardians: links.map((link) => StudentGuardian.reconstitute({ id: link.id, guardianId: link.guardianId, isPrimary: link.isPrimary === 1 })), version: student.version, updatedAt: student.updatedAt, lastModifiedBy: student.lastModifiedBy });
+      return Student.reconstitute({ id: student.id, institutionId: student.institutionId, firstName: student.name.firstName, middleName: student.name.middleName, lastName: student.name.lastName, nemisId: student.nemisId.value, dateOfBirth: student.dateOfBirth.value, gender: student.gender, gradeLevel: student.gradeLevel, admissionDate: student.admissionDate, phoneNumber: student.phoneNumber, email: student.email, address: student.address, isActive: student.isActive, guardians: links.map((link) => StudentGuardian.reconstitute({ id: link.id, guardianId: link.guardianId, isPrimary: link.isPrimary === 1 })), version: student.version, updatedAt: student.updatedAt, lastModifiedBy: student.lastModifiedBy });
     });
   }
 
@@ -79,14 +79,14 @@ export class SqliteStudentRepository implements IStudentRepository {
       this.#statements
         .get(
           `INSERT INTO ${TableNames.students}
-           (id, institutionId, firstName, middleName, lastName, admissionNumber, dateOfBirth, gender, gradeLevel, admissionDate, phoneNumber, email, address, isActive, version, updatedAt, lastModifiedBy, deviceId)
+           (id, institutionId, firstName, middleName, lastName, nemisId, dateOfBirth, gender, gradeLevel, admissionDate, phoneNumber, email, address, isActive, version, updatedAt, lastModifiedBy, deviceId)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
            ON CONFLICT(id) DO UPDATE SET
              institutionId = excluded.institutionId,
              firstName = excluded.firstName,
              middleName = excluded.middleName,
              lastName = excluded.lastName,
-             admissionNumber = excluded.admissionNumber,
+             nemisId = excluded.nemisId,
              dateOfBirth = excluded.dateOfBirth,
              gender = excluded.gender,
              gradeLevel = excluded.gradeLevel,
@@ -105,7 +105,7 @@ export class SqliteStudentRepository implements IStudentRepository {
           student.name.firstName,
           student.name.middleName ?? null,
           student.name.lastName,
-          student.admissionNumber.value,
+          student.nemisId.value,
           student.dateOfBirth.value,
           student.gender,
           student.gradeLevel ?? null,
@@ -132,13 +132,13 @@ export class SqliteStudentRepository implements IStudentRepository {
     });
   }
 
-  existsByAdmissionNumber(institutionId: string, admissionNumber: string, excludeId?: string): boolean {
-    return guarded('SqliteStudentRepository.existsByAdmissionNumber', () => {
+  existsByNemisId(nemisId: string, excludeId?: string): boolean {
+    return guarded('SqliteStudentRepository.existsByNemisId', () => {
       const row = this.#statements
         .get(
-          `SELECT id FROM ${TableNames.students} WHERE institutionId = ? AND admissionNumber = ? ${excludeId ? 'AND id <> ?' : ''} LIMIT 1`,
+          `SELECT id FROM ${TableNames.students} WHERE nemisId = ? ${excludeId ? 'AND id <> ?' : ''} LIMIT 1`,
         )
-        .get(...(excludeId ? [institutionId, admissionNumber, excludeId] : [institutionId, admissionNumber]));
+        .get(...(excludeId ? [nemisId, excludeId] : [nemisId]));
       return row !== undefined;
     });
   }
@@ -146,7 +146,7 @@ export class SqliteStudentRepository implements IStudentRepository {
   findPage(request: StudentPageFilter): { items: Student[]; total: number } {
     return guarded('SqliteStudentRepository.findPage', () => {
       const clauses: string[] = []; const params: unknown[] = [];
-      if (request.keyword) { clauses.push('(s.firstName LIKE ? OR s.lastName LIKE ? OR s.admissionNumber LIKE ?)'); const q = `%${request.keyword}%`; params.push(q, q, q); }
+      if (request.keyword) { clauses.push('(s.firstName LIKE ? OR s.lastName LIKE ? OR s.nemisId LIKE ?)'); const q = `%${request.keyword}%`; params.push(q, q, q); }
       if (request.gender) { clauses.push('s.gender = ?'); params.push(request.gender); }
       if (request.gradeLevel) { clauses.push('s.gradeLevel = ?'); params.push(request.gradeLevel); }
       if (request.isActive !== undefined) { clauses.push('s.isActive = ?'); params.push(request.isActive ? 1 : 0); }
@@ -155,7 +155,7 @@ export class SqliteStudentRepository implements IStudentRepository {
       if (request.enrollmentStatus) { clauses.push('e.status = ?'); params.push(request.enrollmentStatus); }
       const join = request.classId || request.academicYearId || request.enrollmentStatus ? ` JOIN ${TableNames.enrollments} e ON e.studentId = s.id` : '';
       const where = clauses.length ? ` WHERE ${clauses.join(' AND ')}` : '';
-      const order = request.sort === 'name' ? 's.lastName ASC, s.firstName ASC' : request.sort === 'admissionNumber' ? 's.admissionNumber ASC' : 's.updatedAt DESC, s.id ASC';
+      const order = request.sort === 'name' ? 's.lastName ASC, s.firstName ASC' : request.sort === 'nemisId' ? 's.nemisId ASC' : 's.updatedAt DESC, s.id ASC';
       const rows = this.#statements
         .get(`SELECT DISTINCT ${COLUMNS.split(', ').map((c) => `s.${c}`).join(', ')} FROM ${TableNames.students} s${join}${where} ORDER BY ${order} LIMIT ? OFFSET ?`)
         .all(...params, request.limit, request.offset) as StudentRow[];
