@@ -1,4 +1,5 @@
 import { Student } from '@nemis-desktop/domain';
+import { generateNemisId } from '@nemis-desktop/shared';
 import type { CommandHandler } from '../../core/command';
 import { ok, type ApplicationResponse } from '../../core/response';
 import type { CreateStudentDto, StudentOutput } from '../../dto/students/student-dto';
@@ -35,17 +36,19 @@ export class CreateStudentUseCase implements CommandHandler<
         'institutionId',
         'firstName',
         'lastName',
-        'admissionNumber',
         'dateOfBirth',
         'gender',
       ]);
 
-      if (
-        this.deps.students.existsByAdmissionNumber(command.institutionId, command.admissionNumber)
-      ) {
-        throw new WorkflowException(
-          `Admission number ${command.admissionNumber} already exists in this institution.`,
-        );
+      // Minted locally so a school with no connectivity can still enrol. The
+      // server is the uniqueness authority and reassigns on the rare national
+      // collision, returning the replacement in the sync receipt.
+      let nemisId = generateNemisId();
+      for (let attempt = 0; this.deps.students.existsByNemisId(nemisId); attempt++) {
+        if (attempt >= 100) {
+          throw new WorkflowException('Could not mint a unique NEMIS ID.');
+        }
+        nemisId = generateNemisId();
       }
 
       const occurredAt = this.deps.clock.now();
@@ -55,7 +58,7 @@ export class CreateStudentUseCase implements CommandHandler<
         firstName: command.firstName,
         middleName: command.middleName,
         lastName: command.lastName,
-        admissionNumber: command.admissionNumber,
+        nemisId,
         dateOfBirth: command.dateOfBirth,
         gender: command.gender,
         gradeLevel: command.gradeLevel,
@@ -73,7 +76,7 @@ export class CreateStudentUseCase implements CommandHandler<
         occurredAt,
         studentId: student.id,
         institutionId: student.institutionId,
-        admissionNumber: student.admissionNumber.value,
+        nemisId: student.nemisId.value,
       };
       this.deps.events.publish(event);
 

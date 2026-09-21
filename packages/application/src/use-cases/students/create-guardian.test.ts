@@ -21,7 +21,7 @@ function build() {
       institutionId: 'inst-1',
       firstName: 'Ada',
       lastName: 'Lovelace',
-      admissionNumber: 'ADM-001',
+      nemisId: '000000000018',
       dateOfBirth: '2015-06-01',
       gender: Gender.FEMALE,
       occurredAt: '2026-08-16T00:00:00.000Z',

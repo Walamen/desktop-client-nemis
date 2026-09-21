@@ -5,7 +5,6 @@ export interface CreateStudentDto {
   firstName: string;
   middleName?: string;
   lastName: string;
-  admissionNumber: string;
   dateOfBirth: string; // ISO date
   gender: Gender;
   gradeLevel?: GradeLevel;
@@ -68,7 +67,7 @@ export interface ListStudentsDto {
   academicYearId?: string;
   enrollmentStatus?: EnrollmentStatus;
   isActive?: boolean;
-  sort?: 'name' | 'admissionNumber' | 'updatedAt';
+  sort?: 'name' | 'nemisId' | 'updatedAt';
 }
 
 export interface StudentGuardianOutput {
@@ -84,7 +83,7 @@ export interface StudentOutput {
   middleName?: string;
   lastName: string;
   fullName: string;
-  admissionNumber: string;
+  nemisId: string;
   dateOfBirth: string;
   gender: Gender;
   gradeLevel?: GradeLevel;
@@ -100,5 +99,5 @@ export interface StudentOutput {
 
 export type StudentSummaryOutput = Pick<
   StudentOutput,
-  'id' | 'fullName' | 'admissionNumber' | 'gradeLevel' | 'isActive'
+  'id' | 'fullName' | 'nemisId' | 'gradeLevel' | 'isActive'
 > & { gender: Gender; updatedAt: string };

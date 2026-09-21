@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@nemis-desktop/domain": "workspace:*",
+    "@nemis-desktop/shared": "workspace:*",
     "@nemis-desktop/types": "workspace:*"
   }
 }

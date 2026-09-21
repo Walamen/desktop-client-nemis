@@ -35,7 +35,7 @@ describe('dashboard query use cases', () => {
     students.save(
       Student.create({
         id: 's-1', institutionId: 'inst-1', firstName: 'A', lastName: 'B',
-        admissionNumber: 'ADM-1', dateOfBirth: '2015-01-01', gender: 'MALE',
+        nemisId: '000000000018', dateOfBirth: '2015-01-01', gender: 'MALE',
         occurredAt: '2026-07-20T00:00:00.000Z',
       }),
     );
@@ -61,7 +61,7 @@ describe('dashboard query use cases', () => {
       totalClasses: 1,
       totalSubjects: 0,
       studentsByGrade: [],
-      recentlyEnrolled: [{ id: 's-1', fullName: 'A B', admissionNumber: 'ADM-1', updatedAt: '2026-07-20T00:00:00.000Z' }],
+      recentlyEnrolled: [{ id: 's-1', fullName: 'A B', nemisId: '000000000018', updatedAt: '2026-07-20T00:00:00.000Z' }],
       attendanceToday: { present: 1, total: 1 },
     });
   });

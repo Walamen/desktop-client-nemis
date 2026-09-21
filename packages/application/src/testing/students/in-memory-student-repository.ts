@@ -15,16 +15,16 @@ export class InMemoryStudentRepository implements IStudentRepository {
   exists(id: string): boolean {
     return this.store.has(id);
   }
-  existsByAdmissionNumber(institutionId: string, admissionNumber: string, excludeId?: string): boolean {
+  existsByNemisId(nemisId: string, excludeId?: string): boolean {
     for (const s of this.store.values()) {
-      if (s.id !== excludeId && s.institutionId === institutionId && s.admissionNumber.value === admissionNumber) {
+      if (s.id !== excludeId && s.nemisId.value === nemisId) {
         return true;
       }
     }
     return false;
   }
   findPage(request: StudentPageFilter): { items: Student[]; total: number } {
-    const all = [...this.store.values()].filter((s) => (!request.keyword || s.name.full.toLowerCase().includes(request.keyword.toLowerCase()) || s.admissionNumber.value.toLowerCase().includes(request.keyword.toLowerCase())) && (!request.gender || s.gender === request.gender) && (!request.gradeLevel || s.gradeLevel === request.gradeLevel) && (request.isActive === undefined || s.isActive === request.isActive));
+    const all = [...this.store.values()].filter((s) => (!request.keyword || s.name.full.toLowerCase().includes(request.keyword.toLowerCase()) || s.nemisId.value.toLowerCase().includes(request.keyword.toLowerCase())) && (!request.gender || s.gender === request.gender) && (!request.gradeLevel || s.gradeLevel === request.gradeLevel) && (request.isActive === undefined || s.isActive === request.isActive));
     return { items: all.slice(request.offset, request.offset + request.limit), total: all.length };
   }
   findByClassId(_classId: string): Student[] {

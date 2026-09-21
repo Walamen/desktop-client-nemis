@@ -30,7 +30,6 @@ describe('StudentApplicationService', () => {
       institutionId: 'inst-1',
       firstName: 'Ada',
       lastName: 'Lovelace',
-      admissionNumber: 'ADM-001',
       dateOfBirth: '2015-06-01',
       gender: Gender.FEMALE,
     });

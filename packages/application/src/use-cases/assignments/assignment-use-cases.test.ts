@@ -144,7 +144,7 @@ describe('ListSubmissionsUseCase / GradeSubmissionUseCase', () => {
     const { create, listSubmissions, gradeSubmission, submissions } = build();
     const created = await create.execute(createDto);
     submissions.enrolledStudentsByAssignment.set(created.data.id, [
-      { studentId: 'stu-1', studentName: 'Ada Lovelace', admissionNumber: 'ADM-001' },
+      { studentId: 'stu-1', studentName: 'Ada Lovelace', nemisId: '000000000018' },
     ]);
 
     const before = await listSubmissions.execute({ assignmentId: created.data.id, teacherId: 'staff-1' });

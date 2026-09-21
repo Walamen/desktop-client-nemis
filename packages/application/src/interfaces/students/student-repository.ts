@@ -4,7 +4,7 @@ import type { EnrollmentStatus, Gender, GradeLevel } from '@nemis-desktop/types'
 export interface StudentPageFilter {
   limit: number; offset: number; keyword?: string; gender?: Gender; gradeLevel?: GradeLevel;
   classId?: string; academicYearId?: string; enrollmentStatus?: EnrollmentStatus; isActive?: boolean;
-  sort?: 'name' | 'admissionNumber' | 'updatedAt';
+  sort?: 'name' | 'nemisId' | 'updatedAt';
 }
 
 /** Persistence port for the Student aggregate. Speaks in domain entities; the
@@ -13,7 +13,8 @@ export interface IStudentRepository {
   findById(id: string): Student | null;
   save(student: Student): void;
   exists(id: string): boolean;
-  existsByAdmissionNumber(institutionId: string, admissionNumber: string, excludeId?: string): boolean;
+  /** NEMIS IDs are national, so this is deliberately not scoped by institution. */
+  existsByNemisId(nemisId: string, excludeId?: string): boolean;
   findPage(request: StudentPageFilter): { items: Student[]; total: number };
   findByClassId(classId: string): Student[];
   /** Real COUNT(*) — total students in this installation. */

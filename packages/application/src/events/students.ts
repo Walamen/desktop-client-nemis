@@ -4,7 +4,7 @@ export interface StudentRegistered extends ApplicationEvent {
   readonly name: 'StudentRegistered';
   readonly studentId: string;
   readonly institutionId: string;
-  readonly admissionNumber: string;
+  readonly nemisId: string;
 }
 
 export interface StudentGuardianLinked extends ApplicationEvent {

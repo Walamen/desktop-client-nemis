@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Student } from '@nemis-desktop/domain';
+import { generateNemisId } from '@nemis-desktop/shared';
 import { Gender } from '@nemis-desktop/types';
 import { FixedClock } from '../../testing/fixed-clock';
 import { RecordingLogger } from '../../testing/recording-logger';
@@ -14,7 +15,7 @@ function student(id: string, gender: Gender, admissionDate: string): Student {
     institutionId: 'inst-1',
     firstName: 'A',
     lastName: 'B',
-    admissionNumber: `ADM-${id}`,
+    nemisId: generateNemisId(),
     dateOfBirth: '2015-01-01',
     gender,
     admissionDate,

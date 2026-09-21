@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Gender, GradeLevel } from '@nemis-desktop/types';
+import { isValidNemisId } from '@nemis-desktop/shared';
 import { CreateStudentUseCase } from './create-student';
 import { InMemoryStudentRepository } from '../../testing/students/in-memory-student-repository';
 import {
@@ -9,7 +10,7 @@ import {
   RecordingLogger,
   SequentialIdGenerator,
 } from '../../testing';
-import { ApplicationValidationException, WorkflowException } from '../../exceptions';
+import { ApplicationValidationException } from '../../exceptions';
 
 function build() {
   const students = new InMemoryStudentRepository();
@@ -30,7 +31,6 @@ const validInput = {
   institutionId: 'inst-1',
   firstName: 'Ada',
   lastName: 'Lovelace',
-  admissionNumber: 'ADM-001',
   dateOfBirth: '2015-06-01',
   gender: Gender.FEMALE,
   gradeLevel: GradeLevel.GRADE_1,
@@ -55,7 +55,7 @@ describe('CreateStudentUseCase', () => {
         occurredAt: '2026-07-18T00:00:00.000Z',
         studentId: 'stu-1',
         institutionId: 'inst-1',
-        admissionNumber: 'ADM-001',
+        nemisId: expect.stringMatching(/^\d{12}$/),
       },
     ]);
   });
@@ -63,13 +63,28 @@ describe('CreateStudentUseCase', () => {
   it('rejects missing required fields with a validation exception', async () => {
     const { useCase } = build();
     await expect(
-      useCase.execute({ ...validInput, firstName: '', admissionNumber: '' }),
+      useCase.execute({ ...validInput, firstName: '' }),
     ).rejects.toBeInstanceOf(ApplicationValidationException);
   });
 
-  it('rejects a duplicate admission number in the same institution', async () => {
+  it('mints a valid NEMIS ID', async () => {
     const { useCase } = build();
-    await useCase.execute(validInput);
-    await expect(useCase.execute(validInput)).rejects.toBeInstanceOf(WorkflowException);
+    const res = await useCase.execute(validInput);
+    expect(isValidNemisId(res.data.nemisId)).toBe(true);
+  });
+
+  it('never mints a NEMIS ID that already exists, across institutions', async () => {
+    const { students, useCase } = build();
+    const first = await useCase.execute(validInput);
+
+    // Second student at a *different* school — the NEMIS ID is national, so
+    // uniqueness must hold across institution boundaries.
+    const second = await useCase.execute({
+      ...validInput,
+      institutionId: 'inst-2',
+    });
+
+    expect(second.data.nemisId).not.toBe(first.data.nemisId);
+    expect(students.store.size).toBe(2);
   });
 });

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Gender } from '@nemis-desktop/types';
 import { Student } from '@nemis-desktop/domain';
+import { generateNemisId } from '@nemis-desktop/shared';
 import { ListStudentsUseCase } from './list-students';
 import { InMemoryStudentRepository } from '../../testing/students/in-memory-student-repository';
 import { RecordingLogger } from '../../testing';
@@ -13,7 +14,7 @@ function seed(repo: InMemoryStudentRepository, n: number): void {
         institutionId: 'inst-1',
         firstName: `First${i}`,
         lastName: 'Last',
-        admissionNumber: `ADM-${i}`,
+        nemisId: generateNemisId(),
         dateOfBirth: '2015-06-01',
         gender: Gender.MALE,
         occurredAt: '2026-07-18T00:00:00.000Z',

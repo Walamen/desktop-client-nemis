@@ -6,7 +6,7 @@ import type { AssignmentSubmissionOutput } from '../../dto/assignments/assignmen
 interface EnrolledStudent {
   studentId: string;
   studentName: string;
-  admissionNumber: string;
+  nemisId: string;
 }
 
 /** Enrollment roster is injected because this fake has no `enrollments`
@@ -43,7 +43,7 @@ export class InMemoryAssignmentSubmissionRepository implements IAssignmentSubmis
         assignmentId,
         studentId: student.studentId,
         studentName: student.studentName,
-        admissionNumber: student.admissionNumber,
+        nemisId: student.nemisId,
         status: submission?.status ?? SubmissionStatus.PENDING,
         submittedAt: submission?.submittedAt,
         response: submission?.response,

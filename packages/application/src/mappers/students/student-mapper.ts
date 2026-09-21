@@ -17,7 +17,7 @@ export function toStudentOutput(student: Student): StudentOutput {
     middleName: student.name.middleName,
     lastName: student.name.lastName,
     fullName: student.name.full,
-    admissionNumber: student.admissionNumber.value,
+    nemisId: student.nemisId.value,
     dateOfBirth: student.dateOfBirth.value,
     gender: student.gender,
     gradeLevel: student.gradeLevel,
@@ -36,7 +36,7 @@ export function toStudentSummary(student: Student): StudentSummaryOutput {
   return {
     id: student.id,
     fullName: student.name.full,
-    admissionNumber: student.admissionNumber.value,
+    nemisId: student.nemisId.value,
     gradeLevel: student.gradeLevel,
     isActive: student.isActive,
     gender: student.gender,
