@@ -83,7 +83,7 @@ function NewConversationModal({ onClose, onCreated }: { onClose: () => void; onC
                 <div className="mt-1 max-h-32 overflow-y-auto rounded-lg border border-slate-100">
                   {students.map((s) => (
                     <button key={s.id} onClick={() => setSelectedStudent(s)} className="block w-full px-3 py-1.5 text-left text-sm hover:bg-slate-50">
-                      {s.fullName} <span className="text-xs text-slate-400">· {formatNemisId(s.nemisId)}</span>
+                      {s.fullName} <span className="text-xs text-slate-400">· {s.nemisId ? formatNemisId(s.nemisId) : '—'}</span>
                     </button>
                   ))}
                 </div>

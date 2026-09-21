@@ -280,7 +280,7 @@ export function ClassDetailPage() {
                         <td className="px-6 py-4">
                           <p className="font-medium text-gray-900">{s.fullName}</p>
                         </td>
-                        <td className="px-6 py-4 font-mono text-sm text-gray-600">{formatNemisId(s.nemisId)}</td>
+                        <td className="px-6 py-4 font-mono text-sm text-gray-600">{s.nemisId ? formatNemisId(s.nemisId) : '—'}</td>
                         <td className="px-6 py-4 text-sm text-gray-600 capitalize">{s.gender?.toLowerCase() ?? '—'}</td>
                       </tr>
                     ))

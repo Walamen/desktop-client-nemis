@@ -8,7 +8,8 @@ export interface StudentResult {
   middleName?: string;
   lastName: string;
   fullName: string;
-  nemisId: string;
+  /** Absent for a legacy row awaiting its first post-rollout sync pull. */
+  nemisId?: string;
   admissionDate?: string;
   dateOfBirth: string;
   gender: Gender;
@@ -24,7 +25,8 @@ export interface StudentResult {
 export interface StudentListItemResult {
   id: string;
   fullName: string;
-  nemisId: string;
+  /** Absent for a legacy row awaiting its first post-rollout sync pull. */
+  nemisId?: string;
   gradeLevel?: GradeLevel;
   gender: Gender;
   isActive: boolean;

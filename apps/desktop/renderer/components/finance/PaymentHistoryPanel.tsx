@@ -212,7 +212,7 @@ export function PaymentHistoryPanel({ student, currency, onClose, onReversed }: 
           <div>
             <p className="mb-0.5 text-xs font-semibold uppercase tracking-widest text-slate-400">Payment History</p>
             <h2 className="text-base font-bold text-slate-900">{student.name}</h2>
-            <p className="text-xs text-slate-400">{formatNemisId(student.nemisId)}</p>
+            <p className="text-xs text-slate-400">{student.nemisId ? formatNemisId(student.nemisId) : '—'}</p>
           </div>
           <button
             type="button"

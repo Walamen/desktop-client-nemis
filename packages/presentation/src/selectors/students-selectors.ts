@@ -9,7 +9,7 @@ import type { StudentRowView } from '../view-models/students/students-views';
 export function selectStudentRows(state: StudentsState): readonly StudentRowView[] {
   if (!hasData(state.list)) return [];
   return state.list.data.filter((row) =>
-    matchesKeyword([row.fullName, row.nemisId], state.search.keyword),
+    matchesKeyword([row.fullName, row.nemisId ?? ''], state.search.keyword),
   );
 }
 

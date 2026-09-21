@@ -76,7 +76,7 @@ export class CreateStudentUseCase implements CommandHandler<
         occurredAt,
         studentId: student.id,
         institutionId: student.institutionId,
-        nemisId: student.nemisId.value,
+        nemisId,
       };
       this.deps.events.publish(event);
 

@@ -10,7 +10,8 @@ import { capAmountInput, methodRequiresReference, validatePaymentDraft, type Pay
 export interface EnrichedStudent {
   id: string;
   name: string;
-  nemisId: string;
+  /** Absent for a legacy row awaiting its first post-rollout sync pull. */
+  nemisId?: string;
   gradeLevel: string | null;
   level: string | null;
   rule: SchoolAdminRecord | null;
@@ -185,7 +186,7 @@ export function PaymentRow({ index, student, currency, academicYearId, termId, c
         <td className={`${CELL} text-right text-xs tabular-nums text-slate-300`}>{index}</td>
         <td className={CELL}>
           <p className="text-sm font-medium text-slate-900">{student.name}</p>
-          <p className="mt-0.5 text-xs tabular-nums text-slate-400">{formatNemisId(student.nemisId)}</p>
+          <p className="mt-0.5 text-xs tabular-nums text-slate-400">{student.nemisId ? formatNemisId(student.nemisId) : '—'}</p>
         </td>
         <td className={`${CELL} text-xs text-slate-500`}>
           {student.gradeLevel ? student.gradeLevel.replaceAll('_', ' ') : <span className="text-slate-300">&mdash;</span>}

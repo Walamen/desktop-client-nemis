@@ -432,7 +432,7 @@ export function StudentsDirectoryPage() {
                                   <p className="font-medium text-slate-800">{s.fullName}</p>
                                 </div>
                               </td>
-                              <td className="px-4 py-3 text-slate-500 font-mono">{formatNemisId(s.nemisId)}</td>
+                              <td className="px-4 py-3 text-slate-500 font-mono">{s.nemisId ? formatNemisId(s.nemisId) : '—'}</td>
                               <td className="px-4 py-3">
                                 <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
                                   {s.gradeLevel || 'N/A'}
@@ -640,7 +640,7 @@ function StudentCard({ student, onEdit }: { student: StudentRowView; onEdit: () 
               <p className="text-sm font-semibold text-slate-800 leading-snug truncate">
                 {student.fullName}
               </p>
-              <p className="text-xs font-mono text-slate-400 mt-0.5">{formatNemisId(student.nemisId)}</p>
+              <p className="text-xs font-mono text-slate-400 mt-0.5">{student.nemisId ? formatNemisId(student.nemisId) : '—'}</p>
             </div>
             <span
               className={`shrink-0 text-xs font-semibold px-2 py-0.5 ${

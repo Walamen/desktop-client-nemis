@@ -671,7 +671,7 @@ export function AttendancePage() {
                           </div>
                           <div>
                             <div className="text-md font-bold text-slate-500">{student.fullName}</div>
-                            <div className="text-[12px] text-slate-400">{formatNemisId(student.nemisId)}</div>
+                            <div className="text-[12px] text-slate-400">{student.nemisId ? formatNemisId(student.nemisId) : '—'}</div>
                           </div>
                         </div>
                       </td>

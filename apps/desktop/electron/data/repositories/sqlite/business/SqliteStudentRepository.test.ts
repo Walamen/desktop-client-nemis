@@ -55,7 +55,7 @@ describe('SqliteStudentRepository', () => {
     repo.save(newStudent('s-1', '482915736045'));
     const found = repo.findById('s-1');
     expect(found?.name.full).toBe('Grace Toe');
-    expect(found?.nemisId.value).toBe('482915736045');
+    expect(found?.nemisId?.value).toBe('482915736045');
     expect(found?.gender).toBe(Gender.FEMALE);
     expect(repo.countAll()).toBe(1);
   });
@@ -124,5 +124,34 @@ describe('SqliteStudentRepository', () => {
     repo.save(newStudentWith('s-2', '123456789015', { admissionDate: '2026-01-01' }));
     repo.save(newStudentWith('s-3', '999999999991', { admissionDate: '2026-07-15', isActive: false }));
     expect(repo.countRecentAdmissions('2026-04-20')).toBe(1);
+  });
+
+  describe('legacy rows with a NULL nemisId (migration 024 pre-rollout state)', () => {
+    function insertLegacyRow(id: string): void {
+      test.context.connection
+        .prepare(
+          `INSERT INTO students
+           (id, institutionId, firstName, middleName, lastName, nemisId, dateOfBirth, gender, gradeLevel, admissionDate, phoneNumber, email, address, isActive, version, updatedAt, lastModifiedBy, deviceId)
+           VALUES (?, 'inst-1', 'Grace', NULL, 'Toe', NULL, '2015-01-01', 'FEMALE', NULL, NULL, NULL, NULL, NULL, 1, 1, '2026-07-20T00:00:00.000Z', NULL, NULL)`,
+        )
+        .run(id);
+    }
+
+    it('findById returns a student with an absent nemisId instead of throwing', () => {
+      insertLegacyRow('s-legacy');
+      const found = repo.findById('s-legacy');
+      expect(found).not.toBeNull();
+      expect(found?.nemisId).toBeUndefined();
+      expect(found?.name.full).toBe('Grace Toe');
+    });
+
+    it('findPage returns the legacy row with an absent nemisId instead of throwing', () => {
+      insertLegacyRow('s-legacy');
+      repo.save(newStudent('s-normal', '482915736045'));
+      const page = repo.findPage({ limit: 10, offset: 0 });
+      expect(page.total).toBe(2);
+      const legacy = page.items.find((s) => s.id === 's-legacy');
+      expect(legacy?.nemisId).toBeUndefined();
+    });
   });
 });

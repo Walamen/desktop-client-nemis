@@ -3,7 +3,8 @@ import type { StatusPresentation } from '../../presenters/status-presentation';
 export interface StudentRowView {
   readonly id: string;
   readonly fullName: string;
-  readonly nemisId: string;
+  /** Absent for a legacy row awaiting its first post-rollout sync pull. */
+  readonly nemisId?: string;
   readonly gradeLevel: string;
   readonly gender: string;
   readonly status: StatusPresentation;
@@ -16,7 +17,8 @@ export interface StudentDetailsView {
   readonly firstName: string;
   readonly middleName?: string;
   readonly lastName: string;
-  readonly nemisId: string;
+  /** Absent for a legacy row awaiting its first post-rollout sync pull. */
+  readonly nemisId?: string;
   readonly dateOfBirth: string;
   readonly rawDateOfBirth: string;
   readonly gender: string;

@@ -1,6 +1,7 @@
 import { Student, StudentGuardian } from '@nemis-desktop/domain';
 import type { IStudentRepository, StudentPageFilter } from '@nemis-desktop/application';
 import type { Gender, GradeLevel } from '@nemis-desktop/types';
+import { normalizeNemisId } from '@nemis-desktop/shared';
 import { TableNames } from '../../../../database/schema/tableNames';
 import { StatementCache } from '../../base/StatementCache';
 import type { RepositoryContext } from '../../base/RepositoryContext';
@@ -12,7 +13,9 @@ interface StudentRow {
   firstName: string;
   middleName: string | null;
   lastName: string;
-  nemisId: string;
+  /** NULL for a legacy row pulled in before the NEMIS ID rollout (migration
+   * 024 deliberately leaves it unset). The next server pull fills it in. */
+  nemisId: string | null;
   dateOfBirth: string;
   gender: string;
   gradeLevel: string | null;
@@ -33,7 +36,7 @@ function toStudent(row: StudentRow): Student {
     firstName: row.firstName,
     middleName: row.middleName ?? undefined,
     lastName: row.lastName,
-    nemisId: row.nemisId,
+    nemisId: row.nemisId ?? undefined,
     dateOfBirth: row.dateOfBirth,
     gender: row.gender as Gender,
     gradeLevel: (row.gradeLevel ?? undefined) as GradeLevel | undefined,
@@ -70,7 +73,7 @@ export class SqliteStudentRepository implements IStudentRepository {
       if (!row) return null;
       const student = toStudent(row);
       const links = this.#statements.get(`SELECT id, guardianId, isPrimary FROM ${TableNames.studentGuardians} WHERE studentId = ?`).all(id) as { id: string; guardianId: string; isPrimary: number }[];
-      return Student.reconstitute({ id: student.id, institutionId: student.institutionId, firstName: student.name.firstName, middleName: student.name.middleName, lastName: student.name.lastName, nemisId: student.nemisId.value, dateOfBirth: student.dateOfBirth.value, gender: student.gender, gradeLevel: student.gradeLevel, admissionDate: student.admissionDate, phoneNumber: student.phoneNumber, email: student.email, address: student.address, isActive: student.isActive, guardians: links.map((link) => StudentGuardian.reconstitute({ id: link.id, guardianId: link.guardianId, isPrimary: link.isPrimary === 1 })), version: student.version, updatedAt: student.updatedAt, lastModifiedBy: student.lastModifiedBy });
+      return Student.reconstitute({ id: student.id, institutionId: student.institutionId, firstName: student.name.firstName, middleName: student.name.middleName, lastName: student.name.lastName, nemisId: student.nemisId?.value, dateOfBirth: student.dateOfBirth.value, gender: student.gender, gradeLevel: student.gradeLevel, admissionDate: student.admissionDate, phoneNumber: student.phoneNumber, email: student.email, address: student.address, isActive: student.isActive, guardians: links.map((link) => StudentGuardian.reconstitute({ id: link.id, guardianId: link.guardianId, isPrimary: link.isPrimary === 1 })), version: student.version, updatedAt: student.updatedAt, lastModifiedBy: student.lastModifiedBy });
     });
   }
 
@@ -105,7 +108,7 @@ export class SqliteStudentRepository implements IStudentRepository {
           student.name.firstName,
           student.name.middleName ?? null,
           student.name.lastName,
-          student.nemisId.value,
+          student.nemisId?.value ?? null,
           student.dateOfBirth.value,
           student.gender,
           student.gradeLevel ?? null,
@@ -146,7 +149,14 @@ export class SqliteStudentRepository implements IStudentRepository {
   findPage(request: StudentPageFilter): { items: Student[]; total: number } {
     return guarded('SqliteStudentRepository.findPage', () => {
       const clauses: string[] = []; const params: unknown[] = [];
-      if (request.keyword) { clauses.push('(s.firstName LIKE ? OR s.lastName LIKE ? OR s.nemisId LIKE ?)'); const q = `%${request.keyword}%`; params.push(q, q, q); }
+      if (request.keyword) {
+        clauses.push('(s.firstName LIKE ? OR s.lastName LIKE ? OR s.nemisId LIKE ?)');
+        const q = `%${request.keyword}%`;
+        // A pasted dashed id (4829-1573-6045) must still find its canonical,
+        // separator-free row; a plain name search falls through unchanged.
+        const nemisQ = `%${normalizeNemisId(request.keyword) ?? request.keyword}%`;
+        params.push(q, q, nemisQ);
+      }
       if (request.gender) { clauses.push('s.gender = ?'); params.push(request.gender); }
       if (request.gradeLevel) { clauses.push('s.gradeLevel = ?'); params.push(request.gradeLevel); }
       if (request.isActive !== undefined) { clauses.push('s.isActive = ?'); params.push(request.isActive ? 1 : 0); }

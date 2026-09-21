@@ -297,7 +297,9 @@ export function BulkImportPage() {
           isPrimary: true,
         });
         if (!guardianOutcome.ok) guardianWarning = 'Student created, but the guardian record failed — add it manually.';
-        createdRows.push({ index, nemisId: studentOutcome.data.nemisId, studentId: studentOutcome.data.id, guardianWarning });
+        // A freshly created student always has a nemisId (Student.create()
+        // requires one); the fallback only satisfies the type checker.
+        createdRows.push({ index, nemisId: studentOutcome.data.nemisId ?? '', studentId: studentOutcome.data.id, guardianWarning });
       } catch (cause) {
         failedRows.push({
           index,

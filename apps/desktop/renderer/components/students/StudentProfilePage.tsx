@@ -154,7 +154,7 @@ export function StudentProfilePage() {
           <div className="flex-1 text-center sm:text-left">
             <h1 className="text-2xl font-bold text-gray-900">{d.fullName}</h1>
             <p className="text-gray-500 text-sm mt-1">
-              NEMIS ID: <span className="font-mono font-medium text-gray-700">{formatNemisId(d.nemisId)}</span>
+              NEMIS ID: <span className="font-mono font-medium text-gray-700">{d.nemisId ? formatNemisId(d.nemisId) : '—'}</span>
             </p>
             <div className="flex flex-wrap justify-center sm:justify-start gap-2 mt-3">
               <Badge variant={d.status.label === 'Active' ? 'success' : 'neutral'} size="sm">

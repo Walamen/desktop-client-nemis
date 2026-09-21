@@ -104,7 +104,8 @@ export async function countTeachersForClass(classId: string): Promise<number> {
 export interface UnassignedStudent {
   id: string;
   fullName: string;
-  nemisId: string;
+  /** Absent for a legacy row awaiting its first post-rollout sync pull. */
+  nemisId?: string;
   gradeLevel: string | null;
 }
 

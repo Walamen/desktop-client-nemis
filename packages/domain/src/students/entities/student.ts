@@ -12,7 +12,10 @@ export type StudentId = EntityId<'Student'>;
 interface StudentState {
   institutionId: string;
   name: PersonName;
-  nemisId: NemisId;
+  /** Absent only for a legacy row pulled in before the NEMIS ID rollout
+   * (migration 024 deliberately leaves it NULL). A blank ID here means "the
+   * next server pull will fill this in" — never mint one locally. */
+  nemisId: NemisId | undefined;
   dateOfBirth: DateOfBirth;
   gender: Gender;
   gradeLevel?: GradeLevel;
@@ -47,7 +50,8 @@ export interface ReconstituteStudentInput {
   firstName: string;
   middleName?: string;
   lastName: string;
-  nemisId: string;
+  /** Undefined only for a legacy row with no NEMIS ID yet (see StudentState.nemisId). */
+  nemisId?: string;
   dateOfBirth: string;
   gender: Gender;
   gradeLevel?: GradeLevel;
@@ -74,7 +78,11 @@ export class Student extends AggregateRoot<StudentId> {
     this.#state = state;
   }
 
+  /** Only path for a NEW student. Unlike reconstitute(), this REQUIRES a
+   * valid nemisId — a brand-new local record must never be created without
+   * one, since there is no future sync pull to backfill it. */
   static create(input: CreateStudentInput): Student {
+    const nemisId = NemisId.create(input.nemisId);
     const student = new Student(
       input.id as StudentId,
       {
@@ -84,7 +92,7 @@ export class Student extends AggregateRoot<StudentId> {
           middleName: input.middleName,
           lastName: input.lastName,
         }),
-        nemisId: NemisId.create(input.nemisId),
+        nemisId,
         dateOfBirth: DateOfBirth.create(input.dateOfBirth),
         gender: input.gender,
         gradeLevel: input.gradeLevel,
@@ -101,13 +109,16 @@ export class Student extends AggregateRoot<StudentId> {
       name: 'StudentCreated',
       aggregateId: student.id,
       occurredAt: input.occurredAt,
-      nemisId: student.nemisId.value,
+      nemisId: nemisId.value,
       institutionId: input.institutionId,
     };
     student.addEvent(event);
     return student;
   }
 
+  /** Rehydrates an EXISTING row. Unlike create(), nemisId is OPTIONAL here:
+   * a student pulled in before migration 024's rollout has NULL until the
+   * next server sync fills it in. Never mint one to paper over the gap. */
   static reconstitute(input: ReconstituteStudentInput): Student {
     return new Student(
       input.id as StudentId,
@@ -118,7 +129,7 @@ export class Student extends AggregateRoot<StudentId> {
           middleName: input.middleName,
           lastName: input.lastName,
         }),
-        nemisId: NemisId.create(input.nemisId),
+        nemisId: input.nemisId === undefined ? undefined : NemisId.create(input.nemisId),
         dateOfBirth: DateOfBirth.create(input.dateOfBirth),
         gender: input.gender,
         gradeLevel: input.gradeLevel,
@@ -139,7 +150,8 @@ export class Student extends AggregateRoot<StudentId> {
   get name(): PersonName {
     return this.#state.name;
   }
-  get nemisId(): NemisId {
+  /** Absent for a legacy row awaiting its first post-rollout sync pull. */
+  get nemisId(): NemisId | undefined {
     return this.#state.nemisId;
   }
   get dateOfBirth(): DateOfBirth {

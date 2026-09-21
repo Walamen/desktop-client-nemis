@@ -130,7 +130,9 @@ export function StudentFormPage({ edit = false }: { edit?: boolean }) {
       });
     }
     setCreatedStudentId(r.data.id);
-    setCreatedNemisId(r.data.nemisId);
+    // A freshly created student always has a nemisId (Student.create()
+    // requires one); the fallback only satisfies the type checker.
+    setCreatedNemisId(r.data.nemisId ?? null);
   };
   if (edit) {
     return (

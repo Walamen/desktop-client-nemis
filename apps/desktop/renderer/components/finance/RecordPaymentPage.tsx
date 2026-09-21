@@ -43,7 +43,7 @@ export function RecordPaymentPage() {
   const [rules, setRules] = useState<SchoolAdminRecord[] | null>(null);
   const [selectedRuleId, setSelectedRuleId] = useState('');
   const [obligations, setObligations] = useState<SchoolAdminRecord[]>([]);
-  const [students, setStudents] = useState<{ items: readonly { id: string; fullName: string; nemisId: string; gradeLevel?: string }[]; total: number } | null>(null);
+  const [students, setStudents] = useState<{ items: readonly { id: string; fullName: string; nemisId?: string; gradeLevel?: string }[]; total: number } | null>(null);
   // The id, never the row. A reversal re-aggregates the obligation, so a
   // snapshot of the EnrichedStudent taken when the panel opened would keep
   // showing the balance and status the reversal just invalidated, directly

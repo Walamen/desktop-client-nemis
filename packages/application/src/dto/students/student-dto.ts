@@ -83,7 +83,8 @@ export interface StudentOutput {
   middleName?: string;
   lastName: string;
   fullName: string;
-  nemisId: string;
+  /** Absent for a legacy row awaiting its first post-rollout sync pull. */
+  nemisId?: string;
   dateOfBirth: string;
   gender: Gender;
   gradeLevel?: GradeLevel;

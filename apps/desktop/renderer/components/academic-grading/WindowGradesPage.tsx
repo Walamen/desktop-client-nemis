@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, BookOpen, Download, Search, Users } from 'lucide-react';
 import { Input } from '@nemis-desktop/ui';
-import { formatNemisId } from '@nemis-desktop/shared';
+import { formatNemisId, normalizeNemisId } from '@nemis-desktop/shared';
 import { useViewModel } from '@/hooks/use-view-model';
 import { useAcademicFoundationViewModel, useStudentsViewModel } from '@/lib/presentation/hooks/school-admin';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
@@ -98,9 +98,10 @@ export function WindowGradesPage() {
 
   const filteredStudents = useMemo(() => {
     const rows = studentList.status === 'success' || studentList.status === 'refreshing' ? studentList.data : [];
-    const q = search.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter((s) => s.fullName.toLowerCase().includes(q) || s.nemisId.toLowerCase().includes(q));
+    const rawQuery = search.trim();
+    if (!rawQuery) return rows;
+    const q = (normalizeNemisId(rawQuery) ?? rawQuery).toLowerCase();
+    return rows.filter((s) => s.fullName.toLowerCase().includes(q) || (s.nemisId?.toLowerCase().includes(q) ?? false));
   }, [studentList, search]);
 
   const gradeFor = (studentId: string) =>
@@ -123,7 +124,11 @@ export function WindowGradesPage() {
       const grade = gradeFor(student.id);
       return [
         student.fullName,
-        formatNemisId(student.nemisId),
+        // Exported DASHED for readability — there is no desktop grade import
+        // today so this never round-trips back in. If one is ever built, it
+        // MUST strip separators (normalizeNemisId) before matching, since the
+        // stored/compared form is always the 12 bare digits.
+        student.nemisId ? formatNemisId(student.nemisId) : '',
         grade?.assessmentScore ?? '',
         grade?.testScore ?? '',
         grade?.examScore ?? '',
@@ -298,7 +303,7 @@ export function WindowGradesPage() {
                                         {student.fullName}
                                       </td>
                                       <td className="whitespace-nowrap px-3 py-3 font-mono text-xs text-slate-400">
-                                        {formatNemisId(student.nemisId)}
+                                        {student.nemisId ? formatNemisId(student.nemisId) : '—'}
                                       </td>
                                       <td className="px-3 py-3 text-center tabular-nums text-slate-600">
                                         {grade?.assessmentScore ?? '—'}

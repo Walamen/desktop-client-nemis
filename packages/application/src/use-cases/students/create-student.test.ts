@@ -70,7 +70,7 @@ describe('CreateStudentUseCase', () => {
   it('mints a valid NEMIS ID', async () => {
     const { useCase } = build();
     const res = await useCase.execute(validInput);
-    expect(isValidNemisId(res.data.nemisId)).toBe(true);
+    expect(isValidNemisId(res.data.nemisId!)).toBe(true);
   });
 
   it('never mints a NEMIS ID that already exists, across institutions', async () => {

@@ -6,7 +6,8 @@ import ActivityItem from './ActivityItem';
 export interface RecentlyEnrolledStudent {
   readonly id: string;
   readonly fullName: string;
-  readonly nemisId: string;
+  /** Absent for a legacy row awaiting its first post-rollout sync pull. */
+  readonly nemisId?: string;
 }
 
 /** Mirrors portal-web's RecentActivityFeed: recently enrolled students become
@@ -23,7 +24,7 @@ export default function RecentActivityFeed({
           id: `student-${student.id}`,
           icon: UserPlus,
           title: 'New Student Enrolled',
-          description: `${student.fullName} (${formatNemisId(student.nemisId)})`,
+          description: `${student.fullName} (${student.nemisId ? formatNemisId(student.nemisId) : '—'})`,
           time: 'Recently',
           variant: 'success' as const,
         }))

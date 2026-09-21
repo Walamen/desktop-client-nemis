@@ -164,7 +164,7 @@ export default function DashboardPage() {
                     className="flex justify-between border-b py-2 text-sm text-blue-700"
                   >
                     <span>{student.fullName}</span>
-                    <span>{formatNemisId(student.nemisId)}</span>
+                    <span>{student.nemisId ? formatNemisId(student.nemisId) : '—'}</span>
                   </a>
                 ))
               )}

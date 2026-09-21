@@ -274,7 +274,7 @@ export default function ClassDetailPage() {
                             <p className="text-sm font-semibold text-slate-900">{student.fullName}</p>
                           </div>
                         </td>
-                        <td className="py-3 px-4 text-sm font-medium text-slate-900">{formatNemisId(student.nemisId)}</td>
+                        <td className="py-3 px-4 text-sm font-medium text-slate-900">{student.nemisId ? formatNemisId(student.nemisId) : '—'}</td>
                         <td className="py-3 px-4">
                           <span
                             className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${genderBadgeClass(student.gender)}`}
