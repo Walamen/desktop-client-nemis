@@ -337,6 +337,110 @@ describe('DesktopSyncWorker retry policy', () => {
     expect(JSON.parse(queuedPayload.payload).record.guardianId).toBe('g-canonical');
   });
 
+  it('applies a server-reassigned nemisId to the local student row instead of leaving the provisional one', async () => {
+    manager.connection.prepare(`UPDATE sync_runtime SET captureEnabled=0 WHERE id='singleton'`).run();
+    manager.connection.prepare(`
+      INSERT INTO institutions (id,code,name,type,ownership,countyId,approvalStatus,version,updatedAt)
+      VALUES ('school-1','SCH-1','Central High','SECONDARY','PUBLIC','county-1','APPROVED',1,?)
+    `).run('2026-07-01T00:00:00.000Z');
+    // The provisional id this device minted offline — the server rejected it
+    // (a national collision) and reassigned during the push below.
+    manager.connection.prepare(`
+      INSERT INTO students (id,institutionId,firstName,lastName,nemisId,dateOfBirth,gender,isActive,version,updatedAt)
+      VALUES ('s1','school-1','Ada','Learner','482915736045','2012-05-04','FEMALE',1,1,?)
+    `).run('2026-07-01T00:00:00.000Z');
+    manager.connection.prepare(`UPDATE sync_runtime SET captureEnabled=1 WHERE id='singleton'`).run();
+
+    const item = await dataLayer.services.syncQueue.enqueue({
+      entityType: 'students',
+      entityId: 's1',
+      operationType: 'create',
+      payload: { record: { id: 's1', nemisId: '482915736045' } },
+    });
+    // A second, still-backed-off item keeps the queue non-empty after this
+    // one completes, so the cycle doesn't also fall into a delta pull — this
+    // test is only about how the nemisId in the push receipt gets applied.
+    const future = new Date(Date.now() + 60 * 60_000).toISOString();
+    manager.connection.prepare(`
+      INSERT INTO sync_queue (id,entityType,entityId,operationType,payload,retryCount,status,nextAttemptAt,createdAt,updatedAt)
+      VALUES ('op-unrelated','students','s-other','create',?,0,'pending',?,?,?)
+    `).run('{}', future, '2026-08-01T00:00:00.000Z', '2026-08-01T00:00:00.000Z');
+    const gateway = {
+      pushChanges: vi.fn().mockResolvedValue({
+        processedAt: '2026-08-16T00:00:00.000Z',
+        results: [
+          {
+            operationId: item.id,
+            entityType: 'students',
+            entityId: 's1',
+            status: 'accepted',
+            nemisId: '123456789015',
+          },
+        ],
+      }),
+      downloadSnapshot: vi.fn(),
+    } as unknown as BackendProvisioningGateway;
+    const worker = new DesktopSyncWorker(workspaces, gateway, alwaysOnline());
+
+    await worker.syncActive();
+
+    const row = manager.connection
+      .prepare(`SELECT nemisId FROM students WHERE id = 's1'`)
+      .get() as { nemisId: string };
+    expect(row.nemisId).toBe('123456789015');
+    // The correction itself must not loop back into the outbox as a fresh
+    // 'update' operation that just re-pushes the same value forever.
+    const requeued = manager.connection
+      .prepare(`SELECT COUNT(*) count FROM sync_queue WHERE entityType='students' AND entityId='s1' AND status='pending'`)
+      .get() as { count: number };
+    expect(requeued.count).toBe(0);
+  });
+
+  it('leaves the local nemisId untouched when the sync receipt carries none (the common case)', async () => {
+    manager.connection.prepare(`UPDATE sync_runtime SET captureEnabled=0 WHERE id='singleton'`).run();
+    manager.connection.prepare(`
+      INSERT INTO institutions (id,code,name,type,ownership,countyId,approvalStatus,version,updatedAt)
+      VALUES ('school-1','SCH-1','Central High','SECONDARY','PUBLIC','county-1','APPROVED',1,?)
+    `).run('2026-07-01T00:00:00.000Z');
+    manager.connection.prepare(`
+      INSERT INTO students (id,institutionId,firstName,lastName,nemisId,dateOfBirth,gender,isActive,version,updatedAt)
+      VALUES ('s1','school-1','Ada','Learner','482915736045','2012-05-04','FEMALE',1,1,?)
+    `).run('2026-07-01T00:00:00.000Z');
+    manager.connection.prepare(`UPDATE sync_runtime SET captureEnabled=1 WHERE id='singleton'`).run();
+
+    const item = await dataLayer.services.syncQueue.enqueue({
+      entityType: 'students',
+      entityId: 's1',
+      operationType: 'create',
+      payload: { record: { id: 's1', nemisId: '482915736045' } },
+    });
+    // A second, still-backed-off item keeps the queue non-empty after this
+    // one completes, so the cycle doesn't also fall into a delta pull — this
+    // test is only about how the (absent) nemisId in the push receipt is handled.
+    const future = new Date(Date.now() + 60 * 60_000).toISOString();
+    manager.connection.prepare(`
+      INSERT INTO sync_queue (id,entityType,entityId,operationType,payload,retryCount,status,nextAttemptAt,createdAt,updatedAt)
+      VALUES ('op-unrelated','students','s-other','create',?,0,'pending',?,?,?)
+    `).run('{}', future, '2026-08-01T00:00:00.000Z', '2026-08-01T00:00:00.000Z');
+    const gateway = {
+      pushChanges: vi.fn().mockResolvedValue({
+        processedAt: '2026-08-16T00:00:00.000Z',
+        results: [
+          { operationId: item.id, entityType: 'students', entityId: 's1', status: 'accepted' },
+        ],
+      }),
+      downloadSnapshot: vi.fn(),
+    } as unknown as BackendProvisioningGateway;
+    const worker = new DesktopSyncWorker(workspaces, gateway, alwaysOnline());
+
+    await worker.syncActive();
+
+    const row = manager.connection
+      .prepare(`SELECT nemisId FROM students WHERE id = 's1'`)
+      .get() as { nemisId: string };
+    expect(row.nemisId).toBe('482915736045');
+  });
+
   it('does not let its own canonicalization writes re-enter the sync queue via the outbox triggers', async () => {
     manager.connection.prepare(`UPDATE sync_runtime SET captureEnabled=0 WHERE id='singleton'`).run();
     manager.connection.prepare(`

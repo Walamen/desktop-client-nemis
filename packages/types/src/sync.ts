@@ -16,6 +16,11 @@ export interface DesktopSyncOperationResult {
   /** Set when the server reused an existing record instead of creating one
    *  at `entityId` — the canonical id the local device should adopt. */
   redirectedTo?: string;
+  /** Set only for a `students` operation when the server assigned a NEMIS ID
+   *  different from what the client sent (a national collision reassignment,
+   *  or the server correcting a client that should never have varied from
+   *  it) — the value the local row must adopt in place of its own. */
+  nemisId?: string;
 }
 
 export interface DesktopSyncPushResult {

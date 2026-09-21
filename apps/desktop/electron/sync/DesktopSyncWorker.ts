@@ -182,6 +182,29 @@ export class DesktopSyncWorker {
               workspace.database.connection.prepare(`UPDATE sync_runtime SET captureEnabled=1 WHERE id='singleton'`).run();
             }
           }
+          // The server is the uniqueness authority for NEMIS IDs (see
+          // DesktopSyncApplier.student() in the Nemis repo): on a national
+          // collision, or if this client ever sent one that disagreed with an
+          // existing record, the receipt carries the resolved value. Apply it
+          // now so the id shown locally is never one the server already
+          // replaced — otherwise it stays wrong until the next full pull.
+          // captureEnabled is dropped first so this correction doesn't loop
+          // back into its own outbox as a fresh 'update' to re-push.
+          const nemisIdCorrections = pushed.results.filter(
+            (result) => result.entityType === 'students' && result.nemisId,
+          );
+          if (nemisIdCorrections.length > 0) {
+            workspace.database.connection.prepare(`UPDATE sync_runtime SET captureEnabled=0 WHERE id='singleton'`).run();
+            try {
+              for (const result of nemisIdCorrections) {
+                workspace.database.connection
+                  .prepare(`UPDATE students SET nemisId = ? WHERE id = ?`)
+                  .run(result.nemisId, result.entityId);
+              }
+            } finally {
+              workspace.database.connection.prepare(`UPDATE sync_runtime SET captureEnabled=1 WHERE id='singleton'`).run();
+            }
+          }
           workspace.database.connection.prepare(`
             UPDATE sync_queue SET status='completed',updatedAt=?
             WHERE id IN (${pushed.results.map(() => '?').join(',')})
