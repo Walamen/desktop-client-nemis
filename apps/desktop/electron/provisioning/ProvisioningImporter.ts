@@ -223,8 +223,9 @@ export class ProvisioningImporter {
       if (options.merge) {
         // Record the diagnostics but leave `status` on 'complete' — see the
         // merge branch above. A delta merge can legitimately fail on a
-        // SECONDARY unique constraint (e.g. students(institutionId,
-        // nemisId)) when a row the server superseded still exists
+        // SECONDARY unique constraint (e.g. students.nemisId, which is
+        // UNIQUE on its own — a NEMIS ID is national, not scoped per
+        // institution) when a row the server superseded still exists
         // locally, because merge mode never deletes rows the delta omits. That
         // must surface as a thrown error the caller backs off on, not as a
         // permanent shutdown of sync: the next cycle retries, and the 24h full
