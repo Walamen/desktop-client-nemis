@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AttendanceStatus, type AttendanceStatus as AttendanceStatusValue } from '@nemis-desktop/types';
 import { Alert, EmptyState, ErrorState, Skeleton } from '@nemis-desktop/ui';
+import { formatNemisId } from '@nemis-desktop/shared';
 import {
   Save,
   Lock,
@@ -670,7 +671,7 @@ export function AttendancePage() {
                           </div>
                           <div>
                             <div className="text-md font-bold text-slate-500">{student.fullName}</div>
-                            <div className="text-[12px] text-slate-400">{student.admissionNumber}</div>
+                            <div className="text-[12px] text-slate-400">{formatNemisId(student.nemisId)}</div>
                           </div>
                         </div>
                       </td>

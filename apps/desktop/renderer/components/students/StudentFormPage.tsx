@@ -9,6 +9,7 @@ import {
   type GradeLevel as GradeLevelValue,
 } from '@nemis-desktop/types';
 import { Button, Input, Select } from '@nemis-desktop/ui';
+import { formatNemisId } from '@nemis-desktop/shared';
 import { useViewModel } from '@/hooks/use-view-model';
 import {
   useSettingsViewModel,
@@ -37,7 +38,6 @@ export function StudentFormPage({ edit = false }: { edit?: boolean }) {
   const [firstName, setFirst] = useState('');
   const [middleName, setMiddle] = useState('');
   const [lastName, setLast] = useState('');
-  const [number, setNumber] = useState('');
   const [dob, setDob] = useState('');
   const [gender, setGender] = useState<GenderValue>(Gender.FEMALE);
   const [grade, setGrade] = useState<GradeLevelValue | ''>('');
@@ -53,6 +53,7 @@ export function StudentFormPage({ edit = false }: { edit?: boolean }) {
     { firstName: '', lastName: '', relationship: '', phoneNumber: '', email: '', isPrimary: true },
   ]);
   const [createdStudentId, setCreatedStudentId] = useState<string | null>(null);
+  const [createdNemisId, setCreatedNemisId] = useState<string | null>(null);
   const updateGuardian = (index: number, field: keyof GuardianDraft, value: string | boolean) => {
     setGuardians((prev) => prev.map((g, i) => (i === index ? { ...g, [field]: value } : g)));
   };
@@ -74,7 +75,6 @@ export function StudentFormPage({ edit = false }: { edit?: boolean }) {
       setFirst(d.firstName);
       setMiddle(d.middleName ?? '');
       setLast(d.lastName);
-      setNumber(d.admissionNumber);
       setDob(d.rawDateOfBirth.slice(0, 10));
       setGender(d.rawGender as GenderValue);
       setGrade((d.rawGradeLevel ?? '') as GradeLevelValue | '');
@@ -108,7 +108,6 @@ export function StudentFormPage({ edit = false }: { edit?: boolean }) {
       firstName,
       middleName: middleName || undefined,
       lastName,
-      admissionNumber: number,
       dateOfBirth: dob,
       gender,
       gradeLevel: grade || undefined,
@@ -131,6 +130,7 @@ export function StudentFormPage({ edit = false }: { edit?: boolean }) {
       });
     }
     setCreatedStudentId(r.data.id);
+    setCreatedNemisId(r.data.nemisId);
   };
   if (edit) {
     return (
@@ -159,13 +159,6 @@ export function StudentFormPage({ edit = false }: { edit?: boolean }) {
             />
           </div>
           <div className="grid sm:grid-cols-2 gap-3">
-            <Input
-              label="Student number"
-              required
-              disabled={edit}
-              value={number}
-              onChange={(e) => setNumber(e.target.value)}
-            />
             <Input
               label="Date of birth"
               type="date"
@@ -236,6 +229,16 @@ export function StudentFormPage({ edit = false }: { edit?: boolean }) {
               </p>
             </div>
           </div>
+          {createdNemisId && (
+            <div className="bg-white border border-gray-200 rounded-2xl px-5 py-4">
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">NEMIS ID</p>
+              <p className="mt-1 text-lg font-semibold text-slate-900">{formatNemisId(createdNemisId)}</p>
+              <p className="mt-1 text-xs text-slate-500">
+                This is the student&apos;s permanent national identifier. Record it now — it is also visible
+                any time on the students directory or this student&apos;s profile.
+              </p>
+            </div>
+          )}
           <div className="flex gap-3">
             <Link href={`/government/school-admin/students/profile?id=${createdStudentId}`}>
               <Button>Go to student profile</Button>
@@ -257,8 +260,8 @@ export function StudentFormPage({ edit = false }: { edit?: boolean }) {
   ] as const;
 
   const validateStep1 = () => {
-    if (!firstName.trim() || !lastName.trim() || !dob || !number.trim()) {
-      setStepError('First name, last name, date of birth, and student number are required.');
+    if (!firstName.trim() || !lastName.trim() || !dob) {
+      setStepError('First name, last name, and date of birth are required.');
       return false;
     }
     setStepError('');
@@ -335,7 +338,6 @@ export function StudentFormPage({ edit = false }: { edit?: boolean }) {
                 <Input label="First name" required value={firstName} onChange={(e) => setFirst(e.target.value)} />
                 <Input label="Middle name" value={middleName} onChange={(e) => setMiddle(e.target.value)} />
                 <Input label="Last name" required value={lastName} onChange={(e) => setLast(e.target.value)} />
-                <Input label="Student number" required value={number} onChange={(e) => setNumber(e.target.value)} />
                 <Input label="Date of birth" type="date" required value={dob} onChange={(e) => setDob(e.target.value)} />
                 <Select
                   label="Gender"
@@ -387,7 +389,6 @@ export function StudentFormPage({ edit = false }: { edit?: boolean }) {
               firstName={firstName}
               middleName={middleName}
               lastName={lastName}
-              number={number}
               dob={dob}
               grade={grade}
               guardians={guardians}
@@ -499,7 +500,6 @@ function ReviewStep({
   firstName,
   middleName,
   lastName,
-  number,
   dob,
   grade,
   guardians,
@@ -508,7 +508,6 @@ function ReviewStep({
   firstName: string;
   middleName: string;
   lastName: string;
-  number: string;
   dob: string;
   grade: GradeLevelValue | '';
   guardians: GuardianDraft[];
@@ -525,10 +524,6 @@ function ReviewStep({
             <dd className="font-medium">
               {firstName} {middleName} {lastName}
             </dd>
-          </div>
-          <div>
-            <dt className="text-gray-600">Student number</dt>
-            <dd className="font-medium">{number}</dd>
           </div>
           <div>
             <dt className="text-gray-600">Date of birth</dt>

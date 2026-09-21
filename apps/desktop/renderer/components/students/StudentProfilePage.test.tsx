@@ -10,7 +10,7 @@ beforeEach(() => {
     student: {
       get: vi.fn(async () => ({
         id: 's-1', institutionId: 'inst-1', firstName: 'Grace', lastName: 'Toe', fullName: 'Grace Toe',
-        admissionNumber: 'ADM-1', dateOfBirth: '2015-01-01T00:00:00.000Z', gender: 'FEMALE', gradeLevel: 'GRADE_1',
+        nemisId: '482915736045', dateOfBirth: '2015-01-01T00:00:00.000Z', gender: 'FEMALE', gradeLevel: 'GRADE_1',
         isActive: true, version: 1, updatedAt: '2026-07-01T00:00:00.000Z', guardians: [],
       })),
       listEnrollments: vi.fn(async () => []),
@@ -44,7 +44,7 @@ describe('StudentProfilePage enrollment/guardians', () => {
       student: {
         get: vi.fn(async () => ({
           id: 's-1', institutionId: 'inst-1', firstName: 'Grace', lastName: 'Toe', fullName: 'Grace Toe',
-          admissionNumber: 'ADM-1', dateOfBirth: '2015-01-01T00:00:00.000Z', gender: 'FEMALE',
+          nemisId: '482915736045', dateOfBirth: '2015-01-01T00:00:00.000Z', gender: 'FEMALE',
           isActive: true, version: 1, updatedAt: '2026-07-01T00:00:00.000Z', guardians: [],
         })),
         listEnrollments: vi.fn(async () => []),

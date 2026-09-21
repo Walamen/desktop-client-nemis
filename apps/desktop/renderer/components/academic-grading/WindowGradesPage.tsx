@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, BookOpen, Download, Search, Users } from 'lucide-react';
 import { Input } from '@nemis-desktop/ui';
+import { formatNemisId } from '@nemis-desktop/shared';
 import { useViewModel } from '@/hooks/use-view-model';
 import { useAcademicFoundationViewModel, useStudentsViewModel } from '@/lib/presentation/hooks/school-admin';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
@@ -99,7 +100,7 @@ export function WindowGradesPage() {
     const rows = studentList.status === 'success' || studentList.status === 'refreshing' ? studentList.data : [];
     const q = search.trim().toLowerCase();
     if (!q) return rows;
-    return rows.filter((s) => s.fullName.toLowerCase().includes(q) || s.admissionNumber.toLowerCase().includes(q));
+    return rows.filter((s) => s.fullName.toLowerCase().includes(q) || s.nemisId.toLowerCase().includes(q));
   }, [studentList, search]);
 
   const gradeFor = (studentId: string) =>
@@ -117,12 +118,12 @@ export function WindowGradesPage() {
 
   const handleExport = () => {
     if (!selectedClassId || !selectedSubjectId) return;
-    const header = ['Student', 'Adm #', 'CA', 'Test', 'Exam', 'Marks', 'Percentage', 'Grade', 'Status'];
+    const header = ['Student', 'NEMIS ID', 'CA', 'Test', 'Exam', 'Marks', 'Percentage', 'Grade', 'Status'];
     const csvRows = filteredStudents.map((student) => {
       const grade = gradeFor(student.id);
       return [
         student.fullName,
-        student.admissionNumber,
+        formatNemisId(student.nemisId),
         grade?.assessmentScore ?? '',
         grade?.testScore ?? '',
         grade?.examScore ?? '',
@@ -253,7 +254,7 @@ export function WindowGradesPage() {
                             <Input
                               type="text"
                               icon={<Search className="h-4 w-4 text-slate-400" />}
-                              placeholder="Search student name or admission #…"
+                              placeholder="Search student name or NEMIS ID…"
                               value={search}
                               onChange={(e) => setSearch(e.target.value)}
                             />
@@ -269,7 +270,7 @@ export function WindowGradesPage() {
                                     Student
                                   </th>
                                   <th className="whitespace-nowrap px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-widest text-slate-400">
-                                    Adm #
+                                    NEMIS ID
                                   </th>
                                   <th className="whitespace-nowrap px-3 py-2.5 text-center text-xs font-semibold uppercase tracking-widest text-slate-400">
                                     CA
@@ -297,7 +298,7 @@ export function WindowGradesPage() {
                                         {student.fullName}
                                       </td>
                                       <td className="whitespace-nowrap px-3 py-3 font-mono text-xs text-slate-400">
-                                        {student.admissionNumber}
+                                        {formatNemisId(student.nemisId)}
                                       </td>
                                       <td className="px-3 py-3 text-center tabular-nums text-slate-600">
                                         {grade?.assessmentScore ?? '—'}

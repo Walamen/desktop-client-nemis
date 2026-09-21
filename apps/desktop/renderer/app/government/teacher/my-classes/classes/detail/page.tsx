@@ -6,6 +6,7 @@ import {
   ArrowLeft, Award, BookOpen, Calendar, ClipboardCheck, GraduationCap, Users,
 } from 'lucide-react';
 import type { StudentListItemResult } from '@nemis-desktop/types';
+import { formatNemisId } from '@nemis-desktop/shared';
 import { Button, EmptyState, Skeleton, Spinner } from '@nemis-desktop/ui';
 import { useCurrentUserViewModel } from '@/lib/presentation/hooks/shared';
 import { useTeachingAssignmentViewModel } from '@/lib/presentation/hooks/school-admin';
@@ -237,7 +238,7 @@ export default function ClassDetailPage() {
                   <tr>
                     <th className="text-left py-3 px-4 text-xs font-bold uppercase">#</th>
                     <th className="text-left py-3 px-4 text-xs font-bold uppercase">Student Name</th>
-                    <th className="text-left py-3 px-4 text-xs font-bold uppercase">Admission No.</th>
+                    <th className="text-left py-3 px-4 text-xs font-bold uppercase">NEMIS ID</th>
                     <th className="text-left py-3 px-4 text-xs font-bold uppercase">Gender</th>
                     <th className="text-left py-3 px-4 text-xs font-bold uppercase">Status</th>
                   </tr>
@@ -273,7 +274,7 @@ export default function ClassDetailPage() {
                             <p className="text-sm font-semibold text-slate-900">{student.fullName}</p>
                           </div>
                         </td>
-                        <td className="py-3 px-4 text-sm font-medium text-slate-900">{student.admissionNumber}</td>
+                        <td className="py-3 px-4 text-sm font-medium text-slate-900">{formatNemisId(student.nemisId)}</td>
                         <td className="py-3 px-4">
                           <span
                             className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${genderBadgeClass(student.gender)}`}

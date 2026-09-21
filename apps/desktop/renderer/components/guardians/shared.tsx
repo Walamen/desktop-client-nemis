@@ -6,7 +6,7 @@ export interface StudentLite {
   id: string;
   firstName: string;
   lastName: string;
-  admissionNumber: string;
+  nemisId: string;
   gradeLevel: string | null;
   isActive: boolean;
 }
@@ -47,7 +47,7 @@ export function buildGuardianRows(
       id,
       firstName: str(s.firstName),
       lastName: str(s.lastName),
-      admissionNumber: str(s.admissionNumber),
+      nemisId: str(s.nemisId),
       gradeLevel: strOrNull(s.gradeLevel),
       isActive: bool(s.isActive),
     });

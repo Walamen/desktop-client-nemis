@@ -60,7 +60,6 @@ describe('StudentFormPage create wizard', () => {
     await user.type(textboxNear(/first name/i), 'Grace');
     await user.type(textboxNear(/last name/i), 'Toe');
     await user.type(textboxNear(/date of birth/i), '2015-01-01');
-    await user.type(textboxNear(/student number|admission number/i), 'ADM-1');
     await user.click(screen.getByRole('button', { name: /next/i }));
     await waitFor(() =>
       expect(
@@ -97,12 +96,12 @@ describe('StudentFormPage create wizard submit', () => {
   it('creates the student, then creates each guardian, then shows a plain success screen', async () => {
     const createMock = vi.fn(async () => ({
       id: 's-new', institutionId: 'inst-1', firstName: 'Grace', lastName: 'Toe', fullName: 'Grace Toe',
-      admissionNumber: 'ADM-1', dateOfBirth: '2015-01-01', gender: 'FEMALE', isActive: true,
+      nemisId: '482915736045', dateOfBirth: '2015-01-01', gender: 'FEMALE', isActive: true,
       version: 1, updatedAt: '2026-07-01T00:00:00.000Z', guardians: [],
     }));
     const createGuardianMock = vi.fn(async () => ({
       id: 's-new', institutionId: 'inst-1', firstName: 'Grace', lastName: 'Toe', fullName: 'Grace Toe',
-      admissionNumber: 'ADM-1', dateOfBirth: '2015-01-01', gender: 'FEMALE', isActive: true,
+      nemisId: '482915736045', dateOfBirth: '2015-01-01', gender: 'FEMALE', isActive: true,
       version: 2, updatedAt: '2026-07-01T00:00:01.000Z', guardians: [{ id: 'g-1', guardianId: 'g-1', isPrimary: true }],
     }));
     (window as unknown as { nemis: unknown }).nemis = {
@@ -127,7 +126,6 @@ describe('StudentFormPage create wizard submit', () => {
     await user.type(textboxNear(/first name/i), 'Grace');
     await user.type(textboxNear(/last name/i), 'Toe');
     await user.type(textboxNear(/date of birth/i), '2015-01-01');
-    await user.type(textboxNear(/student number|admission number/i), 'ADM-1');
     await user.click(screen.getByRole('button', { name: /next/i }));
 
     await waitFor(() =>
@@ -171,5 +169,8 @@ describe('StudentFormPage create wizard submit', () => {
     );
     await waitFor(() => expect(screen.getByText(/student created/i)).toBeInTheDocument());
     expect(screen.queryByText(/login credentials/i)).toBeNull();
+    // The permanent NEMIS ID is minted server-side, never entered by the
+    // user, so the success screen is the only place it can be discovered.
+    expect(screen.getByText('4829-1573-6045')).toBeInTheDocument();
   });
 });

@@ -9,11 +9,11 @@ import type { GradeLevel as GradeLevelValue } from '@nemis-desktop/types';
 import { useViewModel } from '@/hooks/use-view-model';
 import { useSettingsViewModel, useStudentProfileViewModel, useStudentsListViewModel } from '@/lib/presentation/hooks/school-admin';
 import { Input } from '@nemis-desktop/ui';
+import { formatNemisId } from '@nemis-desktop/shared';
 import { grades, human } from './shared';
 
 interface BulkRow {
   id: string;
-  admissionNumber: string;
   firstName: string;
   lastName: string;
   dateOfBirth: string;
@@ -34,8 +34,8 @@ interface BulkImportResult {
   totalRequested: number;
   created: number;
   failed: number;
-  createdRows: { index: number; admissionNumber: string; studentId: string; guardianWarning?: string }[];
-  failedRows: { index: number; admissionNumber: string; error: string }[];
+  createdRows: { index: number; nemisId: string; studentId: string; guardianWarning?: string }[];
+  failedRows: { index: number; error: string }[];
 }
 
 const makeId = () => Math.random().toString(36).slice(2, 10);
@@ -44,7 +44,6 @@ const VALID_GRADES = new Set<string>(grades);
 
 const emptyRow = (): BulkRow => ({
   id: makeId(),
-  admissionNumber: '',
   firstName: '',
   lastName: '',
   dateOfBirth: '',
@@ -61,7 +60,6 @@ const emptyRow = (): BulkRow => ({
 
 function validateRow(row: BulkRow): Record<string, string> {
   const errors: Record<string, string> = {};
-  if (!row.admissionNumber.trim()) errors.admissionNumber = 'Required';
   if (!row.firstName.trim()) errors.firstName = 'Required';
   if (!row.lastName.trim()) errors.lastName = 'Required';
 
@@ -94,7 +92,7 @@ function validateRow(row: BulkRow): Record<string, string> {
 // system on an offline device to issue credentials from). ──
 
 const HEADERS: string[] = [
-  'Admission Number *', 'First Name *', 'Last Name *', 'Date of Birth * (YYYY-MM-DD)',
+  'First Name *', 'Last Name *', 'Date of Birth * (YYYY-MM-DD)',
   'Gender * (MALE/FEMALE)', 'Admission Date * (YYYY-MM-DD)', 'Grade Level * (KG/K1/K2/GRADE_1...GRADE_12)',
   'Guardian First Name *', 'Guardian Last Name *', 'Guardian Relationship *', 'Guardian Phone *', 'Student Email',
 ];
@@ -123,7 +121,7 @@ function parseDateCell(value: unknown): string {
 
 function downloadTemplate(): void {
   const example = [
-    'STU-2024-001', 'John', 'Doe', '2010-05-15', 'MALE', new Date().toISOString().slice(0, 10),
+    'John', 'Doe', '2010-05-15', 'MALE', new Date().toISOString().slice(0, 10),
     'GRADE_5', 'Jane', 'Doe', 'Mother', '+231770123456', 'john.doe@example.com',
   ];
   const studentsSheet = XLSX.utils.aoa_to_sheet([HEADERS, example]);
@@ -166,13 +164,12 @@ function parseWorkbookToRows(data: Uint8Array): BulkRow[] {
 
   return raw
     .filter((r) => {
-      const adm = pick(r, 'Admission Number *', 'Admission Number', 'admissionNumber');
-      return adm && adm !== 'STU-2024-001' && !adm.toLowerCase().startsWith('example');
+      const firstName = pick(r, 'First Name *', 'First Name', 'firstName');
+      return firstName && firstName !== 'John';
     })
     .map((r) => {
       const row: BulkRow = {
         id: makeId(),
-        admissionNumber: pick(r, 'Admission Number *', 'Admission Number', 'admissionNumber'),
         firstName: pick(r, 'First Name *', 'First Name', 'firstName'),
         lastName: pick(r, 'Last Name *', 'Last Name', 'lastName'),
         dateOfBirth: parseDateCell(r['Date of Birth * (YYYY-MM-DD)'] ?? r['Date of Birth'] ?? r['dateOfBirth'] ?? ''),
@@ -280,7 +277,6 @@ export function BulkImportPage() {
           institutionId,
           firstName: row.firstName.trim(),
           lastName: row.lastName.trim(),
-          admissionNumber: row.admissionNumber.trim(),
           admissionDate: row.admissionDate.trim() || undefined,
           dateOfBirth: row.dateOfBirth.trim(),
           gender: row.gender.toUpperCase() as 'MALE' | 'FEMALE',
@@ -288,7 +284,7 @@ export function BulkImportPage() {
           email: row.studentEmail.trim() || undefined,
         });
         if (!studentOutcome.ok) {
-          failedRows.push({ index, admissionNumber: row.admissionNumber, error: 'Could not create student record.' });
+          failedRows.push({ index, error: 'Could not create student record.' });
           continue;
         }
         let guardianWarning: string | undefined;
@@ -301,10 +297,10 @@ export function BulkImportPage() {
           isPrimary: true,
         });
         if (!guardianOutcome.ok) guardianWarning = 'Student created, but the guardian record failed — add it manually.';
-        createdRows.push({ index, admissionNumber: row.admissionNumber, studentId: studentOutcome.data.id, guardianWarning });
+        createdRows.push({ index, nemisId: studentOutcome.data.nemisId, studentId: studentOutcome.data.id, guardianWarning });
       } catch (cause) {
         failedRows.push({
-          index, admissionNumber: row.admissionNumber,
+          index,
           error: cause instanceof Error ? cause.message : 'Unexpected error creating this student.',
         });
       }
@@ -411,7 +407,6 @@ export function BulkImportPage() {
                 <thead className="border-b border-gray-200 bg-gray-50">
                   <tr>
                     <th className="whitespace-nowrap px-3 py-3 text-left text-xs font-semibold text-gray-600">#</th>
-                    <th className="min-w-[120px] whitespace-nowrap px-3 py-3 text-left text-xs font-semibold text-gray-600">Admission No *</th>
                     <th className="min-w-[100px] whitespace-nowrap px-3 py-3 text-left text-xs font-semibold text-gray-600">First Name *</th>
                     <th className="min-w-[100px] whitespace-nowrap px-3 py-3 text-left text-xs font-semibold text-gray-600">Last Name *</th>
                     <th className="min-w-[110px] whitespace-nowrap px-3 py-3 text-left text-xs font-semibold text-gray-600">DOB *</th>
@@ -433,11 +428,6 @@ export function BulkImportPage() {
                     return (
                       <tr key={row.id} className={hasErrors ? 'bg-red-50/40' : 'bg-white'}>
                         <td className="px-3 py-2 pt-3 align-top text-xs text-gray-400">{i + 1}</td>
-                        <td className="px-3 py-2 align-top">
-                          <Input type="text" value={row.admissionNumber} placeholder="STU-001"
-                            onChange={(e) => updateRow(row.id, { admissionNumber: e.target.value })}
-                            error={row.errors.admissionNumber} />
-                        </td>
                         <td className="px-3 py-2 align-top">
                           <Input type="text" value={row.firstName} placeholder="First name"
                             onChange={(e) => updateRow(row.id, { firstName: e.target.value })}
@@ -562,7 +552,7 @@ export function BulkImportPage() {
                     <div key={c.index} className="flex items-start gap-2 rounded-lg bg-green-50 p-3">
                       <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-green-500" />
                       <div>
-                        <p className="text-sm font-medium text-green-800">{c.admissionNumber}</p>
+                        <p className="text-sm font-medium text-green-800">{formatNemisId(c.nemisId)}</p>
                         {c.guardianWarning && <p className="mt-0.5 text-xs text-amber-700">{c.guardianWarning}</p>}
                       </div>
                     </div>
@@ -579,7 +569,7 @@ export function BulkImportPage() {
                     <div key={f.index} className="flex items-start gap-2 rounded-lg bg-red-50 p-3">
                       <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
                       <div>
-                        <p className="text-sm font-medium text-red-800">{f.admissionNumber || `Row ${f.index + 1}`}</p>
+                        <p className="text-sm font-medium text-red-800">Row {f.index + 1}</p>
                         <p className="mt-0.5 text-xs text-red-600">{f.error}</p>
                       </div>
                     </div>
@@ -592,8 +582,14 @@ export function BulkImportPage() {
               {result.failedRows.length > 0 && (
                 <button type="button"
                   onClick={() => {
-                    const failedNums = new Set(result.failedRows.map((f) => f.admissionNumber));
-                    setRows((prev) => prev.filter((r) => failedNums.has(r.admissionNumber)).map((r) => ({ ...r, errors: validateRow(r) })));
+                    // `failedRows[].index` is each row's position in `validRows`
+                    // as it stood at submission time — rows/validRows haven't
+                    // changed since, so that position still resolves to the
+                    // right row's stable `id` here.
+                    const failedIds = new Set(
+                      result.failedRows.map((f) => validRows[f.index]?.id).filter((id): id is string => Boolean(id)),
+                    );
+                    setRows((prev) => prev.filter((r) => failedIds.has(r.id)).map((r) => ({ ...r, errors: validateRow(r) })));
                     setStep('review');
                     setResult(null);
                   }}

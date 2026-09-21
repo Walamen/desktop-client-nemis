@@ -5,6 +5,7 @@ import Link from 'next/link';
 import DOMPurify from 'dompurify';
 import { ArrowLeft, Paperclip } from 'lucide-react';
 import { Alert, Badge, Input, Skeleton } from '@nemis-desktop/ui';
+import { formatNemisId } from '@nemis-desktop/shared';
 import { useViewModel } from '@/hooks/use-view-model';
 import { useCurrentUserViewModel } from '@/lib/presentation/hooks/shared';
 import { useAssignmentsViewModel } from '@/lib/presentation/hooks/teacher';
@@ -114,7 +115,7 @@ export function SubmissionDetailPage({ assignmentId, studentId }: { assignmentId
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-primary">{submission.studentName}</h1>
-          <p className="text-sm text-gray-400 mt-0.5">{submission.admissionNumber}</p>
+          <p className="text-sm text-gray-400 mt-0.5">{formatNemisId(submission.nemisId)}</p>
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
           {submission.submittedAt && <p className="text-xs text-gray-400">Submitted {submission.submittedAt}</p>}

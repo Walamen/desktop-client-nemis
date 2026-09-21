@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { GradeLevel, type GradeLevel as GradeLevelValue } from '@nemis-desktop/types';
 import type { ClassRowView } from '@nemis-desktop/presentation';
 import { Drawer, Input, Select } from '@nemis-desktop/ui';
+import { formatNemisId } from '@nemis-desktop/shared';
 import {
   BookOpen,
   Plus,
@@ -139,7 +140,7 @@ export function ClassesDirectoryPage() {
       .filter((s) => {
         if (!unassignedSearch) return true;
         const q = unassignedSearch.toLowerCase();
-        return s.fullName.toLowerCase().includes(q) || s.admissionNumber.toLowerCase().includes(q);
+        return s.fullName.toLowerCase().includes(q) || s.nemisId.toLowerCase().includes(q);
       });
   }, [unassigned, unassignedGradeFilter, unassignedSearch]);
 
@@ -533,7 +534,7 @@ export function ClassesDirectoryPage() {
                       />
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Admission #</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">NEMIS ID</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Grade Level</th>
                     <th className="relative px-6 py-3">
                       <span className="sr-only">Actions</span>
@@ -574,7 +575,7 @@ export function ClassesDirectoryPage() {
                         <td className="px-6 py-4">
                           <p className="font-medium text-gray-900">{student.fullName}</p>
                         </td>
-                        <td className="px-6 py-4 text-gray-600 font-mono text-sm">{student.admissionNumber}</td>
+                        <td className="px-6 py-4 text-gray-600 font-mono text-sm">{formatNemisId(student.nemisId)}</td>
                         <td className="px-6 py-4">
                           {student.gradeLevel ? (
                             <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
@@ -691,7 +692,7 @@ export function ClassesDirectoryPage() {
                   {studentsToEnroll.map((s) => (
                     <div key={s.id} className="flex items-center justify-between px-3 py-2 text-sm">
                       <span className="font-medium text-gray-900">{s.fullName}</span>
-                      <span className="text-gray-400 font-mono text-xs">{s.admissionNumber}</span>
+                      <span className="text-gray-400 font-mono text-xs">{formatNemisId(s.nemisId)}</span>
                     </div>
                   ))}
                 </div>

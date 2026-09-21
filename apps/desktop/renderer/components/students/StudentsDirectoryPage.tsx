@@ -18,6 +18,7 @@ import {
   Select,
   Skeleton,
 } from '@nemis-desktop/ui';
+import { formatNemisId } from '@nemis-desktop/shared';
 import {
   totalPages,
   type StudentRowView,
@@ -248,7 +249,7 @@ export function StudentsDirectoryPage() {
                     label="Search"
                     type="text"
                     icon={<Search className="w-3.5 h-3.5 text-slate-400" />}
-                    placeholder="Name or student number"
+                    placeholder="Name or NEMIS ID"
                     defaultValue={filters.keyword ?? ''}
                     onChange={(e) => {
                       const keyword = e.target.value;
@@ -393,7 +394,7 @@ export function StudentsDirectoryPage() {
                               Student
                             </th>
                             <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-widest text-slate-500">
-                              Admission #
+                              NEMIS ID
                             </th>
                             <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-widest text-slate-500">
                               Grade
@@ -431,7 +432,7 @@ export function StudentsDirectoryPage() {
                                   <p className="font-medium text-slate-800">{s.fullName}</p>
                                 </div>
                               </td>
-                              <td className="px-4 py-3 text-slate-500 font-mono">{s.admissionNumber}</td>
+                              <td className="px-4 py-3 text-slate-500 font-mono">{formatNemisId(s.nemisId)}</td>
                               <td className="px-4 py-3">
                                 <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
                                   {s.gradeLevel || 'N/A'}
@@ -639,7 +640,7 @@ function StudentCard({ student, onEdit }: { student: StudentRowView; onEdit: () 
               <p className="text-sm font-semibold text-slate-800 leading-snug truncate">
                 {student.fullName}
               </p>
-              <p className="text-xs font-mono text-slate-400 mt-0.5">{student.admissionNumber}</p>
+              <p className="text-xs font-mono text-slate-400 mt-0.5">{formatNemisId(student.nemisId)}</p>
             </div>
             <span
               className={`shrink-0 text-xs font-semibold px-2 py-0.5 ${

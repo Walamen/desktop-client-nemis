@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MessageSquare, Search, Send, Loader2, Plus, X } from 'lucide-react';
 import { Avatar, Input, Spinner } from '@nemis-desktop/ui';
+import { formatNemisId } from '@nemis-desktop/shared';
 import { useCurrentUserViewModel } from '@/lib/presentation/hooks/shared';
 import { useViewModel } from '@/hooks/use-view-model';
 import { schoolAdminBridge } from '@/services/nemis-bridge/school-admin';
@@ -82,7 +83,7 @@ function NewConversationModal({ onClose, onCreated }: { onClose: () => void; onC
                 <div className="mt-1 max-h-32 overflow-y-auto rounded-lg border border-slate-100">
                   {students.map((s) => (
                     <button key={s.id} onClick={() => setSelectedStudent(s)} className="block w-full px-3 py-1.5 text-left text-sm hover:bg-slate-50">
-                      {s.fullName} <span className="text-xs text-slate-400">· {s.admissionNumber}</span>
+                      {s.fullName} <span className="text-xs text-slate-400">· {formatNemisId(s.nemisId)}</span>
                     </button>
                   ))}
                 </div>

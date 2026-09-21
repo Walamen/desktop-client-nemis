@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { Avatar, Input } from '@nemis-desktop/ui';
+import { formatNemisId } from '@nemis-desktop/shared';
 import { Search, ChevronLeft, ChevronRight, CheckCircle2, XCircle, Clock, MinusCircle } from 'lucide-react';
 import { useViewModel } from '@/hooks/use-view-model';
 import {
@@ -100,7 +101,7 @@ export function AttendanceReportPage() {
       return {
         id: student.id,
         fullName: student.fullName,
-        admissionNumber: student.admissionNumber,
+        nemisId: student.nemisId,
         gradeLevel: student.gradeLevel,
         statusLabel: resolveDayStatus(studentRecords.map((r) => r.status.label)),
       };
@@ -112,7 +113,7 @@ export function AttendanceReportPage() {
       const matchesSearch =
         searchQuery === '' ||
         row.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        row.admissionNumber.toLowerCase().includes(searchQuery.toLowerCase());
+        row.nemisId.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesStatus =
         statusFilter === 'ALL'
           ? true
@@ -280,7 +281,7 @@ export function AttendanceReportPage() {
                                   <Avatar firstName={firstName} lastName={lastName} role="student" size="sm" />
                                   <div>
                                     <div className="text-sm font-semibold text-slate-900">{row.fullName}</div>
-                                    <div className="text-[11px] text-slate-400">{row.admissionNumber}</div>
+                                    <div className="text-[11px] text-slate-400">{formatNemisId(row.nemisId)}</div>
                                   </div>
                                 </div>
                               </td>

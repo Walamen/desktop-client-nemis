@@ -1,11 +1,12 @@
 import { Card } from '@nemis-desktop/ui';
+import { formatNemisId } from '@nemis-desktop/shared';
 import { Bell, CalendarCheck, BookOpen, Users, UserPlus } from 'lucide-react';
 import ActivityItem from './ActivityItem';
 
 export interface RecentlyEnrolledStudent {
   readonly id: string;
   readonly fullName: string;
-  readonly admissionNumber: string;
+  readonly nemisId: string;
 }
 
 /** Mirrors portal-web's RecentActivityFeed: recently enrolled students become
@@ -22,7 +23,7 @@ export default function RecentActivityFeed({
           id: `student-${student.id}`,
           icon: UserPlus,
           title: 'New Student Enrolled',
-          description: `${student.fullName} (${student.admissionNumber})`,
+          description: `${student.fullName} (${formatNemisId(student.nemisId)})`,
           time: 'Recently',
           variant: 'success' as const,
         }))

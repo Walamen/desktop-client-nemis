@@ -4,6 +4,7 @@ import Link from 'next/link';
 import type { StudentListItemResult } from '@nemis-desktop/types';
 import { GradeLevel, type GradeLevel as GradeLevelValue } from '@nemis-desktop/types';
 import { Drawer, EmptyState, ErrorState, Input, Select, Skeleton } from '@nemis-desktop/ui';
+import { formatNemisId } from '@nemis-desktop/shared';
 import { ArrowLeft, Users, BookOpen, UserCheck, Plus, Trash2, AlertTriangle } from 'lucide-react';
 import { useViewModel } from '@/hooks/use-view-model';
 import { useAcademicFoundationViewModel, useTeachersListViewModel, useTeachingAssignmentViewModel } from '@/lib/presentation/hooks/school-admin';
@@ -249,7 +250,7 @@ export function ClassDetailPage() {
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-8">#</th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Admission #</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">NEMIS ID</th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Gender</th>
                   </tr>
                 </thead>
@@ -279,7 +280,7 @@ export function ClassDetailPage() {
                         <td className="px-6 py-4">
                           <p className="font-medium text-gray-900">{s.fullName}</p>
                         </td>
-                        <td className="px-6 py-4 font-mono text-sm text-gray-600">{s.admissionNumber}</td>
+                        <td className="px-6 py-4 font-mono text-sm text-gray-600">{formatNemisId(s.nemisId)}</td>
                         <td className="px-6 py-4 text-sm text-gray-600 capitalize">{s.gender?.toLowerCase() ?? '—'}</td>
                       </tr>
                     ))

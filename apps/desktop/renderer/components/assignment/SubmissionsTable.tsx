@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Alert, Badge, EmptyState, Input, Skeleton, Spinner } from '@nemis-desktop/ui';
+import { formatNemisId } from '@nemis-desktop/shared';
 import { useViewModel } from '@/hooks/use-view-model';
 import { useCurrentUserViewModel } from '@/lib/presentation/hooks/shared';
 import { useAssignmentsViewModel } from '@/lib/presentation/hooks/teacher';
@@ -138,7 +139,7 @@ export function SubmissionsTable({ assignmentId, totalMarks }: { assignmentId: s
                   <td className="px-4 py-3 text-sm text-gray-400">{idx + 1}</td>
                   <td className="px-4 py-3">
                     <p className="text-sm font-bold text-slate-600">{s.studentName}</p>
-                    <p className="text-xs text-gray-400">{s.admissionNumber}</p>
+                    <p className="text-xs text-gray-400">{formatNemisId(s.nemisId)}</p>
                   </td>
                   <td className="px-4 py-3 text-sm text-slate-600">{s.submittedAt ?? '—'}</td>
                   <td className="px-4 py-3">

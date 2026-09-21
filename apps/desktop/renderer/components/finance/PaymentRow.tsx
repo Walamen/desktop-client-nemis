@@ -3,13 +3,14 @@
 import { useState, type KeyboardEvent } from 'react';
 import { Clock } from 'lucide-react';
 import type { SchoolAdminRecord } from '@nemis-desktop/types';
+import { formatNemisId } from '@nemis-desktop/shared';
 import { formatCurrency, getOrCreateObligation, OBLIGATION_STATUS_CONFIG, PAYMENT_METHODS, recordPayment } from './shared';
 import { capAmountInput, methodRequiresReference, validatePaymentDraft, type PaymentDraftError } from './payment-draft';
 
 export interface EnrichedStudent {
   id: string;
   name: string;
-  admissionNumber: string;
+  nemisId: string;
   gradeLevel: string | null;
   level: string | null;
   rule: SchoolAdminRecord | null;
@@ -184,7 +185,7 @@ export function PaymentRow({ index, student, currency, academicYearId, termId, c
         <td className={`${CELL} text-right text-xs tabular-nums text-slate-300`}>{index}</td>
         <td className={CELL}>
           <p className="text-sm font-medium text-slate-900">{student.name}</p>
-          <p className="mt-0.5 text-xs tabular-nums text-slate-400">{student.admissionNumber}</p>
+          <p className="mt-0.5 text-xs tabular-nums text-slate-400">{formatNemisId(student.nemisId)}</p>
         </td>
         <td className={`${CELL} text-xs text-slate-500`}>
           {student.gradeLevel ? student.gradeLevel.replaceAll('_', ' ') : <span className="text-slate-300">&mdash;</span>}

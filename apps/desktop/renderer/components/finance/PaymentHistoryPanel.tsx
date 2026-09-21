@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { RotateCcw, X } from 'lucide-react';
 import type { SchoolAdminRecord } from '@nemis-desktop/types';
+import { formatNemisId } from '@nemis-desktop/shared';
 import { formatCurrency, listPaymentsForObligation, reverseFeePayment } from './shared';
 import type { EnrichedStudent } from './PaymentRow';
 
@@ -211,7 +212,7 @@ export function PaymentHistoryPanel({ student, currency, onClose, onReversed }: 
           <div>
             <p className="mb-0.5 text-xs font-semibold uppercase tracking-widest text-slate-400">Payment History</p>
             <h2 className="text-base font-bold text-slate-900">{student.name}</h2>
-            <p className="text-xs text-slate-400">{student.admissionNumber}</p>
+            <p className="text-xs text-slate-400">{formatNemisId(student.nemisId)}</p>
           </div>
           <button
             type="button"

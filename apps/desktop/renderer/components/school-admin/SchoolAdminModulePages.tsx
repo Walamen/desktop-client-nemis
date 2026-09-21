@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState, type FormEvent } from 'react';
 import type { SchoolAdminCollection, SchoolAdminRecord } from '@nemis-desktop/types';
+import { formatNemisId } from '@nemis-desktop/shared';
 import { Input } from '@nemis-desktop/ui';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
 import { studentBridge } from '@/services/nemis-bridge/school-admin/student-bridge';
@@ -17,8 +18,9 @@ function human(value: string): string {
   return value.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-function display(value: SchoolAdminRecord[string] | undefined): string {
+function display(column: string, value: SchoolAdminRecord[string] | undefined): string {
   if (value === null || value === '') return '—';
+  if (column === 'nemisId' && typeof value === 'string') return formatNemisId(value);
   if (typeof value === 'number' && Number.isFinite(value)) return value.toLocaleString();
   const text = String(value);
   if (/^\d{4}-\d{2}-\d{2}T/.test(text)) return new Date(text).toLocaleString();
@@ -135,7 +137,7 @@ export function SchoolAdminCollectionPage({
                   <tr key={String(record.id)} className="align-top">
                     {section.columns.map((column) => (
                       <td key={column} className="max-w-xs px-4 py-3 text-slate-700">
-                        {display(record[column])}
+                        {display(column, record[column])}
                       </td>
                     ))}
                     {hasActions && (

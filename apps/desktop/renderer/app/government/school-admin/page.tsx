@@ -5,6 +5,7 @@ import {
   ClipboardClock, CheckCircle, UsersIcon,
 } from 'lucide-react';
 import { ErrorState } from '@nemis-desktop/ui';
+import { formatNemisId } from '@nemis-desktop/shared';
 import {
   useDashboardViewModel, useSettingsViewModel, useAcademicYearViewModel,
   useAcademicFoundationViewModel,
@@ -163,7 +164,7 @@ export default function DashboardPage() {
                     className="flex justify-between border-b py-2 text-sm text-blue-700"
                   >
                     <span>{student.fullName}</span>
-                    <span>{student.admissionNumber}</span>
+                    <span>{formatNemisId(student.nemisId)}</span>
                   </a>
                 ))
               )}

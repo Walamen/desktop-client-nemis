@@ -1,6 +1,7 @@
 'use client';
 import { useEffect } from 'react';
 import { Avatar, Card } from '@nemis-desktop/ui';
+import { formatNemisId } from '@nemis-desktop/shared';
 import { X, Phone, Mail, MapPin, Briefcase, ShieldCheck } from 'lucide-react';
 import { human, type GuardianRow } from './shared';
 
@@ -14,7 +15,7 @@ function ChildCard({ child }: { child: GuardianRow['children'][number] }) {
             {child.firstName} {child.lastName}
           </p>
           <p className="text-[11px] text-slate-400">
-            {child.admissionNumber}
+            {formatNemisId(child.nemisId)}
             {child.gradeLevel ? ` · ${human(child.gradeLevel)}` : ''}
           </p>
         </div>

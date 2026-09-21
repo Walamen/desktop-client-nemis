@@ -51,7 +51,7 @@ function installBaseMock(options?: { paginateGrades?: boolean }) {
     student: {
       list: vi.fn(async () => ({
         items: [
-          { id: 'student-1', fullName: 'Alice Johnson', admissionNumber: 'ADM-001', gradeLevel: 'GRADE_10', gender: 'FEMALE', isActive: true },
+          { id: 'student-1', fullName: 'Alice Johnson', nemisId: '482915736045', gradeLevel: 'GRADE_10', gender: 'FEMALE', isActive: true },
         ],
         total: 1,
         limit: 100,
@@ -280,8 +280,8 @@ describe('Teacher grades page', () => {
     // student" gate would still call this Ready off Alice's score alone.
     (nemis as unknown as { student: { list: ReturnType<typeof vi.fn> } }).student.list = vi.fn(async () => ({
       items: [
-        { id: 'student-1', fullName: 'Alice Johnson', admissionNumber: 'ADM-001', gradeLevel: 'GRADE_10', gender: 'FEMALE', isActive: true },
-        { id: 'student-2', fullName: 'Bob Smith', admissionNumber: 'ADM-002', gradeLevel: 'GRADE_10', gender: 'FEMALE', isActive: true },
+        { id: 'student-1', fullName: 'Alice Johnson', nemisId: '482915736045', gradeLevel: 'GRADE_10', gender: 'FEMALE', isActive: true },
+        { id: 'student-2', fullName: 'Bob Smith', nemisId: '123456789015', gradeLevel: 'GRADE_10', gender: 'FEMALE', isActive: true },
       ],
       total: 2,
       limit: 100,

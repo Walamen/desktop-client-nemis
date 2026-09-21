@@ -84,7 +84,7 @@ describe('StudentsDirectoryPage filters', () => {
       </PresentationProvider>,
     );
     await waitFor(() => expect(listMock).toHaveBeenCalledTimes(1)); // initial load on mount
-    await user.type(screen.getByPlaceholderText('Name or student number'), 'Grace');
+    await user.type(screen.getByPlaceholderText('Name or NEMIS ID'), 'Grace');
     expect(listMock).toHaveBeenCalledTimes(1); // not yet — still debouncing
     vi.advanceTimersByTime(350);
     await waitFor(() => expect(listMock).toHaveBeenCalledTimes(2));
@@ -103,7 +103,7 @@ describe('StudentsDirectoryPage view toggle', () => {
             {
               id: 's-1',
               fullName: 'Grace Toe',
-              admissionNumber: 'ADM-1',
+              nemisId: '482915736045',
               gradeLevel: 'Grade 1',
               gender: 'Female',
               isActive: true,
@@ -153,7 +153,7 @@ describe('StudentsDirectoryPage pagination', () => {
             {
               id: 's-1',
               fullName: 'Grace Toe',
-              admissionNumber: 'ADM-1',
+              nemisId: '482915736045',
               gradeLevel: 'Grade 1',
               gender: 'Female',
               isActive: true,
@@ -204,7 +204,7 @@ describe('StudentsDirectoryPage edit drawer', () => {
       firstName: 'Grace',
       lastName: 'Toe',
       fullName: 'Grace Toe',
-      admissionNumber: 'ADM-1',
+      nemisId: '482915736045',
       dateOfBirth: '2015-01-01T00:00:00.000Z',
       gender: 'FEMALE',
       isActive: true,
@@ -219,7 +219,7 @@ describe('StudentsDirectoryPage edit drawer', () => {
             {
               id: 's-1',
               fullName: 'Grace Toe',
-              admissionNumber: 'ADM-1',
+              nemisId: '482915736045',
               gradeLevel: 'Grade 1',
               gender: 'Female',
               isActive: true,
@@ -266,7 +266,7 @@ describe('StudentsDirectoryPage edit drawer', () => {
         {
           id: 's-1',
           fullName: 'Grace Toe',
-          admissionNumber: 'ADM-1',
+          nemisId: '482915736045',
           gradeLevel: 'Grade 1',
           gender: 'Female',
           isActive: true,
@@ -283,7 +283,7 @@ describe('StudentsDirectoryPage edit drawer', () => {
       firstName: 'Grace',
       lastName: 'Toe',
       fullName: 'Grace Toe',
-      admissionNumber: 'ADM-1',
+      nemisId: '482915736045',
       dateOfBirth: '2015-01-01T00:00:00.000Z',
       gender: 'FEMALE',
       isActive: true,
@@ -297,7 +297,7 @@ describe('StudentsDirectoryPage edit drawer', () => {
       firstName: req.firstName ?? 'Grace',
       lastName: req.lastName ?? 'Toe',
       fullName: `${req.firstName ?? 'Grace'} ${req.lastName ?? 'Toe'}`,
-      admissionNumber: 'ADM-1',
+      nemisId: '482915736045',
       dateOfBirth: '2015-01-01T00:00:00.000Z',
       gender: 'FEMALE',
       isActive: true,
@@ -355,7 +355,7 @@ describe('StudentsDirectoryPage edit drawer', () => {
       firstName: 'Grace',
       lastName: 'Toe',
       fullName: 'Grace Toe',
-      admissionNumber: 'ADM-1',
+      nemisId: '482915736045',
       dateOfBirth: '2015-01-01T00:00:00.000Z',
       gender: 'FEMALE',
       isActive: true,
@@ -371,7 +371,7 @@ describe('StudentsDirectoryPage edit drawer', () => {
             {
               id: 's-1',
               fullName: 'Grace Toe',
-              admissionNumber: 'ADM-1',
+              nemisId: '482915736045',
               gradeLevel: 'Grade 1',
               gender: 'Female',
               isActive: true,

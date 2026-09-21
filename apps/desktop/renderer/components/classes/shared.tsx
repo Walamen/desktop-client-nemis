@@ -104,7 +104,7 @@ export async function countTeachersForClass(classId: string): Promise<number> {
 export interface UnassignedStudent {
   id: string;
   fullName: string;
-  admissionNumber: string;
+  nemisId: string;
   gradeLevel: string | null;
 }
 
@@ -124,7 +124,7 @@ export async function getUnassignedStudents(): Promise<UnassignedStudent[]> {
     .map((s) => ({
       id: s.id,
       fullName: s.fullName,
-      admissionNumber: s.admissionNumber,
+      nemisId: s.nemisId,
       gradeLevel: s.gradeLevel ?? null,
     }));
 }
