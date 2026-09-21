@@ -124,8 +124,10 @@ export function WindowGradesPage() {
       const grade = gradeFor(student.id);
       return [
         student.fullName,
-        // Exported dashed for readability; any future grade import MUST strip separators before matching.
-        // Silent failures occur if the canonical 12-digit form is not normalized.
+        // Exported DASHED for readability — there is no desktop grade import
+        // today so this never round-trips back in. If one is ever built, it
+        // MUST strip separators (normalizeNemisId) before matching, since the
+        // stored/compared form is always the 12 bare digits.
         student.nemisId ? formatNemisId(student.nemisId) : '',
         grade?.assessmentScore ?? '',
         grade?.testScore ?? '',
