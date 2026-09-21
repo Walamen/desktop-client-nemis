@@ -1,5 +1,5 @@
 import { ValueObject } from '../../core';
-import { BusinessRuleViolationException } from '../../exceptions';
+import { InvalidValueObjectException } from '../../exceptions';
 import { normalizeNemisId } from '@nemis-desktop/shared';
 
 interface NemisIdProps {
@@ -16,9 +16,7 @@ export class NemisId extends ValueObject<NemisIdProps> {
   static create(value: string): NemisId {
     const canonical = normalizeNemisId(value);
     if (canonical === null) {
-      throw new BusinessRuleViolationException(
-        `"${value}" is not a valid NEMIS ID.`,
-      );
+      throw new InvalidValueObjectException(`"${value}" is not a valid NEMIS ID.`);
     }
     return new NemisId({ value: canonical });
   }
