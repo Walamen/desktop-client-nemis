@@ -156,11 +156,11 @@ describe('ProvisioningImporter', () => {
     // cannot express server-side deletions; the 24h full resync is the safety
     // net). So a stale local row the server has already superseded can collide
     // with an incoming row on a SECONDARY unique constraint —
-    // idx_students_admission is UNIQUE(institutionId, admissionNumber), which
+    // idx_students_nemisId is UNIQUE(nemisId), which
     // the ON CONFLICT(id) upsert does not absorb.
     expect(() =>
       importer.import(
-        snapshotOf({ students: [{ ...student('s2', 'Grace'), admissionNumber: 'ADM-s1' }] }),
+        snapshotOf({ students: [{ ...student('s2', 'Grace'), nemisId: NEMIS_IDS.s1 }] }),
         CONTEXT,
         { merge: true },
       ),
@@ -178,7 +178,7 @@ describe('ProvisioningImporter', () => {
   });
 
   it('self-heals a class_teachers row reassigned under a new id on delta merge, instead of colliding on the (classId,staffId) unique index', () => {
-    // Unlike students.admissionNumber above, class_teachers has no
+    // Unlike students.nemisId above, class_teachers has no
     // "legitimately still colliding, wait for the 24h resync" case: the
     // server sends this whole collection in full on every pull (no
     // updatedAt column to delta-filter on), so an incoming row's
@@ -346,7 +346,7 @@ describe('ProvisioningImporter', () => {
       importer.import(
         snapshotOf({
           ...BASE_DATA,
-          students: [student('s1', 'Ada'), { ...student('s2', 'Grace'), admissionNumber: 'ADM-s1' }],
+          students: [student('s1', 'Ada'), { ...student('s2', 'Grace'), nemisId: NEMIS_IDS.s1 }],
         }),
         CONTEXT,
       ),
@@ -475,6 +475,9 @@ const CONTEXT = {
   serverDeviceId: 'server-device-1',
 };
 
+/** Valid 12-digit Luhn-checked NEMIS IDs, keyed by the fixture's student id. */
+const NEMIS_IDS: Record<string, string> = { s1: '482915736045', s2: '123456789015' };
+
 function student(id: string, firstName: string): ProvisioningRow {
   return {
     id,
@@ -482,7 +485,7 @@ function student(id: string, firstName: string): ProvisioningRow {
     firstName,
     middleName: null,
     lastName: 'Learner',
-    admissionNumber: `ADM-${id}`,
+    nemisId: NEMIS_IDS[id] ?? '999999999991',
     dateOfBirth: '2012-05-04',
     gender: 'FEMALE',
     gradeLevel: 'GRADE_7',

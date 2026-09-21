@@ -9,7 +9,7 @@ async function seedStudents(count: number) {
   for (let i = 0; i < count; i += 1) {
     await app.students.create({
       institutionId: 'inst-1', firstName: `Student${i}`, lastName: 'Test',
-      admissionNumber: `ADM-${i}`, dateOfBirth: '2015-01-01', gender: Gender.MALE,
+      dateOfBirth: '2015-01-01', gender: Gender.MALE,
     });
   }
   return { app, ports };

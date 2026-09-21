@@ -177,7 +177,7 @@ describe('DesktopSyncWorker retry policy', () => {
       entityId: 's1',
       operationType: 'create',
       payload: {
-        record: { id: 's1', firstName: 'Ada', lastName: 'Learner', admissionNumber: 'ADM-1' },
+        record: { id: 's1', firstName: 'Ada', lastName: 'Learner', nemisId: '482915736045' },
       },
     });
     const gateway = {
@@ -194,7 +194,7 @@ describe('DesktopSyncWorker retry policy', () => {
               id: 's1',
               firstName: 'Ada',
               lastName: 'Learner',
-              admissionNumber: 'ADM-1',
+              nemisId: '482915736045',
               createdAt: '2026-08-16T00:00:00.000Z',
               updatedAt: '2026-08-16T00:00:00.000Z',
               version: 1,
@@ -269,8 +269,8 @@ describe('DesktopSyncWorker retry policy', () => {
       VALUES ('school-1','SCH-1','Central High','SECONDARY','PUBLIC','county-1','APPROVED',1,?)
     `).run('2026-07-01T00:00:00.000Z');
     manager.connection.prepare(`
-      INSERT INTO students (id,institutionId,firstName,lastName,admissionNumber,dateOfBirth,gender,isActive,version,updatedAt)
-      VALUES ('s1','school-1','Ada','Learner','ADM-1','2012-05-04','FEMALE',1,1,?)
+      INSERT INTO students (id,institutionId,firstName,lastName,nemisId,dateOfBirth,gender,isActive,version,updatedAt)
+      VALUES ('s1','school-1','Ada','Learner','482915736045','2012-05-04','FEMALE',1,1,?)
     `).run('2026-07-01T00:00:00.000Z');
     manager.connection.prepare(`
       INSERT INTO guardians (id,firstName,lastName,relationship,phoneNumber,email,version,updatedAt)
@@ -344,8 +344,8 @@ describe('DesktopSyncWorker retry policy', () => {
       VALUES ('school-1','SCH-1','Central High','SECONDARY','PUBLIC','county-1','APPROVED',1,?)
     `).run('2026-07-01T00:00:00.000Z');
     manager.connection.prepare(`
-      INSERT INTO students (id,institutionId,firstName,lastName,admissionNumber,dateOfBirth,gender,isActive,version,updatedAt)
-      VALUES ('s1','school-1','Ada','Learner','ADM-1','2012-05-04','FEMALE',1,1,?)
+      INSERT INTO students (id,institutionId,firstName,lastName,nemisId,dateOfBirth,gender,isActive,version,updatedAt)
+      VALUES ('s1','school-1','Ada','Learner','482915736045','2012-05-04','FEMALE',1,1,?)
     `).run('2026-07-01T00:00:00.000Z');
     manager.connection.prepare(`
       INSERT INTO guardians (id,firstName,lastName,relationship,phoneNumber,email,version,updatedAt)
@@ -400,8 +400,8 @@ describe('DesktopSyncWorker retry policy', () => {
       VALUES ('school-1','SCH-1','Central High','SECONDARY','PUBLIC','county-1','APPROVED',1,?)
     `).run('2026-07-01T00:00:00.000Z');
     manager.connection.prepare(`
-      INSERT INTO students (id,institutionId,firstName,lastName,admissionNumber,dateOfBirth,gender,isActive,version,updatedAt)
-      VALUES ('s1','school-1','Ada','Learner','ADM-1','2012-05-04','FEMALE',1,1,?)
+      INSERT INTO students (id,institutionId,firstName,lastName,nemisId,dateOfBirth,gender,isActive,version,updatedAt)
+      VALUES ('s1','school-1','Ada','Learner','482915736045','2012-05-04','FEMALE',1,1,?)
     `).run('2026-07-01T00:00:00.000Z');
     // Create the canonical guardian (pulled from the server in a prior sync).
     manager.connection.prepare(`
@@ -810,8 +810,8 @@ describe('DesktopSyncWorker retry policy', () => {
     `).run('2026-07-01T00:00:00.000Z');
     manager.connection.prepare(`
       INSERT INTO students
-        (id,institutionId,firstName,lastName,admissionNumber,dateOfBirth,gender,isActive,version,updatedAt)
-      VALUES ('s1','school-1','Ada','Learner','ADM-1','2012-05-04','FEMALE',1,1,?)
+        (id,institutionId,firstName,lastName,nemisId,dateOfBirth,gender,isActive,version,updatedAt)
+      VALUES ('s1','school-1','Ada','Learner','482915736045','2012-05-04','FEMALE',1,1,?)
     `).run('2026-07-01T00:00:00.000Z');
     manager.connection.prepare(`DELETE FROM sync_queue`).run();
     // A full resync already happened moments ago, so this cycle pulls a delta.

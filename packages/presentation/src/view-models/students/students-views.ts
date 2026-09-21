@@ -3,7 +3,7 @@ import type { StatusPresentation } from '../../presenters/status-presentation';
 export interface StudentRowView {
   readonly id: string;
   readonly fullName: string;
-  readonly admissionNumber: string;
+  readonly nemisId: string;
   readonly gradeLevel: string;
   readonly gender: string;
   readonly status: StatusPresentation;
@@ -16,7 +16,7 @@ export interface StudentDetailsView {
   readonly firstName: string;
   readonly middleName?: string;
   readonly lastName: string;
-  readonly admissionNumber: string;
+  readonly nemisId: string;
   readonly dateOfBirth: string;
   readonly rawDateOfBirth: string;
   readonly gender: string;

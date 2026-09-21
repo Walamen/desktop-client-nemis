@@ -56,7 +56,7 @@ describe('business application layer end-to-end against real SQLite', () => {
     const app = createApplicationComposition(dataLayer, 'test-user', silent);
     await app.students.create({
       institutionId: 'inst-1', firstName: 'Grace', lastName: 'Toe',
-      admissionNumber: 'ADM-1', dateOfBirth: '2015-01-01', gender: Gender.FEMALE,
+      dateOfBirth: '2015-01-01', gender: Gender.FEMALE,
     });
     expect((await app.reporting.getDashboardOverview()).data.totalStudents).toBe(1);
   });
@@ -101,15 +101,15 @@ describe('business application layer end-to-end against real SQLite', () => {
     const app = createApplicationComposition(dataLayer, 'test-user', silent);
     await app.students.create({
       institutionId: 'inst-1', firstName: 'Grace', lastName: 'Toe',
-      admissionNumber: 'ADM-1', dateOfBirth: '2015-01-01', gender: Gender.FEMALE,
+      dateOfBirth: '2015-01-01', gender: Gender.FEMALE,
     });
     await app.students.create({
       institutionId: 'inst-1', firstName: 'John', lastName: 'Doe',
-      admissionNumber: 'ADM-2', dateOfBirth: '2015-01-01', gender: Gender.MALE,
+      dateOfBirth: '2015-01-01', gender: Gender.MALE,
     });
     await app.students.create({
       institutionId: 'inst-2', firstName: 'Mary', lastName: 'Kollie',
-      admissionNumber: 'ADM-3', dateOfBirth: '2015-01-01', gender: Gender.FEMALE,
+      dateOfBirth: '2015-01-01', gender: Gender.FEMALE,
     });
 
     const institutions = dataLayer.repositories.institutions.findAll();

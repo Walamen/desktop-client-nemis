@@ -42,7 +42,7 @@ export function toAssignmentSubmissionRowView(
     assignmentId: dto.assignmentId,
     studentId: dto.studentId,
     studentName: dto.studentName,
-    admissionNumber: dto.admissionNumber,
+    nemisId: dto.nemisId,
     status: presentSubmissionStatus(dto.status),
     submittedAt: dto.submittedAt ? formatIsoDateTime(dto.submittedAt) : undefined,
     response: dto.response,

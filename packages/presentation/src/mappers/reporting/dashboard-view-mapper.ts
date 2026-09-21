@@ -10,6 +10,6 @@ export function toDashboardSummaryView(dto: DashboardOverviewOutput): DashboardS
     ],
     attendanceToday: dto.attendanceToday,
     studentsByGrade: dto.studentsByGrade,
-    recentlyEnrolled: dto.recentlyEnrolled.map(({ id, fullName, admissionNumber }) => ({ id, fullName, admissionNumber })),
+    recentlyEnrolled: dto.recentlyEnrolled.map(({ id, fullName, nemisId }) => ({ id, fullName, nemisId })),
   };
 }

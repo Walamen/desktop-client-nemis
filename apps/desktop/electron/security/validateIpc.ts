@@ -177,7 +177,7 @@ export function assertListStudentsArgs(args: readonly unknown[]): void {
   assertOptionalEnumMember(r.enrollmentStatus, 'enrollmentStatus', Object.values(EnrollmentStatus));
   assertOptionalBoolean(r.isActive, 'isActive');
   if (r.sort !== undefined)
-    assertEnumMember(r.sort, 'sort', ['name', 'admissionNumber', 'updatedAt']);
+    assertEnumMember(r.sort, 'sort', ['name', 'nemisId', 'updatedAt']);
 }
 export function assertCreateStudentArgs(args: readonly unknown[]): void {
   assertArity(args, 1);
@@ -188,7 +188,6 @@ export function assertCreateStudentArgs(args: readonly unknown[]): void {
     'firstName',
     'middleName',
     'lastName',
-    'admissionNumber',
     'admissionDate',
     'dateOfBirth',
     'gender',
@@ -197,7 +196,7 @@ export function assertCreateStudentArgs(args: readonly unknown[]): void {
     'email',
     'address',
   ]);
-  for (const k of ['institutionId', 'firstName', 'lastName', 'admissionNumber'] as const)
+  for (const k of ['institutionId', 'firstName', 'lastName'] as const)
     assertString(r[k], k, NAME_MAX_LENGTH);
   assertIsoDate(r.dateOfBirth, 'dateOfBirth');
   assertOptionalIsoDate(r.admissionDate, 'admissionDate');

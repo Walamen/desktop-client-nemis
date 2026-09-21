@@ -87,7 +87,7 @@ describe('AssignmentsViewModel', () => {
     const created = await vm.createAssignment(createDto);
     const assignmentId = created.ok ? created.data.id : '';
     ports.assignmentSubmissions.enrolledStudentsByAssignment.set(assignmentId, [
-      { studentId: 'stu-1', studentName: 'Ada Lovelace', admissionNumber: 'ADM-001' },
+      { studentId: 'stu-1', studentName: 'Ada Lovelace', nemisId: '482915736045' },
     ]);
 
     await vm.loadSubmissions(assignmentId, 'staff-1');
@@ -150,7 +150,7 @@ describe('AssignmentsViewModel', () => {
     const created = await vm.createAssignment(createDto);
     const assignmentId = created.ok ? created.data.id : '';
     ports.assignmentSubmissions.enrolledStudentsByAssignment.set(assignmentId, [
-      { studentId: 'stu-1', studentName: 'Ada Lovelace', admissionNumber: 'ADM-001' },
+      { studentId: 'stu-1', studentName: 'Ada Lovelace', nemisId: '482915736045' },
     ]);
     // A validation failure (negative grade), not an ownership/stale-id one —
     // the assignment genuinely still exists under this id for this teacher.

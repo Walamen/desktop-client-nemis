@@ -18,12 +18,14 @@ function seedClassWithStudents(test: TestContext, classId: string, studentCount:
     `INSERT INTO classes (id,institutionId,academicYearId,name,gradeLevel,isActive,version,updatedAt)
      VALUES (?,'inst-1','ay-1','Grade 10A','GRADE_10',1,1,?)`,
   ).run(classId, '2026-01-01T00:00:00.000Z');
+  // Distinct valid 12-digit Luhn-checked NEMIS IDs for the unique index.
+  const NEMIS_IDS = ['482915736045', '123456789015', '999999999991', '111111111113', '000000000018'];
   for (let i = 1; i <= studentCount; i += 1) {
     const studentId = `stu-${classId}-${i}`;
     db.prepare(
-      `INSERT INTO students (id,institutionId,firstName,lastName,admissionNumber,dateOfBirth,gender,isActive,version,updatedAt)
+      `INSERT INTO students (id,institutionId,firstName,lastName,nemisId,dateOfBirth,gender,isActive,version,updatedAt)
        VALUES (?,'inst-1',?,?,?,'2010-01-01','FEMALE',1,1,?)`,
-    ).run(studentId, `First${i}`, `Last${i}`, `ADM-${classId}-${i}`, '2026-01-01T00:00:00.000Z');
+    ).run(studentId, `First${i}`, `Last${i}`, NEMIS_IDS[i - 1], '2026-01-01T00:00:00.000Z');
     db.prepare(
       `INSERT INTO enrollments (id,studentId,classId,academicYearId,termId,enrollmentDate,status,version,updatedAt)
        VALUES (?,?,?,'ay-1','term-1','2026-01-01','ACTIVE',1,?)`,

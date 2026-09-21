@@ -28,7 +28,7 @@ interface SubmissionListRow {
   studentId: string;
   firstName: string;
   lastName: string;
-  admissionNumber: string;
+  nemisId: string;
   status: string;
   submittedAt: string | null;
   response: string | null;
@@ -115,7 +115,7 @@ export class SqliteAssignmentSubmissionRepository implements IAssignmentSubmissi
       const rows = this.#statements
         .get(
           `SELECT s.id AS submissionId, e.studentId AS studentId,
-                  st.firstName, st.lastName, st.admissionNumber,
+                  st.firstName, st.lastName, st.nemisId,
                   COALESCE(s.status, 'PENDING') AS status,
                   s.submittedAt, s.response, s.fileUrl, s.fileName, s.grade, s.feedback
            FROM enrollments e
@@ -132,7 +132,7 @@ export class SqliteAssignmentSubmissionRepository implements IAssignmentSubmissi
         assignmentId,
         studentId: row.studentId,
         studentName: `${row.firstName} ${row.lastName}`,
-        admissionNumber: row.admissionNumber,
+        nemisId: row.nemisId,
         status: row.status as SubmissionStatus,
         submittedAt: row.submittedAt ?? undefined,
         response: row.response ?? undefined,

@@ -9,11 +9,11 @@ describe('StudentStatisticsViewModel', () => {
     const { app } = createTestApplication();
     await app.students.create({
       institutionId: 'inst-1', firstName: 'A', lastName: 'B',
-      admissionNumber: 'ADM-1', dateOfBirth: '2015-01-01', gender: Gender.MALE,
+      dateOfBirth: '2015-01-01', gender: Gender.MALE,
     });
     await app.students.create({
       institutionId: 'inst-1', firstName: 'C', lastName: 'D',
-      admissionNumber: 'ADM-2', dateOfBirth: '2015-01-01', gender: Gender.FEMALE,
+      dateOfBirth: '2015-01-01', gender: Gender.FEMALE,
     });
     const vm = new StudentStatisticsViewModel({
       reporting: app.reporting,

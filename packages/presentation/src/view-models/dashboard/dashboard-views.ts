@@ -11,5 +11,5 @@ export interface DashboardSummaryView {
   readonly stats: readonly DashboardStatView[];
   readonly attendanceToday: { readonly present: number; readonly total: number };
   readonly studentsByGrade: readonly { readonly gradeLevel: string; readonly studentCount: number }[];
-  readonly recentlyEnrolled: readonly { readonly id: string; readonly fullName: string; readonly admissionNumber: string }[];
+  readonly recentlyEnrolled: readonly { readonly id: string; readonly fullName: string; readonly nemisId: string }[];
 }

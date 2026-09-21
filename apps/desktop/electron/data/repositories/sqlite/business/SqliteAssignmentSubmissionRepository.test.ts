@@ -18,14 +18,14 @@ function seed(test: TestContext): void {
     `INSERT INTO classes (id,institutionId,academicYearId,name,gradeLevel,isActive,version,updatedAt)
      VALUES ('cls-1','inst-1','ay-1','Grade 10A','GRADE_10',1,1,?)`,
   ).run('2026-01-01T00:00:00.000Z');
-  for (const [studentId, admissionNumber, firstName] of [
-    ['stu-1', 'ADM-001', 'Ada'],
-    ['stu-2', 'ADM-002', 'Bob'],
+  for (const [studentId, nemisId, firstName] of [
+    ['stu-1', '482915736045', 'Ada'],
+    ['stu-2', '123456789015', 'Bob'],
   ] as const) {
     db.prepare(
-      `INSERT INTO students (id,institutionId,firstName,lastName,admissionNumber,dateOfBirth,gender,isActive,version,updatedAt)
+      `INSERT INTO students (id,institutionId,firstName,lastName,nemisId,dateOfBirth,gender,isActive,version,updatedAt)
        VALUES (?,'inst-1',?,'Lovelace',?,'2010-01-01','FEMALE',1,1,?)`,
-    ).run(studentId, firstName, admissionNumber, '2026-01-01T00:00:00.000Z');
+    ).run(studentId, firstName, nemisId, '2026-01-01T00:00:00.000Z');
     db.prepare(
       `INSERT INTO enrollments (id,studentId,classId,academicYearId,termId,enrollmentDate,status,version,updatedAt)
        VALUES (?,?,'cls-1','ay-1','term-1','2026-01-01','ACTIVE',1,?)`,

@@ -53,12 +53,12 @@ describe('valuesEqual', () => {
 
 describe('hasRealDisagreement', () => {
   it('returns false when the only differences are sync metadata and server-assigned fields (a create-offline-then-sync false positive)', () => {
-    const local = { id: 's1', firstName: 'Ada', lastName: 'Learner', admissionNumber: 'ADM-1', status: null };
+    const local = { id: 's1', firstName: 'Ada', lastName: 'Learner', nemisId: '123456789015', status: null };
     const remote = {
       id: 's1',
       firstName: 'Ada',
       lastName: 'Learner',
-      admissionNumber: 'ADM-1',
+      nemisId: '123456789015',
       status: 'ACTIVE',
       createdAt: '2026-08-17T09:00:00.000Z',
       updatedAt: '2026-08-17T09:00:00.000Z',

@@ -27,7 +27,7 @@ export interface AssignmentSubmissionRowView {
   readonly assignmentId: string;
   readonly studentId: string;
   readonly studentName: string;
-  readonly admissionNumber: string;
+  readonly nemisId: string;
   readonly status: StatusPresentation;
   readonly submittedAt?: string;
   readonly response?: string;

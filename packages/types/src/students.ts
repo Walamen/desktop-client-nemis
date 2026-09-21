@@ -8,7 +8,7 @@ export interface StudentResult {
   middleName?: string;
   lastName: string;
   fullName: string;
-  admissionNumber: string;
+  nemisId: string;
   admissionDate?: string;
   dateOfBirth: string;
   gender: Gender;
@@ -24,7 +24,7 @@ export interface StudentResult {
 export interface StudentListItemResult {
   id: string;
   fullName: string;
-  admissionNumber: string;
+  nemisId: string;
   gradeLevel?: GradeLevel;
   gender: Gender;
   isActive: boolean;
@@ -40,14 +40,13 @@ export interface StudentListRequest {
   academicYearId?: string;
   enrollmentStatus?: EnrollmentStatus;
   isActive?: boolean;
-  sort?: 'name' | 'admissionNumber' | 'updatedAt';
+  sort?: 'name' | 'nemisId' | 'updatedAt';
 }
 export interface CreateStudentRequest {
   institutionId: string;
   firstName: string;
   middleName?: string;
   lastName: string;
-  admissionNumber: string;
   admissionDate?: string;
   dateOfBirth: string;
   gender: Gender;

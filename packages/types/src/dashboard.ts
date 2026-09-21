@@ -10,7 +10,7 @@ export interface DashboardOverviewResult {
   totalSubjects: number;
   attendanceToday: { present: number; total: number };
   studentsByGrade: { gradeLevel: string; studentCount: number }[];
-  recentlyEnrolled: { id: string; fullName: string; admissionNumber: string; updatedAt: string }[];
+  recentlyEnrolled: { id: string; fullName: string; nemisId: string; updatedAt: string }[];
 }
 
 export interface SchoolSummaryResult {

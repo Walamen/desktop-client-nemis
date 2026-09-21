@@ -11,7 +11,6 @@ const dto = {
   institutionId: 'inst-1',
   firstName: 'Ada',
   lastName: 'Lovelace',
-  admissionNumber: 'ADM-001',
   dateOfBirth: '2015-06-01',
   gender: Gender.FEMALE,
 } as const;
@@ -28,7 +27,7 @@ describe('StudentsViewModel', () => {
   it('loads a page of students with formatted rows and total count', async () => {
     const { app, vm } = build();
     await app.students.create(dto);
-    await app.students.create({ ...dto, firstName: 'Grace', admissionNumber: 'ADM-002' });
+    await app.students.create({ ...dto, firstName: 'Grace' });
     await vm.loadStudents();
     const state = vm.store.getState();
     expect(state.list.status).toBe('success');
@@ -48,7 +47,7 @@ describe('StudentsViewModel', () => {
   it('filters rows by keyword via the selector', async () => {
     const { app, vm } = build();
     await app.students.create(dto);
-    await app.students.create({ ...dto, firstName: 'Grace', admissionNumber: 'ADM-002' });
+    await app.students.create({ ...dto, firstName: 'Grace' });
     await vm.loadStudents();
     vm.setKeyword('grace');
     const rows = selectStudentRows(vm.store.getState());
@@ -116,7 +115,7 @@ describe('StudentsViewModel', () => {
   it('deactivateStudent does not clobber details for a different open student', async () => {
     const { app, vm } = build();
     const a = await app.students.create(dto);
-    const b = await app.students.create({ ...dto, firstName: 'Grace', admissionNumber: 'ADM-002' });
+    const b = await app.students.create({ ...dto, firstName: 'Grace' });
     await vm.selectStudent(a.data.id); // details shows A
     await vm.deactivateStudent({ studentId: b.data.id, actorId: 'usr-1' });
     const details = vm.store.getState().details;

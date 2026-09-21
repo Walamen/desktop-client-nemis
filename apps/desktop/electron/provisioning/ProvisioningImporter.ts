@@ -68,7 +68,7 @@ const SPECS: Record<ProvisioningCollection, TableSpec> = {
   classes: spec('classes', ['id','institutionId','academicYearId','name','gradeLevel','capacity','isActive','section','version','updatedAt','lastModifiedBy']),
   subjects: spec('subjects', ['id','institutionId','name','code','description','isActive','version','updatedAt','lastModifiedBy']),
   classSubjects: spec('class_subjects', ['id','classId','subjectId','assignedAt','version','updatedAt','lastModifiedBy']),
-  students: spec('students', ['id','institutionId','firstName','middleName','lastName','admissionNumber','dateOfBirth','gender','gradeLevel','isActive','admissionDate','phoneNumber','email','address','version','updatedAt','lastModifiedBy']),
+  students: spec('students', ['id','institutionId','firstName','middleName','lastName','nemisId','dateOfBirth','gender','gradeLevel','isActive','admissionDate','phoneNumber','email','address','version','updatedAt','lastModifiedBy']),
   guardians: spec('guardians', ['id','firstName','lastName','relationship','phoneNumber','email','address','occupation','isEmergencyContact','version','updatedAt','lastModifiedBy']),
   studentGuardians: spec('student_guardians', ['id','studentId','guardianId','isPrimary','createdAt']),
   enrollments: spec('enrollments', ['id','studentId','classId','academicYearId','termId','enrollmentDate','status','version','updatedAt','lastModifiedBy']),
@@ -224,7 +224,7 @@ export class ProvisioningImporter {
         // Record the diagnostics but leave `status` on 'complete' — see the
         // merge branch above. A delta merge can legitimately fail on a
         // SECONDARY unique constraint (e.g. students(institutionId,
-        // admissionNumber)) when a row the server superseded still exists
+        // nemisId)) when a row the server superseded still exists
         // locally, because merge mode never deletes rows the delta omits. That
         // must surface as a thrown error the caller backs off on, not as a
         // permanent shutdown of sync: the next cycle retries, and the 24h full

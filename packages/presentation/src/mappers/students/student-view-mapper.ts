@@ -8,7 +8,7 @@ export function toStudentRowView(dto: StudentSummaryOutput): StudentRowView {
   return {
     id: dto.id,
     fullName: dto.fullName,
-    admissionNumber: dto.admissionNumber,
+    nemisId: dto.nemisId,
     gradeLevel: formatGradeLevel(dto.gradeLevel),
     gender: humanizeEnum(dto.gender),
     status: presentActive(dto.isActive),
@@ -23,7 +23,7 @@ export function toStudentDetailsView(dto: StudentOutput): StudentDetailsView {
     firstName: dto.firstName,
     middleName: dto.middleName,
     lastName: dto.lastName,
-    admissionNumber: dto.admissionNumber,
+    nemisId: dto.nemisId,
     dateOfBirth: formatIsoDate(dto.dateOfBirth),
     rawDateOfBirth: dto.dateOfBirth,
     gender: humanizeEnum(dto.gender),

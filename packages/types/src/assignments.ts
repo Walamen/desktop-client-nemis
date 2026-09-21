@@ -69,7 +69,7 @@ export interface AssignmentSubmissionResult {
   assignmentId: string;
   studentId: string;
   studentName: string;
-  admissionNumber: string;
+  nemisId: string;
   status: SubmissionStatus;
   submittedAt?: string;
   response?: string;
