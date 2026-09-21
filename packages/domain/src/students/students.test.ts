@@ -2,8 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Gender, GradeLevel } from '@nemis-desktop/types';
 import { Student } from './entities/student';
 import { StudentGuardian } from './entities/student-guardian';
-import { AdmissionNumber } from './value-objects/admission-number';
-import { BusinessRuleViolationException, InvalidValueObjectException } from '../exceptions';
+import { BusinessRuleViolationException } from '../exceptions';
 
 const ISO = '2026-07-17T00:00:00.000Z';
 
@@ -13,7 +12,7 @@ function newStudent(): Student {
     institutionId: 'inst-1',
     firstName: 'Musu',
     lastName: 'Toe',
-    admissionNumber: 'ADM-2026-001',
+    nemisId: '482915736045',
     dateOfBirth: '2012-03-04',
     gender: Gender.FEMALE,
     gradeLevel: GradeLevel.GRADE_7,
@@ -21,17 +20,10 @@ function newStudent(): Student {
   });
 }
 
-describe('AdmissionNumber', () => {
-  it('trims and rejects empty', () => {
-    expect(AdmissionNumber.create(' ADM-1 ').value).toBe('ADM-1');
-    expect(() => AdmissionNumber.create('')).toThrow(InvalidValueObjectException);
-  });
-});
-
 describe('Student', () => {
-  it('creates and emits StudentCreated with admission number', () => {
+  it('creates and emits StudentCreated with nemis id', () => {
     const student = newStudent();
-    expect(student.admissionNumber.value).toBe('ADM-2026-001');
+    expect(student.nemisId.value).toBe('482915736045');
     const events = student.pullDomainEvents();
     expect(events[0]?.name).toBe('StudentCreated');
   });
@@ -64,7 +56,7 @@ describe('Student', () => {
       institutionId: 'inst-1',
       firstName: 'Musu',
       lastName: 'Toe',
-      admissionNumber: 'ADM-2026-001',
+      nemisId: '482915736045',
       dateOfBirth: '2012-03-04',
       gender: Gender.FEMALE,
       gradeLevel: GradeLevel.GRADE_7,

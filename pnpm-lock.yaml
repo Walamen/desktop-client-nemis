@@ -195,6 +195,9 @@ importers:
 
   packages/domain:
     dependencies:
+      '@nemis-desktop/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@nemis-desktop/types':
         specifier: workspace:*
         version: link:../types

@@ -21,10 +21,10 @@ describe('domain exceptions', () => {
 
   it('EntityValidationException carries field issues', () => {
     const err = new EntityValidationException('invalid student', [
-      { field: 'admissionNumber', message: 'must not be empty' },
+      { field: 'nemisId', message: 'must not be empty' },
     ]);
     expect(err.code).toBe('ENTITY_VALIDATION');
-    expect(err.issues).toEqual([{ field: 'admissionNumber', message: 'must not be empty' }]);
+    expect(err.issues).toEqual([{ field: 'nemisId', message: 'must not be empty' }]);
   });
 
   it('preserves cause when provided', () => {

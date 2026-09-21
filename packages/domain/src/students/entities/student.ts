@@ -3,7 +3,7 @@ import type { EntityId } from '../../core';
 import { DateOfBirth, PersonName } from '../../value-objects';
 import { BusinessRuleViolationException } from '../../exceptions';
 import type { Gender, GradeLevel } from '@nemis-desktop/types';
-import { AdmissionNumber } from '../value-objects/admission-number';
+import { NemisId } from '../value-objects/nemis-id';
 import { StudentGuardian } from './student-guardian';
 import type { StudentCreatedEvent } from '../events/student-created';
 
@@ -12,7 +12,7 @@ export type StudentId = EntityId<'Student'>;
 interface StudentState {
   institutionId: string;
   name: PersonName;
-  admissionNumber: AdmissionNumber;
+  nemisId: NemisId;
   dateOfBirth: DateOfBirth;
   gender: Gender;
   gradeLevel?: GradeLevel;
@@ -30,7 +30,7 @@ export interface CreateStudentInput {
   firstName: string;
   middleName?: string;
   lastName: string;
-  admissionNumber: string;
+  nemisId: string;
   dateOfBirth: string;
   gender: Gender;
   gradeLevel?: GradeLevel;
@@ -47,7 +47,7 @@ export interface ReconstituteStudentInput {
   firstName: string;
   middleName?: string;
   lastName: string;
-  admissionNumber: string;
+  nemisId: string;
   dateOfBirth: string;
   gender: Gender;
   gradeLevel?: GradeLevel;
@@ -84,7 +84,7 @@ export class Student extends AggregateRoot<StudentId> {
           middleName: input.middleName,
           lastName: input.lastName,
         }),
-        admissionNumber: AdmissionNumber.create(input.admissionNumber),
+        nemisId: NemisId.create(input.nemisId),
         dateOfBirth: DateOfBirth.create(input.dateOfBirth),
         gender: input.gender,
         gradeLevel: input.gradeLevel,
@@ -101,7 +101,7 @@ export class Student extends AggregateRoot<StudentId> {
       name: 'StudentCreated',
       aggregateId: student.id,
       occurredAt: input.occurredAt,
-      admissionNumber: student.admissionNumber.value,
+      nemisId: student.nemisId.value,
       institutionId: input.institutionId,
     };
     student.addEvent(event);
@@ -118,7 +118,7 @@ export class Student extends AggregateRoot<StudentId> {
           middleName: input.middleName,
           lastName: input.lastName,
         }),
-        admissionNumber: AdmissionNumber.create(input.admissionNumber),
+        nemisId: NemisId.create(input.nemisId),
         dateOfBirth: DateOfBirth.create(input.dateOfBirth),
         gender: input.gender,
         gradeLevel: input.gradeLevel,
@@ -139,8 +139,8 @@ export class Student extends AggregateRoot<StudentId> {
   get name(): PersonName {
     return this.#state.name;
   }
-  get admissionNumber(): AdmissionNumber {
-    return this.#state.admissionNumber;
+  get nemisId(): NemisId {
+    return this.#state.nemisId;
   }
   get dateOfBirth(): DateOfBirth {
     return this.#state.dateOfBirth;

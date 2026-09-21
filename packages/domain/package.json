@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@nemis-desktop/shared": "workspace:*",
     "@nemis-desktop/types": "workspace:*"
   }
 }
