@@ -29,6 +29,7 @@ const SYNC_QUEUE_COLUMNS = [
   'status',
   'createdAt',
   'updatedAt',
+  'seq',
 ] as const;
 
 export class SqliteSyncQueueRepository
@@ -47,6 +48,11 @@ export class SqliteSyncQueueRepository
   enqueue(input: EnqueueSyncOperationInput): SyncQueueItem {
     this.validate(validateEnqueue, input);
     const now = nowIso();
+    // Same MAX(seq)+1 the outbox triggers use, so a manually enqueued row sorts
+    // after earlier ones instead of NULL-first.
+    const { n } = this.statements
+      .get(`SELECT COALESCE(MAX(seq), 0) + 1 AS n FROM sync_queue`)
+      .get() as { n: number };
     return this.insertRow({
       id: newId(),
       entityType: input.entityType,
@@ -59,6 +65,7 @@ export class SqliteSyncQueueRepository
       status: 'pending',
       createdAt: now,
       updatedAt: now,
+      seq: n,
     });
   }
 
@@ -81,6 +88,9 @@ export class SqliteSyncQueueRepository
       and(eq('status', 'pending'), or(isNull('nextAttemptAt'), lte('nextAttemptAt', nowIso()))),
       {
         orderBy: [
+          // Write order (migration 026). createdAt/id only break the tie for
+          // a row that somehow has no seq — none should after the backfill.
+          { column: 'seq', direction: 'asc' },
           { column: 'createdAt', direction: 'asc' },
           { column: 'id', direction: 'asc' },
         ],
@@ -100,9 +110,10 @@ export class SqliteSyncQueueRepository
         const ids = pending.map((item) => item.id);
         this.updateByIds(ids, { status: 'in_flight', updatedAt: nowIso() });
         // One re-read for the whole batch instead of N findByIdOrThrow round
-        // trips; same createdAt,id ordering as nextBatch so return order stays stable.
+        // trips; same seq,createdAt,id ordering as nextBatch so return order stays stable.
         return this.selectWhere('claimBatch', inList('id', ids), {
           orderBy: [
+            { column: 'seq', direction: 'asc' },
             { column: 'createdAt', direction: 'asc' },
             { column: 'id', direction: 'asc' },
           ],

@@ -44,7 +44,7 @@ describe('sync outbox migration', () => {
 
     const rows = manager.connection.prepare(`
       SELECT operationType,payload FROM sync_queue
-      WHERE entityType='subjects' ORDER BY createdAt,id
+      WHERE entityType='subjects' ORDER BY seq
     `).all() as Array<{ operationType: string; payload: string }>;
     expect(rows).toHaveLength(2);
     expect(rows[0]?.operationType).toBe('create');

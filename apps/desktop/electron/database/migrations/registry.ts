@@ -24,6 +24,7 @@ import { addTermSequence } from './022-add-term-sequence';
 import { createFeePaymentReversals } from './023-create-fee-payment-reversals';
 import { replaceAdmissionNumberWithNemisId } from './024-replace-admission-number-with-nemis-id';
 import { makeStudentTransfersPullOnly } from './025-make-student-transfers-pull-only';
+import { addSyncQueueSequence } from './026-add-sync-queue-sequence';
 
 /**
  * Every migration, ascending by version. Append only — never edit or reorder
@@ -55,4 +56,5 @@ export const migrations: readonly Migration[] = [
   createFeePaymentReversals,
   replaceAdmissionNumberWithNemisId,
   makeStudentTransfersPullOnly,
+  addSyncQueueSequence,
 ];

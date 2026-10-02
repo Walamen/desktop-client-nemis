@@ -86,6 +86,8 @@ export type SyncQueueRow = {
   status: string;
   createdAt: string;
   updatedAt: string;
+  /** Write-order counter (migration 026); stamped by the outbox triggers and enqueue. */
+  seq?: number | null;
 };
 
 export const syncQueueMapper: RowMapper<SyncQueueRow, SyncQueueItem> = {

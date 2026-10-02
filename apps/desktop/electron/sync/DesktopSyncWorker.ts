@@ -632,8 +632,8 @@ export class DesktopSyncWorker {
         }
         db.connection.prepare(`
           INSERT INTO sync_queue
-            (id,entityType,entityId,operationType,payload,retryCount,status,createdAt,updatedAt)
-          VALUES (?,?,?,?,?,0,'pending',?,?)
+            (id,entityType,entityId,operationType,payload,retryCount,status,createdAt,updatedAt,seq)
+          VALUES (?,?,?,?,?,0,'pending',?,?,(SELECT COALESCE(MAX(seq), 0) + 1 FROM sync_queue))
         `).run(
           randomUUID(),
           row.entityType,
