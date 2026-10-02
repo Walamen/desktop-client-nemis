@@ -217,8 +217,11 @@ sent.**
 ### 6.3 Refresh after success
 
 Each mutating handler (`CLAIM`, `REQUEST`, `TRANSFER_*`, `STUDENT_BULK_CLAIM`)
-awaits the existing `SYNC_RUN` path after the server call succeeds and before
-returning. If the sync itself fails, the command still reports success (the
+awaits `DesktopSyncWorker.pullNow()` after the server call succeeds and before
+returning. *(Amended during Stage 2 planning: `SYNC_RUN` → `syncActive()` only
+pulls when queued work exists or 5 minutes have passed, and returns immediately
+while a cycle runs, so after a claim it would usually pull nothing. `pullNow()`
+forces the pull and waits for an in-flight cycle.)* If the sync itself fails, the command still reports success (the
 server change happened) with a flag `refreshed: false`, and the UI says "Saved —
 will appear here after the next sync." Failure of the server call never triggers
 a sync.
@@ -228,6 +231,10 @@ a sync.
 - `renderer/services/nemis-bridge/school-admin/registry-bridge.ts` and
   `transfer-bridge.ts`; ViewModels in `@nemis-desktop/presentation` following the
   `executeCommand` pattern. The ESLint renderer boundary guard is unchanged.
+  *(Amended during Stage 2 planning: the ViewModels are built in Stages 3 and 4
+  with the screens that dictate their shape; `GRADE_COMPLETION_GUIDANCE` /
+  `getCohortGuidance` and `STUDENT_BULK_CLAIM` / `bulkClaimStudents` are built in
+  Stages 5 and 6, reusing Stage 2's error and refresh machinery.)*
 - Online state comes from the renderer's existing connectivity store
   (`useConnectivityStore()` in `renderer/lib/presentation/hooks/shared.ts`, which
   already tracks `lastSyncAt`); reloads after a sync use the existing
