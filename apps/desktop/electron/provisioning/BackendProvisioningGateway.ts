@@ -5,6 +5,7 @@ import type {
 } from '@nemis-desktop/application';
 import { AuthenticationUnavailableError } from '@nemis-desktop/application';
 import {
+  Gender,
   GradeLevel,
   PROVISIONING_COLLECTIONS,
   type RegistryClaimRequest,
@@ -30,6 +31,11 @@ import {
   UnauthorizedError,
 } from '@nemis-desktop/shared';
 import { asRecord, unwrapCookies } from './sessionSecret';
+
+const ONLINE_COMMAND = { onlineCommand: true } as const;
+/** student-registry.service.ts throws this as a ForbiddenException when a
+ * school's lookup budget is spent. */
+const LOOKUP_BUDGET_MESSAGE = 'Too many lookups. Please try again later.';
 
 export class BackendProvisioningGateway {
   constructor(
@@ -147,6 +153,7 @@ export class BackendProvisioningGateway {
       '/student-registry/lookup',
       { method: 'POST', body: JSON.stringify({ nemisId: request.nemisId, dateOfBirth: request.dateOfBirth }) },
       toLookupResult,
+      ONLINE_COMMAND,
     );
   }
 
@@ -155,6 +162,7 @@ export class BackendProvisioningGateway {
       '/student-registry/claim',
       { method: 'POST', body: JSON.stringify(request) },
       (value) => ({ studentId: requireId(value) }),
+      ONLINE_COMMAND,
     );
   }
 
@@ -163,6 +171,7 @@ export class BackendProvisioningGateway {
       '/student-registry/request',
       { method: 'POST', body: JSON.stringify(request) },
       (value) => ({ id: requireId(value) }),
+      ONLINE_COMMAND,
     );
   }
 
@@ -171,6 +180,7 @@ export class BackendProvisioningGateway {
       '/student-transfers',
       { method: 'POST', body: JSON.stringify(request) },
       (value) => ({ id: requireId(value) }),
+      ONLINE_COMMAND,
     );
   }
 
@@ -180,6 +190,7 @@ export class BackendProvisioningGateway {
       `/student-transfers/${encodeURIComponent(id)}/review`,
       { method: 'PATCH', body: JSON.stringify(body) },
       (value) => ({ id: requireId(value) }),
+      ONLINE_COMMAND,
     );
   }
 
@@ -188,6 +199,7 @@ export class BackendProvisioningGateway {
       `/student-transfers/${encodeURIComponent(id)}`,
       { method: 'DELETE' },
       () => undefined,
+      ONLINE_COMMAND,
     );
     return { id };
   }
@@ -196,6 +208,7 @@ export class BackendProvisioningGateway {
     path: string,
     init: RequestInit,
     validate: (value: unknown) => T,
+    options: { onlineCommand?: boolean } = {},
   ): Promise<T> {
     const stored = await this.sessions.load();
     if (!stored) throw new UnauthorizedError();
@@ -230,7 +243,15 @@ export class BackendProvisioningGateway {
       throw new OfflineError(undefined, { cause: error });
     }
     if (response.status === 401) throw new UnauthorizedError();
-    if (response.status === 403) throw new ForbiddenError('This device is not authorized.');
+    if (response.status === 403) {
+      if (!options.onlineCommand) throw new ForbiddenError('This device is not authorized.');
+      // The registry commands refuse on business grounds with a 403 and a
+      // message (the server has no 429 anywhere); the lookup budget is the
+      // one refusal the UI treats differently, recognised by its exact text.
+      const message = await readRemoteMessage(response);
+      if (message === LOOKUP_BUDGET_MESSAGE) throw new RateLimitedError(message);
+      throw new RemoteRejectedError(403, message);
+    }
     if (!response.ok) {
       // 4xx is the server refusing this request on its merits, with a message
       // written for the user; 5xx stays a plain transport failure. `message`
@@ -269,6 +290,11 @@ function requireId(value: unknown): string {
 }
 
 const GRADE_LEVELS: readonly string[] = Object.values(GradeLevel);
+const GENDERS: readonly string[] = Object.values(Gender);
+
+function isGender(value: unknown): value is Gender {
+  return typeof value === 'string' && GENDERS.includes(value);
+}
 
 function isGrade(value: unknown): value is GradeLevel {
   return typeof value === 'string' && GRADE_LEVELS.includes(value);
@@ -282,7 +308,7 @@ function toLookupResult(value: unknown): RegistryLookupResult {
     typeof row.nemisId !== 'string' ||
     typeof row.firstName !== 'string' ||
     typeof row.lastName !== 'string' ||
-    (row.gender !== 'MALE' && row.gender !== 'FEMALE') ||
+    !isGender(row.gender) ||
     (row.claimPath !== 'IMMEDIATE' && row.claimPath !== 'REQUIRES_APPROVAL')
   ) {
     throw malformed();

@@ -79,7 +79,9 @@ export class RemoteRejectedError extends ApplicationError {
   }
 }
 
-/** The server answered 429 — a registry rate-limit budget is spent. */
+/** A registry rate-limit budget is spent. The server signals the lookup budget
+ * with a 403 carrying the message "Too many lookups. Please try again later."
+ * (the gateway maps that here); 429 is kept only for a future throttler. */
 export class RateLimitedError extends ApplicationError {
   readonly status = 429;
   readonly remoteMessage: string | undefined;
