@@ -9,6 +9,7 @@ import type {
 } from '@nemis-desktop/application';
 import { AuthenticationUnavailableError } from '@nemis-desktop/application';
 import { PROVISIONING_COLLECTIONS } from '@nemis-desktop/types';
+import { OfflineError, RateLimitedError, RemoteRejectedError } from '@nemis-desktop/shared';
 import { BackendProvisioningGateway } from './BackendProvisioningGateway';
 
 const session: AuthenticatedSession = {
@@ -188,6 +189,119 @@ describe('BackendProvisioningGateway', () => {
     const [url, init] = fetchMock.mock.calls[0]!;
     expect(String(url)).toBe('https://nemis.example/teacher/assignments/remote-a1/submissions/stu-1/grade');
     expect(JSON.parse(init!.body as string)).toEqual({ grade: 85, feedback: 'Great' });
+  });
+
+  describe('online commands', () => {
+    function errorResponse(status: number, body: unknown): Response {
+      return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
+    }
+
+    it('a network failure is an OfflineError with the text the sync worker matches', async () => {
+      vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('fetch failed'); }));
+      const error = await buildGateway().lookupStudent({ nemisId: '482915736045', dateOfBirth: '2012-01-01' })
+        .catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(OfflineError);
+      expect((error as Error).message).toBe('The NEMIS server could not be reached.');
+    });
+
+    it('a 4xx keeps the transport message and status, and carries the server message separately', async () => {
+      vi.stubGlobal('fetch', vi.fn(async () =>
+        errorResponse(409, { success: false, errorCode: 'CONFLICT', message: 'This request was withdrawn while the transfer was being completed.' })));
+      const error = await buildGateway().cancelTransfer('t-1').catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(RemoteRejectedError);
+      expect((error as RemoteRejectedError).status).toBe(409);
+      expect((error as Error).message).toBe('Provisioning request failed with status 409.');
+      expect((error as RemoteRejectedError).remoteMessage).toBe('This request was withdrawn while the transfer was being completed.');
+    });
+
+    it('array message: surfaces the first validation message', async () => {
+      vi.stubGlobal('fetch', vi.fn(async () =>
+        errorResponse(400, { message: ['classId should not be empty', 'termId should not be empty'] })));
+      const error = await buildGateway()
+        .requestRelease({ nemisId: '482915736045', dateOfBirth: '2012-01-01', classId: '', termId: '', gradeLevel: 'GRADE_7' as never, reason: 'x' })
+        .catch((e: unknown) => e);
+      expect((error as RemoteRejectedError).remoteMessage).toBe('classId should not be empty');
+    });
+
+    it('a 4xx with a non-JSON body still classifies, with no server message', async () => {
+      vi.stubGlobal('fetch', vi.fn(async () => new Response('<html>bad gateway</html>', { status: 404 })));
+      const error = await buildGateway().cancelTransfer('t-1').catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(RemoteRejectedError);
+      expect((error as RemoteRejectedError).remoteMessage).toBeUndefined();
+    });
+
+    it('a 429 is a RateLimitedError', async () => {
+      vi.stubGlobal('fetch', vi.fn(async () => errorResponse(429, { message: 'Too many failed lookups. Try again in an hour.' })));
+      const error = await buildGateway().lookupStudent({ nemisId: '482915736045', dateOfBirth: '2012-01-01' })
+        .catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(RateLimitedError);
+      expect((error as RateLimitedError).remoteMessage).toBe('Too many failed lookups. Try again in an hour.');
+    });
+
+    it('a 5xx stays a plain Error carrying status (unchanged behaviour)', async () => {
+      vi.stubGlobal('fetch', vi.fn(async () => errorResponse(500, { message: 'boom' })));
+      const error = await buildGateway().cancelTransfer('t-1').catch((e: unknown) => e);
+      expect(error).not.toBeInstanceOf(RemoteRejectedError);
+      expect((error as { status?: number }).status).toBe(500);
+    });
+
+    it('a lookup miss returns exactly { found: false }, dropping anything else', async () => {
+      vi.stubGlobal('fetch', vi.fn(async () => response({ found: false, debug: 'should not leak' })));
+      expect(await buildGateway().lookupStudent({ nemisId: '482915736045', dateOfBirth: '2012-01-01' }))
+        .toEqual({ found: false });
+    });
+
+    it('a lookup hit is built field by field and posts only nemisId + dateOfBirth', async () => {
+      const fetchMock = vi.fn(async () => response({
+        found: true, nemisId: '482915736045', firstName: 'Musu', lastName: 'Kollie', gender: 'FEMALE',
+        lastCompletion: { gradeLevel: 'GRADE_6', outcome: 'PROMOTED', nextGradeLevel: 'GRADE_7', academicYearName: '2025/2026' },
+        claimPath: 'IMMEDIATE', institutionId: 'should-not-leak',
+      }));
+      vi.stubGlobal('fetch', fetchMock);
+      const result = await buildGateway().lookupStudent({ nemisId: '482915736045', dateOfBirth: '2012-01-01' });
+      expect(result).toEqual({
+        found: true, nemisId: '482915736045', firstName: 'Musu', lastName: 'Kollie', gender: 'FEMALE',
+        lastCompletion: { gradeLevel: 'GRADE_6', outcome: 'PROMOTED', nextGradeLevel: 'GRADE_7', academicYearName: '2025/2026' },
+        claimPath: 'IMMEDIATE',
+      });
+      const [url, init] = fetchMock.mock.calls[0] as unknown as [URL, RequestInit];
+      expect(url).toEqual(new URL('https://nemis.example/student-registry/lookup'));
+      expect(init.method).toBe('POST');
+      expect(JSON.parse(String(init.body))).toEqual({ nemisId: '482915736045', dateOfBirth: '2012-01-01' });
+    });
+
+    it('a malformed hit is rejected rather than half-trusted', async () => {
+      vi.stubGlobal('fetch', vi.fn(async () => response({ found: true, nemisId: 7 })));
+      await expect(buildGateway().lookupStudent({ nemisId: '482915736045', dateOfBirth: '2012-01-01' }))
+        .rejects.toThrow('Malformed registry lookup response.');
+    });
+
+    it('claim returns the moved student id', async () => {
+      vi.stubGlobal('fetch', vi.fn(async () => response({ id: 'student-9', institutionId: 'school-1', gradeLevel: 'GRADE_7' })));
+      expect(await buildGateway().claimStudent({
+        nemisId: '482915736045', dateOfBirth: '2012-01-01', classId: 'c', termId: 't', gradeLevel: 'GRADE_7' as never,
+      })).toEqual({ studentId: 'student-9' });
+    });
+
+    it('review PATCHes the id path with a body that excludes id', async () => {
+      const fetchMock = vi.fn(async () => response({ id: 't-1', status: 'APPROVED' }));
+      vi.stubGlobal('fetch', fetchMock);
+      expect(await buildGateway().reviewTransfer({ id: 't-1', status: 'APPROVED', classId: 'c', termId: 't' }))
+        .toEqual({ id: 't-1' });
+      const [url, init] = fetchMock.mock.calls[0] as unknown as [URL, RequestInit];
+      expect(url).toEqual(new URL('https://nemis.example/student-transfers/t-1/review'));
+      expect(init.method).toBe('PATCH');
+      expect(JSON.parse(String(init.body))).toEqual({ status: 'APPROVED', classId: 'c', termId: 't' });
+    });
+
+    it('cancel DELETEs and returns the id it was given', async () => {
+      const fetchMock = vi.fn(async () => response({ message: 'cancelled' }));
+      vi.stubGlobal('fetch', fetchMock);
+      expect(await buildGateway().cancelTransfer('t 1')).toEqual({ id: 't 1' });
+      const [url, init] = fetchMock.mock.calls[0] as unknown as [URL, RequestInit];
+      expect(url).toEqual(new URL('https://nemis.example/student-transfers/t%201'));
+      expect(init.method).toBe('DELETE');
+    });
   });
 });
 

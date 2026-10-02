@@ -12,3 +12,4 @@ export * from './assignments';
 export * from './desktop-portals';
 export * from './sync';
 export * from './school-admin';
+export * from './registry';

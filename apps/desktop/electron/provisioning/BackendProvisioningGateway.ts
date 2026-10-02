@@ -5,14 +5,30 @@ import type {
 } from '@nemis-desktop/application';
 import { AuthenticationUnavailableError } from '@nemis-desktop/application';
 import {
+  GradeLevel,
   PROVISIONING_COLLECTIONS,
+  type RegistryClaimRequest,
+  type RegistryClaimResult,
+  type RegistryHit,
+  type RegistryLookupRequest,
+  type RegistryLookupResult,
+  type RegistryReleaseRequest,
+  type RemoteRecordRef,
+  type TransferCreateRequest,
+  type TransferReviewRequest,
   type DeviceIdentity,
   type ProvisioningSnapshot,
   type RegisteredDevice,
   type DesktopSyncOperation,
   type DesktopSyncPushResult,
 } from '@nemis-desktop/types';
-import { ForbiddenError, UnauthorizedError } from '@nemis-desktop/shared';
+import {
+  ForbiddenError,
+  OfflineError,
+  RateLimitedError,
+  RemoteRejectedError,
+  UnauthorizedError,
+} from '@nemis-desktop/shared';
 import { asRecord, unwrapCookies } from './sessionSecret';
 
 export class BackendProvisioningGateway {
@@ -123,6 +139,59 @@ export class BackendProvisioningGateway {
     );
   }
 
+  /** National lookup — the only cross-tenant read. A miss is returned as
+   * exactly `{ found: false }`: anything else in it is dropped so the
+   * renderer cannot tell the two kinds of miss apart. */
+  async lookupStudent(request: RegistryLookupRequest): Promise<RegistryLookupResult> {
+    return this.authorized(
+      '/student-registry/lookup',
+      { method: 'POST', body: JSON.stringify({ nemisId: request.nemisId, dateOfBirth: request.dateOfBirth }) },
+      toLookupResult,
+    );
+  }
+
+  async claimStudent(request: RegistryClaimRequest): Promise<RegistryClaimResult> {
+    return this.authorized(
+      '/student-registry/claim',
+      { method: 'POST', body: JSON.stringify(request) },
+      (value) => ({ studentId: requireId(value) }),
+    );
+  }
+
+  async requestRelease(request: RegistryReleaseRequest): Promise<RemoteRecordRef> {
+    return this.authorized(
+      '/student-registry/request',
+      { method: 'POST', body: JSON.stringify(request) },
+      (value) => ({ id: requireId(value) }),
+    );
+  }
+
+  async createTransfer(request: TransferCreateRequest): Promise<RemoteRecordRef> {
+    return this.authorized(
+      '/student-transfers',
+      { method: 'POST', body: JSON.stringify(request) },
+      (value) => ({ id: requireId(value) }),
+    );
+  }
+
+  async reviewTransfer(request: TransferReviewRequest): Promise<RemoteRecordRef> {
+    const { id, ...body } = request;
+    return this.authorized(
+      `/student-transfers/${encodeURIComponent(id)}/review`,
+      { method: 'PATCH', body: JSON.stringify(body) },
+      (value) => ({ id: requireId(value) }),
+    );
+  }
+
+  async cancelTransfer(id: string): Promise<RemoteRecordRef> {
+    await this.authorized(
+      `/student-transfers/${encodeURIComponent(id)}`,
+      { method: 'DELETE' },
+      () => undefined,
+    );
+    return { id };
+  }
+
   private async authorized<T>(
     path: string,
     init: RequestInit,
@@ -158,15 +227,19 @@ export class BackendProvisioningGateway {
         signal: AbortSignal.timeout(120_000),
       });
     } catch (error) {
-      throw new Error('The NEMIS server could not be reached.', { cause: error });
+      throw new OfflineError(undefined, { cause: error });
     }
     if (response.status === 401) throw new UnauthorizedError();
     if (response.status === 403) throw new ForbiddenError('This device is not authorized.');
     if (!response.ok) {
-      // The numeric status is attached so callers can branch on it — FeeReversalSyncService
-      // treats 409 (already reversed) and 404 (payment unknown to the server) as terminal
-      // rather than retryable. The message is unchanged so any caller matching on text keeps
-      // working.
+      // 4xx is the server refusing this request on its merits, with a message
+      // written for the user; 5xx stays a plain transport failure. `message`
+      // and `status` are unchanged on both paths — FeeReversalSyncService
+      // branches on status (404/409) and embeds the message text.
+      if (response.status === 429) throw new RateLimitedError(await readRemoteMessage(response));
+      if (response.status >= 400 && response.status < 500) {
+        throw new RemoteRejectedError(response.status, await readRemoteMessage(response));
+      }
       throw Object.assign(new Error(`Provisioning request failed with status ${response.status}.`), {
         status: response.status,
       });
@@ -174,6 +247,73 @@ export class BackendProvisioningGateway {
     const root = asRecord(await response.json());
     return validate(root.data);
   }
+}
+/** The server's error envelope is `{ errorCode, message, errors? }`, where
+ * class-validator failures put an array in `message`. Anything unreadable
+ * yields undefined — the caller still classifies by status. */
+async function readRemoteMessage(response: Response): Promise<string | undefined> {
+  try {
+    const message = asRecord(await response.json()).message;
+    if (typeof message === 'string') return message;
+    if (Array.isArray(message) && typeof message[0] === 'string') return message[0];
+  } catch {
+    // Non-JSON body (proxy error page, empty body).
+  }
+  return undefined;
+}
+
+function requireId(value: unknown): string {
+  const id = asRecord(value).id;
+  if (typeof id !== 'string' || id.length === 0) throw new Error('Malformed server response.');
+  return id;
+}
+
+const GRADE_LEVELS: readonly string[] = Object.values(GradeLevel);
+
+function isGrade(value: unknown): value is GradeLevel {
+  return typeof value === 'string' && GRADE_LEVELS.includes(value);
+}
+
+function toLookupResult(value: unknown): RegistryLookupResult {
+  const row = asRecord(value);
+  if (row.found !== true) return { found: false };
+  const malformed = () => new Error('Malformed registry lookup response.');
+  if (
+    typeof row.nemisId !== 'string' ||
+    typeof row.firstName !== 'string' ||
+    typeof row.lastName !== 'string' ||
+    (row.gender !== 'MALE' && row.gender !== 'FEMALE') ||
+    (row.claimPath !== 'IMMEDIATE' && row.claimPath !== 'REQUIRES_APPROVAL')
+  ) {
+    throw malformed();
+  }
+  let lastCompletion: RegistryHit['lastCompletion'] = null;
+  if (row.lastCompletion !== null && row.lastCompletion !== undefined) {
+    const c = asRecord(row.lastCompletion);
+    if (
+      !isGrade(c.gradeLevel) ||
+      (c.outcome !== 'PROMOTED' && c.outcome !== 'RETAINED' && c.outcome !== 'GRADUATED') ||
+      !(c.nextGradeLevel === null || isGrade(c.nextGradeLevel)) ||
+      typeof c.academicYearName !== 'string'
+    ) {
+      throw malformed();
+    }
+    lastCompletion = {
+      gradeLevel: c.gradeLevel,
+      outcome: c.outcome,
+      nextGradeLevel: c.nextGradeLevel,
+      academicYearName: c.academicYearName,
+    };
+  }
+  return {
+    found: true,
+    nemisId: row.nemisId,
+    firstName: row.firstName,
+    lastName: row.lastName,
+    gender: row.gender,
+    lastCompletion,
+    claimPath: row.claimPath,
+  };
 }
 
 export interface AssignmentPushResult {
