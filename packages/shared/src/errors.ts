@@ -54,3 +54,38 @@ export function toIpcErrorPayload(error: unknown): IpcErrorPayload {
   }
   return { code: 'UNEXPECTED_ERROR', message: 'An unexpected error occurred.' };
 }
+
+/** The NEMIS server could not be reached (network down, DNS, timeout). The
+ * default message is load-bearing: DesktopSyncWorker recognises an
+ * unreachable server by this exact text and returns queued items unpenalised. */
+export class OfflineError extends ApplicationError {
+  constructor(message = 'The NEMIS server could not be reached.', options?: { cause?: unknown }) {
+    super('OFFLINE', message, options);
+  }
+}
+
+/** The server answered 4xx (other than 401/403/429). `message` stays the
+ * transport text existing sync code embeds; the server's own explanation is
+ * kept apart in `remoteMessage`, and only the main-process IPC mapper decides
+ * whether it may reach the renderer. */
+export class RemoteRejectedError extends ApplicationError {
+  readonly status: number;
+  readonly remoteMessage: string | undefined;
+
+  constructor(status: number, remoteMessage?: string, options?: { cause?: unknown }) {
+    super('REMOTE_REJECTED', `Provisioning request failed with status ${status}.`, options);
+    this.status = status;
+    this.remoteMessage = remoteMessage;
+  }
+}
+
+/** The server answered 429 — a registry rate-limit budget is spent. */
+export class RateLimitedError extends ApplicationError {
+  readonly status = 429;
+  readonly remoteMessage: string | undefined;
+
+  constructor(remoteMessage?: string, options?: { cause?: unknown }) {
+    super('RATE_LIMITED', 'Provisioning request failed with status 429.', options);
+    this.remoteMessage = remoteMessage;
+  }
+}

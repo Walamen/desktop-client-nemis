@@ -1,4 +1,11 @@
-import { ApplicationError, toIpcErrorPayload } from '@nemis-desktop/shared';
+import {
+  ApplicationError,
+  OfflineError,
+  RateLimitedError,
+  RemoteRejectedError,
+  toIpcErrorPayload,
+} from '@nemis-desktop/shared';
+import { AuthenticationUnavailableError } from '@nemis-desktop/application';
 import type { IpcErrorCode, IpcErrorPayload } from '@nemis-desktop/types';
 import { RepositoryError, ValidationError } from '../data/errors/repositoryErrors';
 import { DatabaseError } from '../database/errors/errors';
@@ -15,10 +22,28 @@ const CODE_MESSAGES: Record<IpcErrorCode, string> = {
   MIGRATION_REQUIRED: 'The local database requires an update. Please restart the application.',
   IPC_ERROR: 'The request was malformed.',
   UNEXPECTED_ERROR: 'An unexpected error occurred.',
+  OFFLINE: "You're offline. Connect to the internet to do this.",
+  RATE_LIMITED: 'Too many attempts. Please wait and try again later.',
+  REMOTE_REJECTED: 'The server could not complete this request.',
 };
 
 function payloadFor(code: IpcErrorCode): IpcErrorPayload {
   return { code, message: CODE_MESSAGES[code] };
+}
+
+const REMOTE_MESSAGE_MAX = 500;
+
+/** Server-authored text is the one exception to "internal text never crosses
+ * IPC": it was written for the user by our own server. It still arrives as
+ * untrusted bytes, so it is flattened to one printable line and capped. */
+export function sanitizeRemoteMessage(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  // eslint-disable-next-line no-control-regex
+  const cleaned = value.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!cleaned) return undefined;
+  return cleaned.length > REMOTE_MESSAGE_MAX
+    ? `${cleaned.slice(0, REMOTE_MESSAGE_MAX - 1)}…`
+    : cleaned;
 }
 
 /** Application-layer wrappers (invokeUseCase masks DatabaseError as
@@ -37,6 +62,15 @@ export function toIpcError(error: unknown): IpcErrorPayload {
 }
 
 function mapError(error: unknown, remainingDepth: number): IpcErrorPayload {
+  if (error instanceof OfflineError || error instanceof AuthenticationUnavailableError) {
+    return payloadFor('OFFLINE');
+  }
+  if (error instanceof RateLimitedError) {
+    return { code: 'RATE_LIMITED', message: sanitizeRemoteMessage(error.remoteMessage) ?? CODE_MESSAGES.RATE_LIMITED };
+  }
+  if (error instanceof RemoteRejectedError) {
+    return { code: 'REMOTE_REJECTED', message: sanitizeRemoteMessage(error.remoteMessage) ?? CODE_MESSAGES.REMOTE_REJECTED };
+  }
   if (error instanceof ValidationError) {
     return {
       ...payloadFor('VALIDATION_FAILED'),

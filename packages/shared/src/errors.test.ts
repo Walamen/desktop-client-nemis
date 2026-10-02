@@ -4,6 +4,9 @@ import {
   ConfigurationError,
   ForbiddenError,
   IPCError,
+  OfflineError,
+  RateLimitedError,
+  RemoteRejectedError,
   toIpcErrorPayload,
 } from './index';
 
@@ -70,5 +73,34 @@ describe('ForbiddenError', () => {
     const error = new ForbiddenError('Setting "secret" is not renderer-readable.');
     expect(error.code).toBe('FORBIDDEN');
     expect(error.name).toBe('ForbiddenError');
+  });
+});
+
+describe('online-command errors', () => {
+  it('OfflineError keeps the exact text the sync worker matches on', () => {
+    const error = new OfflineError();
+    expect(error.code).toBe('OFFLINE');
+    expect(error.message).toBe('The NEMIS server could not be reached.');
+    expect(error).toBeInstanceOf(ApplicationError);
+  });
+
+  it('RemoteRejectedError keeps the transport message and status, and carries the server text separately', () => {
+    const error = new RemoteRejectedError(404, 'Transfer request not found');
+    expect(error.code).toBe('REMOTE_REJECTED');
+    expect(error.status).toBe(404);
+    expect(error.message).toBe('Provisioning request failed with status 404.');
+    expect(error.remoteMessage).toBe('Transfer request not found');
+  });
+
+  it('RateLimitedError is a 429 with the server text separately', () => {
+    const error = new RateLimitedError('Too many lookups. Try again in an hour.');
+    expect(error.code).toBe('RATE_LIMITED');
+    expect(error.status).toBe(429);
+    expect(error.message).toBe('Provisioning request failed with status 429.');
+    expect(error.remoteMessage).toBe('Too many lookups. Try again in an hour.');
+  });
+
+  it('toIpcErrorPayload still masks these codes (only the main-process mapper may expose them)', () => {
+    expect(toIpcErrorPayload(new RemoteRejectedError(400, 'secret')).code).toBe('UNEXPECTED_ERROR');
   });
 });

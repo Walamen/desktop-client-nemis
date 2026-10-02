@@ -352,7 +352,12 @@ export type IpcErrorCode =
   | 'DATABASE_UNAVAILABLE'
   | 'MIGRATION_REQUIRED'
   | 'IPC_ERROR'
-  | 'UNEXPECTED_ERROR';
+  | 'UNEXPECTED_ERROR'
+  // Online-only commands (NEMIS ID desktop parity spec §6.2). The only codes
+  // whose message may come from the server rather than a fixed table.
+  | 'OFFLINE'
+  | 'RATE_LIMITED'
+  | 'REMOTE_REJECTED';
 
 export interface IpcValidationIssue {
   field: string;

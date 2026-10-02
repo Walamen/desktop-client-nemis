@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ForbiddenError, IPCError } from '@nemis-desktop/shared';
+import { ForbiddenError, IPCError, OfflineError, RateLimitedError, RemoteRejectedError } from '@nemis-desktop/shared';
 import {
   DuplicateEntityError,
   EntityNotFoundError,
@@ -8,14 +8,14 @@ import {
   TransactionFailureError,
   ValidationError,
 } from '../data/errors/repositoryErrors';
-import { UnexpectedApplicationException } from '@nemis-desktop/application';
+import { AuthenticationUnavailableError, UnexpectedApplicationException } from '@nemis-desktop/application';
 import {
   ConnectionError,
   DatabaseError,
   IntegrityError,
   MigrationError,
 } from '../database/errors/errors';
-import { toIpcError } from './errorMapping';
+import { sanitizeRemoteMessage, toIpcError } from './errorMapping';
 
 describe('toIpcError', () => {
   it('maps ValidationError to VALIDATION_FAILED with sanitized issues', () => {
@@ -81,5 +81,50 @@ describe('toIpcError', () => {
       new DuplicateEntityError('AppSetting.setByKey: entity already exists'),
     );
     expect(payload.message).not.toContain('setByKey');
+  });
+});
+
+describe('online-command errors', () => {
+  it('maps OfflineError to OFFLINE with the fixed message', () => {
+    expect(toIpcError(new OfflineError())).toEqual({
+      code: 'OFFLINE',
+      message: "You're offline. Connect to the internet to do this.",
+    });
+  });
+
+  it('maps session-restore unavailability to OFFLINE', () => {
+    expect(toIpcError(new AuthenticationUnavailableError('The NEMIS server could not be reached.')).code)
+      .toBe('OFFLINE');
+  });
+
+  it("passes the server's own message through for REMOTE_REJECTED and RATE_LIMITED", () => {
+    expect(toIpcError(new RemoteRejectedError(400, 'This request was withdrawn while the transfer was being completed.')))
+      .toEqual({ code: 'REMOTE_REJECTED', message: 'This request was withdrawn while the transfer was being completed.' });
+    expect(toIpcError(new RateLimitedError('Too many failed lookups. Try again in an hour.')))
+      .toEqual({ code: 'RATE_LIMITED', message: 'Too many failed lookups. Try again in an hour.' });
+  });
+
+  it('falls back to a fixed message when the server sent none', () => {
+    expect(toIpcError(new RemoteRejectedError(400))).toEqual({
+      code: 'REMOTE_REJECTED',
+      message: 'The server could not complete this request.',
+    });
+    expect(toIpcError(new RateLimitedError())).toEqual({
+      code: 'RATE_LIMITED',
+      message: 'Too many attempts. Please wait and try again later.',
+    });
+  });
+
+  it('sanitises: control characters become spaces, whitespace collapses, length is capped at 500', () => {
+    expect(sanitizeRemoteMessage('line one\nline two\u001b[31m red')).toBe('line one line two [31m red');
+    const long = sanitizeRemoteMessage('x'.repeat(10_000));
+    expect(long).toHaveLength(500);
+    expect(long?.endsWith('…')).toBe(true);
+    expect(sanitizeRemoteMessage('   \n\t ')).toBeUndefined();
+    expect(sanitizeRemoteMessage(undefined)).toBeUndefined();
+  });
+
+  it('finds an online-command error wrapped as a cause', () => {
+    expect(toIpcError(new Error('wrapper', { cause: new OfflineError() })).code).toBe('OFFLINE');
   });
 });
