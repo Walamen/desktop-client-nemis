@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { registryBridge, parseIpcErrorCode } from './registry-bridge';
+import { registryBridge, parseIpcError, parseIpcErrorCode } from './registry-bridge';
 import { transferBridge } from './transfer-bridge';
 
 afterEach(() => {
@@ -32,5 +32,11 @@ describe('online bridges', () => {
     expect(parseIpcErrorCode(new Error('[NOT_A_CODE] x'))).toBeNull();
     expect(parseIpcErrorCode(new Error('no prefix'))).toBeNull();
     expect(parseIpcErrorCode('string')).toBeNull();
+    expect(parseIpcErrorCode(new Error('[RATE_LIMITED] Too many lookups. Please try again later.'))).toBe('RATE_LIMITED');
+    expect(parseIpcError(new Error('[RATE_LIMITED] Too many lookups. Please try again later.')))
+      .toEqual({ code: 'RATE_LIMITED', message: 'Too many lookups. Please try again later.' });
+    expect(parseIpcError(new Error('[OFFLINE]'))).toEqual({ code: 'OFFLINE', message: '' });
+    expect(parseIpcError(new Error('[NOT_A_CODE] x'))).toBeNull();
+    expect(parseIpcError('string')).toBeNull();
   });
 });

@@ -4,14 +4,13 @@ import {
   NetworkUnavailableError,
   NotImplementedPresentationError,
 } from '@nemis-desktop/presentation';
+import { parseIpcError } from '../errors/parseIpcError';
 
 /** Parses the `[CODE] message` prefix the preload bridge throws on IpcResult
  * failure. Returns null when the error is not in that shape (e.g. the bridge
  * itself was unavailable, or a non-IPC throw). */
 function ipcCodeOf(error: unknown): string | null {
-  if (!(error instanceof Error)) return null;
-  const match = /^\[([A-Z_]+)\]/.exec(error.message);
-  return match ? match[1]! : null;
+  return parseIpcError(error)?.code ?? null;
 }
 
 /** Runs a bridge call and translates transport/DB failures into presentation
