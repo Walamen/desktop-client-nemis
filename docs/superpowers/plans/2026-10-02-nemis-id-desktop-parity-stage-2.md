@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- Branch: `nemis-id-desktop-parity-stage-2` in `desktop-client-nemis`, created from `main` (@ `e4e7d60`). Never commit to `main`.
+- Branch: `nemis-id-desktop-parity-stage-2` in `desktop-client-nemis` (already created from `main` @ `e4e7d60`; its first commit is this plan). Never commit to `main`.
 - `OFFLINE` renderer message, verbatim: `You're offline. Connect to the internet to do this.`
 - Remote messages passed to the renderer are capped at **500 characters** and stripped of control characters.
 - `OFFLINE`, `RATE_LIMITED` and `REMOTE_REJECTED` are the only IPC codes whose message may come from the server; every other code keeps its fixed message.
@@ -63,7 +63,7 @@
 - [ ] **Step 1: Branch**
 
 ```bash
-cd "C:/Users/Alvin Dogba Jr/Desktop/Walamen/desktop-client-nemis" && git switch -c nemis-id-desktop-parity-stage-2
+cd "C:/Users/Alvin Dogba Jr/Desktop/Walamen/desktop-client-nemis" && git switch nemis-id-desktop-parity-stage-2  # already created; holds this plan
 ```
 
 - [ ] **Step 2: Write failing tests for the error classes**
