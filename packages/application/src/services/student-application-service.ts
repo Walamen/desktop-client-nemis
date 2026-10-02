@@ -1,8 +1,10 @@
+import type { CommandHandler } from '../core/command';
 import type { ApplicationResponse } from '../core/response';
 import type { PagedResult } from '../core/pagination';
 import type {
   CreateStudentDto,
   CreateGuardianDto,
+  CreateAndEnrollStudentDto,
   DeactivateStudentDto,
   LinkGuardianDto,
   ListStudentsDto,
@@ -34,6 +36,7 @@ export interface StudentApplicationServiceDeps {
   setActive?: SetStudentActiveUseCase;
   createGuardian?: CreateGuardianUseCase;
   listEnrollments?: ListStudentEnrollmentsUseCase;
+  createAndEnroll?: CommandHandler<CreateAndEnrollStudentDto, ApplicationResponse<StudentOutput>>;
 }
 
 export class StudentApplicationService {
@@ -61,4 +64,8 @@ export class StudentApplicationService {
   setActive(dto: SetStudentActiveDto): Promise<ApplicationResponse<StudentOutput>> { if (!this.deps.setActive) throw new Error('setActive use case not configured'); return this.deps.setActive.execute(dto); }
   createGuardian(dto: CreateGuardianDto): Promise<ApplicationResponse<StudentOutput>> { if (!this.deps.createGuardian) throw new Error('createGuardian use case not configured'); return this.deps.createGuardian.execute(dto); }
   listEnrollments(studentId:string):Promise<ApplicationResponse<EnrollmentOutput[]>>{if(!this.deps.listEnrollments)throw new Error('listEnrollments use case not configured');return this.deps.listEnrollments.execute({studentId});}
+  createAndEnroll(dto: CreateAndEnrollStudentDto): Promise<ApplicationResponse<StudentOutput>> {
+    if (!this.deps.createAndEnroll) throw new Error('createAndEnroll use case not configured');
+    return this.deps.createAndEnroll.execute(dto);
+  }
 }

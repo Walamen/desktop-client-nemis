@@ -172,4 +172,71 @@ describe('business application layer end-to-end against real SQLite', () => {
     expect(overview.data.totalClasses).toBe(1);
     expect(overview.data.totalSubjects).toBe(1);
   });
+
+  async function seedEnrolmentTarget(app: ReturnType<typeof createApplicationComposition>) {
+    const year = await app.academics.createAcademicYear({
+      code: '2025/2026', startDate: '2025-09-01', endDate: '2026-07-31', makeCurrent: true,
+    });
+    const term = await app.academics.createTerm({
+      academicYearId: year.data.id, name: 'Term 1', sequence: 1, startDate: '2025-09-01', endDate: '2025-12-19',
+      makeCurrent: true,
+    });
+    const klass = await app.academics.createClass({
+      academicYearId: year.data.id, name: 'JSS1-A', gradeLevel: GradeLevel.GRADE_7, capacity: 40,
+    });
+    return { year, term, klass };
+  }
+
+  const ada = {
+    institutionId: 'inst-1', firstName: 'Ada', lastName: 'Toe', dateOfBirth: '2015-01-01',
+    gender: Gender.FEMALE, gradeLevel: GradeLevel.GRADE_7,
+    guardians: [{ firstName: 'Mary', lastName: 'Toe', relationship: 'Mother', phoneNumber: '0770000000', isPrimary: true }],
+  };
+
+  it('createAndEnroll writes everything in one transaction and queues it in dependency order', async () => {
+    seedInstitution();
+    const app = createApplicationComposition(dataLayer, 'test-user', silent);
+    const { year, term, klass } = await seedEnrolmentTarget(app);
+    manager.connection.prepare('DELETE FROM sync_queue').run();
+
+    const res = await app.students.createAndEnroll({
+      ...ada, academicYearId: year.data.id, termId: term.data.id, classId: klass.data.id,
+      assertedNoNemisId: true,
+    });
+
+    const queued = manager.connection
+      .prepare('SELECT entityType, entityId, operationType FROM sync_queue ORDER BY seq')
+      .all() as { entityType: string; entityId: string; operationType: string }[];
+    const order = queued.map((row) => row.entityType);
+    expect(order.indexOf('students')).toBeGreaterThanOrEqual(0);
+    expect(order.indexOf('students')).toBeLessThan(order.indexOf('student_guardians'));
+    expect(order.indexOf('guardians')).toBeGreaterThanOrEqual(0);
+    expect(order.indexOf('guardians')).toBeLessThan(order.indexOf('student_guardians'));
+    expect(order.indexOf('students')).toBeLessThan(order.indexOf('enrollments'));
+    const studentPayload = JSON.parse(
+      (manager.connection
+        .prepare("SELECT payload FROM sync_queue WHERE entityType='students' AND entityId=? ORDER BY seq LIMIT 1")
+        .get(res.data.id) as { payload: string }).payload,
+    );
+    expect(studentPayload.record.assertedNoNemisId).toBe(1);
+  });
+
+  it('rolls back everything when the enrolment write fails', async () => {
+    seedInstitution();
+    const app = createApplicationComposition(dataLayer, 'test-user', silent);
+    const { year, term, klass } = await seedEnrolmentTarget(app);
+    manager.connection.exec(
+      "CREATE TRIGGER fail_enrollment BEFORE INSERT ON enrollments BEGIN SELECT RAISE(ABORT, 'boom'); END;",
+    );
+    const outcome = await app.students
+      .createAndEnroll({
+        ...ada, academicYearId: year.data.id, termId: term.data.id, classId: klass.data.id,
+        assertedNoNemisId: false,
+      })
+      .catch((error: unknown) => error);
+    expect(outcome).toBeInstanceOf(Error);
+    for (const table of ['students', 'guardians', 'student_guardians', 'enrollments']) {
+      expect((manager.connection.prepare(`SELECT count(*) c FROM ${table}`).get() as { c: number }).c, table).toBe(0);
+    }
+  });
 });

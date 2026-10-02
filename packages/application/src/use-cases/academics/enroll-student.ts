@@ -16,6 +16,7 @@ import { toEnrollmentOutput } from '../../mappers/academics/enrollment-mapper';
 import { requireFields } from '../../validators/validate';
 import { WorkflowException } from '../../exceptions';
 import { invokeUseCase } from '../../pipeline/use-case-invoker';
+import { assertEnrollmentTarget } from './enrollment-target';
 import type { EnrollmentRegistered } from '../../events/academics';
 
 export interface EnrollStudentDeps {
@@ -43,17 +44,9 @@ export class EnrollStudentUseCase implements CommandHandler<
       if (!this.deps.students.exists(command.studentId)) {
         throw new WorkflowException(`Student ${command.studentId} does not exist.`);
       }
-      if (!this.deps.classes.exists(command.classId)) {
-        throw new WorkflowException(`Class ${command.classId} does not exist.`);
-      }
       const student = this.deps.students.findById(command.studentId);
       if (!student?.isActive) throw new WorkflowException('Archived students cannot be enrolled.');
-      const year = this.deps.academicYears?.findById(command.academicYearId);
-      if (this.deps.academicYears && (!year || !year.isCurrent || year.status !== 'ACTIVE')) throw new WorkflowException('Enrollment requires the current active academic year.');
-      const term = this.deps.terms?.findById(command.termId);
-      if (this.deps.terms && (!term || !year || term.academicYearId !== year.id)) throw new WorkflowException('The selected term does not belong to the academic year.');
-      const clazz = this.deps.classes.findById(command.classId);
-      if (!clazz || !clazz.isActive || (year && clazz.academicYearId !== year.id)) throw new WorkflowException('The selected class is not active in the academic year.');
+      assertEnrollmentTarget(this.deps, command);
       if (this.deps.enrollments.hasEnrollmentForPeriod(command.studentId, command.academicYearId, command.termId)) throw new WorkflowException('Student already has an enrollment for this academic year and term.');
 
       const occurredAt = this.deps.clock.now();

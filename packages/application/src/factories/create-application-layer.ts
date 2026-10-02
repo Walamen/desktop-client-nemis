@@ -32,6 +32,7 @@ import { ListStudentsUseCase } from '../use-cases/students/list-students';
 import { StudentApplicationService } from '../services/student-application-service';
 import { UpdateStudentUseCase } from '../use-cases/students/update-student';
 import { SetStudentActiveUseCase } from '../use-cases/students/set-student-active';
+import { CreateAndEnrollStudentUseCase } from '../use-cases/students/create-and-enroll-student';
 import { CreateGuardianUseCase } from '../use-cases/students/create-guardian';
 import { ListStudentEnrollmentsUseCase } from '../use-cases/students/list-student-enrollments';
 
@@ -210,6 +211,19 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
     setActive: new SetStudentActiveUseCase({ students: ports.students, unitOfWork, clock, logger }),
     createGuardian: new CreateGuardianUseCase({ students: ports.students, guardians: ports.guardians, unitOfWork, clock, ids, logger }),
     listEnrollments: new ListStudentEnrollmentsUseCase({ enrollments: ports.enrollments, logger }),
+    createAndEnroll: new CreateAndEnrollStudentUseCase({
+      students: ports.students,
+      guardians: ports.guardians,
+      enrollments: ports.enrollments,
+      classes: ports.classes,
+      academicYears: ports.academicYears,
+      terms: ports.terms,
+      unitOfWork,
+      clock,
+      ids,
+      events,
+      logger,
+    }),
   });
 
   const academics = new AcademicsApplicationService({

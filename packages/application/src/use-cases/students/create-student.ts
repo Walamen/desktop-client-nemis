@@ -24,6 +24,18 @@ export interface CreateStudentDeps {
   logger: IAppLogger;
 }
 
+/** Minted locally so a school with no connectivity can still enrol. The
+ * server is the uniqueness authority and reassigns on the rare national
+ * collision, returning the replacement in the sync receipt. */
+export function mintUniqueNemisId(students: IStudentRepository): string {
+  let nemisId = generateNemisId();
+  for (let attempt = 0; students.existsByNemisId(nemisId); attempt++) {
+    if (attempt >= 100) throw new WorkflowException('Could not mint a unique NEMIS ID.');
+    nemisId = generateNemisId();
+  }
+  return nemisId;
+}
+
 export class CreateStudentUseCase implements CommandHandler<
   CreateStudentDto,
   ApplicationResponse<StudentOutput>
@@ -40,16 +52,7 @@ export class CreateStudentUseCase implements CommandHandler<
         'gender',
       ]);
 
-      // Minted locally so a school with no connectivity can still enrol. The
-      // server is the uniqueness authority and reassigns on the rare national
-      // collision, returning the replacement in the sync receipt.
-      let nemisId = generateNemisId();
-      for (let attempt = 0; this.deps.students.existsByNemisId(nemisId); attempt++) {
-        if (attempt >= 100) {
-          throw new WorkflowException('Could not mint a unique NEMIS ID.');
-        }
-        nemisId = generateNemisId();
-      }
+      const nemisId = mintUniqueNemisId(this.deps.students);
 
       const occurredAt = this.deps.clock.now();
       const student = Student.create({

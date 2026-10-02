@@ -102,3 +102,32 @@ export type StudentSummaryOutput = Pick<
   StudentOutput,
   'id' | 'fullName' | 'nemisId' | 'gradeLevel' | 'isActive'
 > & { gender: Gender; updatedAt: string };
+
+export interface CreateAndEnrollGuardianDto {
+  firstName: string;
+  lastName: string;
+  relationship: string;
+  phoneNumber: string;
+  email?: string;
+  isPrimary: boolean;
+}
+
+export interface CreateAndEnrollStudentDto {
+  institutionId: string;
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  dateOfBirth: string;
+  gender: Gender;
+  gradeLevel: GradeLevel;
+  phoneNumber?: string;
+  email?: string;
+  address?: string;
+  academicYearId: string;
+  termId: string;
+  classId: string;
+  enrollmentDate?: string;
+  assertedNoNemisId: boolean;
+  guardians: CreateAndEnrollGuardianDto[];
+  actorId?: string;
+}
