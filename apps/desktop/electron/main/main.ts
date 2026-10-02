@@ -156,7 +156,7 @@ function bootstrap(): void {
         registerAppProtocolHandler();
       }
 
-      registerIpcHandlers(services, application, provisioning, syncWorker, schoolAdmin, workspaces);
+      registerIpcHandlers(services, application, provisioning, syncWorker, schoolAdmin, workspaces, backendProvisioning);
 
       mainWindow = createHardenedWindow();
       void syncWorker.syncActive().catch(() => undefined);

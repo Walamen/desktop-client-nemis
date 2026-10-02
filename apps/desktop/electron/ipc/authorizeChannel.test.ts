@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { ForbiddenError } from '@nemis-desktop/shared';
 import { IpcChannels, SystemRole } from '@nemis-desktop/types';
 import type { WorkspaceManager } from '@app/workspace/WorkspaceManager';
 import { authorizeChannel } from './authorizeChannel';
@@ -136,5 +137,21 @@ describe('authorizeChannel', () => {
     expect(() =>
       authorizeChannel(IpcChannels.ASSIGNMENT_GRADE_SUBMISSION, workspace(SystemRole.DEO)),
     ).toThrow(/teachers/);
+  });
+
+  it.each([
+    'registry:lookup',
+    'registry:claim',
+    'registry:request',
+    'transfer:create',
+    'transfer:review',
+    'transfer:cancel',
+  ] as const)('%s is school-admin only', (channel) => {
+    expect(() => authorizeChannel(channel, workspace(SystemRole.TEACHER))).toThrow(
+      ForbiddenError,
+    );
+    expect(() =>
+      authorizeChannel(channel, workspace(SystemRole.INSTITUTION_ADMIN)),
+    ).not.toThrow();
   });
 });

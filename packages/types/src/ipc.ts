@@ -1,4 +1,15 @@
 import type {
+  OnlineCommandResult,
+  RegistryClaimRequest,
+  RegistryClaimResult,
+  RegistryLookupRequest,
+  RegistryLookupResult,
+  RegistryReleaseRequest,
+  RemoteRecordRef,
+  TransferCreateRequest,
+  TransferReviewRequest,
+} from './registry';
+import type {
   AcademicYearListItemResult,
   ClassListRequest,
   ClassResult,
@@ -240,6 +251,26 @@ export interface IpcContract {
     args: [request: SchoolAdminReversePaymentRequest];
     result: { id: string };
   };
+  // Online-only commands (NEMIS ID desktop parity spec §6). These call the
+  // server directly; mutations refresh local data with a forced pull.
+  'registry:lookup': { args: [request: RegistryLookupRequest]; result: RegistryLookupResult };
+  'registry:claim': {
+    args: [request: RegistryClaimRequest];
+    result: OnlineCommandResult<RegistryClaimResult>;
+  };
+  'registry:request': {
+    args: [request: RegistryReleaseRequest];
+    result: OnlineCommandResult<RemoteRecordRef>;
+  };
+  'transfer:create': {
+    args: [request: TransferCreateRequest];
+    result: OnlineCommandResult<RemoteRecordRef>;
+  };
+  'transfer:review': {
+    args: [request: TransferReviewRequest];
+    result: OnlineCommandResult<RemoteRecordRef>;
+  };
+  'transfer:cancel': { args: [id: string]; result: OnlineCommandResult<RemoteRecordRef> };
 }
 
 export type IpcChannel = keyof IpcContract;
@@ -331,6 +362,12 @@ export const IpcChannels = {
   SCHOOL_ADMIN_SAVE: 'school-admin:save',
   SCHOOL_ADMIN_DELETE: 'school-admin:delete',
   SCHOOL_ADMIN_REVERSE_PAYMENT: 'school-admin:reverse-payment',
+  REGISTRY_LOOKUP: 'registry:lookup',
+  REGISTRY_CLAIM: 'registry:claim',
+  REGISTRY_REQUEST: 'registry:request',
+  TRANSFER_CREATE: 'transfer:create',
+  TRANSFER_REVIEW: 'transfer:review',
+  TRANSFER_CANCEL: 'transfer:cancel',
 } as const satisfies Record<string, IpcChannel>;
 
 // Compile-time exhaustiveness: adding a channel to IpcContract without

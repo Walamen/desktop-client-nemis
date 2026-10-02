@@ -16,6 +16,13 @@ const PUBLIC_CHANNELS = new Set<IpcChannel>([
 // INSTITUTION_ADMIN because none of it is needed by a teacher's own screens.
 const SCHOOL_ADMIN_CHANNELS = new Set<IpcChannel>([
   // Mutations
+  // Online-only registry and transfer commands (NEMIS ID parity §6.2).
+  IpcChannels.REGISTRY_LOOKUP,
+  IpcChannels.REGISTRY_CLAIM,
+  IpcChannels.REGISTRY_REQUEST,
+  IpcChannels.TRANSFER_CREATE,
+  IpcChannels.TRANSFER_REVIEW,
+  IpcChannels.TRANSFER_CANCEL,
   IpcChannels.ACADEMIC_YEAR_CREATE,
   IpcChannels.ACADEMIC_YEAR_UPDATE,
   IpcChannels.ACADEMIC_YEAR_SET_CURRENT,

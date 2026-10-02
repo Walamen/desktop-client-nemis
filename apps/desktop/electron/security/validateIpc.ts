@@ -1,4 +1,4 @@
-import { IPCError } from '@nemis-desktop/shared';
+import { IPCError, normalizeNemisId } from '@nemis-desktop/shared';
 import {
   AcademicYearStatus,
   AssignmentStatus,
@@ -876,4 +876,75 @@ export function assertGradeSubmissionArgs(args: readonly unknown[]): void {
   assertString(request.studentId, 'studentId', ID_MAX_LENGTH);
   assertNonNegativeNumber(request.grade, 'grade');
   assertOptionalString(request.feedback, 'feedback', DESCRIPTION_MAX_LENGTH);
+}
+
+// --- Online-only registry and transfer commands (NEMIS ID parity §6.2) -----
+
+const GRADE_LEVEL_VALUES: readonly string[] = Object.values(GradeLevel);
+
+function assertNemisId(value: unknown): void {
+  if (typeof value !== 'string' || value.length > 32 || normalizeNemisId(value) === null) {
+    throw new IPCError('Expected a valid 12-digit NEMIS ID.');
+  }
+}
+
+function assertRegistryIdentity(request: Record<string, unknown>): void {
+  assertNemisId(request.nemisId);
+  assertIsoDate(request.dateOfBirth, 'dateOfBirth');
+}
+
+export function assertRegistryLookupArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [request] = args;
+  if (!isPlainObject(request)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(request, ['nemisId', 'dateOfBirth']);
+  assertRegistryIdentity(request);
+}
+
+export function assertRegistryClaimArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [request] = args;
+  if (!isPlainObject(request)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(request, ['nemisId', 'dateOfBirth', 'classId', 'termId', 'gradeLevel', 'overrideReason']);
+  assertRegistryIdentity(request);
+  assertString(request.classId, 'classId', ID_MAX_LENGTH);
+  assertString(request.termId, 'termId', ID_MAX_LENGTH);
+  assertEnumMember(request.gradeLevel, 'gradeLevel', GRADE_LEVEL_VALUES);
+  assertOptionalString(request.overrideReason, 'overrideReason', DESCRIPTION_MAX_LENGTH);
+}
+
+export function assertRegistryReleaseArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [request] = args;
+  if (!isPlainObject(request)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(request, ['nemisId', 'dateOfBirth', 'classId', 'termId', 'gradeLevel', 'reason']);
+  assertRegistryIdentity(request);
+  assertString(request.classId, 'classId', ID_MAX_LENGTH);
+  assertString(request.termId, 'termId', ID_MAX_LENGTH);
+  assertEnumMember(request.gradeLevel, 'gradeLevel', GRADE_LEVEL_VALUES);
+  assertString(request.reason, 'reason', DESCRIPTION_MAX_LENGTH);
+}
+
+export function assertTransferCreateArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [request] = args;
+  if (!isPlainObject(request)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(request, ['studentId', 'toInstitutionId', 'reason', 'requestedDate', 'toGradeLevel']);
+  assertString(request.studentId, 'studentId', ID_MAX_LENGTH);
+  assertString(request.toInstitutionId, 'toInstitutionId', ID_MAX_LENGTH);
+  assertString(request.reason, 'reason', DESCRIPTION_MAX_LENGTH);
+  assertOptionalIsoDate(request.requestedDate, 'requestedDate');
+  assertOptionalEnumMember(request.toGradeLevel, 'toGradeLevel', GRADE_LEVEL_VALUES);
+}
+
+export function assertTransferReviewArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [request] = args;
+  if (!isPlainObject(request)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(request, ['id', 'status', 'reviewNotes', 'classId', 'termId']);
+  assertString(request.id, 'id', ID_MAX_LENGTH);
+  assertEnumMember(request.status, 'status', ['APPROVED', 'REJECTED']);
+  assertOptionalString(request.reviewNotes, 'reviewNotes', DESCRIPTION_MAX_LENGTH);
+  assertOptionalString(request.classId, 'classId', ID_MAX_LENGTH);
+  assertOptionalString(request.termId, 'termId', ID_MAX_LENGTH);
 }

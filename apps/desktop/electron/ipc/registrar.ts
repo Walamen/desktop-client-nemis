@@ -32,6 +32,9 @@ import { registerClassHandlers } from '@app/ipc/handlers/school-admin/classes';
 import { registerSubjectHandlers } from '@app/ipc/handlers/school-admin/subject';
 import { registerStudentHandlers } from '@app/ipc/handlers/school-admin/students';
 import { registerTeacherDirectoryHandlers } from '@app/ipc/handlers/school-admin/teacherDirectory';
+import { registerRegistryHandlers } from '@app/ipc/handlers/school-admin/registry';
+import { registerTransferHandlers } from '@app/ipc/handlers/school-admin/transfers';
+import type { BackendProvisioningGateway } from '@app/provisioning/BackendProvisioningGateway';
 import { registerTimetableHandlers } from '@app/ipc/handlers/school-admin/timetables';
 
 // Teacher portal's own channels — see electron/ipc/handlers/teacher/.
@@ -47,6 +50,7 @@ export function registerIpcHandlers(
   syncWorker: DesktopSyncWorker,
   schoolAdmin: SchoolAdminModuleService,
   workspaces: WorkspaceManager,
+  gateway: BackendProvisioningGateway,
 ): void {
   const securedHandle: IpcHandle = (channel, validate, handler) =>
     bind(
@@ -77,6 +81,11 @@ export function registerIpcHandlers(
   registerStudentHandlers(securedHandle, app);
   registerTeacherDirectoryHandlers(securedHandle, app, workspaces);
   registerTimetableHandlers(securedHandle, app, workspaces);
+
+  // Online-only NEMIS ID registry/transfer commands; each mutation forces a pull.
+  const refresh = () => syncWorker.pullNow();
+  registerRegistryHandlers(securedHandle, gateway, refresh);
+  registerTransferHandlers(securedHandle, gateway, refresh);
 
   registerTeacherDashboardHandlers(securedHandle, app);
   registerAssignmentHandlers(securedHandle, app, workspaces);
