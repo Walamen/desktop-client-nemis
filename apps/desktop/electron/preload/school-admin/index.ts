@@ -7,6 +7,8 @@ export * from './subject-api';
 export * from './student-api';
 export * from './teacher-directory-api';
 export * from './timetable-api';
+export * from './registry-api';
+export * from './transfer-api';
 
 import { dashboardApi } from './dashboard-api';
 import { schoolApi } from './school-api';
@@ -16,6 +18,8 @@ import { classesApi } from './classes-api';
 import { subjectApi } from './subject-api';
 import { studentApi } from './student-api';
 import { timetableApi } from './timetable-api';
+import { registryApi } from './registry-api';
+import { transferApi } from './transfer-api';
 
 /** The NemisApi slice the Institution Admin (school admin) portal owns.
  * `teacherDirectoryApi` (staff-directory management, exported above) is
@@ -30,4 +34,6 @@ export const schoolAdminApi = {
   subject: subjectApi,
   student: studentApi,
   timetable: timetableApi,
+  registry: registryApi,
+  transfer: transferApi,
 };

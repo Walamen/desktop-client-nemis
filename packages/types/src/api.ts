@@ -92,6 +92,18 @@ import type {
   UpdateAssignmentRequest,
 } from './assignments';
 
+import type {
+  OnlineCommandResult,
+  RegistryClaimRequest,
+  RegistryClaimResult,
+  RegistryLookupRequest,
+  RegistryLookupResult,
+  RegistryReleaseRequest,
+  RemoteRecordRef,
+  TransferCreateRequest,
+  TransferReviewRequest,
+} from './registry';
+
 export interface AuthenticationApi {
   getStatus(): Promise<ProvisioningStatus>;
   login(request: AuthenticateRequest): Promise<ProvisioningStatus>;
@@ -229,6 +241,18 @@ export interface AssignmentApi {
   openAttachment(attachmentUrl: string): Promise<{ opened: boolean }>;
 }
 
+export interface RegistryApi {
+  lookup(request: RegistryLookupRequest): Promise<RegistryLookupResult>;
+  claim(request: RegistryClaimRequest): Promise<OnlineCommandResult<RegistryClaimResult>>;
+  request(request: RegistryReleaseRequest): Promise<OnlineCommandResult<RemoteRecordRef>>;
+}
+
+export interface TransferApi {
+  create(request: TransferCreateRequest): Promise<OnlineCommandResult<RemoteRecordRef>>;
+  review(request: TransferReviewRequest): Promise<OnlineCommandResult<RemoteRecordRef>>;
+  cancel(id: string): Promise<OnlineCommandResult<RemoteRecordRef>>;
+}
+
 export interface NemisApi {
   auth: AuthenticationApi;
   provisioning: ProvisioningApi;
@@ -250,4 +274,6 @@ export interface NemisApi {
   attendance: AttendanceApi;
   schoolAdmin: SchoolAdminApi;
   assignment: AssignmentApi;
+  registry: RegistryApi;
+  transfer: TransferApi;
 }
