@@ -182,6 +182,29 @@ describe('ClassTermPicker', () => {
     expect(isClassTermComplete(EMPTY)).toBe(false);
   });
 
+  it('restores the shared class filters it found when it unmounts', async () => {
+    const { classesList } = stubNemis({});
+    const layer = createRendererPresentation();
+    await layer.bootstrap.run();
+    const foundation = layer.viewModels.academicFoundation;
+    foundation.setClassFilters({ keyword: 'x' });
+    const snapshot = foundation.store.getState().classFilters;
+
+    const view = render(
+      <PresentationProvider layer={layer}>
+        <Harness gradeLevel="GRADE_7" onChange={vi.fn()} />
+      </PresentationProvider>,
+    );
+    expect(await screen.findByRole('option', { name: 'JSS1-A' })).toBeInTheDocument();
+    expect(foundation.store.getState().classFilters).toEqual({ academicYearId: 'y1', gradeLevel: 'GRADE_7' });
+    const callsBeforeUnmount = classesList.mock.calls.length;
+
+    view.unmount();
+    expect(foundation.store.getState().classFilters).toBe(snapshot);
+    // No reload on unmount — the next page loads its own classes.
+    expect(classesList.mock.calls.length).toBe(callsBeforeUnmount);
+  });
+
   it('asks for a grade before showing classes', async () => {
     const { classesList } = stubNemis({});
     await renderPicker('');

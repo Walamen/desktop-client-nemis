@@ -35,6 +35,16 @@ export function ClassTermPicker({
   const terms = useViewModel(foundation.store, (s) => s.terms);
   const classes = useViewModel(foundation.store, (s) => s.classes);
 
+  // The foundation ViewModel is shared app-wide and other pages call a bare
+  // loadClasses(). Give back the class filters we found, untouched, so they
+  // don't silently list one grade's classes after the wizard. No reload on
+  // unmount: the next page loads its own. Declared before the filter effect so
+  // the snapshot is taken before this picker narrows the filters.
+  useEffect(() => {
+    const snapshot = foundation.store.getState().classFilters;
+    return () => foundation.setClassFilters(snapshot);
+  }, [foundation]);
+
   useEffect(() => {
     void foundation.loadAcademicYears();
   }, [foundation]);
