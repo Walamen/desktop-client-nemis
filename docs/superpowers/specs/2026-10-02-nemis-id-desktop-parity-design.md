@@ -309,7 +309,7 @@ in B.2; it is a review checklist item for this stage.
 
 ### 7.5 The assertion travels with the student
 
-- Migration 026: `students.assertedNoNemisId INTEGER NOT NULL DEFAULT 0`, included
+- Migration 027 *(was 026; amended during Stage 3 planning — 026 became the sync-queue `seq` column that makes the outbox push in write order)*: `students.assertedNoNemisId INTEGER NOT NULL DEFAULT 0`, included
   in the outbox payload (trigger regeneration).
 - Server applier `student()`: when the upsert **creates** a student (no prior
   remote row), write `AuditAction.CREATE`, `entityType: "Student"`,
@@ -324,7 +324,7 @@ in B.2; it is a review checklist item for this stage.
   list filtered by year and grade; empty-states hidden while loading/errored.
 - `createAndEnrollStudent`: single transaction (forced failure rolls back all);
   queue order student → guardian → enrolment.
-- Migration 026; applier audit written on create only.
+- Migration 027; applier audit written on create only.
 
 ---
 
@@ -345,7 +345,7 @@ the origin school, so nothing new is disclosed.
 
 ### 8.2 Desktop: storage and lapse rule
 
-- Migration 027 adds the four columns; the importer tolerates their absence.
+- Migration 028 *(renumbered during Stage 3 planning)* adds the four columns; the importer tolerates their absence.
 - `isLapsed(row, now)` in `@nemis-desktop/shared`, mirroring
   `Nemis/apps/server/src/student-transfers/student-transfers.service.ts` exactly:
 
@@ -427,7 +427,7 @@ persistent-layout cache-staleness trap does not apply.
   `fromInstitutionId` is the workspace institution" (or an equivalent covering
   multi-hop moves), with a test. *(Amended after Stage 1 final review.)*
 
-### 9.2 Desktop: storage (migration 028)
+### 9.2 Desktop: storage (migration 029, renumbered during Stage 3 planning)
 
 `grade_completions` mirrors the server columns (`id, studentId, institutionId,
 academicYearId, gradeLevel, outcome, nextGradeLevel, averageAtDecision, notes,
