@@ -355,4 +355,26 @@ describe('SchoolAdminModuleService', () => {
     expect(runtime.captureEnabled).toBe(1);
     workspaces.close();
   });
+
+  it('lists only students at the workspace school', () => {
+    const { workspaces, service } = setup();
+    const db = workspaces.active.database.connection;
+    const now = new Date().toISOString();
+    db.prepare(
+      `INSERT INTO provisioning_metadata (id, status, institutionId, startedAt, updatedAt)
+       VALUES ('singleton', 'complete', 'school-1', ?, ?)
+       ON CONFLICT(id) DO UPDATE SET institutionId = excluded.institutionId`,
+    ).run(now, now);
+    const insert = db.prepare(
+      `INSERT INTO students (id, institutionId, firstName, lastName, nemisId, dateOfBirth, gender, isActive, version, updatedAt)
+       VALUES (?,?,?,?,?,?,?,1,1,?)`,
+    );
+    insert.run('s-here', 'school-1', 'Musu', 'Kollie', null, '2012-04-01', 'FEMALE', now);
+    insert.run('s-gone', 'school-2', 'Joseph', 'Wleh', null, '2012-04-01', 'MALE', now);
+
+    const result = service.list({ collection: 'students' });
+    expect(result.total).toBe(1);
+    expect(result.items.map((item) => item.id)).toEqual(['s-here']);
+    workspaces.close();
+  });
 });

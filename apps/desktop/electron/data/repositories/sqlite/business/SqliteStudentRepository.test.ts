@@ -154,4 +154,44 @@ describe('SqliteStudentRepository', () => {
       expect(legacy?.nemisId).toBeUndefined();
     });
   });
+
+  describe('workspace scope', () => {
+    function provisionFor(institutionId: string | null) {
+      const now = '2026-07-20T00:00:00.000Z';
+      test.context.connection
+        .prepare(
+          `INSERT INTO provisioning_metadata (id, status, institutionId, startedAt, updatedAt)
+           VALUES ('singleton', 'complete', ?, ?, ?)`,
+        )
+        .run(institutionId, now, now);
+    }
+
+    beforeEach(() => {
+      repo.save(newStudentWith('s-here', '482915736045', { admissionDate: '2026-07-01' }));
+      // A child who has left: Task 3 re-points their row to the receiving school.
+      repo.save(newStudentWith('s-gone', '123456789015', { admissionDate: '2026-07-01', institutionId: 'inst-2' }));
+    });
+
+    it('counts and lists only students at the workspace school', () => {
+      provisionFor('inst-1');
+      expect(repo.countAll()).toBe(1);
+      expect(repo.countByGender()).toEqual([{ gender: Gender.FEMALE, studentCount: 1 }]);
+      expect(repo.countRecentAdmissions('2026-01-01')).toBe(1);
+      expect(repo.findRecentlyUpdated(10).map((s) => s.id)).toEqual(['s-here']);
+      const page = repo.findPage({ limit: 50, offset: 0 });
+      expect(page.total).toBe(1);
+      expect(page.items.map((s) => s.id)).toEqual(['s-here']);
+    });
+
+    it('unscoped workspace (no institution recorded) still sees every student', () => {
+      provisionFor(null);
+      expect(repo.countAll()).toBe(2);
+      expect(repo.findPage({ limit: 50, offset: 0 }).total).toBe(2);
+    });
+
+    it('a departed student can still be opened by id (profile history)', () => {
+      provisionFor('inst-1');
+      expect(repo.findById('s-gone')?.id).toBe('s-gone');
+    });
+  });
 });

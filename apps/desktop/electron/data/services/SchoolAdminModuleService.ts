@@ -10,6 +10,7 @@ import type {
 } from '@nemis-desktop/types';
 import { DesktopScopeType } from '@nemis-desktop/types';
 import type { WorkspaceManager } from '@app/workspace/WorkspaceManager';
+import { workspaceStudentScope } from '@app/data/repositories/sqlite/business/workspaceScope';
 
 const CONFIG: Record<
   SchoolAdminCollection,
@@ -356,11 +357,15 @@ export class SchoolAdminModuleService {
     const db = active.database.connection;
     const limit = Math.min(request.limit ?? 100, 250);
     const offset = request.offset ?? 0;
+    // `students` can hold children who have left this school (kept for their
+    // history); "our students" must exclude them. Other collections unchanged.
+    const where =
+      request.collection === 'students' ? ` WHERE ${workspaceStudentScope('students')}` : '';
     const items = db
-      .prepare(`SELECT * FROM ${request.collection} ORDER BY rowid DESC LIMIT ? OFFSET ?`)
+      .prepare(`SELECT * FROM ${request.collection}${where} ORDER BY rowid DESC LIMIT ? OFFSET ?`)
       .all(limit, offset) as SchoolAdminRecord[];
     const total = (
-      db.prepare(`SELECT COUNT(*) total FROM ${request.collection}`).get() as { total: number }
+      db.prepare(`SELECT COUNT(*) total FROM ${request.collection}${where}`).get() as { total: number }
     ).total;
     return { items: items.map(toWireRecord), total };
   }
