@@ -1,4 +1,4 @@
-import type { GradeLevel } from './enums';
+import type { Gender, GradeLevel } from './enums';
 
 /** Shapes mirror Nemis/apps/server/src/student-registry/dto/*.ts,
  * Nemis/apps/server/src/student-transfers/dto/*.ts and the client type in
@@ -25,7 +25,7 @@ export interface RegistryHit {
   nemisId: string;
   firstName: string;
   lastName: string;
-  gender: 'MALE' | 'FEMALE';
+  gender: Gender;
   lastCompletion: RegistryLastCompletion | null;
   claimPath: 'IMMEDIATE' | 'REQUIRES_APPROVAL';
 }

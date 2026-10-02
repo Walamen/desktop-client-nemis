@@ -9,7 +9,7 @@ import type {
 } from '@nemis-desktop/application';
 import { AuthenticationUnavailableError } from '@nemis-desktop/application';
 import { PROVISIONING_COLLECTIONS } from '@nemis-desktop/types';
-import { OfflineError, RateLimitedError, RemoteRejectedError } from '@nemis-desktop/shared';
+import { ForbiddenError, OfflineError, RateLimitedError, RemoteRejectedError } from '@nemis-desktop/shared';
 import { BackendProvisioningGateway } from './BackendProvisioningGateway';
 
 const session: AuthenticatedSession = {
@@ -236,6 +236,41 @@ describe('BackendProvisioningGateway', () => {
         .catch((e: unknown) => e);
       expect(error).toBeInstanceOf(RateLimitedError);
       expect((error as RateLimitedError).remoteMessage).toBe('Too many failed lookups. Try again in an hour.');
+    });
+
+    it('a 403 on lookup carrying the lookup budget message is a RateLimitedError', async () => {
+      vi.stubGlobal('fetch', vi.fn(async () => errorResponse(403, { success: false, errorCode: 'FORBIDDEN', message: 'Too many lookups. Please try again later.' })));
+      const error = await buildGateway().lookupStudent({ nemisId: '482915736045', dateOfBirth: '2012-01-01' })
+        .catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(RateLimitedError);
+      expect((error as RateLimitedError).remoteMessage).toBe('Too many lookups. Please try again later.');
+    });
+
+    it('any other 403 on an online command is a RemoteRejectedError with the server message', async () => {
+      vi.stubGlobal('fetch', vi.fn(async () => errorResponse(403, { success: false, errorCode: 'FORBIDDEN', message: 'This student has not been released by their school.' })));
+      const error = await buildGateway().claimStudent({
+        nemisId: '482915736045', dateOfBirth: '2012-01-01', classId: 'c', termId: 't', gradeLevel: 'GRADE_7' as never,
+      }).catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(RemoteRejectedError);
+      expect((error as RemoteRejectedError).status).toBe(403);
+      expect((error as RemoteRejectedError).remoteMessage).toBe('This student has not been released by their school.');
+    });
+
+    it('a 403 on a non-online call stays ForbiddenError (provisioning relies on it)', async () => {
+      vi.stubGlobal('fetch', vi.fn(async () => errorResponse(403, { message: 'nope' })));
+      const error = await buildGateway().downloadSnapshot('device-1').catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(ForbiddenError);
+      expect((error as Error).message).toBe('This device is not authorized.');
+    });
+
+    it('a lookup hit with gender OTHER and a GRADUATED completion is returned intact', async () => {
+      const hit = {
+        found: true, nemisId: '482915736045', firstName: 'Musu', lastName: 'Kollie', gender: 'OTHER',
+        lastCompletion: { gradeLevel: 'GRADE_12', outcome: 'GRADUATED', nextGradeLevel: null, academicYearName: '2025/2026' },
+        claimPath: 'REQUIRES_APPROVAL',
+      };
+      vi.stubGlobal('fetch', vi.fn(async () => response(hit)));
+      expect(await buildGateway().lookupStudent({ nemisId: '482915736045', dateOfBirth: '2012-01-01' })).toEqual(hit);
     });
 
     it('a 5xx stays a plain Error carrying status (unchanged behaviour)', async () => {
