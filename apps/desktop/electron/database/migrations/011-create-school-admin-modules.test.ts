@@ -4,6 +4,8 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { DatabaseManager } from '../DatabaseManager';
 
+// student_transfers is pull-only since migration 025: no outbox triggers.
+const PULL_ONLY_TABLES = new Set<string>(['student_transfers']);
 const TABLES = [
   'student_transfers',
   'institution_grading_configs',
@@ -56,8 +58,9 @@ describe('school admin module migration', () => {
       SELECT name FROM sqlite_master
       WHERE type='trigger' AND tbl_name IN (${TABLES.map(() => '?').join(',')})
     `).all(...TABLES) as Array<{ name: string }>;
-    expect(triggers).toHaveLength(TABLES.length * 3);
-    for (const table of TABLES) {
+    const pushTables = TABLES.filter((table) => !PULL_ONLY_TABLES.has(table));
+    expect(triggers).toHaveLength(pushTables.length * 3);
+    for (const table of pushTables) {
       expect(triggers.map((row) => row.name)).toEqual(
         expect.arrayContaining([
           `outbox_${table}_insert`,

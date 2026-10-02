@@ -455,6 +455,34 @@ describe('ProvisioningImporter', () => {
     ).toThrow(/Missing dependency institutions\.districtId/);
   });
 
+  it('round-trips the C3 transfer columns and imports an older server row without them as defaults', () => {
+    const importer = new ProvisioningImporter(manager);
+    importer.import(
+      snapshotOf({
+        ...BASE_DATA,
+        studentTransfers: [
+          transferRow('t1', {
+            initiatedBy: 'RECEIVING_SCHOOL',
+            lapsesAt: '2026-10-16T00:00:00.000Z',
+            classId: 'class-9',
+            termId: 'term-9',
+          }),
+          // A server that predates C3 sends none of the four keys.
+          transferRow('t2'),
+        ],
+      }),
+      CONTEXT,
+    );
+    expect(
+      manager.connection
+        .prepare(`SELECT id, initiatedBy, lapsesAt, classId, termId FROM student_transfers ORDER BY id`)
+        .all(),
+    ).toEqual([
+      { id: 't1', initiatedBy: 'RECEIVING_SCHOOL', lapsesAt: '2026-10-16T00:00:00.000Z', classId: 'class-9', termId: 'term-9' },
+      { id: 't2', initiatedBy: 'ORIGIN_SCHOOL', lapsesAt: null, classId: null, termId: null },
+    ]);
+  });
+
   function countRows(table: string): number {
     return (manager.connection.prepare(`SELECT COUNT(*) count FROM ${table}`).get() as { count: number }).count;
   }
@@ -477,6 +505,26 @@ const CONTEXT = {
 
 /** Valid 12-digit Luhn-checked NEMIS IDs, keyed by the fixture's student id. */
 const NEMIS_IDS: Record<string, string> = { s1: '482915736045', s2: '123456789015' };
+
+function transferRow(id: string, overrides: Partial<ProvisioningRow> = {}): ProvisioningRow {
+  return {
+    id,
+    studentId: 's1',
+    fromInstitutionId: 'school-1',
+    toInstitutionId: 'school-2',
+    requestedBy: 'user-1',
+    reason: 'Relocation',
+    status: 'PENDING',
+    reviewedBy: null,
+    reviewedAt: null,
+    reviewNotes: null,
+    requestedDate: '2026-09-01T00:00:00.000Z',
+    toGradeLevel: null,
+    createdAt: '2026-09-01T00:00:00.000Z',
+    updatedAt: '2026-09-01T00:00:00.000Z',
+    ...overrides,
+  };
+}
 
 function student(id: string, firstName: string): ProvisioningRow {
   return {

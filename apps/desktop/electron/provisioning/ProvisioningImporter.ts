@@ -82,7 +82,7 @@ const SPECS: Record<ProvisioningCollection, TableSpec> = {
   classTeachers: spec('class_teachers', ['id','classId','staffId','isClassTeacher','assignedAt','version','updatedAt','lastModifiedBy'], ['classId','staffId']),
   classSubjectTeachers: spec('class_subject_teachers', ['id','classId','subjectId','staffId','assignedAt','version','updatedAt','lastModifiedBy'], ['classId','subjectId']),
   timetableEntries: spec('timetable_entries', ['id','institutionId','classId','subjectId','staffId','dayOfWeek','startTime','endTime','room','isBreak','assignmentId','createdAt','updatedAt','version','lastModifiedBy']),
-  studentTransfers: spec('student_transfers', ['id','studentId','fromInstitutionId','toInstitutionId','requestedBy','reason','status','reviewedBy','reviewedAt','reviewNotes','requestedDate','toGradeLevel','createdAt','updatedAt']),
+  studentTransfers: spec('student_transfers', ['id','studentId','fromInstitutionId','toInstitutionId','requestedBy','reason','status','reviewedBy','reviewedAt','reviewNotes','requestedDate','toGradeLevel','initiatedBy','lapsesAt','classId','termId','createdAt','updatedAt']),
   institutionGradingConfigs: spec('institution_grading_configs', ['id','institutionId','maxMarks','passingMarks','periodsPerTerm','termsPerYear','hasExams','calculationMethod','gradeScale','allowLateSubmission','lateSubmissionPenalty','requireAdminApproval','createdAt','updatedAt']),
   gradingPeriods: spec('grading_periods', ['id','institutionId','academicYearId','termId','name','code','periodType','sequence','maxMarks','passingMarks','weight','startDate','endDate','isActive','createdAt','updatedAt']),
   gradeEntryWindows: spec('grade_entry_windows', ['id','institutionId','gradingPeriodId','name','description','openDate','closeDate','status','allowedRoles','openedBy','openedAt','closedBy','closedAt','publishedBy','publishedAt','createdAt','updatedAt']),
@@ -358,6 +358,9 @@ function pruneRowsAbsentFromFullSnapshot(
  * that same comma-joined format, not the generic JSON.stringify fallback below,
  * or parseLevels silently mis-splits it and excludes every student from the rule. */
 function sqliteValue(value: unknown, column: string): string | number | null {
+  // A server that predates C3 sends no initiatedBy; ORIGIN_SCHOOL is its own
+  // column default, and every pre-C3 transfer was origin-initiated.
+  if (column === 'initiatedBy' && (value === null || value === undefined)) return 'ORIGIN_SCHOOL';
   if (value === null || value === undefined) return null;
   if (typeof value === 'boolean') return value ? 1 : 0;
   if (typeof value === 'string' || typeof value === 'number') return value;
