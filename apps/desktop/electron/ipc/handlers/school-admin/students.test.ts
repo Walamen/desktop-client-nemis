@@ -29,6 +29,10 @@ describe('student IPC handlers', () => {
     expect(() => channel.validate([{ ...request, assertedNoNemisId: 'yes' }])).toThrow();
     expect(() => channel.validate([{ ...request, guardians: [{ ...request.guardians[0], extra: 1 }] }])).toThrow();
     expect(() => channel.validate([{ ...request, guardians: Array.from({ length: 11 }, () => request.guardians[0]) }])).toThrow();
+    const blank = { firstName: '', lastName: '', relationship: '', phoneNumber: '', email: '', isPrimary: false };
+    expect(() => channel.validate([{ ...request, guardians: [blank] }])).not.toThrow();
+    expect(() => channel.validate([{ ...request, guardians: [{ ...blank, email: 5 }] }])).toThrow();
+    expect(() => channel.validate([{ ...request, guardians: [{ ...blank, email: 'a'.repeat(201) }] }])).toThrow();
     expect(await channel.handler(request)).toEqual({ id: 'student-1' });
     expect(createAndEnroll).toHaveBeenCalledWith(request);
   });

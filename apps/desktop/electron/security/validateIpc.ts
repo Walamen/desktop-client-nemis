@@ -207,10 +207,16 @@ export function assertCreateAndEnrollStudentArgs(args: readonly unknown[]): void
     assertKnownKeys(g, ['firstName', 'lastName', 'relationship', 'phoneNumber', 'email', 'isPrimary']);
     for (const k of ['firstName', 'lastName', 'relationship', 'phoneNumber'] as const) {
       if (typeof g[k] !== 'string' || (g[k] as string).length > NAME_MAX_LENGTH) {
-        throw new IPCError(`Expected guardian "${k}" to be a string.`);
+        throw new IPCError(`Expected guardian "${k}" to be a string of at most ${NAME_MAX_LENGTH} characters.`);
       }
     }
-    assertOptionalString(g.email, 'email', NAME_MAX_LENGTH);
+    // A blank guardian draft carries email '' - allowed (the use case skips it).
+    if (
+      g.email !== undefined &&
+      (typeof g.email !== 'string' || g.email.length > NAME_MAX_LENGTH)
+    ) {
+      throw new IPCError(`Expected guardian "email" to be a string of at most ${NAME_MAX_LENGTH} characters.`);
+    }
     assertBoolean(g.isPrimary, 'isPrimary');
   }
 }
