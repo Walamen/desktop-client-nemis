@@ -125,8 +125,8 @@ describe('online-command errors', () => {
   });
 
   it('sanitises C1 controls and bidi controls to spaces', () => {
-    expect(sanitizeRemoteMessage('abc')).toBe('a b c');
-    expect(sanitizeRemoteMessage('a‮b‪c⁦d⁩e')).toBe('a b c d e');
+    expect(sanitizeRemoteMessage('a\u0085b\u009fc')).toBe('a b c');
+    expect(sanitizeRemoteMessage('a\u202eb\u202ac\u2066d\u2069e')).toBe('a b c d e');
   });
 
   it('finds an online-command error wrapped as a cause', () => {
