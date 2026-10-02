@@ -179,6 +179,41 @@ export function assertListStudentsArgs(args: readonly unknown[]): void {
   if (r.sort !== undefined)
     assertEnumMember(r.sort, 'sort', ['name', 'nemisId', 'updatedAt']);
 }
+const MAX_GUARDIANS = 10;
+
+export function assertCreateAndEnrollStudentArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [r] = args;
+  if (!isPlainObject(r)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(r, [
+    'institutionId', 'firstName', 'middleName', 'lastName', 'dateOfBirth', 'gender', 'gradeLevel',
+    'phoneNumber', 'email', 'address', 'academicYearId', 'termId', 'classId', 'enrollmentDate',
+    'assertedNoNemisId', 'guardians',
+  ]);
+  for (const k of ['institutionId', 'firstName', 'lastName'] as const) assertString(r[k], k, NAME_MAX_LENGTH);
+  for (const k of ['academicYearId', 'termId', 'classId'] as const) assertString(r[k], k, ID_MAX_LENGTH);
+  assertIsoDate(r.dateOfBirth, 'dateOfBirth');
+  assertOptionalIsoDate(r.enrollmentDate, 'enrollmentDate');
+  assertEnumMember(r.gender, 'gender', Object.values(Gender));
+  assertEnumMember(r.gradeLevel, 'gradeLevel', Object.values(GradeLevel));
+  for (const k of ['middleName', 'phoneNumber', 'email', 'address'] as const)
+    assertOptionalString(r[k], k, k === 'address' ? 2000 : NAME_MAX_LENGTH);
+  assertBoolean(r.assertedNoNemisId, 'assertedNoNemisId');
+  if (!Array.isArray(r.guardians) || r.guardians.length > MAX_GUARDIANS) {
+    throw new IPCError(`Expected "guardians" to be an array of at most ${MAX_GUARDIANS}.`);
+  }
+  for (const g of r.guardians) {
+    if (!isPlainObject(g)) throw new IPCError('Expected each guardian to be an object.');
+    assertKnownKeys(g, ['firstName', 'lastName', 'relationship', 'phoneNumber', 'email', 'isPrimary']);
+    for (const k of ['firstName', 'lastName', 'relationship', 'phoneNumber'] as const) {
+      if (typeof g[k] !== 'string' || (g[k] as string).length > NAME_MAX_LENGTH) {
+        throw new IPCError(`Expected guardian "${k}" to be a string.`);
+      }
+    }
+    assertOptionalString(g.email, 'email', NAME_MAX_LENGTH);
+    assertBoolean(g.isPrimary, 'isPrimary');
+  }
+}
 export function assertCreateStudentArgs(args: readonly unknown[]): void {
   assertArity(args, 1);
   const [r] = args;

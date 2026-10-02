@@ -196,6 +196,13 @@ describe('BackendProvisioningGateway', () => {
       return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
     }
 
+    it('requestRelease returns the lapse date the server set', async () => {
+      vi.stubGlobal('fetch', vi.fn(async () => response({ id: 't-9', status: 'PENDING', lapsesAt: '2026-10-16T09:00:00.000Z' })));
+      expect(await buildGateway().requestRelease({
+        nemisId: '482915736045', dateOfBirth: '2012-01-01', classId: 'c', termId: 't', gradeLevel: 'GRADE_7' as never, reason: 'Moving',
+      })).toEqual({ id: 't-9', lapsesAt: '2026-10-16T09:00:00.000Z' });
+    });
+
     it('a network failure is an OfflineError with the text the sync worker matches', async () => {
       vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('fetch failed'); }));
       const error = await buildGateway().lookupStudent({ nemisId: '482915736045', dateOfBirth: '2012-01-01' })

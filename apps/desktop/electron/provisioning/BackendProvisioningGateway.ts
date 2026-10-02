@@ -14,6 +14,7 @@ import {
   type RegistryLookupRequest,
   type RegistryLookupResult,
   type RegistryReleaseRequest,
+  type RegistryReleaseResult,
   type RemoteRecordRef,
   type TransferCreateRequest,
   type TransferReviewRequest,
@@ -166,11 +167,14 @@ export class BackendProvisioningGateway {
     );
   }
 
-  async requestRelease(request: RegistryReleaseRequest): Promise<RemoteRecordRef> {
+  async requestRelease(request: RegistryReleaseRequest): Promise<RegistryReleaseResult> {
     return this.authorized(
       '/student-registry/request',
       { method: 'POST', body: JSON.stringify(request) },
-      (value) => ({ id: requireId(value) }),
+      (value) => {
+        const lapsesAt = asRecord(value).lapsesAt;
+        return { id: requireId(value), lapsesAt: typeof lapsesAt === 'string' ? lapsesAt : null };
+      },
       ONLINE_COMMAND,
     );
   }

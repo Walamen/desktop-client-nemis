@@ -57,6 +57,33 @@ export interface CreateStudentRequest {
   email?: string;
   address?: string;
 }
+export interface CreateAndEnrollGuardianRequest {
+  firstName: string;
+  lastName: string;
+  relationship: string;
+  phoneNumber: string;
+  email?: string;
+  isPrimary: boolean;
+}
+
+export interface CreateAndEnrollStudentRequest {
+  institutionId: string;
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  dateOfBirth: string;
+  gender: Gender;
+  gradeLevel: GradeLevel;
+  phoneNumber?: string;
+  email?: string;
+  address?: string;
+  academicYearId: string;
+  termId: string;
+  classId: string;
+  enrollmentDate?: string;
+  assertedNoNemisId: boolean;
+  guardians: CreateAndEnrollGuardianRequest[];
+}
 export interface UpdateStudentRequest {
   studentId: string;
   firstName?: string;

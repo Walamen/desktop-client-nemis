@@ -11,6 +11,28 @@ interface Captured {
 }
 
 describe('student IPC handlers', () => {
+  it('validates create-and-enroll and forwards it to the application layer', async () => {
+    const calls = new Map<string, Captured>();
+    const handle = ((channel: IpcChannel, validate: IpcValidator, handler: unknown) => {
+      calls.set(channel, { validate, handler: handler as Captured['handler'] });
+    }) as IpcHandle;
+    const createAndEnroll = vi.fn(async () => ({ data: { id: 'student-1' } }));
+    registerStudentHandlers(handle, { students: { createAndEnroll }, academics: {} } as unknown as ApplicationLayer);
+    const channel = calls.get('student:create-and-enroll')!;
+    const request = {
+      institutionId: 'inst-1', firstName: 'Ada', lastName: 'Toe', dateOfBirth: '2015-01-01', gender: 'FEMALE',
+      gradeLevel: 'GRADE_7', academicYearId: 'y1', termId: 't1', classId: 'c1', assertedNoNemisId: true,
+      guardians: [{ firstName: 'Mary', lastName: 'Toe', relationship: 'Mother', phoneNumber: '0770000000', isPrimary: true }],
+    };
+    expect(() => channel.validate([request])).not.toThrow();
+    expect(() => channel.validate([{ ...request, classId: '' }])).toThrow();
+    expect(() => channel.validate([{ ...request, assertedNoNemisId: 'yes' }])).toThrow();
+    expect(() => channel.validate([{ ...request, guardians: [{ ...request.guardians[0], extra: 1 }] }])).toThrow();
+    expect(() => channel.validate([{ ...request, guardians: Array.from({ length: 11 }, () => request.guardians[0]) }])).toThrow();
+    expect(await channel.handler(request)).toEqual({ id: 'student-1' });
+    expect(createAndEnroll).toHaveBeenCalledWith(request);
+  });
+
   it('validates and forwards class-transfer requests through the application layer', async () => {
     const calls = new Map<string, Captured>();
     const handle = ((channel: IpcChannel, validate: IpcValidator, handler: unknown) => {

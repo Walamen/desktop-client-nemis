@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { Gender } from '@nemis-desktop/types';
+import { describe, expect, it, vi } from 'vitest';
+import { Gender, GradeLevel } from '@nemis-desktop/types';
 import { ValidationError } from '../../errors';
 import { selectSelectedStudent, selectStudentRows } from '../../selectors/students-selectors';
 import { NotificationStore } from '../../stores/notification-store';
@@ -63,6 +63,31 @@ describe('StudentsViewModel', () => {
     expect(vm.store.getState().submission).toBe('submitted');
     expect(vm.store.getState().list.status).toBe('success');
     expect(notifications.store.getState().notifications[0]?.kind).toBe('success');
+  });
+
+  it('createAndEnrollStudent calls the service and reloads the list on success', async () => {
+    const { app, notifications, session } = build();
+    const out = (await app.students.create(dto)).data;
+    let listCalls = 0;
+    const createAndEnroll = vi.fn(async () => ({ data: out }));
+    const students = Object.create(app.students) as typeof app.students;
+    students.createAndEnroll = createAndEnroll as unknown as typeof students.createAndEnroll;
+    const baseList = app.students.list.bind(app.students);
+    students.list = (async (d: Parameters<typeof baseList>[0]) => {
+      listCalls += 1;
+      return baseList(d);
+    }) as typeof students.list;
+    const vm = new StudentsViewModel({ students, notifications, session });
+    const enrolDto = {
+      ...dto, gradeLevel: GradeLevel.GRADE_7, academicYearId: 'y1', termId: 't1', classId: 'c1',
+      assertedNoNemisId: true, guardians: [],
+    };
+    const listCallsBefore = listCalls;
+    const outcome = await vm.createAndEnrollStudent(enrolDto);
+    expect(outcome.ok).toBe(true);
+    expect(createAndEnroll).toHaveBeenCalledWith(enrolDto);
+    expect(listCalls).toBeGreaterThan(listCallsBefore);
+    expect(vm.store.getState().submission).toBe('submitted');
   });
 
   it('createStudent with a missing required field fails with ValidationError', async () => {

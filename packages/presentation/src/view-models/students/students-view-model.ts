@@ -1,5 +1,6 @@
 import type {
   CreateStudentDto,
+  CreateAndEnrollStudentDto,
   DeactivateStudentDto,
   LinkGuardianDto,
   StudentApplicationService,
@@ -17,6 +18,7 @@ import { hasData, idleState, type AsyncState } from '../../core/async-state';
 import { executeCommand, trackQuery, type CommandOutcome } from '../../core/async-runner';
 import type { SubmissionStatus } from '../../core/submission';
 import { CreateStudentUiCommand } from '../../commands/students/create-student-ui-command';
+import { CreateAndEnrollStudentUiCommand } from '../../commands/students/create-and-enroll-student-ui-command';
 import { DeactivateStudentUiCommand } from '../../commands/students/deactivate-student-ui-command';
 import { LinkGuardianUiCommand } from '../../commands/students/link-guardian-ui-command';
 import { toStudentDetailsView, toStudentRowView } from '../../mappers/students/student-view-mapper';
@@ -66,6 +68,7 @@ export class StudentsViewModel {
   private readonly listQuery: ListStudentsUiQuery;
   private readonly detailsQuery: GetStudentByIdUiQuery;
   private readonly createCommand: CreateStudentUiCommand;
+  private readonly createAndEnrollCommand: CreateAndEnrollStudentUiCommand;
   private readonly deactivateCommand: DeactivateStudentUiCommand;
   private readonly linkGuardianCommand: LinkGuardianUiCommand;
 
@@ -74,6 +77,7 @@ export class StudentsViewModel {
     this.listQuery = new ListStudentsUiQuery(deps.students);
     this.detailsQuery = new GetStudentByIdUiQuery(deps.students);
     this.createCommand = new CreateStudentUiCommand(commandDeps);
+    this.createAndEnrollCommand = new CreateAndEnrollStudentUiCommand(commandDeps);
     this.deactivateCommand = new DeactivateStudentUiCommand(commandDeps);
     this.linkGuardianCommand = new LinkGuardianUiCommand(commandDeps);
   }
@@ -140,6 +144,14 @@ export class StudentsViewModel {
   async createStudent(dto: CreateStudentDto): Promise<CommandOutcome<StudentDetailsView>> {
     this.store.setState({ submission: 'submitting' });
     const outcome = await this.createCommand.execute(dto);
+    this.store.setState({ submission: outcome.ok ? 'submitted' : 'failed' });
+    if (outcome.ok) await this.loadStudents();
+    return outcome;
+  }
+
+  async createAndEnrollStudent(dto: CreateAndEnrollStudentDto): Promise<CommandOutcome<StudentDetailsView>> {
+    this.store.setState({ submission: 'submitting' });
+    const outcome = await this.createAndEnrollCommand.execute(dto);
     this.store.setState({ submission: outcome.ok ? 'submitted' : 'failed' });
     if (outcome.ok) await this.loadStudents();
     return outcome;

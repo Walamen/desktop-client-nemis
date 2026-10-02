@@ -5,6 +5,7 @@ import type {
   RegistryLookupRequest,
   RegistryLookupResult,
   RegistryReleaseRequest,
+  RegistryReleaseResult,
   RemoteRecordRef,
   TransferCreateRequest,
   TransferReviewRequest,
@@ -43,6 +44,7 @@ import type {
 import type {
   CreateGuardianRequest,
   CreateStudentRequest,
+  CreateAndEnrollStudentRequest,
   EnrollStudentRequest,
   EnrollmentResult,
   MoveEnrollmentClassRequest,
@@ -166,6 +168,7 @@ export interface IpcContract {
   'student:list': { args: [request: StudentListRequest]; result: StudentPageResult };
   'student:get': { args: [id: string]; result: StudentResult | null };
   'student:create': { args: [request: CreateStudentRequest]; result: StudentResult };
+  'student:create-and-enroll': { args: [request: CreateAndEnrollStudentRequest]; result: StudentResult };
   'student:update': { args: [request: UpdateStudentRequest]; result: StudentResult };
   'student:set-active': { args: [request: SetStudentActiveRequest]; result: StudentResult };
   'student:create-guardian': { args: [request: CreateGuardianRequest]; result: StudentResult };
@@ -260,7 +263,7 @@ export interface IpcContract {
   };
   'registry:request': {
     args: [request: RegistryReleaseRequest];
-    result: OnlineCommandResult<RemoteRecordRef>;
+    result: OnlineCommandResult<RegistryReleaseResult>;
   };
   'transfer:create': {
     args: [request: TransferCreateRequest];
@@ -318,6 +321,7 @@ export const IpcChannels = {
   STUDENT_LIST: 'student:list',
   STUDENT_GET: 'student:get',
   STUDENT_CREATE: 'student:create',
+  STUDENT_CREATE_AND_ENROLL: 'student:create-and-enroll',
   STUDENT_UPDATE: 'student:update',
   STUDENT_SET_ACTIVE: 'student:set-active',
   STUDENT_CREATE_GUARDIAN: 'student:create-guardian',

@@ -25,7 +25,7 @@ function registryGateway() {
   return {
     lookupStudent: vi.fn(async () => ({ found: false as const })),
     claimStudent: vi.fn(async () => ({ studentId: 'student-9' })),
-    requestRelease: vi.fn(async () => ({ id: 'transfer-1' })),
+    requestRelease: vi.fn(async () => ({ id: 'transfer-1', lapsesAt: '2026-10-16T09:00:00.000Z' })),
   };
 }
 
@@ -89,7 +89,7 @@ describe('registry IPC handlers', () => {
     registerRegistryHandlers(handle, registryGateway(), vi.fn(async () => { throw new Error('pull failed'); }));
     expect(await calls.get('registry:request')!.handler({
       nemisId: VALID_ID, dateOfBirth: '2012-01-01', classId: 'c', termId: 't', gradeLevel: 'GRADE_7', reason: 'Moving',
-    })).toEqual({ data: { id: 'transfer-1' }, refreshed: false });
+    })).toEqual({ data: { id: 'transfer-1', lapsesAt: '2026-10-16T09:00:00.000Z' }, refreshed: false });
   });
 
   it('request requires a non-empty reason', () => {

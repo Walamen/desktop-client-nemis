@@ -6,6 +6,7 @@ export const studentApi: StudentApi = {
   list: (request) => invoke(IpcChannels.STUDENT_LIST, request),
   get: (id) => invoke(IpcChannels.STUDENT_GET, id),
   create: (request) => invoke(IpcChannels.STUDENT_CREATE, request),
+  createAndEnroll: (request) => invoke(IpcChannels.STUDENT_CREATE_AND_ENROLL, request),
   update: (request) => invoke(IpcChannels.STUDENT_UPDATE, request),
   setActive: (request) => invoke(IpcChannels.STUDENT_SET_ACTIVE, request),
   createGuardian: (request) => invoke(IpcChannels.STUDENT_CREATE_GUARDIAN, request),

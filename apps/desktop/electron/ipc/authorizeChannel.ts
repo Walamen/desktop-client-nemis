@@ -40,6 +40,7 @@ const SCHOOL_ADMIN_CHANNELS = new Set<IpcChannel>([
   IpcChannels.SUBJECT_UPDATE,
   IpcChannels.SUBJECT_SET_ACTIVE,
   IpcChannels.STUDENT_CREATE,
+  IpcChannels.STUDENT_CREATE_AND_ENROLL,
   IpcChannels.STUDENT_UPDATE,
   IpcChannels.STUDENT_SET_ACTIVE,
   IpcChannels.STUDENT_CREATE_GUARDIAN,

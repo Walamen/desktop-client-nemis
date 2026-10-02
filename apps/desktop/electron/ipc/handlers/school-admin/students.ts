@@ -5,6 +5,7 @@ import {
   assertSingleIdArg,
   assertListStudentsArgs,
   assertCreateStudentArgs,
+  assertCreateAndEnrollStudentArgs,
   assertUpdateStudentArgs,
   assertSetStudentActiveArgs,
   assertCreateGuardianArgs,
@@ -27,6 +28,11 @@ export function registerStudentHandlers(handle: IpcHandle, app: ApplicationLayer
     IpcChannels.STUDENT_CREATE,
     assertCreateStudentArgs,
     async (r) => (await app.students.create(r)).data,
+  );
+  handle(
+    IpcChannels.STUDENT_CREATE_AND_ENROLL,
+    assertCreateAndEnrollStudentArgs,
+    async (r) => (await app.students.createAndEnroll(r)).data,
   );
   handle(
     IpcChannels.STUDENT_UPDATE,

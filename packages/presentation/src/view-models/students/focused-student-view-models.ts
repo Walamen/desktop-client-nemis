@@ -1,6 +1,7 @@
 import type {
   CreateGuardianDto,
   CreateStudentDto,
+  CreateAndEnrollStudentDto,
   EnrollStudentDto,
   ListStudentsDto,
   MoveEnrollmentClassDto,
@@ -30,6 +31,7 @@ export class StudentsListViewModel {
   goToPage = (page: number) => this.core.goToPage(page);
   setPageSize = (pageSize: number) => this.core.setPageSize(pageSize);
   createStudent = (dto: CreateStudentDto) => this.core.createStudent(dto);
+  createAndEnrollStudent = (dto: CreateAndEnrollStudentDto) => this.core.createAndEnrollStudent(dto);
 
   toggleSelection(studentId: string): void {
     this.selection.setState((state) => {

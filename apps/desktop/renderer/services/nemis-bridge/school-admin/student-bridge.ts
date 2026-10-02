@@ -1,4 +1,5 @@
 import type {
+  CreateAndEnrollStudentRequest,
   CreateGuardianRequest,
   CreateStudentRequest,
   EnrollStudentRequest,
@@ -19,6 +20,8 @@ export const studentBridge = {
   getStudent: (id: string): Promise<StudentResult | null> => api().student.get(id),
   createStudent: (request: CreateStudentRequest): Promise<StudentResult> =>
     api().student.create(request),
+  createAndEnrollStudent: (request: CreateAndEnrollStudentRequest): Promise<StudentResult> =>
+    api().student.createAndEnroll(request),
   updateStudent: (request: UpdateStudentRequest): Promise<StudentResult> =>
     api().student.update(request),
   setStudentActive: (request: SetStudentActiveRequest): Promise<StudentResult> =>

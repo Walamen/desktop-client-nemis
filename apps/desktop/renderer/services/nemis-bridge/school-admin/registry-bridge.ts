@@ -6,7 +6,7 @@ import type {
   RegistryLookupRequest,
   RegistryLookupResult,
   RegistryReleaseRequest,
-  RemoteRecordRef,
+  RegistryReleaseResult,
 } from '@nemis-desktop/types';
 import { parseIpcError } from '../../../lib/errors/parseIpcError';
 import { api } from '../api';
@@ -16,7 +16,7 @@ export const registryBridge = {
     api().registry.lookup(request),
   claimStudent: (request: RegistryClaimRequest): Promise<OnlineCommandResult<RegistryClaimResult>> =>
     api().registry.claim(request),
-  requestRelease: (request: RegistryReleaseRequest): Promise<OnlineCommandResult<RemoteRecordRef>> =>
+  requestRelease: (request: RegistryReleaseRequest): Promise<OnlineCommandResult<RegistryReleaseResult>> =>
     api().registry.request(request),
 };
 

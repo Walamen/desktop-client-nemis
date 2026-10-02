@@ -76,6 +76,13 @@ export interface OnlineCommandResult<T> {
   refreshed: boolean;
 }
 
+/** A release request's id and the date it lapses (14 days, server-set) —
+ * shown in the wizard's waiting state; never written locally (D5). */
+export interface RegistryReleaseResult {
+  id: string;
+  lapsesAt: string | null;
+}
+
 export interface RemoteRecordRef {
   id: string;
 }

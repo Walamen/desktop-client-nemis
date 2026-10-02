@@ -146,6 +146,13 @@ export const schoolAdminIpc = {
     list: (dto) => query(() => schoolAdminBridge.listStudents(dto)),
     getById: (dto) => query(() => schoolAdminBridge.getStudent(dto.studentId)),
     create: (dto) => query(() => schoolAdminBridge.createStudent(dto)),
+    createAndEnroll: (dto) =>
+      query(() => {
+        // actorId is main-process-supplied, not part of the IPC request.
+        const { actorId, ...request } = dto;
+        void actorId;
+        return schoolAdminBridge.createAndEnrollStudent(request);
+      }),
     update: (dto) => query(() => schoolAdminBridge.updateStudent(dto)),
     setActive: (dto) => query(() => schoolAdminBridge.setStudentActive(dto)),
     deactivate: (dto) =>

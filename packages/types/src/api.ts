@@ -32,6 +32,7 @@ import type {
 import type {
   CreateGuardianRequest,
   CreateStudentRequest,
+  CreateAndEnrollStudentRequest,
   EnrollStudentRequest,
   EnrollmentResult,
   MoveEnrollmentClassRequest,
@@ -99,6 +100,7 @@ import type {
   RegistryLookupRequest,
   RegistryLookupResult,
   RegistryReleaseRequest,
+  RegistryReleaseResult,
   RemoteRecordRef,
   TransferCreateRequest,
   TransferReviewRequest,
@@ -179,6 +181,7 @@ export interface StudentApi {
   list(request: StudentListRequest): Promise<StudentPageResult>;
   get(id: string): Promise<StudentResult | null>;
   create(request: CreateStudentRequest): Promise<StudentResult>;
+  createAndEnroll(request: CreateAndEnrollStudentRequest): Promise<StudentResult>;
   update(request: UpdateStudentRequest): Promise<StudentResult>;
   setActive(request: SetStudentActiveRequest): Promise<StudentResult>;
   createGuardian(request: CreateGuardianRequest): Promise<StudentResult>;
@@ -244,7 +247,7 @@ export interface AssignmentApi {
 export interface RegistryApi {
   lookup(request: RegistryLookupRequest): Promise<RegistryLookupResult>;
   claim(request: RegistryClaimRequest): Promise<OnlineCommandResult<RegistryClaimResult>>;
-  request(request: RegistryReleaseRequest): Promise<OnlineCommandResult<RemoteRecordRef>>;
+  request(request: RegistryReleaseRequest): Promise<OnlineCommandResult<RegistryReleaseResult>>;
 }
 
 export interface TransferApi {
