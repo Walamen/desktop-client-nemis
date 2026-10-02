@@ -130,6 +130,9 @@ history, and Stage 5's cohort needs them.
 **Planning must verify** that every school-admin list, count and dashboard query
 filters students by the workspace institution, so a departed child disappears
 from them. Any query that does not is a defect to fix in this stage.
+*(Planning found they do not — `SqliteStudentRepository` counts/lists and the
+generic `students` collection read the whole table. Stage 1 adds a
+`workspaceStudentScope` SQL fragment; see the Stage 1 plan, Task 4.)*
 
 ### 5.4 UI
 
@@ -220,11 +223,13 @@ a sync.
 - `renderer/services/nemis-bridge/school-admin/registry-bridge.ts` and
   `transfer-bridge.ts`; ViewModels in `@nemis-desktop/presentation` following the
   `executeCommand` pattern. The ESLint renderer boundary guard is unchanged.
-- `useSyncStatus()` reads the existing `SYNC_GET_STATUS` (`DesktopSyncStatus`
-  already carries `isOnline` and `lastSyncAt`) on mount and on a 30-second
-  interval; there is no main→renderer push channel today and this design does not
-  add one. Its `isOnline` disables online-only controls proactively — a
-  convenience; the `OFFLINE` error is the real guard.
+- Online state comes from the renderer's existing connectivity store
+  (`useConnectivityStore()` in `renderer/lib/presentation/hooks/shared.ts`, which
+  already tracks `lastSyncAt`); reloads after a sync use the existing
+  `useRevalidateOnSync` hook. No new hook or push channel is added. Online state
+  disables online-only controls proactively — a convenience; the `OFFLINE` error
+  is the real guard. *(Amended during Stage 1 planning: an earlier draft proposed
+  a new `useSyncStatus()` hook before these were found.)*
 
 ### 6.5 Tests
 
@@ -361,8 +366,8 @@ transfer's grade (the server's `classes findAll` is unscoped; see §11).
 ### 8.4 Sidebar
 
 A "Student Transfers" entry with a pending-decision badge computed from local
-rows via `countPendingDecisions`. It re-reads local rows whenever
-`useSyncStatus()` observes a new `lastSyncAt`, and immediately after any transfer
+rows via `countPendingDecisions`. It re-reads local rows through
+`useRevalidateOnSync` (a new `lastSyncAt`), and immediately after any transfer
 command. Both reads are local SQLite queries, never server calls, so portal-web's
 persistent-layout cache-staleness trap does not apply.
 
