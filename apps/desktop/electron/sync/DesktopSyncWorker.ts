@@ -79,37 +79,47 @@ export class DesktopSyncWorker {
     if (!completion?.serverDeviceId) return;
 
     this.#running = true;
-    // Crash recovery has to run here rather than once at boot: at boot no
-    // workspace is unlocked yet (activation happens later over IPC), so the
-    // recovery would silently no-op and a stranded row would block its own
-    // item forever AND every future delta pull (the pull gate below counts
-    // in_flight as still-pending) AND every subsequent ProvisioningImporter
-    // run. Here a workspace is guaranteed active, and this covers startup,
-    // login, the interval, reconnect, and manual sync at once. Safe because
-    // the #running guard above means no in-process cycle is holding in_flight
-    // rows at this point, and requestSingleInstanceLock rules out a second
-    // process.
-    this.recoverStaleInFlight();
-    // Own dedicated push path, deliberately outside the generic sync_queue
-    // claim/backoff/dead-letter machinery below — see AssignmentSyncService's
-    // doc comment. A failure here must never abort the generic cycle.
+    // Everything from here to the guarded try below runs with #running set, so
+    // a throw in it must reset the flag itself or the worker is wedged forever.
+    let claimed: Awaited<ReturnType<typeof workspace.data.services.syncQueue.claim>>;
+    let pullDue: boolean;
+    let reversalPending: { found: number } | undefined;
     try {
-      await this.assignmentSync.pushPending(workspace.database.connection);
+      // Crash recovery has to run here rather than once at boot: at boot no
+      // workspace is unlocked yet (activation happens later over IPC), so the
+      // recovery would silently no-op and a stranded row would block its own
+      // item forever AND every future delta pull (the pull gate below counts
+      // in_flight as still-pending) AND every subsequent ProvisioningImporter
+      // run. Here a workspace is guaranteed active, and this covers startup,
+      // login, the interval, reconnect, and manual sync at once. Safe because
+      // the #running guard above means no in-process cycle is holding in_flight
+      // rows at this point, and requestSingleInstanceLock rules out a second
+      // process.
+      this.recoverStaleInFlight();
+      // Own dedicated push path, deliberately outside the generic sync_queue
+      // claim/backoff/dead-letter machinery below — see AssignmentSyncService's
+      // doc comment. A failure here must never abort the generic cycle.
+      try {
+        await this.assignmentSync.pushPending(workspace.database.connection);
+      } catch (error) {
+        logger.error('AssignmentSyncService.pushPending failed', error);
+      }
+      claimed = await workspace.data.services.syncQueue.claim(50);
+      pullDue = Date.now() - this.#lastPullAt >= 5 * 60_000;
+      // A reversal travels on its own REST path, so it never puts a row in
+      // sync_queue. Reversing a payment that came down from the server leaves
+      // the queue empty, and without this check a cycle inside the pull window
+      // would return right here — including the one a user triggers by pressing
+      // "Sync now" — and the reversal would never be attempted. The push itself
+      // deliberately stays below the queue drain (see feeReversalSync call), so
+      // this only keeps the cycle alive long enough to reach it.
+      reversalPending = workspace.database.connection.prepare(
+        `SELECT 1 found FROM fee_payment_reversals WHERE syncedAt IS NULL LIMIT 1`,
+      ).get() as { found: number } | undefined;
     } catch (error) {
-      logger.error('AssignmentSyncService.pushPending failed', error);
+      this.#running = false;
+      throw error;
     }
-    const claimed = await workspace.data.services.syncQueue.claim(50);
-    const pullDue = Date.now() - this.#lastPullAt >= 5 * 60_000;
-    // A reversal travels on its own REST path, so it never puts a row in
-    // sync_queue. Reversing a payment that came down from the server leaves
-    // the queue empty, and without this check a cycle inside the pull window
-    // would return right here — including the one a user triggers by pressing
-    // "Sync now" — and the reversal would never be attempted. The push itself
-    // deliberately stays below the queue drain (see feeReversalSync call), so
-    // this only keeps the cycle alive long enough to reach it.
-    const reversalPending = workspace.database.connection.prepare(
-      `SELECT 1 found FROM fee_payment_reversals WHERE syncedAt IS NULL LIMIT 1`,
-    ).get() as { found: number } | undefined;
     if (claimed.length === 0 && !pullDue && !reversalPending) {
       this.#running = false;
       return;
@@ -377,9 +387,25 @@ export class DesktopSyncWorker {
    * normal cycle only pulls every 5 minutes or after pushing queued work, so
    * a claim or a transfer review would otherwise not appear for minutes.
    * Waits for a cycle already in progress rather than skipping. Resolves true
-   * only if a pull was imported; never throws — the server change already
+   * only if a pull was imported (or false after timeoutMs, the pull carrying
+   * on in the background); never throws — the server change already
    * happened, so a failed refresh is a display concern, not an error. */
-  async pullNow(): Promise<boolean> {
+  async pullNow(timeoutMs = 30_000): Promise<boolean> {
+    // Bounded: a hung server must not hold the caller's IPC call open. On
+    // timeout the pull keeps running in the background (it is not cancelled)
+    // and the caller just reports "not refreshed yet".
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<boolean>((resolve) => {
+      timer = setTimeout(() => resolve(false), timeoutMs);
+    });
+    try {
+      return await Promise.race([this.#forcePull(), timeout]);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async #forcePull(): Promise<boolean> {
     try {
       // Re-check after every await: with several callers parked on one cycle,
       // the first to resume starts its own, and the rest must wait for that

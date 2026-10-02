@@ -1071,6 +1071,31 @@ describe('DesktopSyncWorker retry policy', () => {
     });
   });
 
+  it('pullNow resolves false once its timeout passes, while the pull keeps running', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const downloadSnapshot = vi.fn(async () => { await gate; return emptySnapshot(); });
+    const gateway = { pushChanges: vi.fn(), downloadSnapshot } as unknown as BackendProvisioningGateway;
+    const worker = new DesktopSyncWorker(workspaces, gateway, alwaysOnline());
+
+    expect(await worker.pullNow(50)).toBe(false);
+    expect(downloadSnapshot).toHaveBeenCalledTimes(1);
+    release();
+    await vi.waitFor(() => expect(readSyncMetadata().lastDeltaAt).toBe(SNAPSHOT_GENERATED_AT));
+  });
+
+  it('a throw before the guarded section does not leave the worker stuck running', async () => {
+    const downloadSnapshot = vi.fn().mockResolvedValue(emptySnapshot());
+    const gateway = { pushChanges: vi.fn(), downloadSnapshot } as unknown as BackendProvisioningGateway;
+    const worker = new DesktopSyncWorker(workspaces, gateway, alwaysOnline());
+    const claim = vi.spyOn(dataLayer.services.syncQueue, 'claim').mockRejectedValueOnce(new Error('claim blew up'));
+
+    await expect(worker.syncActive()).rejects.toThrow('claim blew up');
+    claim.mockRestore();
+    await worker.syncActive();
+    expect(downloadSnapshot).toHaveBeenCalledTimes(1);
+  });
+
   function readSyncMetadata(): { lastDeltaAt: string | null; lastFullResyncAt: string | null } {
     return manager.connection
       .prepare(`SELECT lastDeltaAt, lastFullResyncAt FROM sync_metadata WHERE id='singleton'`)
