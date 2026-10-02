@@ -25,6 +25,7 @@ interface StudentState {
   address?: string;
   isActive: boolean;
   guardians: StudentGuardian[];
+  assertedNoNemisId: boolean;
 }
 
 export interface CreateStudentInput {
@@ -41,6 +42,7 @@ export interface CreateStudentInput {
   phoneNumber?: string;
   email?: string;
   address?: string;
+  assertedNoNemisId?: boolean;
   occurredAt: string;
 }
 
@@ -61,6 +63,7 @@ export interface ReconstituteStudentInput {
   address?: string;
   isActive: boolean;
   guardians: StudentGuardian[];
+  assertedNoNemisId?: boolean;
   version: number;
   updatedAt: string;
   lastModifiedBy?: string;
@@ -102,6 +105,7 @@ export class Student extends AggregateRoot<StudentId> {
         address: input.address,
         isActive: true,
         guardians: [],
+        assertedNoNemisId: input.assertedNoNemisId ?? false,
       },
       { version: 1, updatedAt: input.occurredAt },
     );
@@ -139,11 +143,18 @@ export class Student extends AggregateRoot<StudentId> {
         address: input.address,
         isActive: input.isActive,
         guardians: [...input.guardians],
+        assertedNoNemisId: input.assertedNoNemisId ?? false,
       },
       { version: input.version, updatedAt: input.updatedAt, lastModifiedBy: input.lastModifiedBy },
     );
   }
 
+  /** The admin asserted this child had no NEMIS ID when enrolling them, so
+   * no registry lookup was made. Kept for traceability: if a duplicate
+   * national identity is found later, the record says who asserted it. */
+  get assertedNoNemisId(): boolean {
+    return this.#state.assertedNoNemisId;
+  }
   get institutionId(): string {
     return this.#state.institutionId;
   }

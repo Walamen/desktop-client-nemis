@@ -103,4 +103,13 @@ describe('Student', () => {
       }),
     ).toThrow(/not a valid NEMIS ID/i);
   });
+
+  it('records the "no NEMIS ID" assertion, defaulting to false', () => {
+    const base = {
+      id: 's-1', institutionId: 'inst-1', firstName: 'Ada', lastName: 'Toe', nemisId: '482915736045',
+      dateOfBirth: '2015-01-01', gender: Gender.FEMALE, occurredAt: '2026-10-02T00:00:00.000Z',
+    };
+    expect(Student.create(base).assertedNoNemisId).toBe(false);
+    expect(Student.create({ ...base, assertedNoNemisId: true }).assertedNoNemisId).toBe(true);
+  });
 });

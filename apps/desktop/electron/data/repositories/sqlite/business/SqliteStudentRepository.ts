@@ -28,6 +28,7 @@ interface StudentRow {
   version: number;
   updatedAt: string;
   lastModifiedBy: string | null;
+  assertedNoNemisId: number;
 }
 
 function toStudent(row: StudentRow): Student {
@@ -50,11 +51,12 @@ function toStudent(row: StudentRow): Student {
     version: row.version,
     updatedAt: row.updatedAt,
     lastModifiedBy: row.lastModifiedBy ?? undefined,
+    assertedNoNemisId: row.assertedNoNemisId === 1,
   });
 }
 
 const COLUMNS =
-  'id, institutionId, firstName, middleName, lastName, nemisId, dateOfBirth, gender, gradeLevel, admissionDate, phoneNumber, email, address, isActive, version, updatedAt, lastModifiedBy';
+  'id, institutionId, firstName, middleName, lastName, nemisId, dateOfBirth, gender, gradeLevel, admissionDate, phoneNumber, email, address, isActive, version, updatedAt, lastModifiedBy, assertedNoNemisId';
 
 /** SQLite adapter for IStudentRepository. Guardians are not persisted this
  * phase (no guardian tables yet); students reconstitute with an empty guardian
@@ -74,7 +76,7 @@ export class SqliteStudentRepository implements IStudentRepository {
       if (!row) return null;
       const student = toStudent(row);
       const links = this.#statements.get(`SELECT id, guardianId, isPrimary FROM ${TableNames.studentGuardians} WHERE studentId = ?`).all(id) as { id: string; guardianId: string; isPrimary: number }[];
-      return Student.reconstitute({ id: student.id, institutionId: student.institutionId, firstName: student.name.firstName, middleName: student.name.middleName, lastName: student.name.lastName, nemisId: student.nemisId?.value, dateOfBirth: student.dateOfBirth.value, gender: student.gender, gradeLevel: student.gradeLevel, admissionDate: student.admissionDate, phoneNumber: student.phoneNumber, email: student.email, address: student.address, isActive: student.isActive, guardians: links.map((link) => StudentGuardian.reconstitute({ id: link.id, guardianId: link.guardianId, isPrimary: link.isPrimary === 1 })), version: student.version, updatedAt: student.updatedAt, lastModifiedBy: student.lastModifiedBy });
+      return Student.reconstitute({ id: student.id, institutionId: student.institutionId, firstName: student.name.firstName, middleName: student.name.middleName, lastName: student.name.lastName, nemisId: student.nemisId?.value, dateOfBirth: student.dateOfBirth.value, gender: student.gender, gradeLevel: student.gradeLevel, admissionDate: student.admissionDate, phoneNumber: student.phoneNumber, email: student.email, address: student.address, isActive: student.isActive, guardians: links.map((link) => StudentGuardian.reconstitute({ id: link.id, guardianId: link.guardianId, isPrimary: link.isPrimary === 1 })), version: student.version, updatedAt: student.updatedAt, lastModifiedBy: student.lastModifiedBy, assertedNoNemisId: student.assertedNoNemisId });
     });
   }
 
@@ -83,8 +85,8 @@ export class SqliteStudentRepository implements IStudentRepository {
       this.#statements
         .get(
           `INSERT INTO ${TableNames.students}
-           (id, institutionId, firstName, middleName, lastName, nemisId, dateOfBirth, gender, gradeLevel, admissionDate, phoneNumber, email, address, isActive, version, updatedAt, lastModifiedBy, deviceId)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
+           (id, institutionId, firstName, middleName, lastName, nemisId, dateOfBirth, gender, gradeLevel, admissionDate, phoneNumber, email, address, isActive, version, updatedAt, lastModifiedBy, deviceId, assertedNoNemisId)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)
            ON CONFLICT(id) DO UPDATE SET
              institutionId = excluded.institutionId,
              firstName = excluded.firstName,
@@ -101,7 +103,8 @@ export class SqliteStudentRepository implements IStudentRepository {
              isActive = excluded.isActive,
              version = excluded.version,
              updatedAt = excluded.updatedAt,
-             lastModifiedBy = excluded.lastModifiedBy`,
+             lastModifiedBy = excluded.lastModifiedBy,
+             assertedNoNemisId = excluded.assertedNoNemisId`,
         )
         .run(
           student.id,
@@ -121,6 +124,7 @@ export class SqliteStudentRepository implements IStudentRepository {
           student.version,
           student.updatedAt,
           student.lastModifiedBy ?? null,
+          student.assertedNoNemisId ? 1 : 0,
         );
       const link = this.#statements.get(`INSERT INTO ${TableNames.studentGuardians} (id, studentId, guardianId, isPrimary, createdAt) VALUES (?, ?, ?, ?, ?) ON CONFLICT(studentId, guardianId) DO UPDATE SET isPrimary = excluded.isPrimary`);
       for (const guardian of student.guardians) link.run(guardian.id, student.id, guardian.guardianId, guardian.isPrimary ? 1 : 0, student.updatedAt);

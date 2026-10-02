@@ -209,4 +209,13 @@ describe('SqliteStudentRepository', () => {
       expect(repo.findById('s-gone')?.id).toBe('s-gone');
     });
   });
+
+  it('round-trips assertedNoNemisId', () => {
+    const student = Student.create({
+      id: 's-a', institutionId: 'inst-1', firstName: 'Grace', lastName: 'Toe', nemisId: '482915736045',
+      dateOfBirth: '2015-01-01', gender: Gender.FEMALE, occurredAt: '2026-07-20T00:00:00.000Z', assertedNoNemisId: true,
+    });
+    repo.save(student);
+    expect(repo.findById('s-a')?.assertedNoNemisId).toBe(true);
+  });
 });
