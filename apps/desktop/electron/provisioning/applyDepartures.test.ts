@@ -6,11 +6,11 @@ import { applyDepartures } from './applyDepartures';
 
 let db: Database.Database;
 
-function addStudent(id: string, institutionId = 'school-1') {
+function addStudent(id: string, institutionId = 'school-1', updatedAt = '2026-01-01T00:00:00.000Z') {
   db.prepare(
     `INSERT INTO students (id, institutionId, firstName, lastName, nemisId, dateOfBirth, gender, isActive, version, updatedAt)
      VALUES (?,?,?,?,?,?,?,1,1,?)`,
-  ).run(id, institutionId, 'Musu', 'Kollie', null, '2012-04-01', 'FEMALE', '2026-01-01T00:00:00.000Z');
+  ).run(id, institutionId, 'Musu', 'Kollie', null, '2012-04-01', 'FEMALE', updatedAt);
 }
 
 function institutionOf(id: string) {
@@ -63,6 +63,18 @@ describe('applyDepartures', () => {
       transfer({ id: 'b', toInstitutionId: 'school-2', reviewedAt: '2026-03-01T00:00:00.000Z' }),
     ], []);
     expect(institutionOf('s1')).toBe('school-3');
+  });
+
+  it('a returned child is not moved by a re-sent historic departure', () => {
+    db.prepare(`DELETE FROM students WHERE id='s1'`).run();
+    addStudent('s1', 'school-1', '2026-09-15T00:00:00.000Z');
+    applyDepartures(db, 'school-1', [transfer({ reviewedAt: '2026-09-10T00:00:00.000Z' })], []);
+    expect(institutionOf('s1')).toBe('school-1');
+  });
+
+  it('an APPROVED transfer with no reviewedAt moves nobody', () => {
+    applyDepartures(db, 'school-1', [transfer({ reviewedAt: null })], []);
+    expect(institutionOf('s1')).toBe('school-1');
   });
 
   it('no institution (district/county/ministry workspace): does nothing', () => {

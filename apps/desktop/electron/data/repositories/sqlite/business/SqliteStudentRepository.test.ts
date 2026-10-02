@@ -189,6 +189,21 @@ describe('SqliteStudentRepository', () => {
       expect(repo.findPage({ limit: 50, offset: 0 }).total).toBe(2);
     });
 
+    it('a class roster lists only present students, not a departed child still enrolled', () => {
+      provisionFor('inst-1');
+      const conn = test.context.connection;
+      conn.pragma('foreign_keys = OFF');
+      const enrol = conn.prepare(
+        `INSERT INTO enrollments (id, studentId, classId, academicYearId, termId, enrollmentDate, status, version, updatedAt)
+         VALUES (?, ?, 'class-1', 'ay-1', 'term-1', '2026-07-01', 'ACTIVE', 1, '2026-07-01T00:00:00.000Z')`,
+      );
+      enrol.run('e-here', 's-here');
+      enrol.run('e-gone', 's-gone');
+      const page = repo.findPage({ limit: 50, offset: 0, classId: 'class-1' });
+      expect(page.total).toBe(1);
+      expect(page.items.map((s) => s.id)).toEqual(['s-here']);
+    });
+
     it('a departed student can still be opened by id (profile history)', () => {
       provisionFor('inst-1');
       expect(repo.findById('s-gone')?.id).toBe('s-gone');

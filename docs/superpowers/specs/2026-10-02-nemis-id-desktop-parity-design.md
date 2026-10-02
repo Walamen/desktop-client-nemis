@@ -124,8 +124,13 @@ is already pulled. After each pull is applied:
 > current truth (covers a child who left and returned within one sync window).
 
 This write bypasses the outbox (it mirrors server state; it must never be pushed).
-Enrolments, grades and attendance of the departed child are kept — they are
-history, and Stage 5's cohort needs them.
+Enrolments, grades and attendance of the departed child are kept only until the
+next full (24-hour, `merge: false`) resync, which deletes them: the snapshot
+scopes those collections by the student's current institution
+(`desktop-provisioning.service.ts:268-283`), and both server move paths update
+`student.institutionId` before marking the origin enrolment TRANSFERRED, so the
+origin never pulls it. Stage 5's snapshot widening is what makes the history
+durable. *(Amended after Stage 1 final review.)*
 
 **Planning must verify** that every school-admin list, count and dashboard query
 filters students by the workspace institution, so a departed child disappears
@@ -318,6 +323,11 @@ in B.2; it is a review checklist item for this stage.
 
 ## 8. Stage 4 — Transfers inbox
 
+*Note:* until Stage 4 ships, the server's refusal text ("use the Transfers screen
+while connected") and the desktop notice ("Review transfers on the web portal.")
+disagree; Stage 4 must make the desktop screen the place the server message
+points to. *(Amended after Stage 1 final review.)*
+
 ### 8.1 Server: snapshot enrichment
 
 The snapshot's `studentTransfers` gains four fields per row, built field by field
@@ -394,9 +404,21 @@ persistent-layout cache-staleness trap does not apply.
   current `institutionId`. Those not currently at this institution are sent with
   a **minimal projection**: `id, firstName, middleName, lastName, nemisId, gender,
   gradeLevel, institutionId, isActive, updatedAt` — no contact fields, address,
-  photo or guardians. Their enrolments already arrive (scoped by class).
+  photo or guardians. Enrolments, grades and attendance are scoped by the student's *current*
+  institution (`desktop-provisioning.service.ts:268-283`), not by class, so
+  Stage 5 must ALSO widen those queries for departed cohort students:
+  enrolments in this institution's classes for the current/most-recently-ended
+  year, plus their grades and attendance for those classes. *(Amended after Stage 1 final review.)*
 - Stage 1's departure rule plus the foreign `institutionId` keep them out of
   every list; they appear only in cohorts.
+- **`verifyDatabase` exemption must be re-keyed.** Stage 1 exempts a student from
+  the students.institutionId -> institutions check only when an APPROVED transfer
+  has `toInstitutionId = student.institutionId`. A departed cohort student who has
+  since moved again (1->2->3) arrives with school 3, which no transfer visible to
+  school 1 explains, so the check would throw on every import and stop sync.
+  Stage 5 must re-key the exemption on "this student has an APPROVED transfer whose
+  `fromInstitutionId` is the workspace institution" (or an equivalent covering
+  multi-hop moves), with a test. *(Amended after Stage 1 final review.)*
 
 ### 9.2 Desktop: storage (migration 028)
 
