@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { Database as SqliteDatabase } from 'better-sqlite3';
 import type { DatabaseManager } from '@app/database/DatabaseManager';
+import { applyDepartures } from './applyDepartures';
 import {
   PROVISIONING_COLLECTIONS,
   type ProvisioningCollection,
@@ -189,6 +190,12 @@ export class ProvisioningImporter {
           upsertRows(db, SPECS[collection], snapshot.data[collection] ?? [], options.merge ?? false);
         }
         markPulledAssignmentsSynced(db, snapshot.data.assignments ?? []);
+        applyDepartures(
+          db,
+          context.institutionId,
+          snapshot.data.studentTransfers ?? [],
+          snapshot.data.students ?? [],
+        );
         verifyDatabase(db, snapshot, { skipCounts: options.merge ?? false });
         if (options.preserveConflicts) {
           db.prepare(`DELETE FROM sync_queue WHERE status='completed'`).run();
@@ -414,6 +421,11 @@ function verifyDatabase(
     // (or, per the missing-collection fix above, empty) of the full set.
     // Every other dependency here still enforces in every mode.
     if (options.skipCounts && child === 'institutions' && foreignKey === 'districtId') continue;
+    // A student who left this school is re-pointed (applyDepartures) at the
+    // school they joined, which is never an institution row on this device.
+    // The students table has no DB-level FK on institutionId, so this is the
+    // only place that would reject it.
+    if (child === 'students' && foreignKey === 'institutionId') continue;
     const missing = db.prepare(
       `SELECT COUNT(*) count FROM ${child} c LEFT JOIN ${parent} p ON p.id=c.${foreignKey}
        WHERE c.${foreignKey} IS NOT NULL AND p.id IS NULL`,

@@ -483,6 +483,30 @@ describe('ProvisioningImporter', () => {
     ]);
   });
 
+  it('moves a departed student on a delta merge without queuing anything', () => {
+    const importer = new ProvisioningImporter(manager);
+    importer.import(snapshotOf({ ...BASE_DATA, students: [student('s1', 'Ada')] }), CONTEXT);
+    importer.import(
+      snapshotOf({ studentTransfers: [transferRow('t1', { status: 'APPROVED', reviewedAt: '2026-09-10T00:00:00.000Z' })] }),
+      CONTEXT,
+      { merge: true, preserveConflicts: true },
+    );
+    expect(manager.connection.prepare(`SELECT institutionId FROM students WHERE id='s1'`).get())
+      .toEqual({ institutionId: 'school-2' });
+    expect(manager.connection.prepare(`SELECT count(*) c FROM sync_queue`).get()).toEqual({ c: 0 });
+  });
+
+  it('full import: an approved outbound transfer for a student absent from the snapshot does not fail the import', () => {
+    const importer = new ProvisioningImporter(manager);
+    expect(() =>
+      importer.import(
+        snapshotOf({ ...BASE_DATA, studentTransfers: [transferRow('t1', { status: 'APPROVED' })] }),
+        CONTEXT,
+      ),
+    ).not.toThrow();
+    expect(countRows('students')).toBe(0);
+  });
+
   function countRows(table: string): number {
     return (manager.connection.prepare(`SELECT COUNT(*) count FROM ${table}`).get() as { count: number }).count;
   }
