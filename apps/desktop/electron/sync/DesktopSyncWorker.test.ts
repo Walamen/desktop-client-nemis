@@ -984,6 +984,56 @@ describe('DesktopSyncWorker retry policy', () => {
     vi.useRealTimers();
   });
 
+  describe('pullNow', () => {
+    it('pulls even inside the 5-minute window, and reports that it did', async () => {
+      const downloadSnapshot = vi.fn().mockResolvedValue(emptySnapshot());
+      const gateway = { pushChanges: vi.fn(), downloadSnapshot } as unknown as BackendProvisioningGateway;
+      const worker = new DesktopSyncWorker(workspaces, gateway, alwaysOnline());
+      await worker.syncActive(); // first cycle pulls and starts the 5-minute window
+      expect(downloadSnapshot).toHaveBeenCalledTimes(1);
+
+      await worker.syncActive(); // inside the window: nothing queued, no pull
+      expect(downloadSnapshot).toHaveBeenCalledTimes(1);
+
+      expect(await worker.pullNow()).toBe(true);
+      expect(downloadSnapshot).toHaveBeenCalledTimes(2);
+    });
+
+    it('reports false when offline, without touching the network', async () => {
+      const downloadSnapshot = vi.fn();
+      const gateway = { pushChanges: vi.fn(), downloadSnapshot } as unknown as BackendProvisioningGateway;
+      const worker = new DesktopSyncWorker(workspaces, gateway, { isOnline: () => false });
+      expect(await worker.pullNow()).toBe(false);
+      expect(downloadSnapshot).not.toHaveBeenCalled();
+    });
+
+    it('reports false, without throwing, when the pull fails', async () => {
+      const downloadSnapshot = vi.fn().mockRejectedValue(new Error('The NEMIS server could not be reached.'));
+      const gateway = { pushChanges: vi.fn(), downloadSnapshot } as unknown as BackendProvisioningGateway;
+      const worker = new DesktopSyncWorker(workspaces, gateway, alwaysOnline());
+      await expect(worker.pullNow()).resolves.toBe(false);
+    });
+
+    it('waits for an in-flight cycle, then pulls', async () => {
+      let release!: () => void;
+      const gate = new Promise<void>((resolve) => { release = resolve; });
+      const downloadSnapshot = vi.fn()
+        .mockImplementationOnce(async () => { await gate; return emptySnapshot(); })
+        .mockResolvedValue(emptySnapshot());
+      const gateway = { pushChanges: vi.fn(), downloadSnapshot } as unknown as BackendProvisioningGateway;
+      const worker = new DesktopSyncWorker(workspaces, gateway, alwaysOnline());
+
+      const running = worker.syncActive(); // holds the cycle open on `gate`
+      const forced = worker.pullNow();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(downloadSnapshot).toHaveBeenCalledTimes(1); // still waiting
+      release();
+      await running;
+      expect(await forced).toBe(true);
+      expect(downloadSnapshot).toHaveBeenCalledTimes(2);
+    });
+  });
+
   function readSyncMetadata(): { lastDeltaAt: string | null; lastFullResyncAt: string | null } {
     return manager.connection
       .prepare(`SELECT lastDeltaAt, lastFullResyncAt FROM sync_metadata WHERE id='singleton'`)

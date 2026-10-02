@@ -34,6 +34,9 @@ export interface ConnectivitySource {
 export class DesktopSyncWorker {
   #running = false;
   #lastPullAt = 0;
+  /** The cycle currently running, so pullNow() can wait for it instead of
+   * being turned away by the #running guard. */
+  #cycle: Promise<void> | null = null;
 
   private readonly assignmentSync: AssignmentSyncService;
   private readonly feeReversalSync: FeeReversalSyncService;
@@ -48,6 +51,17 @@ export class DesktopSyncWorker {
   }
 
   async syncActive(): Promise<void> {
+    if (this.#running) return;
+    const cycle = this.#runCycle();
+    this.#cycle = cycle;
+    try {
+      await cycle;
+    } finally {
+      if (this.#cycle === cycle) this.#cycle = null;
+    }
+  }
+
+  async #runCycle(): Promise<void> {
     if (this.#running) return;
     // Offline: claiming a batch here would only fail the push and burn every
     // claimed item's retry budget against a network that is known to be down.
@@ -356,6 +370,25 @@ export class DesktopSyncWorker {
     workspace.database.connection.prepare(
       `UPDATE sync_queue SET nextAttemptAt=NULL WHERE status='pending' AND nextAttemptAt IS NOT NULL`,
     ).run();
+  }
+
+  /** Forces a delta pull now — after an online command changed server state
+   * that this device must reflect (NEMIS ID desktop parity spec §6.3). The
+   * normal cycle only pulls every 5 minutes or after pushing queued work, so
+   * a claim or a transfer review would otherwise not appear for minutes.
+   * Waits for a cycle already in progress rather than skipping. Resolves true
+   * only if a pull was imported; never throws — the server change already
+   * happened, so a failed refresh is a display concern, not an error. */
+  async pullNow(): Promise<boolean> {
+    try {
+      if (this.#cycle) await this.#cycle;
+      this.#lastPullAt = 0;
+      await this.syncActive();
+      return this.#lastPullAt !== 0;
+    } catch (error) {
+      logger.error('DesktopSyncWorker.pullNow failed', error);
+      return false;
+    }
   }
 
   /**
