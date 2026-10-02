@@ -1025,10 +1025,47 @@ describe('DesktopSyncWorker retry policy', () => {
 
       const running = worker.syncActive(); // holds the cycle open on `gate`
       const forced = worker.pullNow();
-      await new Promise((resolve) => setTimeout(resolve, 20));
-      expect(downloadSnapshot).toHaveBeenCalledTimes(1); // still waiting
+      await vi.waitFor(() => expect(downloadSnapshot).toHaveBeenCalledTimes(1));
       release();
       await running;
+      expect(await forced).toBe(true);
+      expect(downloadSnapshot).toHaveBeenCalledTimes(2);
+    });
+
+    it('lets two concurrent callers each force their own pull', async () => {
+      let release!: () => void;
+      const gate = new Promise<void>((resolve) => { release = resolve; });
+      const downloadSnapshot = vi.fn()
+        .mockImplementationOnce(async () => { await gate; return emptySnapshot(); })
+        .mockResolvedValue(emptySnapshot());
+      const gateway = { pushChanges: vi.fn(), downloadSnapshot } as unknown as BackendProvisioningGateway;
+      const worker = new DesktopSyncWorker(workspaces, gateway, alwaysOnline());
+
+      const running = worker.syncActive();
+      const a = worker.pullNow();
+      const b = worker.pullNow();
+      await vi.waitFor(() => expect(downloadSnapshot).toHaveBeenCalledTimes(1));
+      release();
+      await running;
+      expect(await a).toBe(true);
+      expect(await b).toBe(true);
+      expect(downloadSnapshot).toHaveBeenCalledTimes(3);
+    });
+
+    it('still pulls when the in-flight cycle fails', async () => {
+      let fail!: () => void;
+      const gate = new Promise<void>((_, reject) => { fail = () => reject(new Error('boom')); });
+      const downloadSnapshot = vi.fn()
+        .mockImplementationOnce(async () => { await gate; return emptySnapshot(); })
+        .mockResolvedValue(emptySnapshot());
+      const gateway = { pushChanges: vi.fn(), downloadSnapshot } as unknown as BackendProvisioningGateway;
+      const worker = new DesktopSyncWorker(workspaces, gateway, alwaysOnline());
+
+      const running = worker.syncActive();
+      const forced = worker.pullNow();
+      await vi.waitFor(() => expect(downloadSnapshot).toHaveBeenCalledTimes(1));
+      fail();
+      await expect(running).rejects.toThrow('boom');
       expect(await forced).toBe(true);
       expect(downloadSnapshot).toHaveBeenCalledTimes(2);
     });

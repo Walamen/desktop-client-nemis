@@ -381,7 +381,11 @@ export class DesktopSyncWorker {
    * happened, so a failed refresh is a display concern, not an error. */
   async pullNow(): Promise<boolean> {
     try {
-      if (this.#cycle) await this.#cycle;
+      // Re-check after every await: with several callers parked on one cycle,
+      // the first to resume starts its own, and the rest must wait for that
+      // too rather than be turned away by the #running guard. An earlier
+      // cycle's failure is its own business, not ours.
+      while (this.#cycle) await this.#cycle.catch(() => {});
       this.#lastPullAt = 0;
       await this.syncActive();
       return this.#lastPullAt !== 0;
