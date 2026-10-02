@@ -494,6 +494,23 @@ describe('ProvisioningImporter', () => {
     expect(manager.connection.prepare(`SELECT institutionId FROM students WHERE id='s1'`).get())
       .toEqual({ institutionId: 'school-2' });
     expect(manager.connection.prepare(`SELECT count(*) c FROM sync_queue`).get()).toEqual({ c: 0 });
+
+    // A later, empty delta must not trip verification on the departed row.
+    expect(() =>
+      importer.import(snapshotOf({}), CONTEXT, { merge: true, preserveConflicts: true }),
+    ).not.toThrow();
+    expect(manager.connection.prepare(`SELECT institutionId FROM students WHERE id='s1'`).get())
+      .toEqual({ institutionId: 'school-2' });
+  });
+
+  it('still rejects a student pointing at an unknown school that no approved transfer explains', () => {
+    const importer = new ProvisioningImporter(manager);
+    expect(() =>
+      importer.import(
+        snapshotOf({ ...BASE_DATA, students: [{ ...student('s1', 'Ada'), institutionId: 'ghost-school' }] }),
+        CONTEXT,
+      ),
+    ).toThrow('Missing dependency students.institutionId -> institutions');
   });
 
   it('full import: an approved outbound transfer for a student absent from the snapshot does not fail the import', () => {

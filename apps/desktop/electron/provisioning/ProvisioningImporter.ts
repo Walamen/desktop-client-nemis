@@ -423,12 +423,16 @@ function verifyDatabase(
     if (options.skipCounts && child === 'institutions' && foreignKey === 'districtId') continue;
     // A student who left this school is re-pointed (applyDepartures) at the
     // school they joined, which is never an institution row on this device.
-    // The students table has no DB-level FK on institutionId, so this is the
-    // only place that would reject it.
-    if (child === 'students' && foreignKey === 'institutionId') continue;
+    // Only a student whose own persisted APPROVED transfer explains the foreign
+    // institution is exempt; any other dangling institutionId still fails.
+    const explainedDeparture = child === 'students' && foreignKey === 'institutionId'
+      ? `AND NOT EXISTS (SELECT 1 FROM student_transfers t
+                         WHERE t.studentId = c.id AND t.status = 'APPROVED'
+                           AND t.toInstitutionId = c.institutionId)`
+      : '';
     const missing = db.prepare(
       `SELECT COUNT(*) count FROM ${child} c LEFT JOIN ${parent} p ON p.id=c.${foreignKey}
-       WHERE c.${foreignKey} IS NOT NULL AND p.id IS NULL`,
+       WHERE c.${foreignKey} IS NOT NULL AND p.id IS NULL ${explainedDeparture}`,
     ).get() as { count: number };
     if (missing.count > 0) throw new Error(`Missing dependency ${child}.${foreignKey} -> ${parent}.`);
   }
