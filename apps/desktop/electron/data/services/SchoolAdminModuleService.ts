@@ -323,10 +323,17 @@ const ROLE_READ_COLLECTIONS: Readonly<Record<string, ReadonlySet<SchoolAdminColl
 };
 
 const ROLE_WRITE_COLLECTIONS: Readonly<Record<string, ReadonlySet<SchoolAdminCollection>>> = {
-  INSTITUTION_ADMIN: new Set(Object.keys(CONFIG) as SchoolAdminCollection[]),
+  // student_transfers is pull-only for every role: a transfer decides which
+  // school holds a child, so it goes through the server's transfer and
+  // registry services online (NEMIS ID desktop parity spec 5.1).
+  INSTITUTION_ADMIN: new Set(
+    (Object.keys(CONFIG) as SchoolAdminCollection[]).filter(
+      (collection) => collection !== 'student_transfers',
+    ),
+  ),
   TEACHER: new Set(['grades', 'messages', 'user_notifications', 'assessment_templates', 'assessments']),
   COUNTY_ADMIN: new Set(['reports', 'alerts']),
-  DEO: new Set(['student_transfers', 'reports', 'alerts']),
+  DEO: new Set(['reports', 'alerts']),
   MINISTRY_ADMIN: new Set(['reports', 'alerts']),
 };
 
@@ -455,10 +462,6 @@ export class SchoolAdminModuleService {
     if (request.collection === 'alerts' && record.isResolved) {
       record.resolvedBy = userId;
       record.resolvedAt = record.resolvedAt ?? now;
-    }
-    if (request.collection === 'student_transfers' && record.status !== 'PENDING') {
-      record.reviewedBy = userId;
-      record.reviewedAt = record.reviewedAt ?? now;
     }
     if (request.collection === 'user_notifications') {
       if (existing?.recipientId !== userId)

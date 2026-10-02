@@ -30,10 +30,13 @@ function display(column: string, value: SchoolAdminRecord[string] | undefined): 
 export function SchoolAdminCollectionPage({
   title,
   description,
+  notice,
   sections,
 }: {
   title: string;
   description: string;
+  /** A standing note under the description, e.g. where an action now lives. */
+  notice?: string;
   sections: readonly Section[];
 }) {
   const [active, setActive] = useState(sections[0]!.collection);
@@ -73,8 +76,7 @@ export function SchoolAdminCollectionPage({
     });
     await load();
   };
-  const hasActions =
-    active === 'user_notifications' || active === 'alerts' || active === 'student_transfers';
+  const hasActions = active === 'user_notifications' || active === 'alerts';
 
   return (
     <main className="p-6">
@@ -82,6 +84,7 @@ export function SchoolAdminCollectionPage({
         <div>
           <h1 className="text-2xl font-semibold text-slate-950">{title}</h1>
           <p className="mt-1 text-sm text-slate-600">{description}</p>
+          {notice && <p className="mt-2 text-sm font-medium text-amber-700">{notice}</p>}
         </div>
         <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
           {total} offline record{total === 1 ? '' : 's'}
@@ -163,20 +166,6 @@ export function SchoolAdminCollectionPage({
                             }
                           >
                             Resolve
-                          </button>
-                        )}
-                        {active === 'student_transfers' && record.status === 'PENDING' && (
-                          <button
-                            className="text-blue-700 underline"
-                            type="button"
-                            onClick={() =>
-                              void updateWorkflow(record, {
-                                status: 'APPROVED',
-                                reviewedAt: new Date().toISOString(),
-                              })
-                            }
-                          >
-                            Approve
                           </button>
                         )}
                       </td>

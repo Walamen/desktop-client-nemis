@@ -377,4 +377,37 @@ describe('SchoolAdminModuleService', () => {
     expect(result.items.map((item) => item.id)).toEqual(['s-here']);
     workspaces.close();
   });
+
+  it.each([
+    ['school admin', admin],
+    [
+      'DEO',
+      {
+        ...admin,
+        id: 'deo-1',
+        role: SystemRole.DEO,
+        institutionId: undefined,
+        scope: { type: DesktopScopeType.DISTRICT, scopeId: 'district-1', districtId: 'district-1' },
+      },
+    ],
+  ] as const)('refuses every transfer write from a %s', (_label, user) => {
+    const { workspaces, service } = setup(user);
+    const now = new Date().toISOString();
+    workspaces.active.database.connection
+      .prepare(
+        `INSERT INTO student_transfers
+           (id, studentId, fromInstitutionId, toInstitutionId, requestedBy, reason, status, createdAt, updatedAt)
+         VALUES ('t1','student-1','school-1','school-2','user-1','Relocation','PENDING',?,?)`,
+      )
+      .run(now, now);
+    expect(() =>
+      service.save({ collection: 'student_transfers', record: { id: 't1', status: 'APPROVED' } }),
+    ).toThrow('This record type cannot be changed by the active role.');
+    expect(() => service.delete({ collection: 'student_transfers', id: 't1' })).toThrow(
+      'This record type cannot be changed by the active role.',
+    );
+    // Still readable - the inbox is a view.
+    expect(service.list({ collection: 'student_transfers' }).total).toBe(1);
+    workspaces.close();
+  });
 });
