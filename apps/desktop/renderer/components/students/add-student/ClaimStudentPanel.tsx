@@ -89,7 +89,11 @@ export function ClaimStudentPanel({
         placeholder="Select grade"
         options={grades.map((g) => ({ value: g, label: human(g) }))}
         value={grade}
-        onChange={(e) => setGrade(e.target.value as GradeLevel)}
+        onChange={(e) => {
+          // A class belongs to one grade; the term is kept.
+          setGrade(e.target.value as GradeLevel);
+          setTarget((t) => ({ ...t, classId: '' }));
+        }}
       />
       {needsReason && (
         <Input label="Reason for the grade" required value={reason} onChange={(e) => setReason(e.target.value)} />

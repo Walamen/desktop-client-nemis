@@ -88,6 +88,13 @@ export function AddStudentWizard() {
       { firstName: '', lastName: '', relationship: '', phoneNumber: '', email: '', isPrimary: false },
     ]);
   const removeGuardian = (index: number) => setGuardians((prev) => prev.filter((_, i) => i !== index));
+  // A class belongs to one grade: a new grade invalidates the chosen class
+  // (the term does not depend on grade, so it is kept).
+  const changeGrade = (next: GradeLevelValue) => {
+    if (next === grade) return;
+    setGrade(next);
+    setTarget((t) => ({ ...t, classId: '' }));
+  };
 
   const onFound = (outcome: FindOutcome) => {
     setFind(outcome);
@@ -341,7 +348,7 @@ export function AddStudentWizard() {
                       <button
                         key={g}
                         type="button"
-                        onClick={() => setGrade(g)}
+                        onClick={() => changeGrade(g)}
                         className={`p-4 rounded-lg border-2 text-center font-semibold ${
                           grade === g ? 'border-slate-900 bg-slate-100 text-sky-700' : 'border-gray-200 text-gray-700'
                         }`}

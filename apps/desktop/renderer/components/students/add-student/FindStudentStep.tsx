@@ -56,17 +56,30 @@ export function FindStudentStep({ onDone }: { onDone: (outcome: FindOutcome) => 
           label="NEMIS ID"
           value={nemisId}
           disabled={!isOnline || asserted}
-          onChange={(e) => setNemisId(e.target.value)}
+          onChange={(e) => {
+            setNemisId(e.target.value);
+            setMissed(false);
+          }}
         />
         <Input
           label="Date of birth"
           type="date"
           value={dateOfBirth}
-          onChange={(e) => setDateOfBirth(e.target.value)}
+          onChange={(e) => {
+            setDateOfBirth(e.target.value);
+            setMissed(false);
+          }}
         />
       </div>
       <label className="flex items-center gap-2 text-sm text-gray-700">
-        <input type="checkbox" checked={asserted} onChange={(e) => setAsserted(e.target.checked)} />
+        <input
+          type="checkbox"
+          checked={asserted}
+          onChange={(e) => {
+            setAsserted(e.target.checked);
+            setMissed(false);
+          }}
+        />
         This child has no NEMIS ID (first-time enrollee)
       </label>
       {error && <p className="text-sm text-red-700">{error}</p>}

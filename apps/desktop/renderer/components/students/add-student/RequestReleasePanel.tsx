@@ -85,7 +85,11 @@ export function RequestReleasePanel({
         placeholder="Select grade"
         options={grades.map((g) => ({ value: g, label: human(g) }))}
         value={grade}
-        onChange={(e) => setGrade(e.target.value as GradeLevel)}
+        onChange={(e) => {
+          // A class belongs to one grade; the term is kept.
+          setGrade(e.target.value as GradeLevel);
+          setTarget((t) => ({ ...t, classId: '' }));
+        }}
       />
       <ClassTermPicker gradeLevel={grade} value={target} onChange={setTarget} />
       <Input label="Reason" required value={reason} onChange={(e) => setReason(e.target.value)} />

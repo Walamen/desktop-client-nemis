@@ -393,4 +393,131 @@ describe('AddStudentWizard', () => {
     expect(await screen.findByText('Student created successfully')).toBeInTheDocument();
     expect(screen.getByText('1234-5678-9012')).toBeInTheDocument();
   });
+
+  it('changing the grade on the create path drops the chosen class, so Next is blocked again', async () => {
+    const { createAndEnroll } = stubNemis();
+    const { user } = await renderWizard();
+    await user.click(screen.getByRole('checkbox', { name: 'This child has no NEMIS ID (first-time enrollee)' }));
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await screen.findByRole('heading', { name: 'Student Information', level: 2 });
+    await user.type(textboxNear(/^first name/i), 'Grace');
+    await user.type(textboxNear(/^last name/i), 'Toe');
+    await user.type(textboxNear(/^date of birth/i), '2015-01-01');
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    await screen.findByRole('heading', { name: 'Guardian Information', level: 2 });
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+
+    await screen.findByRole('heading', { name: 'Grade & Class', level: 2 });
+    await user.click(screen.getByRole('button', { name: 'GRADE 7' }));
+    await pickClassAndTerm(user);
+    await user.click(screen.getByRole('button', { name: 'GRADE 8' }));
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+
+    expect(await screen.findByText('Choose a grade, class and term.')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Grade & Class', level: 2 })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Review & Submit', level: 2 })).toBeNull();
+
+    // Back to the original grade: the class must be chosen again, the term is kept.
+    await user.click(screen.getByRole('button', { name: 'GRADE 7' }));
+    await waitFor(() => expect(selectNear(/^class/i).querySelector('option[value="c1"]')).not.toBeNull());
+    expect(selectNear(/^class/i).value).toBe('');
+    expect(selectNear(/^term/i).value).toBe('t1');
+    await user.selectOptions(selectNear(/^class/i), 'c1');
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    await screen.findByRole('heading', { name: 'Review & Submit', level: 2 });
+    await user.click(screen.getByRole('button', { name: 'Create student' }));
+    await waitFor(() =>
+      expect(createAndEnroll).toHaveBeenCalledWith(
+        expect.objectContaining({ gradeLevel: 'GRADE_7', classId: 'c1', termId: 't1' }),
+      ),
+    );
+  });
+
+  it('changing the grade in the claim panel drops the chosen class and disables Claim', async () => {
+    const { claim } = stubNemis({ lookup: async () => graduatedHit });
+    const { user } = await renderWizard();
+    await search(user);
+    await screen.findByRole('heading', { name: 'Claim student', level: 2 });
+    const claimButton = () => screen.getByRole('button', { name: 'Claim student' });
+
+    await user.selectOptions(selectNear(/^grade/i), 'GRADE_12');
+    await user.type(textboxNear(/^reason for the grade/i), 'Repeating final year');
+    await pickClassAndTerm(user, 'c12');
+    expect(claimButton()).toBeEnabled();
+
+    await user.selectOptions(selectNear(/^grade/i), 'GRADE_7');
+    expect(claimButton()).toBeDisabled(); // the reason is still filled — only the class is missing
+    await waitFor(() => expect(selectNear(/^class/i).querySelector('option[value="c1"]')).not.toBeNull());
+    expect(selectNear(/^class/i).value).toBe('');
+    expect(selectNear(/^term/i).value).toBe('t1');
+    await user.click(claimButton());
+    expect(claim).not.toHaveBeenCalled();
+  });
+
+  it('changing the grade in the request panel drops the chosen class and disables Send', async () => {
+    const { request } = stubNemis({ lookup: async () => ({ ...promotedHit, claimPath: 'REQUIRES_APPROVAL' }) });
+    const { user } = await renderWizard();
+    await search(user);
+    await screen.findByRole('heading', { name: 'Request release', level: 2 });
+    const send = () => screen.getByRole('button', { name: 'Send request' });
+
+    await pickClassAndTerm(user);
+    await user.type(textboxNear(/^reason/i), 'Family moved');
+    expect(send()).toBeEnabled();
+
+    await user.selectOptions(selectNear(/^grade/i), 'GRADE_12');
+    expect(send()).toBeDisabled();
+    await waitFor(() => expect(selectNear(/^class/i).querySelector('option[value="c12"]')).not.toBeNull());
+    expect(selectNear(/^class/i).value).toBe('');
+    expect(selectNear(/^term/i).value).toBe('t1');
+    await user.click(send());
+    expect(request).not.toHaveBeenCalled();
+  });
+
+  it('a miss is cleared when the ID, birth date or checkbox changes', async () => {
+    const { lookup } = stubNemis({ lookup: async () => ({ found: false }) });
+    const { user } = await renderWizard();
+    const missShown = () => screen.queryByText('No matching student.') !== null;
+
+    await search(user);
+    await screen.findByText('No matching student.');
+    await user.type(textboxNear(/^nemis id/i), '9');
+    expect(missShown()).toBe(false);
+    expect(screen.queryByRole('button', { name: 'Continue as a new student' })).toBeNull();
+
+    await user.clear(textboxNear(/^nemis id/i));
+    await user.type(textboxNear(/^nemis id/i), '482915736045');
+    await user.click(screen.getByRole('button', { name: 'Search' }));
+    await screen.findByText('No matching student.');
+    await user.clear(textboxNear(/^date of birth/i));
+    await user.type(textboxNear(/^date of birth/i), '2014-03-03');
+    expect(missShown()).toBe(false);
+
+    await user.click(screen.getByRole('button', { name: 'Search' }));
+    await screen.findByText('No matching student.');
+    expect(lookup).toHaveBeenLastCalledWith({ nemisId: '482915736045', dateOfBirth: '2014-03-03' });
+    await user.click(screen.getByRole('checkbox', { name: 'This child has no NEMIS ID (first-time enrollee)' }));
+    expect(missShown()).toBe(false);
+    expect(screen.queryByRole('button', { name: 'Continue as a new student' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeInTheDocument();
+  });
+
+  it('re-entering Find after the checkbox path: a later miss creates without the assertion', async () => {
+    const { createAndEnroll } = stubNemis({ lookup: async () => ({ found: false }) });
+    const { user } = await renderWizard();
+
+    await user.click(screen.getByRole('checkbox', { name: 'This child has no NEMIS ID (first-time enrollee)' }));
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await screen.findByRole('heading', { name: 'Student Information', level: 2 });
+    await user.click(screen.getByRole('button', { name: 'Back' }));
+    await screen.findByRole('heading', { name: 'Find Student', level: 2 });
+
+    await search(user);
+    await screen.findByText('No matching student.');
+    await user.click(screen.getByRole('button', { name: 'Continue as a new student' }));
+    await completeCreateFlow(user);
+
+    await waitFor(() => expect(createAndEnroll).toHaveBeenCalledTimes(1));
+    expect(createAndEnroll).toHaveBeenCalledWith(expect.objectContaining({ assertedNoNemisId: false }));
+  });
 });
