@@ -124,6 +124,11 @@ describe('online-command errors', () => {
     expect(sanitizeRemoteMessage(undefined)).toBeUndefined();
   });
 
+  it('sanitises C1 controls and bidi controls to spaces', () => {
+    expect(sanitizeRemoteMessage('abc')).toBe('a b c');
+    expect(sanitizeRemoteMessage('a‮b‪c⁦d⁩e')).toBe('a b c d e');
+  });
+
   it('finds an online-command error wrapped as a cause', () => {
     expect(toIpcError(new Error('wrapper', { cause: new OfflineError() })).code).toBe('OFFLINE');
   });

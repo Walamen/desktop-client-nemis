@@ -39,7 +39,7 @@ const REMOTE_MESSAGE_MAX = 500;
 export function sanitizeRemoteMessage(value: string | undefined): string | undefined {
   if (!value) return undefined;
   // eslint-disable-next-line no-control-regex
-  const cleaned = value.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
+  const cleaned = value.replace(/[\u0000-\u001f\u007f-\u009f‪-‮⁦-⁩]/g, ' ').replace(/\s+/g, ' ').trim();
   if (!cleaned) return undefined;
   return cleaned.length > REMOTE_MESSAGE_MAX
     ? `${cleaned.slice(0, REMOTE_MESSAGE_MAX - 1)}…`
