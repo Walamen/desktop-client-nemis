@@ -84,6 +84,7 @@ const SPECS: Record<ProvisioningCollection, TableSpec> = {
   classSubjectTeachers: spec('class_subject_teachers', ['id','classId','subjectId','staffId','assignedAt','version','updatedAt','lastModifiedBy'], ['classId','subjectId']),
   timetableEntries: spec('timetable_entries', ['id','institutionId','classId','subjectId','staffId','dayOfWeek','startTime','endTime','room','isBreak','assignmentId','createdAt','updatedAt','version','lastModifiedBy']),
   studentTransfers: spec('student_transfers', ['id','studentId','fromInstitutionId','toInstitutionId','requestedBy','reason','status','reviewedBy','reviewedAt','reviewNotes','requestedDate','toGradeLevel','initiatedBy','lapsesAt','classId','termId','studentName','studentNemisId','fromInstitutionName','toInstitutionName','createdAt','updatedAt']),
+  gradeCompletions: spec('grade_completions', ['id','studentId','institutionId','academicYearId','gradeLevel','outcome','nextGradeLevel','averageAtDecision','notes','decidedBy','amendedBy','amendedAt','createdAt','updatedAt']),
   institutionGradingConfigs: spec('institution_grading_configs', ['id','institutionId','maxMarks','passingMarks','periodsPerTerm','termsPerYear','hasExams','calculationMethod','gradeScale','allowLateSubmission','lateSubmissionPenalty','requireAdminApproval','createdAt','updatedAt']),
   gradingPeriods: spec('grading_periods', ['id','institutionId','academicYearId','termId','name','code','periodType','sequence','maxMarks','passingMarks','weight','startDate','endDate','isActive','createdAt','updatedAt']),
   gradeEntryWindows: spec('grade_entry_windows', ['id','institutionId','gradingPeriodId','name','description','openDate','closeDate','status','allowedRoles','openedBy','openedAt','closedBy','closedAt','publishedBy','publishedAt','createdAt','updatedAt']),
@@ -181,13 +182,21 @@ export class ProvisioningImporter {
         db.prepare(`UPDATE sync_runtime SET captureEnabled=0 WHERE id='singleton'`).run();
         if (!options.merge) {
           for (const collection of DELETE_ORDER) {
-            db.prepare(`DELETE FROM ${SPECS[collection].table}`).run();
+            // A local stamp awaiting push, or one the server refused, exists
+            // nowhere else — a full re-provision must not erase it.
+            db.prepare(
+              collection === 'gradeCompletions'
+                ? `DELETE FROM grade_completions WHERE syncState NOT IN ('pending','rejected')`
+                : `DELETE FROM ${SPECS[collection].table}`,
+            ).run();
           }
         }
         for (const collection of PROVISIONING_COLLECTIONS) {
           // A collection absent from the snapshot entirely (see validateEnvelope
           // above) is treated as an empty delta for that collection, not an error.
-          upsertRows(db, SPECS[collection], snapshot.data[collection] ?? [], options.merge ?? false);
+          const rows = snapshot.data[collection] ?? [];
+          if (collection === 'gradeCompletions') upsertGradeCompletions(db, rows);
+          else upsertRows(db, SPECS[collection], rows, options.merge ?? false);
         }
         markPulledAssignmentsSynced(db, snapshot.data.assignments ?? []);
         applyDepartures(
@@ -305,6 +314,36 @@ function validateEnvelope(snapshot: ProvisioningSnapshot, context: ImportContext
   }
 }
 
+/** Pulled stamps land as `synced`, replacing any synced local row with the
+ * same id or the same (studentId, academicYearId). A local `pending` or
+ * `rejected` row matching either key is left untouched: it holds a decision
+ * the server has not accepted, and the pull must not erase it. */
+function upsertGradeCompletions(db: SqliteDatabase, rows: readonly ProvisioningRow[]): void {
+  const columns = SPECS.gradeCompletions.columns;
+  const protectedRow = db.prepare(
+    `SELECT 1 FROM grade_completions
+     WHERE syncState IN ('pending','rejected')
+       AND (id = ? OR (studentId = ? AND academicYearId = ?)) LIMIT 1`,
+  );
+  const clearSynced = db.prepare(
+    `DELETE FROM grade_completions WHERE id = ? OR (studentId = ? AND academicYearId = ?)`,
+  );
+  const insert = db.prepare(
+    `INSERT INTO grade_completions (${columns.join(',')},syncState,syncError)
+     VALUES (${columns.map(() => '?').join(',')},'synced',NULL)`,
+  );
+  for (const row of rows) {
+    if (typeof row.id !== 'string' || row.id.length === 0) {
+      throw new Error('Provisioning row for grade_completions has no valid id.');
+    }
+    const studentId = String(row.studentId);
+    const academicYearId = String(row.academicYearId);
+    if (protectedRow.get(row.id, studentId, academicYearId)) continue;
+    clearSynced.run(row.id, studentId, academicYearId);
+    insert.run(...columns.map((column) => sqliteValue(row[column], column)));
+  }
+}
+
 function upsertRows(
   db: SqliteDatabase,
   table: TableSpec,
@@ -384,7 +423,10 @@ function verifyDatabase(
     for (const collection of PROVISIONING_COLLECTIONS) {
       const table = SPECS[collection].table;
       const row = db.prepare(`SELECT COUNT(*) count FROM ${table}`).get() as { count: number };
-      if (row.count !== (snapshot.manifest[collection] ?? 0)) {
+      const expected = snapshot.manifest[collection] ?? 0;
+      // Local pending/rejected stamps survive a full import on top of the pulled ones.
+      const mismatch = collection === 'gradeCompletions' ? row.count < expected : row.count !== expected;
+      if (mismatch) {
         throw new Error(`Imported row count mismatch for ${collection}.`);
       }
     }
@@ -421,19 +463,20 @@ function verifyDatabase(
     // (or, per the missing-collection fix above, empty) of the full set.
     // Every other dependency here still enforces in every mode.
     if (options.skipCounts && child === 'institutions' && foreignKey === 'districtId') continue;
-    // A student who left this school is re-pointed (applyDepartures) at the
-    // school they joined, which is never an institution row on this device.
-    // Only a student whose own persisted APPROVED transfer explains the foreign
-    // institution is exempt; any other dangling institutionId still fails.
+    // A student who left this school sits at the school they joined — however
+    // many hops later — which is never an institution row on this device. Only
+    // a student with a local APPROVED transfer out of THIS workspace's school
+    // is exempt (keyed on the departure, not the destination, so a multi-hop
+    // move still resolves); any other dangling institutionId still fails.
     const explainedDeparture = child === 'students' && foreignKey === 'institutionId'
       ? `AND NOT EXISTS (SELECT 1 FROM student_transfers t
                          WHERE t.studentId = c.id AND t.status = 'APPROVED'
-                           AND t.toInstitutionId = c.institutionId)`
+                           AND t.fromInstitutionId = @workspaceInstitutionId)`
       : '';
     const missing = db.prepare(
       `SELECT COUNT(*) count FROM ${child} c LEFT JOIN ${parent} p ON p.id=c.${foreignKey}
        WHERE c.${foreignKey} IS NOT NULL AND p.id IS NULL ${explainedDeparture}`,
-    ).get() as { count: number };
+    ).get(explainedDeparture ? { workspaceInstitutionId: snapshot.institutionId ?? null } : {}) as { count: number };
     if (missing.count > 0) throw new Error(`Missing dependency ${child}.${foreignKey} -> ${parent}.`);
   }
   const fkViolations = db.pragma('foreign_key_check') as unknown[];

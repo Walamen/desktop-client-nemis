@@ -39,7 +39,15 @@ const ONLINE_COMMAND = { onlineCommand: true } as const;
  * school's lookup budget is spent. */
 const LOOKUP_BUDGET_MESSAGE = 'Too many lookups. Please try again later.';
 
+/** Opt-in query value asking the server to also send children of this school's
+ * grade cohorts who have since left (minimal projection), so their stamps and
+ * history stay resolvable. */
+const DEPARTED_COHORT_FLAG = 'departedCohort';
+
 export class BackendProvisioningGateway {
+  /** Set once an older server rejected the opt-in flag; in memory only. */
+  private departedCohortUnsupported = false;
+
   constructor(
     private readonly baseUrl: string,
     private readonly authentication: AuthenticationGateway,
@@ -65,13 +73,27 @@ export class BackendProvisioningGateway {
   }
 
   async downloadSnapshot(deviceId: string, since?: string): Promise<ProvisioningSnapshot> {
-    const params = new URLSearchParams({ deviceId });
-    if (since) params.set('since', since);
-    return this.authorized(
-      `/desktop/provisioning/snapshot?${params.toString()}`,
-      {},
-      validateSnapshot,
-    );
+    const request = (withDepartedCohort: boolean) => {
+      const params = new URLSearchParams({ deviceId });
+      if (since) params.set('since', since);
+      if (withDepartedCohort) params.set('include', DEPARTED_COHORT_FLAG);
+      return this.authorized(
+        `/desktop/provisioning/snapshot?${params.toString()}`,
+        {},
+        validateSnapshot,
+      );
+    };
+    if (this.departedCohortUnsupported) return request(false);
+    try {
+      return await request(true);
+    } catch (error) {
+      // The server's query schema is strict, so a server that predates the
+      // flag answers 400 to it. Retry once without, and stop asking for the
+      // rest of this gateway's life. Any other failure is not about the flag.
+      if (!(error instanceof RemoteRejectedError) || error.status !== 400) throw error;
+      this.departedCohortUnsupported = true;
+      return request(false);
+    }
   }
 
   async pushChanges(

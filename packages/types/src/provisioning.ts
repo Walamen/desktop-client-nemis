@@ -83,7 +83,7 @@ export const PROVISIONING_COLLECTIONS = [
   'studentGuardians', 'enrollments', 'attendance', 'staff', 'staffDirectory', 'institutionAdmin', 'subjectTeachers',
   'classTeachers', 'classSubjectTeachers',
   'timetableEntries',
-  'studentTransfers',
+  'studentTransfers', 'gradeCompletions',
   'institutionGradingConfigs', 'gradingPeriods', 'assessmentTemplates', 'assessments', 'gradeEntryWindows',
   'gradeEntryWindowClasses', 'grades',
   'feeRules', 'feeObligations', 'feePayments',

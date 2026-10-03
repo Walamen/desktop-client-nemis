@@ -34,6 +34,7 @@ export const TableNames = {
   provisioningMetadata: 'provisioning_metadata',
   timetableEntries: 'timetable_entries',
   studentTransfers: 'student_transfers',
+  gradeCompletions: 'grade_completions',
   institutionGradingConfigs: 'institution_grading_configs',
   gradingPeriods: 'grading_periods',
   gradeEntryWindows: 'grade_entry_windows',

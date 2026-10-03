@@ -541,6 +541,149 @@ describe('ProvisioningImporter', () => {
     expect(countRows('students')).toBe(0);
   });
 
+  describe('grade completions', () => {
+    const FULL = { ...BASE_DATA };
+
+    function stamp(id: string, overrides: Partial<ProvisioningRow> = {}): ProvisioningRow {
+      return {
+        id, studentId: 'gone-1', institutionId: 'school-1', academicYearId: 'ay-1',
+        gradeLevel: 'GRADE_7', outcome: 'PROMOTED', nextGradeLevel: 'GRADE_8',
+        averageAtDecision: 71.5, notes: null, decidedBy: 'user-1', amendedBy: null, amendedAt: null,
+        createdAt: '2026-09-01T00:00:00.000Z', updatedAt: '2026-09-01T00:00:00.000Z',
+        ...overrides,
+      };
+    }
+
+    function localStamp(id: string, studentId: string, syncState: string, outcome = 'RETAINED'): void {
+      manager.connection.prepare(
+        `INSERT INTO grade_completions (id,studentId,institutionId,academicYearId,gradeLevel,outcome,createdAt,updatedAt,syncState,syncError)
+         VALUES (?,?,?,?,?,?,?,?,?,?)`,
+      ).run(id, studentId, 'school-1', 'ay-1', 'GRADE_7', outcome, '2026-09-02T00:00:00.000Z', '2026-09-02T00:00:00.000Z',
+        syncState, syncState === 'rejected' ? 'nope' : null);
+    }
+
+    function row(id: string): Record<string, unknown> | undefined {
+      return manager.connection.prepare('SELECT * FROM grade_completions WHERE id=?').get(id) as Record<string, unknown> | undefined;
+    }
+
+    it('imports a pulled stamp as synced, including one for a student absent from the snapshot', () => {
+      const importer = new ProvisioningImporter(manager);
+      importer.import(snapshotOf({ ...FULL, gradeCompletions: [stamp('g1')] }), CONTEXT);
+      expect(row('g1')).toMatchObject({ studentId: 'gone-1', outcome: 'PROMOTED', averageAtDecision: 71.5, syncState: 'synced', syncError: null });
+    });
+
+    it('a later pull does not overwrite a pending row', () => {
+      const importer = new ProvisioningImporter(manager);
+      importer.import(snapshotOf(FULL), CONTEXT);
+      localStamp('g1', 'gone-1', 'pending');
+      importer.import(snapshotOf({ gradeCompletions: [stamp('g1', { outcome: 'PROMOTED' })] }), CONTEXT, { merge: true });
+      expect(row('g1')).toMatchObject({ outcome: 'RETAINED', syncState: 'pending' });
+    });
+
+    it('a later pull does not overwrite a rejected row', () => {
+      const importer = new ProvisioningImporter(manager);
+      importer.import(snapshotOf(FULL), CONTEXT);
+      localStamp('g1', 'gone-1', 'rejected');
+      importer.import(snapshotOf({ gradeCompletions: [stamp('g1')] }), CONTEXT, { merge: true });
+      expect(row('g1')).toMatchObject({ outcome: 'RETAINED', syncState: 'rejected', syncError: 'nope' });
+    });
+
+    it('a pulled row with a different id but the same (student, year) does not displace a pending row', () => {
+      const importer = new ProvisioningImporter(manager);
+      importer.import(snapshotOf(FULL), CONTEXT);
+      localStamp('local-1', 'gone-1', 'pending');
+      expect(() =>
+        importer.import(snapshotOf({ gradeCompletions: [stamp('server-1')] }), CONTEXT, { merge: true }),
+      ).not.toThrow();
+      expect(row('local-1')).toMatchObject({ syncState: 'pending' });
+      expect(row('server-1')).toBeUndefined();
+    });
+
+    it('a pull replaces a synced row, including one held under another id for the same (student, year)', () => {
+      const importer = new ProvisioningImporter(manager);
+      importer.import(snapshotOf({ ...FULL, gradeCompletions: [stamp('g1')] }), CONTEXT);
+      importer.import(snapshotOf({ gradeCompletions: [stamp('g2', { outcome: 'RETAINED' })] }), CONTEXT, { merge: true });
+      expect(row('g1')).toBeUndefined();
+      expect(row('g2')).toMatchObject({ outcome: 'RETAINED', syncState: 'synced' });
+    });
+
+    it('a full re-provision keeps pending and rejected rows and drops synced ones', () => {
+      const importer = new ProvisioningImporter(manager);
+      importer.import(snapshotOf({ ...FULL, gradeCompletions: [stamp('g1')] }), CONTEXT);
+      localStamp('p1', 'stu-p', 'pending');
+      localStamp('r1', 'stu-r', 'rejected');
+      importer.import(snapshotOf({ ...FULL, gradeCompletions: [stamp('g2', { studentId: 'gone-2' })] }), CONTEXT);
+      expect(row('g1')).toBeUndefined();
+      expect(row('g2')).toMatchObject({ syncState: 'synced' });
+      expect(row('p1')).toMatchObject({ syncState: 'pending' });
+      expect(row('r1')).toMatchObject({ syncState: 'rejected' });
+    });
+
+    it('imports a snapshot that has no gradeCompletions key', () => {
+      const importer = new ProvisioningImporter(manager);
+      const snapshot = snapshotOf(FULL);
+      const data = { ...snapshot.data } as Record<string, unknown>;
+      delete data.gradeCompletions;
+      const manifest = { ...snapshot.manifest } as Record<string, unknown>;
+      delete manifest.gradeCompletions;
+      const older = {
+        ...snapshot, data, manifest,
+        checksum: createHash('sha256').update(JSON.stringify(data)).digest('hex'),
+      } as unknown as ProvisioningSnapshot;
+      expect(() => importer.import(older, CONTEXT)).not.toThrow();
+      expect(countRows('grade_completions')).toBe(0);
+    });
+  });
+
+  describe('departed-student exemption', () => {
+    it('accepts a multi-hop leaver: approved transfer from us to school-2, student now at school-3', () => {
+      const importer = new ProvisioningImporter(manager);
+      expect(() =>
+        importer.import(
+          snapshotOf({
+            ...BASE_DATA,
+            students: [{ ...student('s1', 'Ada'), institutionId: 'school-3' }],
+            studentTransfers: [transferRow('t1', { status: 'APPROVED', reviewedAt: '2026-09-10T00:00:00.000Z' })],
+          }),
+          CONTEXT,
+        ),
+      ).not.toThrow();
+      expect(manager.connection.prepare(`SELECT institutionId FROM students WHERE id='s1'`).get())
+        .toEqual({ institutionId: 'school-3' });
+    });
+
+    it('still rejects a foreign institution when the only approved transfer is not from this school', () => {
+      const importer = new ProvisioningImporter(manager);
+      expect(() =>
+        importer.import(
+          snapshotOf({
+            ...BASE_DATA,
+            students: [{ ...student('s1', 'Ada'), institutionId: 'school-3' }],
+            studentTransfers: [transferRow('t1', {
+              status: 'APPROVED', fromInstitutionId: 'school-9', toInstitutionId: 'school-3',
+              reviewedAt: '2026-09-10T00:00:00.000Z',
+            })],
+          }),
+          CONTEXT,
+        ),
+      ).toThrow('Missing dependency students.institutionId -> institutions');
+    });
+
+    it('still rejects a foreign institution explained only by a PENDING transfer from this school', () => {
+      const importer = new ProvisioningImporter(manager);
+      expect(() =>
+        importer.import(
+          snapshotOf({
+            ...BASE_DATA,
+            students: [{ ...student('s1', 'Ada'), institutionId: 'school-3' }],
+            studentTransfers: [transferRow('t1', { status: 'PENDING' })],
+          }),
+          CONTEXT,
+        ),
+      ).toThrow('Missing dependency students.institutionId -> institutions');
+    });
+  });
+
   function countRows(table: string): number {
     return (manager.connection.prepare(`SELECT COUNT(*) count FROM ${table}`).get() as { count: number }).count;
   }

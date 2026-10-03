@@ -27,6 +27,7 @@ import { makeStudentTransfersPullOnly } from './025-make-student-transfers-pull-
 import { addSyncQueueSequence } from './026-add-sync-queue-sequence';
 import { addStudentAssertedNoNemisId } from './027-add-student-asserted-no-nemis-id';
 import { addTransferDisplayFields } from './028-add-transfer-display-fields';
+import { createGradeCompletions } from './029-create-grade-completions';
 
 /**
  * Every migration, ascending by version. Append only — never edit or reorder
@@ -61,4 +62,5 @@ export const migrations: readonly Migration[] = [
   addSyncQueueSequence,
   addStudentAssertedNoNemisId,
   addTransferDisplayFields,
+  createGradeCompletions,
 ];

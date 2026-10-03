@@ -102,6 +102,65 @@ describe('BackendProvisioningGateway', () => {
     expect(requestedUrl.searchParams.get('since')).toBe('2026-07-29T00:00:00.000Z');
   });
 
+  describe('departed-cohort opt-in', () => {
+    const errorResponse = (status: number, body: unknown) =>
+      new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
+    const emptySnapshot = () => {
+      const data = Object.fromEntries(PROVISIONING_COLLECTIONS.map((key) => [key, []]));
+      const manifest = Object.fromEntries(PROVISIONING_COLLECTIONS.map((key) => [key, 0]));
+      return {
+        contractVersion: 1, snapshotId: 'snapshot-1', generatedAt: '2026-01-01',
+        userId: 'user-1', role: 'INSTITUTION_ADMIN', scopeType: 'INSTITUTION',
+        scopeId: 'school-1', institutionId: 'school-1', deviceId: 'device-1',
+        checksumAlgorithm: 'sha256', checksum: 'a'.repeat(64), manifest, data,
+      };
+    };
+    const includeOf = (fetchMock: { mock: { calls: unknown[][] } }, call: number) =>
+      new URL(String(fetchMock.mock.calls[call]![0])).searchParams.get('include');
+
+    it('sends include=departedCohort', async () => {
+      const fetchMock = vi.fn(async () => response(emptySnapshot()));
+      vi.stubGlobal('fetch', fetchMock);
+      await buildGateway().downloadSnapshot('device-1', '2026-07-29T00:00:00.000Z');
+      expect(includeOf(fetchMock, 0)).toBe('departedCohort');
+    });
+
+    it('on a 400 retries once without the flag and stops sending it', async () => {
+      const fetchMock = vi.fn(async (url: string | URL) =>
+        new URL(String(url)).searchParams.has('include')
+          ? errorResponse(400, { message: 'property include should not exist' })
+          : response(emptySnapshot()));
+      vi.stubGlobal('fetch', fetchMock);
+      const gateway = buildGateway();
+      await expect(gateway.downloadSnapshot('device-1')).resolves.toMatchObject({ snapshotId: 'snapshot-1' });
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(includeOf(fetchMock, 0)).toBe('departedCohort');
+      expect(includeOf(fetchMock, 1)).toBeNull();
+      await gateway.downloadSnapshot('device-1');
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+      expect(includeOf(fetchMock, 2)).toBeNull();
+    });
+
+    it('does not retry other errors, and keeps sending the flag after them', async () => {
+      const fetchMock = vi.fn(async () => errorResponse(500, { message: 'boom' }));
+      vi.stubGlobal('fetch', fetchMock);
+      const gateway = buildGateway();
+      await expect(gateway.downloadSnapshot('device-1')).rejects.toThrow(/status 500/);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      fetchMock.mockImplementationOnce(async () => errorResponse(409, { message: 'conflict' }));
+      await expect(gateway.downloadSnapshot('device-1')).rejects.toBeInstanceOf(RemoteRejectedError);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(includeOf(fetchMock, 1)).toBe('departedCohort');
+    });
+
+    it('a 400 on the retry without the flag is surfaced, not retried again', async () => {
+      const fetchMock = vi.fn(async () => errorResponse(400, { message: 'bad' }));
+      vi.stubGlobal('fetch', fetchMock);
+      await expect(buildGateway().downloadSnapshot('device-1')).rejects.toBeInstanceOf(RemoteRejectedError);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+  });
+
   it('preserves the protected session when revalidation is temporarily offline', async () => {
     const clear = vi.fn(async () => undefined);
     const authentication: AuthenticationGateway = {
