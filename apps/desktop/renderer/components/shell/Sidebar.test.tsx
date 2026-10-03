@@ -1,6 +1,6 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { createStore } from 'zustand/vanilla';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SystemRole } from '@nemis-desktop/types';
 
 vi.mock('next/navigation', () => ({
@@ -13,13 +13,39 @@ vi.mock('next/navigation', () => ({
 // enough and throws "store.subscribe is not a function". Use a real vanilla store,
 // same pattern as Header.test.tsx.
 const notificationStore = createStore(() => ({ notifications: [] as unknown[] }));
+const connectivityStore = createStore(() => ({ lastSyncAt: null as string | null }));
 vi.mock('../../lib/presentation/hooks/shared', () => ({
   useNotificationStore: () => ({ store: notificationStore }),
+  useConnectivityStore: () => ({ store: connectivityStore }),
 }));
-vi.mock('@/services/nemis-bridge/shared', () => ({ sharedBridge: { logout: vi.fn().mockResolvedValue(undefined) } }));
+const settingsStore = createStore(() => ({ profile: { status: 'success', data: { id: 'inst-1' } } }));
+vi.mock('@/lib/presentation/hooks/school-admin', () => ({
+  useSettingsViewModel: () => ({ store: settingsStore }),
+}));
+vi.mock('@/services/nemis-bridge/shared', () => ({
+  sharedBridge: {
+    logout: vi.fn().mockResolvedValue(undefined),
+    listSchoolAdminRecords: vi.fn(),
+  },
+}));
 
 import { Sidebar } from './Sidebar';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
+import { notifyTransfersChanged } from '@/lib/transfers';
+
+const pushToUs = (id: string) => ({
+  id, studentId: `s-${id}`, fromInstitutionId: 'inst-2', toInstitutionId: 'inst-1',
+  status: 'PENDING', initiatedBy: 'ORIGIN_SCHOOL', lapsesAt: null,
+});
+const listMock = vi.mocked(sharedBridge.listSchoolAdminRecords);
+const stubRows = (rows: Record<string, unknown>[]) =>
+  listMock.mockImplementation(async () => ({ items: rows, total: rows.length }) as never);
+const transfersLink = () => screen.getByText('Student Transfers').closest('a') as HTMLElement;
+
+beforeEach(() => {
+  listMock.mockReset();
+  stubRows([]);
+});
 
 describe('Sidebar', () => {
   it('renders school-admin nav groups and items with correct hrefs', () => {
@@ -47,6 +73,42 @@ describe('Sidebar', () => {
     render(<Sidebar role={SystemRole.INSTITUTION_ADMIN} />);
     fireEvent.click(screen.getByText('Logout'));
     expect(sharedBridge.logout).toHaveBeenCalled();
+  });
+
+  it('shows the Student Transfers entry for a school admin', () => {
+    render(<Sidebar role={SystemRole.INSTITUTION_ADMIN} />);
+    expect(transfersLink()).toHaveAttribute('href', '/government/school-admin/students/inter-school-transfer');
+  });
+
+  it('badges Student Transfers with the pending-decision count from local rows', async () => {
+    stubRows([pushToUs('a'), pushToUs('b'), pushToUs('c')]);
+    render(<Sidebar role={SystemRole.INSTITUTION_ADMIN} />);
+    await waitFor(() => expect(transfersLink()).toHaveTextContent('3'));
+    expect(listMock).toHaveBeenCalledWith({ collection: 'student_transfers', limit: 250 });
+  });
+
+  it('hides the badge when nothing awaits a decision', async () => {
+    render(<Sidebar role={SystemRole.INSTITUTION_ADMIN} />);
+    await waitFor(() => expect(listMock).toHaveBeenCalled());
+    expect(transfersLink().textContent).toBe('Student Transfers');
+  });
+
+  it('re-reads and updates the badge when transfers change', async () => {
+    render(<Sidebar role={SystemRole.INSTITUTION_ADMIN} />);
+    await waitFor(() => expect(listMock).toHaveBeenCalledTimes(1));
+    stubRows([pushToUs('a')]);
+    act(() => notifyTransfersChanged());
+    await waitFor(() => expect(transfersLink()).toHaveTextContent('1'));
+    expect(listMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('makes no transfer read for a non-admin role', async () => {
+    render(<Sidebar role={SystemRole.COUNTY_ADMIN} />);
+    act(() => notifyTransfersChanged());
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(listMock).not.toHaveBeenCalled();
   });
 
   it('renders a role with no dashboardItem without crashing', () => {

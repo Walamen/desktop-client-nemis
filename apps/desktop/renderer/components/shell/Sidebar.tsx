@@ -3,11 +3,12 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { LogOut } from 'lucide-react';
-import type { DesktopPortalRole } from '@nemis-desktop/types';
+import { SystemRole, type DesktopPortalRole } from '@nemis-desktop/types';
 import { sidebarConfigs, type SidebarBadge } from './sidebarConfig';
 import { useNotificationStore } from '../../lib/presentation/hooks/shared';
 import { useViewModel } from '../../hooks/use-view-model';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
+import { usePendingTransferCount } from '@/lib/use-pending-transfer-count';
 
 export function Sidebar({
   role,
@@ -21,7 +22,14 @@ export function Sidebar({
 
   const notifications = useNotificationStore();
   const unreadNotifications = useViewModel(notifications.store, (s) => s.notifications.length);
-  const getBadgeCount = (badge?: SidebarBadge) => (badge === 'notifications' ? unreadNotifications : 0);
+  // Hooks may not be called conditionally, so every role calls this; only the
+  // school admin enables it, so other roles make no transfer reads.
+  const pendingTransfers = usePendingTransferCount(role === SystemRole.INSTITUTION_ADMIN);
+  const getBadgeCount = (badge?: SidebarBadge) => {
+    if (badge === 'notifications') return unreadNotifications;
+    if (badge === 'transfers') return pendingTransfers;
+    return 0;
+  };
 
 
   const handleLogout = () => {

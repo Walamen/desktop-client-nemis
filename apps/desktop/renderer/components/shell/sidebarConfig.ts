@@ -15,7 +15,7 @@ import { SiGoogleclassroom } from 'react-icons/si';
 import { DESKTOP_PORTALS, SystemRole, type DesktopPortalRole } from '@nemis-desktop/types';
 import type { AvatarRole } from '@nemis-desktop/ui';
 
-export type SidebarBadge = 'notifications';
+export type SidebarBadge = 'notifications' | 'transfers';
 
 export interface SidebarNavItem {
   name: string;
@@ -60,6 +60,12 @@ export const sidebarConfigs: Record<DesktopPortalRole, SidebarConfig> = {
         label: 'User Management',
         items: [
           { name: 'Students', href: '/government/school-admin/students', icon: PiStudentDuotone },
+          {
+            name: 'Student Transfers',
+            href: '/government/school-admin/students/inter-school-transfer',
+            icon: ArrowRightLeft,
+            badge: 'transfers',
+          },
           { name: 'Teachers & Staff', href: '/government/school-admin/teachers-staff', icon: GiTeacher },
           { name: 'Parents & Guardians', href: '/government/school-admin/parents-guardians', icon: RiParentFill },
         ],
