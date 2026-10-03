@@ -24,6 +24,9 @@ const SCHOOL_ADMIN_CHANNELS = new Set<IpcChannel>([
   IpcChannels.TRANSFER_REVIEW,
   IpcChannels.TRANSFER_CANCEL,
   IpcChannels.TRANSFER_SEARCH_SCHOOLS,
+  // End-of-year outcomes (NEMIS ID parity Stage 5): local cohort + pending decisions.
+  IpcChannels.GRADE_COMPLETION_COHORT,
+  IpcChannels.GRADE_COMPLETION_SAVE,
   IpcChannels.ACADEMIC_YEAR_CREATE,
   IpcChannels.ACADEMIC_YEAR_UPDATE,
   IpcChannels.ACADEMIC_YEAR_SET_CURRENT,

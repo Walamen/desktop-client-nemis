@@ -9,6 +9,7 @@ export * from './teacher-directory-bridge';
 export * from './timetable-bridge';
 export * from './registry-bridge';
 export * from './transfer-bridge';
+export * from './grade-completion-bridge';
 
 import { institutionBridge } from './institution-bridge';
 import { reportingBridge } from './reporting-bridge';
@@ -21,6 +22,7 @@ import { teacherDirectoryBridge } from './teacher-directory-bridge';
 import { timetableBridge } from './timetable-bridge';
 import { registryBridge } from './registry-bridge';
 import { transferBridge } from './transfer-bridge';
+import { gradeCompletionBridge } from './grade-completion-bridge';
 
 /** Everything the Institution Admin (school admin) portal owns: school
  * profile, academic foundation (years/terms/classes/subjects), students,
@@ -38,4 +40,5 @@ export const schoolAdminBridge = {
   ...timetableBridge,
   ...registryBridge,
   ...transferBridge,
+  ...gradeCompletionBridge,
 };

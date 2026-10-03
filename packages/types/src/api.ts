@@ -106,6 +106,12 @@ import type {
   TransferCreateRequest,
   TransferReviewRequest,
 } from './registry';
+import type {
+  CohortResult,
+  SaveCompletionsRequest,
+  SaveCompletionsResult,
+} from './grade-completions';
+import type { GradeLevel } from './enums';
 
 export interface AuthenticationApi {
   getStatus(): Promise<ProvisioningStatus>;
@@ -258,6 +264,13 @@ export interface TransferApi {
   searchSchools(query: string): Promise<SchoolSearchResult[]>;
 }
 
+/** End-of-year outcomes (NEMIS ID desktop parity, Stage 5): the local cohort
+ * and pending decisions, pushed later by their own sync path. */
+export interface GradeCompletionApi {
+  cohort(academicYearId: string, gradeLevel: GradeLevel): Promise<CohortResult>;
+  save(request: SaveCompletionsRequest): Promise<SaveCompletionsResult>;
+}
+
 export interface NemisApi {
   auth: AuthenticationApi;
   provisioning: ProvisioningApi;
@@ -281,4 +294,5 @@ export interface NemisApi {
   assignment: AssignmentApi;
   registry: RegistryApi;
   transfer: TransferApi;
+  gradeCompletion: GradeCompletionApi;
 }

@@ -4,6 +4,8 @@ import {
   AssignmentStatus,
   AssignmentType,
   AttendanceStatus,
+  COMPLETION_OUTCOMES,
+  type CompletionDecision,
   DayOfWeek,
   EmploymentType,
   EnrollmentStatus,
@@ -12,6 +14,7 @@ import {
   SCHOOL_ADMIN_COLLECTIONS,
   StaffPosition,
 } from '@nemis-desktop/types';
+import { assertCompletionDecisionShape } from '@app/data/services/GradeCompletionService';
 
 /** Rejects IPC calls that pass unexpected arguments. Never trust renderer input. */
 export function assertNoArgs(args: readonly unknown[]): void {
@@ -1000,4 +1003,38 @@ export function assertTransferReviewArgs(args: readonly unknown[]): void {
   assertOptionalString(request.reviewNotes, 'reviewNotes', DESCRIPTION_MAX_LENGTH);
   assertOptionalString(request.classId, 'classId', ID_MAX_LENGTH);
   assertOptionalString(request.termId, 'termId', ID_MAX_LENGTH);
+}
+
+const COMPLETION_OUTCOME_VALUES: readonly string[] = COMPLETION_OUTCOMES;
+const MAX_COMPLETION_DECISIONS = 2000;
+
+export function assertGradeCompletionCohortArgs(args: readonly unknown[]): void {
+  assertArity(args, 2);
+  const [academicYearId, gradeLevel] = args;
+  assertString(academicYearId, 'academicYearId', ID_MAX_LENGTH);
+  assertEnumMember(gradeLevel, 'gradeLevel', GRADE_LEVEL_VALUES);
+}
+
+/** Notes, when present, are non-empty: the renderer omits a blank note, so
+ * an empty string never reads as a change against a stored null. */
+export function assertSaveGradeCompletionsArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [request] = args;
+  if (!isPlainObject(request)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(request, ['academicYearId', 'gradeLevel', 'decisions']);
+  assertString(request.academicYearId, 'academicYearId', ID_MAX_LENGTH);
+  assertEnumMember(request.gradeLevel, 'gradeLevel', GRADE_LEVEL_VALUES);
+  const { decisions } = request;
+  if (!Array.isArray(decisions) || decisions.length > MAX_COMPLETION_DECISIONS) {
+    throw new IPCError(`Expected "decisions" to be a list of at most ${MAX_COMPLETION_DECISIONS}.`);
+  }
+  for (const decision of decisions as unknown[]) {
+    if (!isPlainObject(decision)) throw new IPCError('Expected each decision to be an object.');
+    assertKnownKeys(decision, ['studentId', 'outcome', 'nextGradeLevel', 'notes']);
+    assertString(decision.studentId, 'studentId', ID_MAX_LENGTH);
+    assertEnumMember(decision.outcome, 'outcome', COMPLETION_OUTCOME_VALUES);
+    assertOptionalEnumMember(decision.nextGradeLevel, 'nextGradeLevel', GRADE_LEVEL_VALUES);
+    assertOptionalString(decision.notes, 'notes', DESCRIPTION_MAX_LENGTH);
+    assertCompletionDecisionShape(decision as unknown as CompletionDecision);
+  }
 }

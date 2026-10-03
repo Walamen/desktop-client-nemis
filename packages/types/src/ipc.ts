@@ -12,6 +12,12 @@ import type {
   TransferReviewRequest,
 } from './registry';
 import type {
+  CohortResult,
+  SaveCompletionsRequest,
+  SaveCompletionsResult,
+} from './grade-completions';
+import type { GradeLevel } from './enums';
+import type {
   AcademicYearListItemResult,
   ClassListRequest,
   ClassResult,
@@ -276,6 +282,11 @@ export interface IpcContract {
   };
   'transfer:cancel': { args: [id: string]; result: OnlineCommandResult<RemoteRecordRef> };
   'transfer:search-schools': { args: [query: string]; result: SchoolSearchResult[] };
+  'grade-completion:cohort': {
+    args: [academicYearId: string, gradeLevel: GradeLevel];
+    result: CohortResult;
+  };
+  'grade-completion:save': { args: [request: SaveCompletionsRequest]; result: SaveCompletionsResult };
 }
 
 export type IpcChannel = keyof IpcContract;
@@ -375,6 +386,8 @@ export const IpcChannels = {
   TRANSFER_REVIEW: 'transfer:review',
   TRANSFER_CANCEL: 'transfer:cancel',
   TRANSFER_SEARCH_SCHOOLS: 'transfer:search-schools',
+  GRADE_COMPLETION_COHORT: 'grade-completion:cohort',
+  GRADE_COMPLETION_SAVE: 'grade-completion:save',
 } as const satisfies Record<string, IpcChannel>;
 
 // Compile-time exhaustiveness: adding a channel to IpcContract without
