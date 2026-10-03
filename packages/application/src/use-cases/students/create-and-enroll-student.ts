@@ -16,6 +16,7 @@ import type { IAppLogger } from '../../interfaces/app-logger';
 import { toStudentOutput } from '../../mappers/students/student-mapper';
 import { requireFields } from '../../validators/validate';
 import { invokeUseCase } from '../../pipeline/use-case-invoker';
+import { WorkflowException } from '../../exceptions';
 import { assertEnrollmentTarget } from '../academics/enrollment-target';
 import { mintUniqueNemisId } from './create-student';
 import type { StudentRegistered } from '../../events/students';
@@ -60,6 +61,19 @@ export class CreateAndEnrollStudentUseCase implements CommandHandler<
       ]);
       assertEnrollmentTarget(this.deps, command);
 
+      const keptGuardians = command.guardians.filter(
+        (g) => g.firstName.trim() && g.lastName.trim() && g.phoneNumber.trim(),
+      );
+      // The server creates a parent login for each guardian's email before the
+      // student's own login, so a shared email would get the student rejected
+      // (and its links and enrolment with it). Refuse it before writing.
+      const studentEmail = command.email?.trim().toLowerCase();
+      if (studentEmail && keptGuardians.some((g) => g.email?.trim().toLowerCase() === studentEmail)) {
+        throw new WorkflowException(
+          "The student's email can't be the same as a guardian's email. Leave the student's email blank or use a different one.",
+        );
+      }
+
       const occurredAt = this.deps.clock.now();
       const actor = command.actorId ?? 'local-admin';
       const nemisId = mintUniqueNemisId(this.deps.students);
@@ -81,8 +95,7 @@ export class CreateAndEnrollStudentUseCase implements CommandHandler<
         occurredAt,
       });
 
-      const guardians = command.guardians
-        .filter((g) => g.firstName.trim() && g.lastName.trim() && g.phoneNumber.trim())
+      const guardians = keptGuardians
         .map((g) => {
           const guardian = Guardian.create({
             id: this.deps.ids.next(),

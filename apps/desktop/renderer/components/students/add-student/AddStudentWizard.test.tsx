@@ -520,4 +520,38 @@ describe('AddStudentWizard', () => {
     await waitFor(() => expect(createAndEnroll).toHaveBeenCalledTimes(1));
     expect(createAndEnroll).toHaveBeenCalledWith(expect.objectContaining({ assertedNoNemisId: false }));
   });
+
+  it("blocks Guardian Information when the student's email matches a guardian's email", async () => {
+    stubNemis();
+    const { user } = await renderWizard();
+
+    await user.click(screen.getByRole('checkbox', { name: 'This child has no NEMIS ID (first-time enrollee)' }));
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await screen.findByRole('heading', { name: 'Student Information', level: 2 });
+    await user.type(textboxNear(/^first name/i), 'Grace');
+    await user.type(textboxNear(/^last name/i), 'Toe');
+    await user.type(textboxNear(/^date of birth/i), '2015-01-01');
+    await user.type(textboxNear(/^email/i), 'Family@Example.com');
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+
+    await screen.findByRole('heading', { name: 'Guardian Information', level: 2 });
+    await user.type(textboxNear(/guardian first name/i), 'John');
+    await user.type(textboxNear(/guardian last name/i), 'Toe');
+    await user.type(textboxNear(/relationship/i), 'Father');
+    await user.type(textboxNear(/guardian phone/i), '0770000000');
+    await user.type(textboxNear(/guardian email/i), ' family@example.com');
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+
+    expect(
+      await screen.findByText(
+        "The student's email can't be the same as a guardian's email. Leave the student's email blank or use a different one.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Guardian Information', level: 2 })).toBeInTheDocument();
+
+    await user.clear(textboxNear(/guardian email/i));
+    await user.type(textboxNear(/guardian email/i), 'john@example.com');
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    expect(await screen.findByRole('heading', { name: 'Grade & Class', level: 2 })).toBeInTheDocument();
+  });
 });

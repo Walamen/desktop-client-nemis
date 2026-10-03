@@ -104,4 +104,33 @@ describe('CreateAndEnrollStudentUseCase', () => {
     });
     expect(guardians.store.size).toBe(0);
   });
+
+  it("rejects a student email equal to a guardian's email before writing anything", async () => {
+    const { useCase, uow, students, guardians } = build();
+    await expect(
+      useCase.execute({
+        ...valid,
+        email: '  Mary@Example.com ',
+        guardians: [{ ...valid.guardians[0]!, email: 'mary@example.COM' }],
+      }),
+    ).rejects.toThrow(
+      "The student's email can't be the same as a guardian's email. Leave the student's email blank or use a different one.",
+    );
+    expect(uow.runCount).toBe(0);
+    expect(students.store.size).toBe(0);
+    expect(guardians.store.size).toBe(0);
+  });
+
+  it("ignores a skipped guardian draft's email when checking the student's email", async () => {
+    const { useCase, uow } = build();
+    await useCase.execute({
+      ...valid,
+      email: 'mary@example.com',
+      guardians: [
+        ...valid.guardians,
+        { firstName: '', lastName: '', relationship: '', phoneNumber: '', email: 'mary@example.com', isPrimary: false },
+      ],
+    });
+    expect(uow.runCount).toBe(1);
+  });
 });

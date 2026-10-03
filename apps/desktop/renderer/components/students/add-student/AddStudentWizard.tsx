@@ -179,6 +179,21 @@ export function AddStudentWizard() {
     setStepError('');
     return true;
   };
+  const validateStep3 = () => {
+    // Mirrors CreateAndEnrollStudentUseCase: the server creates each
+    // guardian's parent login before the student's own, so a shared email
+    // would get the student rejected on sync.
+    const studentEmail = email.trim().toLowerCase();
+    const kept = guardians.filter((g) => g.firstName.trim() && g.lastName.trim() && g.phoneNumber.trim());
+    if (studentEmail && kept.some((g) => g.email.trim().toLowerCase() === studentEmail)) {
+      setStepError(
+        "The student's email can't be the same as a guardian's email. Leave the student's email blank or use a different one.",
+      );
+      return false;
+    }
+    setStepError('');
+    return true;
+  };
   const validateStep4 = () => {
     if (!grade || !isClassTermComplete(target)) {
       setStepError('Choose a grade, class and term.');
@@ -189,6 +204,7 @@ export function AddStudentWizard() {
   };
   const handleNext = () => {
     if (currentStep === 2 && !validateStep2()) return;
+    if (currentStep === 3 && !validateStep3()) return;
     if (currentStep === 4) {
       if (!validateStep4()) return;
       const cls =
