@@ -1015,6 +1015,13 @@ export function assertGradeCompletionCohortArgs(args: readonly unknown[]): void 
   assertEnumMember(gradeLevel, 'gradeLevel', GRADE_LEVEL_VALUES);
 }
 
+export function assertDiscardGradeCompletionArgs(args: readonly unknown[]): void {
+  assertArity(args, 2);
+  const [academicYearId, studentId] = args;
+  assertString(academicYearId, 'academicYearId', ID_MAX_LENGTH);
+  assertString(studentId, 'studentId', ID_MAX_LENGTH);
+}
+
 /** Notes, when present, are non-empty: the renderer omits a blank note, so
  * an empty string never reads as a change against a stored null. */
 export function assertSaveGradeCompletionsArgs(args: readonly unknown[]): void {

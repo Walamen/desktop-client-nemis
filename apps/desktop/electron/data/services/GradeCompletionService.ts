@@ -5,6 +5,7 @@ import {
   SystemRole,
   type CohortResult,
   type CohortRow,
+  type DiscardCompletionResult,
   type CompletionDecision,
   type GradeLevel,
   type SaveCompletionsRequest,
@@ -111,7 +112,7 @@ export class GradeCompletionService {
     }
 
     const findExisting = db.prepare(
-      `SELECT id, outcome, nextGradeLevel, notes FROM grade_completions
+      `SELECT id, outcome, nextGradeLevel, notes, syncState FROM grade_completions
         WHERE studentId = ? AND academicYearId = ?`,
     );
     const insert = db.prepare(
@@ -135,10 +136,20 @@ export class GradeCompletionService {
         // An absent note and a stored null are the same thing (server rule).
         const notes = decision.notes ?? null;
         const existing = findExisting.get(decision.studentId, academicYearId) as
-          | { id: string; outcome: string; nextGradeLevel: string | null; notes: string | null }
+          | {
+              id: string;
+              outcome: string;
+              nextGradeLevel: string | null;
+              notes: string | null;
+              syncState: string;
+            }
           | undefined;
+        // A rejected row is never "unchanged": the server refuses a whole
+        // (year, grade) group, so every row of it is marked rejected, and the
+        // ones the admin did not edit must be re-queued with the fixed one.
         if (
           existing &&
+          existing.syncState !== 'rejected' &&
           existing.outcome === decision.outcome &&
           existing.nextGradeLevel === nextGradeLevel &&
           existing.notes === notes
@@ -166,6 +177,25 @@ export class GradeCompletionService {
       }
     })();
     return { saved };
+  }
+
+  /**
+   * Drops this student's local decision for that year, but only one the
+   * server has not accepted (`pending` or `rejected`) — e.g. a row made
+   * permanently invalid by a web-side stamp at another grade, which the pull
+   * never overwrites and which would otherwise refuse its group on every
+   * push. A synced row is the server's record and is never deleted here.
+   */
+  discard(academicYearId: string, studentId: string): DiscardCompletionResult {
+    const { db, institutionId } = this.context();
+    const result = db
+      .prepare(
+        `DELETE FROM grade_completions
+          WHERE studentId = ? AND academicYearId = ? AND institutionId = ?
+            AND syncState IN ('pending', 'rejected')`,
+      )
+      .run(studentId, academicYearId, institutionId);
+    return { discarded: result.changes > 0 };
   }
 
   private context(): { db: Db; institutionId: string; userId: string } {

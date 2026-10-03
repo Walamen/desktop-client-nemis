@@ -17,6 +17,7 @@ function register() {
   const service = {
     getCohort: vi.fn(() => ({ rows: [], unenrolledCount: 2 })),
     save: vi.fn(() => ({ saved: 1 })),
+    discard: vi.fn(() => ({ discarded: true })),
   };
   registerGradeCompletionHandlers(handle, service as unknown as GradeCompletionService);
   return { calls, service };
@@ -62,5 +63,17 @@ describe('grade-completion IPC handlers', () => {
     expect(() => save.validate([{ ...request, extra: true }])).toThrow();
     expect(await save.handler(request)).toEqual({ saved: 1 });
     expect(service.save).toHaveBeenCalledWith(request);
+  });
+
+  it('validates and forwards a discard', async () => {
+    const { calls, service } = register();
+    const discard = calls.get('grade-completion:discard')!;
+    expect(() => discard.validate(['y1', 's1'])).not.toThrow();
+    expect(() => discard.validate(['y1'])).toThrow();
+    expect(() => discard.validate(['', 's1'])).toThrow();
+    expect(() => discard.validate(['y1', ''])).toThrow();
+    expect(() => discard.validate(['y1', 7])).toThrow();
+    expect(await discard.handler('y1', 's1')).toEqual({ discarded: true });
+    expect(service.discard).toHaveBeenCalledWith('y1', 's1');
   });
 });

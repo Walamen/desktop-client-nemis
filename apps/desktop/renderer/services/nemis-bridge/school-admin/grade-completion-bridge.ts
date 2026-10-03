@@ -1,5 +1,6 @@
 import type {
   CohortResult,
+  DiscardCompletionResult,
   GradeLevel,
   SaveCompletionsRequest,
   SaveCompletionsResult,
@@ -12,4 +13,7 @@ export const gradeCompletionBridge = {
     api().gradeCompletion.cohort(academicYearId, gradeLevel),
   save: (request: SaveCompletionsRequest): Promise<SaveCompletionsResult> =>
     api().gradeCompletion.save(request),
+  /** Drops a pending or rejected local decision; a synced one is kept. */
+  discard: (academicYearId: string, studentId: string): Promise<DiscardCompletionResult> =>
+    api().gradeCompletion.discard(academicYearId, studentId),
 };

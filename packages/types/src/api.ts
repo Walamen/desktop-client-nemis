@@ -108,6 +108,7 @@ import type {
 } from './registry';
 import type {
   CohortResult,
+  DiscardCompletionResult,
   SaveCompletionsRequest,
   SaveCompletionsResult,
 } from './grade-completions';
@@ -269,6 +270,7 @@ export interface TransferApi {
 export interface GradeCompletionApi {
   cohort(academicYearId: string, gradeLevel: GradeLevel): Promise<CohortResult>;
   save(request: SaveCompletionsRequest): Promise<SaveCompletionsResult>;
+  discard(academicYearId: string, studentId: string): Promise<DiscardCompletionResult>;
 }
 
 export interface NemisApi {

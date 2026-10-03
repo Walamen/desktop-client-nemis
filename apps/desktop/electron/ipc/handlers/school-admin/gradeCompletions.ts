@@ -2,6 +2,7 @@ import { IpcChannels } from '@nemis-desktop/types';
 import type { GradeCompletionService } from '@app/data/services/GradeCompletionService';
 import type { IpcHandle } from '@app/ipc/registrar';
 import {
+  assertDiscardGradeCompletionArgs,
   assertGradeCompletionCohortArgs,
   assertSaveGradeCompletionsArgs,
 } from '@app/security/validateIpc';
@@ -18,5 +19,8 @@ export function registerGradeCompletionHandlers(
   );
   handle(IpcChannels.GRADE_COMPLETION_SAVE, assertSaveGradeCompletionsArgs, (request) =>
     service.save(request),
+  );
+  handle(IpcChannels.GRADE_COMPLETION_DISCARD, assertDiscardGradeCompletionArgs, (academicYearId, studentId) =>
+    service.discard(academicYearId, studentId),
   );
 }

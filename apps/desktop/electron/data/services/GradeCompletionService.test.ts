@@ -25,8 +25,11 @@ const T = '2026-01-01T00:00:00.000Z';
 
 describe('GradeCompletionService', () => {
   const directories: string[] = [];
+  const opened: WorkspaceManager[] = [];
 
   afterEach(() => {
+    // Close first: an open SQLCipher handle blocks temp-dir removal on Windows.
+    for (const workspaces of opened.splice(0)) workspaces.close();
     for (const directory of directories.splice(0)) {
       fs.rmSync(directory, { recursive: true, force: true });
     }
@@ -41,6 +44,7 @@ describe('GradeCompletionService', () => {
       device: { deviceName: 'Test', platform: 'win32', osVersion: '11', appVersion: '1' },
       log: { info() {}, warn() {}, error() {} },
     });
+    opened.push(workspaces);
     const db = workspaces.activate(user).database.connection;
     seed(db);
     return { workspaces, db, service: new GradeCompletionService(workspaces) };
@@ -154,7 +158,7 @@ describe('GradeCompletionService', () => {
   }
 
   it('derives the cohort the way getCohortForCompletion does', () => {
-    const { workspaces, service } = setup();
+    const { service } = setup();
     const result = service.getCohort('y1', GradeLevel.GRADE_7);
 
     // Dolo, Kollie Cal, Kollie Dee, Mensah — last name then first name.
@@ -183,11 +187,10 @@ describe('GradeCompletionService', () => {
     // Only s-unenrolled: s-elsewhere is accounted for, inactive and other
     // schools' students do not count, cohort members are not missing.
     expect(result.unenrolledCount).toBe(1);
-    workspaces.close();
   });
 
   it('writes only changed decisions, as pending, in this school', () => {
-    const { workspaces, db, service } = setup();
+    const { db, service } = setup();
     const before = row(db, 's-promoted');
 
     const result = service.save({
@@ -217,11 +220,10 @@ describe('GradeCompletionService', () => {
     expect(row(db, 's-enrolled')?.id).toEqual(expect.any(String));
     expect(row(db, 's-stamp-only')).toMatchObject({ notes: 'Repeat', syncState: 'pending' });
     expect(row(db, 's-leaver')).toMatchObject({ outcome: 'GRADUATED', nextGradeLevel: null, syncState: 'pending' });
-    workspaces.close();
   });
 
-  it('returns a changed rejected row to pending and leaves an unchanged one rejected', () => {
-    const { workspaces, db, service } = setup();
+  it('returns every rejected row it is given to pending, changed or not, so a refused group can be re-pushed', () => {
+    const { db, service } = setup();
     db.prepare(`UPDATE grade_completions SET syncState='rejected', syncError='Group refused' WHERE studentId IN ('s-promoted','s-stamp-only')`).run();
 
     service.save({
@@ -240,12 +242,15 @@ describe('GradeCompletionService', () => {
       syncError: null,
       amendedBy: 'admin-1',
     });
-    expect(row(db, 's-stamp-only')).toMatchObject({ syncState: 'rejected', syncError: 'Group refused' });
-    workspaces.close();
+    expect(row(db, 's-stamp-only')).toMatchObject({
+      outcome: 'RETAINED',
+      syncState: 'pending',
+      syncError: null,
+    });
   });
 
   it('rejects GRADUATED with a next grade, and any other outcome without one, writing nothing', () => {
-    const { workspaces, db, service } = setup();
+    const { db, service } = setup();
     expect(() =>
       service.save({
         academicYearId: 'y1',
@@ -264,11 +269,10 @@ describe('GradeCompletionService', () => {
       }),
     ).toThrow(/next grade is required/);
     expect(row(db, 's-enrolled')).toBeUndefined();
-    workspaces.close();
   });
 
   it('rejects a decision for anyone outside that year\'s cohort, writing nothing', () => {
-    const { workspaces, db, service } = setup();
+    const { db, service } = setup();
     for (const outsider of ['s-elsewhere', 's-grade8', 's-last-year', 's-foreign-class', 's-unenrolled', 'nobody']) {
       expect(() =>
         service.save({
@@ -282,11 +286,10 @@ describe('GradeCompletionService', () => {
       ).toThrow(new RegExp(`not in this cohort: ${outsider}`));
     }
     expect(row(db, 's-enrolled')).toBeUndefined();
-    workspaces.close();
   });
 
   it('rejects a repeated student and another school\'s academic year', () => {
-    const { workspaces, service } = setup();
+    const { service } = setup();
     const decision = { studentId: 's-enrolled', outcome: 'PROMOTED', nextGradeLevel: GradeLevel.GRADE_8 } as const;
     expect(() =>
       service.save({ academicYearId: 'y1', gradeLevel: GradeLevel.GRADE_7, decisions: [decision, decision] }),
@@ -294,11 +297,10 @@ describe('GradeCompletionService', () => {
     expect(() =>
       service.save({ academicYearId: 'y-other', gradeLevel: GradeLevel.GRADE_7, decisions: [decision] }),
     ).toThrow(/Academic year not found/);
-    workspaces.close();
   });
 
   it('never changes students or enrolments and never writes the sync queue (D7)', () => {
-    const { workspaces, db, service } = setup();
+    const { db, service } = setup();
     const snapshot = () => ({
       students: db.prepare(`SELECT * FROM students ORDER BY id`).all(),
       enrollments: db.prepare(`SELECT * FROM enrollments ORDER BY id`).all(),
@@ -317,17 +319,42 @@ describe('GradeCompletionService', () => {
     });
 
     expect(snapshot()).toEqual(before);
-    workspaces.close();
+  });
+
+  it('discards a pending or rejected local decision but never a synced one', () => {
+    const { db, service } = setup();
+    service.save({
+      academicYearId: 'y1',
+      gradeLevel: GradeLevel.GRADE_7,
+      decisions: [{ studentId: 's-enrolled', outcome: 'PROMOTED', nextGradeLevel: GradeLevel.GRADE_8 }],
+    });
+    db.prepare(`UPDATE grade_completions SET syncState='rejected', syncError='Group refused' WHERE studentId='s-stamp-only'`).run();
+    const snapshot = () => ({
+      students: db.prepare(`SELECT * FROM students ORDER BY id`).all(),
+      enrollments: db.prepare(`SELECT * FROM enrollments ORDER BY id`).all(),
+      queue: db.prepare(`SELECT * FROM sync_queue ORDER BY id`).all(),
+    });
+    const before = snapshot();
+
+    expect(service.discard('y1', 's-enrolled')).toEqual({ discarded: true });
+    expect(row(db, 's-enrolled')).toBeUndefined();
+    expect(service.discard('y1', 's-stamp-only')).toEqual({ discarded: true });
+    expect(row(db, 's-stamp-only')).toBeUndefined();
+    const synced = row(db, 's-promoted');
+    expect(service.discard('y1', 's-promoted')).toEqual({ discarded: false });
+    expect(row(db, 's-promoted')).toEqual(synced);
+    expect(service.discard('y1', 'nobody')).toEqual({ discarded: false });
+    expect(snapshot()).toEqual(before);
   });
 
   it('refuses a workspace that is not a school admin\'s', () => {
-    const { workspaces, service } = setup({
+    const { service } = setup({
       ...admin,
       id: 'teacher-1',
       role: SystemRole.TEACHER,
       scope: { ...admin.scope, type: DesktopScopeType.TEACHER, scopeId: 'teacher-1' },
     });
     expect(() => service.getCohort('y1', GradeLevel.GRADE_7)).toThrow(/school administrator/);
-    workspaces.close();
+    expect(() => service.discard('y1', 's-enrolled')).toThrow(/school administrator/);
   });
 });

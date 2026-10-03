@@ -49,3 +49,8 @@ export interface SaveCompletionsRequest {
 export interface SaveCompletionsResult {
   saved: number;
 }
+
+export interface DiscardCompletionResult {
+  /** false when there was no pending or rejected local row to drop. */
+  discarded: boolean;
+}

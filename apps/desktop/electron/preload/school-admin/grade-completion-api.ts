@@ -6,4 +6,6 @@ export const gradeCompletionApi: GradeCompletionApi = {
   cohort: (academicYearId, gradeLevel) =>
     invoke(IpcChannels.GRADE_COMPLETION_COHORT, academicYearId, gradeLevel),
   save: (request) => invoke(IpcChannels.GRADE_COMPLETION_SAVE, request),
+  discard: (academicYearId, studentId) =>
+    invoke(IpcChannels.GRADE_COMPLETION_DISCARD, academicYearId, studentId),
 };

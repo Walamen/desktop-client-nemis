@@ -149,6 +149,7 @@ describe('authorizeChannel', () => {
     'transfer:search-schools',
     'grade-completion:cohort',
     'grade-completion:save',
+    'grade-completion:discard',
   ] as const)('%s is school-admin only', (channel) => {
     expect(() => authorizeChannel(channel, workspace(SystemRole.TEACHER))).toThrow(
       ForbiddenError,

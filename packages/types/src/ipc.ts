@@ -13,6 +13,7 @@ import type {
 } from './registry';
 import type {
   CohortResult,
+  DiscardCompletionResult,
   SaveCompletionsRequest,
   SaveCompletionsResult,
 } from './grade-completions';
@@ -287,6 +288,10 @@ export interface IpcContract {
     result: CohortResult;
   };
   'grade-completion:save': { args: [request: SaveCompletionsRequest]; result: SaveCompletionsResult };
+  'grade-completion:discard': {
+    args: [academicYearId: string, studentId: string];
+    result: DiscardCompletionResult;
+  };
 }
 
 export type IpcChannel = keyof IpcContract;
@@ -388,6 +393,7 @@ export const IpcChannels = {
   TRANSFER_SEARCH_SCHOOLS: 'transfer:search-schools',
   GRADE_COMPLETION_COHORT: 'grade-completion:cohort',
   GRADE_COMPLETION_SAVE: 'grade-completion:save',
+  GRADE_COMPLETION_DISCARD: 'grade-completion:discard',
 } as const satisfies Record<string, IpcChannel>;
 
 // Compile-time exhaustiveness: adding a channel to IpcContract without
