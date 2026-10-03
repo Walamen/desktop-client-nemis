@@ -22,7 +22,7 @@ export interface BulkRow {
 }
 
 export const makeId = () => Math.random().toString(36).slice(2, 10);
-const EMAIL_RE = /^[^s@]+@[^s@]+.[^s@]+$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const VALID_GRADES = new Set<string>(grades);
 export const NEMIS_ID_HEADER = 'NEMIS ID (leave blank for new students)';
 
@@ -114,6 +114,13 @@ export function downloadTemplate(): void {
   XLSX.writeFile(wb, 'student-bulk-import-template.xlsx');
 }
 
+/** A numeric Excel cell drops leading zeros (~10% of IDs start with 0), so
+ * left-pad numbers to 12 digits; Luhn validation still decides validity. */
+export function parseNemisIdCell(value: unknown): string {
+  if (typeof value === 'number' && Number.isInteger(value) && value >= 0) return String(value).padStart(12, '0');
+  return value === undefined || value === null ? '' : String(value).trim();
+}
+
 export function pick(record: Record<string, unknown>, ...keys: string[]): string {
   for (const key of keys) {
     const value = record[key];
@@ -147,7 +154,7 @@ export function parseWorkbookToRows(data: Uint8Array): BulkRow[] {
         gender: pick(r, 'Gender * (MALE/FEMALE)', 'Gender', 'gender').toUpperCase(),
         admissionDate: parseDateCell(r['Admission Date * (YYYY-MM-DD)'] ?? r['Admission Date'] ?? r['admissionDate'] ?? ''),
         gradeLevel: pick(r, 'Grade Level * (KG/K1/K2/GRADE_1...GRADE_12)', 'Grade Level', 'gradeLevel').toUpperCase(),
-        nemisId: pick(r, NEMIS_ID_HEADER, 'NEMIS ID', 'nemisId'),
+        nemisId: parseNemisIdCell(r[NEMIS_ID_HEADER] ?? r['NEMIS ID'] ?? r['nemisId'] ?? ''),
         guardianFirstName: pick(r, 'Guardian First Name *', 'Guardian First Name', 'guardianFirstName'),
         guardianLastName: pick(r, 'Guardian Last Name *', 'Guardian Last Name', 'guardianLastName'),
         guardianRelationship: pick(r, 'Guardian Relationship *', 'Guardian Relationship', 'guardianRelationship'),

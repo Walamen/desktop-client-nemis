@@ -136,4 +136,24 @@ describe('retry workbook and template', () => {
     XLSX.utils.book_append_sheet(wb, ws, 'Students');
     expect(parseWorkbookToRows(toBytes(wb))[0]?.nemisId).toBe(id);
   });
+  it('left-pads a numeric cell whose valid ID starts with 0, and the retry file keeps it', () => {
+    let id = generateNemisId();
+    while (!id.startsWith('0')) id = generateNemisId();
+    const ws = XLSX.utils.aoa_to_sheet([['First Name *', 'NEMIS ID'], ['Amy', Number(id)]]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Students');
+    const row = parseWorkbookToRows(toBytes(wb))[0]!;
+    expect(row.nemisId).toBe(id);
+    expect(row.nemisId).toHaveLength(12);
+    expect(validateRow(row).nemisId).toBeUndefined();
+    const retry = buildRetryWorkbook([row], [{ originalIndex: 0, reason: 'x' }]);
+    expect(parseWorkbookToRows(toBytes(retry))[0]?.nemisId).toBe(id);
+  });
+});
+
+describe('validateRow studentEmail', () => {
+  it('accepts sam@school.com and rejects a@bXc', () => {
+    expect(mk({ studentEmail: 'sam@school.com' }).errors.studentEmail).toBeUndefined();
+    expect(mk({ studentEmail: 'a@bXc' }).errors.studentEmail).toBe('Invalid email');
+  });
 });
