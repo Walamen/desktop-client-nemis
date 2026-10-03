@@ -11,6 +11,7 @@ import type { ActiveWorkspace, WorkspaceManager } from '@app/workspace/Workspace
 import { ProvisioningImporter } from '@app/provisioning/ProvisioningImporter';
 import { AssignmentSyncService } from './AssignmentSyncService';
 import { FeeReversalSyncService } from './FeeReversalSyncService';
+import { GradeCompletionSyncService } from './GradeCompletionSyncService';
 import { logger } from '@app/services/logger';
 import { hasRealDisagreement, unwrapLocalPayload } from '@nemis-desktop/shared';
 
@@ -40,6 +41,7 @@ export class DesktopSyncWorker {
 
   private readonly assignmentSync: AssignmentSyncService;
   private readonly feeReversalSync: FeeReversalSyncService;
+  private readonly gradeCompletionSync: GradeCompletionSyncService;
 
   constructor(
     private readonly workspaces: WorkspaceManager,
@@ -48,6 +50,7 @@ export class DesktopSyncWorker {
   ) {
     this.assignmentSync = new AssignmentSyncService(gateway);
     this.feeReversalSync = new FeeReversalSyncService(gateway);
+    this.gradeCompletionSync = new GradeCompletionSyncService(gateway);
   }
 
   async syncActive(): Promise<void> {
@@ -84,6 +87,7 @@ export class DesktopSyncWorker {
     let claimed: Awaited<ReturnType<typeof workspace.data.services.syncQueue.claim>>;
     let pullDue: boolean;
     let reversalPending: { found: number } | undefined;
+    let completionPending: { found: number } | undefined;
     try {
       // Crash recovery has to run here rather than once at boot: at boot no
       // workspace is unlocked yet (activation happens later over IPC), so the
@@ -116,11 +120,16 @@ export class DesktopSyncWorker {
       reversalPending = workspace.database.connection.prepare(
         `SELECT 1 found FROM fee_payment_reversals WHERE syncedAt IS NULL LIMIT 1`,
       ).get() as { found: number } | undefined;
+      // Queued end-of-year decisions are the same story: own REST path, never
+      // a sync_queue row, so a pending one must keep an idle cycle alive.
+      completionPending = workspace.database.connection.prepare(
+        `SELECT 1 found FROM grade_completions WHERE syncState='pending' AND institutionId=? LIMIT 1`,
+      ).get(institutionIdOf(workspace.user)) as { found: number } | undefined;
     } catch (error) {
       this.#running = false;
       throw error;
     }
-    if (claimed.length === 0 && !pullDue && !reversalPending) {
+    if (claimed.length === 0 && !pullDue && !reversalPending && !completionPending) {
       this.#running = false;
       return;
     }
@@ -244,6 +253,18 @@ export class DesktopSyncWorker {
         await this.feeReversalSync.pushPending(workspace.database.connection);
       } catch (error) {
         logger.error('FeeReversalSyncService.pushPending failed', error);
+      }
+
+      // Same position and reasoning as the reversal push: after the queue
+      // drain, so a student or enrolment created this cycle clears the
+      // ordering gate immediately. Never throws; the catch is belt and braces.
+      try {
+        await this.gradeCompletionSync.pushPending(
+          workspace.database.connection,
+          institutionIdOf(workspace.user),
+        );
+      } catch (error) {
+        logger.error('GradeCompletionSyncService.pushPending failed', error);
       }
 
       const stillPending = workspace.database.connection.prepare(
@@ -663,4 +684,10 @@ function toConflict(row: RawConflict): Omit<SyncConflictResult, 'source'> {
     localPayload: row.localPayload ? JSON.parse(row.localPayload) : null,
     remotePayload: row.remotePayload ? JSON.parse(row.remotePayload) : null,
   };
+}
+
+/** The school this workspace belongs to — same resolution as
+ * GradeCompletionService, so pushed rows match the rows it wrote. */
+function institutionIdOf(user: ActiveWorkspace['user']): string {
+  return user.institutionId ?? user.scope.institutionId ?? user.scope.scopeId;
 }

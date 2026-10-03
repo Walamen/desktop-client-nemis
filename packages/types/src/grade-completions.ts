@@ -54,3 +54,10 @@ export interface DiscardCompletionResult {
   /** false when there was no pending or rejected local row to drop. */
   discarded: boolean;
 }
+
+/** Online-only guidance for one cohort student: the server's published
+ * yearly average, or null when it has none. */
+export interface CompletionGuidanceRow {
+  studentId: string;
+  average: number | null;
+}

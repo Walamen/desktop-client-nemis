@@ -926,6 +926,49 @@ describe('DesktopSyncWorker retry policy', () => {
     expect(gateway.downloadSnapshot).toHaveBeenCalledTimes(1);
   });
 
+  it('pushes pending end-of-year decisions on an otherwise idle cycle without pulling', async () => {
+    // Decisions travel on their own REST path and never enter sync_queue, so
+    // like a reversal they must keep an empty-queue, no-pull-due cycle alive.
+    const gateway = {
+      pushChanges: vi.fn(),
+      downloadSnapshot: vi.fn().mockResolvedValue(emptySnapshot()),
+      recordGradeCompletions: vi.fn().mockResolvedValue(undefined),
+    } as unknown as BackendProvisioningGateway;
+    const worker = new DesktopSyncWorker(workspaces, gateway, alwaysOnline());
+
+    await worker.syncActive();
+    expect(gateway.downloadSnapshot).toHaveBeenCalledTimes(1);
+
+    const at = '2026-07-29T00:00:00.000Z';
+    manager.connection.prepare(`
+      INSERT INTO grade_completions
+        (id,studentId,institutionId,academicYearId,gradeLevel,outcome,nextGradeLevel,createdAt,updatedAt,syncState)
+      VALUES ('gc-1','stu-1','school-1','year-1','GRADE_7','PROMOTED','GRADE_8',?,?,'pending')
+    `).run(at, at);
+    manager.connection.prepare(`
+      INSERT INTO grade_completions
+        (id,studentId,institutionId,academicYearId,gradeLevel,outcome,nextGradeLevel,createdAt,updatedAt,syncState)
+      VALUES ('gc-2','stu-2','school-2','year-1','GRADE_7','PROMOTED','GRADE_8',?,?,'pending')
+    `).run(at, at);
+
+    await worker.syncActive();
+
+    expect(gateway.recordGradeCompletions).toHaveBeenCalledTimes(1);
+    expect(gateway.recordGradeCompletions).toHaveBeenCalledWith({
+      academicYearId: 'year-1',
+      gradeLevel: 'GRADE_7',
+      decisions: [{ studentId: 'stu-1', outcome: 'PROMOTED', nextGradeLevel: 'GRADE_8' }],
+    });
+    const states = manager.connection
+      .prepare(`SELECT id, syncState FROM grade_completions ORDER BY id`)
+      .all();
+    expect(states).toEqual([
+      { id: 'gc-1', syncState: 'synced' },
+      { id: 'gc-2', syncState: 'pending' },
+    ]);
+    expect(gateway.downloadSnapshot).toHaveBeenCalledTimes(1);
+  });
+
   it('a delta pull merges the snapshot instead of wiping local rows it omits', async () => {
     // Seed local rows that a delta snapshot legitimately does not mention.
     // Capture has to be off first: the sync triggers would otherwise enqueue

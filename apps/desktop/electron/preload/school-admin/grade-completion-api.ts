@@ -8,4 +8,6 @@ export const gradeCompletionApi: GradeCompletionApi = {
   save: (request) => invoke(IpcChannels.GRADE_COMPLETION_SAVE, request),
   discard: (academicYearId, studentId) =>
     invoke(IpcChannels.GRADE_COMPLETION_DISCARD, academicYearId, studentId),
+  guidance: (academicYearId, gradeLevel) =>
+    invoke(IpcChannels.GRADE_COMPLETION_GUIDANCE, academicYearId, gradeLevel),
 };

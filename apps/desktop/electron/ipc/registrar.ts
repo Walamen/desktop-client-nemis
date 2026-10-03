@@ -84,7 +84,7 @@ export function registerIpcHandlers(
   registerTeacherDirectoryHandlers(securedHandle, app, workspaces);
   registerTimetableHandlers(securedHandle, app, workspaces);
   // Stateless over the active workspace, like SchoolAdminModuleService.
-  registerGradeCompletionHandlers(securedHandle, new GradeCompletionService(workspaces));
+  registerGradeCompletionHandlers(securedHandle, new GradeCompletionService(workspaces), gateway);
 
   // Online-only NEMIS ID registry/transfer commands; each mutation forces a pull.
   const refresh = () => syncWorker.pullNow();

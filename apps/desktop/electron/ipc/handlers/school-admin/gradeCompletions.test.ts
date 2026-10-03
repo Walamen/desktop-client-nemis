@@ -19,8 +19,11 @@ function register() {
     save: vi.fn(() => ({ saved: 1 })),
     discard: vi.fn(() => ({ discarded: true })),
   };
-  registerGradeCompletionHandlers(handle, service as unknown as GradeCompletionService);
-  return { calls, service };
+  const gateway = {
+    getCompletionGuidance: vi.fn(async () => [{ studentId: 's1', average: 71.5 }]),
+  };
+  registerGradeCompletionHandlers(handle, service as unknown as GradeCompletionService, gateway);
+  return { calls, service, gateway };
 }
 
 describe('grade-completion IPC handlers', () => {
@@ -75,5 +78,21 @@ describe('grade-completion IPC handlers', () => {
     expect(() => discard.validate(['y1', 7])).toThrow();
     expect(await discard.handler('y1', 's1')).toEqual({ discarded: true });
     expect(service.discard).toHaveBeenCalledWith('y1', 's1');
+  });
+
+  it('guidance validates like the cohort read, forwards to the gateway and never refreshes', async () => {
+    const { calls, gateway } = register();
+    const guidance = calls.get('grade-completion:guidance')!;
+    expect(() => guidance.validate(['y1', 'GRADE_7'])).not.toThrow();
+    expect(() => guidance.validate(['y1'])).toThrow();
+    expect(() => guidance.validate(['y1', 'GRADE_99'])).toThrow();
+    expect(await guidance.handler('y1', 'GRADE_7')).toEqual([{ studentId: 's1', average: 71.5 }]);
+    expect(gateway.getCompletionGuidance).toHaveBeenCalledWith('y1', 'GRADE_7');
+  });
+
+  it('guidance errors propagate (offline shows a dash in the screen)', async () => {
+    const { calls, gateway } = register();
+    gateway.getCompletionGuidance.mockRejectedValueOnce(new Error('offline'));
+    await expect(calls.get('grade-completion:guidance')!.handler('y1', 'GRADE_7')).rejects.toThrow('offline');
   });
 });

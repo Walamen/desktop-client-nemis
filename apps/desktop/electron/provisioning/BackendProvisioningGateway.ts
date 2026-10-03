@@ -8,6 +8,8 @@ import {
   Gender,
   GradeLevel,
   PROVISIONING_COLLECTIONS,
+  type CompletionGuidanceRow,
+  type SaveCompletionsRequest,
   type RegistryClaimRequest,
   type RegistryClaimResult,
   type RegistryHit,
@@ -243,6 +245,40 @@ export class BackendProvisioningGateway {
     );
   }
 
+  /** Pushes one (year, grade) group of end-of-year decisions. Stamping is
+   * all-or-nothing server-side; a 4xx (including business 403s) surfaces as
+   * RemoteRejectedError with the server's message. */
+  async recordGradeCompletions(request: SaveCompletionsRequest): Promise<void> {
+    await this.authorized(
+      '/enrollments/grade-completions',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          academicYearId: request.academicYearId,
+          gradeLevel: request.gradeLevel,
+          decisions: request.decisions,
+        }),
+      },
+      () => undefined,
+      ONLINE_COMMAND,
+    );
+  }
+
+  /** Read-only: the server's published yearly averages for a cohort, reduced
+   * to per-student averages. */
+  async getCompletionGuidance(
+    academicYearId: string,
+    gradeLevel: string,
+  ): Promise<CompletionGuidanceRow[]> {
+    const params = new URLSearchParams({ academicYearId, gradeLevel });
+    return this.authorized(
+      `/enrollments/grade-completions?${params.toString()}`,
+      { method: 'GET' },
+      toGuidanceRows,
+      ONLINE_COMMAND,
+    );
+  }
+
   private async authorized<T>(
     path: string,
     init: RequestInit,
@@ -331,6 +367,22 @@ function toSchoolResults(value: unknown): SchoolSearchResult[] {
     return typeof row.id === 'string' && typeof row.name === 'string'
       ? [{ id: row.id, name: row.name, code: typeof row.code === 'string' ? row.code : '' }]
       : [];
+  });
+}
+
+function toGuidanceRows(value: unknown): CompletionGuidanceRow[] {
+  const students = asRecord(value).students;
+  if (!Array.isArray(students)) throw new Error('Malformed server response.');
+  return students.flatMap((item) => {
+    const row = asRecord(item);
+    if (typeof row.id !== 'string') return [];
+    const average = row.guidanceAverage;
+    return [
+      {
+        studentId: row.id,
+        average: typeof average === 'number' && Number.isFinite(average) ? average : null,
+      },
+    ];
   });
 }
 

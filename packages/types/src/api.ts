@@ -108,6 +108,7 @@ import type {
 } from './registry';
 import type {
   CohortResult,
+  CompletionGuidanceRow,
   DiscardCompletionResult,
   SaveCompletionsRequest,
   SaveCompletionsResult,
@@ -271,6 +272,8 @@ export interface GradeCompletionApi {
   cohort(academicYearId: string, gradeLevel: GradeLevel): Promise<CohortResult>;
   save(request: SaveCompletionsRequest): Promise<SaveCompletionsResult>;
   discard(academicYearId: string, studentId: string): Promise<DiscardCompletionResult>;
+  /** Online only: the server's published averages per student; rejects offline. */
+  guidance(academicYearId: string, gradeLevel: GradeLevel): Promise<CompletionGuidanceRow[]>;
 }
 
 export interface NemisApi {

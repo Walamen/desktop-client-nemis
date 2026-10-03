@@ -441,6 +441,75 @@ describe('BackendProvisioningGateway', () => {
       },
     );
   });
+
+  describe('grade completions', () => {
+    it('recordGradeCompletions POSTs the group body to the enrollments endpoint', async () => {
+      const fetchMock = vi.fn(async () => response({ stamped: 1 }));
+      vi.stubGlobal('fetch', fetchMock);
+      await buildGateway().recordGradeCompletions({
+        academicYearId: 'y1',
+        gradeLevel: 'GRADE_7' as never,
+        decisions: [{ studentId: 's1', outcome: 'PROMOTED', nextGradeLevel: 'GRADE_8' as never }],
+      });
+      const [url, init] = fetchMock.mock.calls[0] as unknown as [URL, RequestInit];
+      expect(url.pathname).toBe('/enrollments/grade-completions');
+      expect(init.method).toBe('POST');
+      expect(JSON.parse(init.body as string)).toEqual({
+        academicYearId: 'y1',
+        gradeLevel: 'GRADE_7',
+        decisions: [{ studentId: 's1', outcome: 'PROMOTED', nextGradeLevel: 'GRADE_8' }],
+      });
+    });
+
+    it('recordGradeCompletions classifies a 400 and a business 403 as RemoteRejectedError, a 503 as plain', async () => {
+      vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ message: 'Already stamped.' }), { status: 400 })));
+      const request = { academicYearId: 'y1', gradeLevel: 'GRADE_7' as never, decisions: [] };
+      await expect(buildGateway().recordGradeCompletions(request)).rejects.toMatchObject({
+        status: 400,
+        remoteMessage: 'Already stamped.',
+      });
+      vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ message: 'Year is closed.' }), { status: 403 })));
+      await expect(buildGateway().recordGradeCompletions(request)).rejects.toMatchObject({
+        status: 403,
+        remoteMessage: 'Year is closed.',
+      });
+      vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 503 })));
+      const error = await buildGateway().recordGradeCompletions(request).catch((e: unknown) => e);
+      expect(error).not.toBeInstanceOf(RemoteRejectedError);
+      expect(error).toMatchObject({ status: 503 });
+    });
+
+    it('getCompletionGuidance GETs with year and grade and maps only studentId/average', async () => {
+      const fetchMock = vi.fn(async () =>
+        response({
+          passingMarks: 50,
+          unenrolledCount: 0,
+          students: [
+            { id: 's1', firstName: 'Ada', lastName: 'K', nemisId: 'n', guidanceAverage: 71.5, existingOutcome: null },
+            { id: 's2', firstName: 'Bo', lastName: 'L', guidanceAverage: null, existingOutcome: null },
+            { id: 's3', guidanceAverage: 'NaN' },
+            { firstName: 'no id' },
+          ],
+        }),
+      );
+      vi.stubGlobal('fetch', fetchMock);
+      expect(await buildGateway().getCompletionGuidance('y1', 'GRADE_7')).toEqual([
+        { studentId: 's1', average: 71.5 },
+        { studentId: 's2', average: null },
+        { studentId: 's3', average: null },
+      ]);
+      const [url, init] = fetchMock.mock.calls[0] as unknown as [URL, RequestInit];
+      expect(url.pathname).toBe('/enrollments/grade-completions');
+      expect(url.searchParams.get('academicYearId')).toBe('y1');
+      expect(url.searchParams.get('gradeLevel')).toBe('GRADE_7');
+      expect(init.method).toBe('GET');
+    });
+
+    it('getCompletionGuidance refuses a malformed body', async () => {
+      vi.stubGlobal('fetch', vi.fn(async () => response({ nope: true })));
+      await expect(buildGateway().getCompletionGuidance('y1', 'GRADE_7')).rejects.toThrow('Malformed server response.');
+    });
+  });
 });
 
 function buildGateway(): BackendProvisioningGateway {
