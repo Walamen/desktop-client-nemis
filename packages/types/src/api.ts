@@ -95,6 +95,8 @@ import type {
 
 import type {
   OnlineCommandResult,
+  BulkClaimRequest,
+  BulkClaimResult,
   RegistryClaimRequest,
   RegistryClaimResult,
   RegistryLookupRequest,
@@ -257,6 +259,7 @@ export interface RegistryApi {
   lookup(request: RegistryLookupRequest): Promise<RegistryLookupResult>;
   claim(request: RegistryClaimRequest): Promise<OnlineCommandResult<RegistryClaimResult>>;
   request(request: RegistryReleaseRequest): Promise<OnlineCommandResult<RegistryReleaseResult>>;
+  bulkClaim(request: BulkClaimRequest): Promise<OnlineCommandResult<BulkClaimResult>>;
 }
 
 export interface TransferApi {

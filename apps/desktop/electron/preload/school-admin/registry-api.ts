@@ -6,4 +6,5 @@ export const registryApi: RegistryApi = {
   lookup: (request) => invoke(IpcChannels.REGISTRY_LOOKUP, request),
   claim: (request) => invoke(IpcChannels.REGISTRY_CLAIM, request),
   request: (request) => invoke(IpcChannels.REGISTRY_REQUEST, request),
+  bulkClaim: (request) => invoke(IpcChannels.STUDENT_BULK_CLAIM, request),
 };

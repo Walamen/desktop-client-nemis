@@ -1,4 +1,6 @@
 import type {
+  BulkClaimRequest,
+  BulkClaimResult,
   IpcErrorCode,
   OnlineCommandResult,
   RegistryClaimRequest,
@@ -18,6 +20,8 @@ export const registryBridge = {
     api().registry.claim(request),
   requestRelease: (request: RegistryReleaseRequest): Promise<OnlineCommandResult<RegistryReleaseResult>> =>
     api().registry.request(request),
+  bulkClaimStudents: (request: BulkClaimRequest): Promise<OnlineCommandResult<BulkClaimResult>> =>
+    api().registry.bulkClaim(request),
 };
 
 /** preload/invoke.ts throws `[CODE] message`; online screens branch on the

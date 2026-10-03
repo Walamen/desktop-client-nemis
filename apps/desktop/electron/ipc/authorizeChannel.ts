@@ -20,6 +20,7 @@ const SCHOOL_ADMIN_CHANNELS = new Set<IpcChannel>([
   IpcChannels.REGISTRY_LOOKUP,
   IpcChannels.REGISTRY_CLAIM,
   IpcChannels.REGISTRY_REQUEST,
+  IpcChannels.STUDENT_BULK_CLAIM,
   IpcChannels.TRANSFER_CREATE,
   IpcChannels.TRANSFER_REVIEW,
   IpcChannels.TRANSFER_CANCEL,

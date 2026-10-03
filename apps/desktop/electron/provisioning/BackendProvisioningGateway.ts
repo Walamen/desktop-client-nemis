@@ -8,6 +8,8 @@ import {
   Gender,
   GradeLevel,
   PROVISIONING_COLLECTIONS,
+  type BulkClaimRequest,
+  type BulkClaimResult,
   type CompletionGuidanceRow,
   type SaveCompletionsRequest,
   type RegistryClaimRequest,
@@ -191,6 +193,15 @@ export class BackendProvisioningGateway {
       '/student-registry/claim',
       { method: 'POST', body: JSON.stringify(request) },
       (value) => ({ studentId: requireId(value) }),
+      ONLINE_COMMAND,
+    );
+  }
+
+  async bulkClaimStudents(request: BulkClaimRequest): Promise<BulkClaimResult> {
+    return this.authorized(
+      '/students/bulk',
+      { method: 'POST', body: JSON.stringify(request) },
+      toBulkClaimResult,
       ONLINE_COMMAND,
     );
   }
@@ -387,6 +398,38 @@ function toGuidanceRows(value: unknown): CompletionGuidanceRow[] {
       },
     ];
   });
+}
+
+/** Maps only index + nemisId / index + error. The server also returns
+ * generated credentials for created rows; they must never cross into the
+ * result, so nothing else is copied. */
+function toBulkClaimResult(value: unknown): BulkClaimResult {
+  const body = asRecord(value);
+  const results = asRecord(body.results);
+  if (!Array.isArray(results.created) || !Array.isArray(results.failed)) {
+    throw new Error('Malformed server response.');
+  }
+  const created = results.created.map((item) => {
+    const entry = asRecord(item);
+    if (!Number.isInteger(entry.index) || typeof entry.nemisId !== 'string') {
+      throw new Error('Malformed server response.');
+    }
+    return { index: entry.index as number, nemisId: entry.nemisId };
+  });
+  const failed = results.failed.map((item) => {
+    const entry = asRecord(item);
+    if (!Number.isInteger(entry.index) || typeof entry.error !== 'string') {
+      throw new Error('Malformed server response.');
+    }
+    return { index: entry.index as number, error: entry.error };
+  });
+  const message = body.registryUnavailableMessage;
+  return {
+    created,
+    failed,
+    registryUnavailableMessage:
+      body.registryUnavailable === true && typeof message === 'string' ? message : null,
+  };
 }
 
 function requireId(value: unknown): string {

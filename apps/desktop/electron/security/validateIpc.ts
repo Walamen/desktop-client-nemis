@@ -957,6 +957,44 @@ export function assertRegistryClaimArgs(args: readonly unknown[]): void {
   assertOptionalString(request.overrideReason, 'overrideReason', DESCRIPTION_MAX_LENGTH);
 }
 
+const BULK_CLAIM_MAX_ROWS = 500;
+const GENDER_VALUES: readonly string[] = Object.values(Gender);
+
+function assertBulkClaimRow(row: unknown, position: number): void {
+  if (!isPlainObject(row)) throw new IPCError(`Expected row ${position + 1} to be an object.`);
+  assertKnownKeys(row, [
+    'nemisId', 'firstName', 'lastName', 'dateOfBirth', 'gender', 'gradeLevel', 'admissionDate',
+    'guardianFirstName', 'guardianLastName', 'guardianPhone', 'guardianRelationship', 'studentEmail',
+  ]);
+  assertNemisId(row.nemisId);
+  assertString(row.firstName, 'firstName', NAME_MAX_LENGTH);
+  assertString(row.lastName, 'lastName', NAME_MAX_LENGTH);
+  assertIsoDate(row.dateOfBirth, 'dateOfBirth');
+  assertEnumMember(row.gender, 'gender', GENDER_VALUES);
+  assertEnumMember(row.gradeLevel, 'gradeLevel', GRADE_LEVEL_VALUES);
+  assertOptionalIsoDate(row.admissionDate, 'admissionDate');
+  assertString(row.guardianFirstName, 'guardianFirstName', NAME_MAX_LENGTH);
+  assertString(row.guardianLastName, 'guardianLastName', NAME_MAX_LENGTH);
+  assertString(row.guardianPhone, 'guardianPhone', CODE_MAX_LENGTH);
+  assertOptionalString(row.guardianRelationship, 'guardianRelationship', NAME_MAX_LENGTH);
+  assertOptionalString(row.studentEmail, 'studentEmail', EMAIL_MAX_LENGTH);
+}
+
+export function assertBulkClaimArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [request] = args;
+  if (!isPlainObject(request)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(request, ['classId', 'academicYearId', 'termId', 'students']);
+  assertString(request.classId, 'classId', ID_MAX_LENGTH);
+  assertString(request.academicYearId, 'academicYearId', ID_MAX_LENGTH);
+  assertString(request.termId, 'termId', ID_MAX_LENGTH);
+  const students = request.students;
+  if (!Array.isArray(students) || students.length < 1 || students.length > BULK_CLAIM_MAX_ROWS) {
+    throw new IPCError(`Expected 1 to ${BULK_CLAIM_MAX_ROWS} students.`);
+  }
+  students.forEach((row, position) => assertBulkClaimRow(row, position));
+}
+
 export function assertRegistryReleaseArgs(args: readonly unknown[]): void {
   assertArity(args, 1);
   const [request] = args;

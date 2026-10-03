@@ -43,6 +43,41 @@ export interface RegistryClaimRequest {
   overrideReason?: string;
 }
 
+/** One bulk-import row that carries a NEMIS ID. Mirrors the server's
+ * POST /students/bulk row DTO. */
+export interface BulkClaimRow {
+  /** Canonical 12 digits. */
+  nemisId: string;
+  firstName: string;
+  lastName: string;
+  dateOfBirth: string; // YYYY-MM-DD
+  gender: Gender;
+  gradeLevel: GradeLevel;
+  admissionDate?: string;
+  guardianFirstName: string;
+  guardianLastName: string;
+  guardianPhone: string;
+  guardianRelationship?: string;
+  studentEmail?: string;
+}
+
+export interface BulkClaimRequest {
+  classId: string;
+  academicYearId: string;
+  termId: string;
+  /** 1..500. */
+  students: BulkClaimRow[];
+}
+
+/** Credentials the server returns for created rows are deliberately dropped. */
+export interface BulkClaimResult {
+  /** `index` is the position in `request.students`. */
+  created: { index: number; nemisId: string }[];
+  failed: { index: number; error: string }[];
+  /** Present only when the server stopped early. Shown verbatim. */
+  registryUnavailableMessage: string | null;
+}
+
 export interface RegistryReleaseRequest {
   nemisId: string;
   dateOfBirth: string;

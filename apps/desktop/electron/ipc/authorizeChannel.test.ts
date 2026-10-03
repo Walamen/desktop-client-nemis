@@ -143,6 +143,7 @@ describe('authorizeChannel', () => {
     'registry:lookup',
     'registry:claim',
     'registry:request',
+    'registry:bulk-claim',
     'transfer:create',
     'transfer:review',
     'transfer:cancel',

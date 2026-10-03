@@ -1,5 +1,7 @@
 import type {
   OnlineCommandResult,
+  BulkClaimRequest,
+  BulkClaimResult,
   RegistryClaimRequest,
   RegistryClaimResult,
   RegistryLookupRequest,
@@ -270,6 +272,10 @@ export interface IpcContract {
     args: [request: RegistryClaimRequest];
     result: OnlineCommandResult<RegistryClaimResult>;
   };
+  'registry:bulk-claim': {
+    args: [request: BulkClaimRequest];
+    result: OnlineCommandResult<BulkClaimResult>;
+  };
   'registry:request': {
     args: [request: RegistryReleaseRequest];
     result: OnlineCommandResult<RegistryReleaseResult>;
@@ -392,6 +398,7 @@ export const IpcChannels = {
   REGISTRY_LOOKUP: 'registry:lookup',
   REGISTRY_CLAIM: 'registry:claim',
   REGISTRY_REQUEST: 'registry:request',
+  STUDENT_BULK_CLAIM: 'registry:bulk-claim',
   TRANSFER_CREATE: 'transfer:create',
   TRANSFER_REVIEW: 'transfer:review',
   TRANSFER_CANCEL: 'transfer:cancel',

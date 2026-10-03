@@ -266,6 +266,85 @@ describe('BackendProvisioningGateway', () => {
       })).toEqual({ id: 't-9', lapsesAt: '2026-10-16T09:00:00.000Z' });
     });
 
+    describe('bulkClaimStudents', () => {
+      const row = {
+        nemisId: '482915736045', firstName: 'Musu', lastName: 'Kollie', dateOfBirth: '2012-01-01',
+        gender: 'FEMALE' as never, gradeLevel: 'GRADE_7' as never,
+        guardianFirstName: 'Ma', guardianLastName: 'Kollie', guardianPhone: '0770000000',
+      };
+      const request = { classId: 'c', academicYearId: 'y', termId: 't', students: [row, row] };
+
+      it('posts the request as-is to /students/bulk and maps created and failed', async () => {
+        const fetchMock = vi.fn(async () => response({
+          totalRequested: 2, created: 1, failed: 1,
+          results: {
+            created: [{ index: 0, nemisId: '482915736045' }],
+            failed: [{ index: 1, rowNumber: 3, error: 'Already enrolled.' }],
+          },
+        }));
+        vi.stubGlobal('fetch', fetchMock);
+        const result = await buildGateway().bulkClaimStudents(request);
+        expect(result).toEqual({
+          created: [{ index: 0, nemisId: '482915736045' }],
+          failed: [{ index: 1, error: 'Already enrolled.' }],
+          registryUnavailableMessage: null,
+        });
+        const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+        expect(String(url)).toBe('https://nemis.example/students/bulk');
+        expect(init.method).toBe('POST');
+        expect(JSON.parse(init.body as string)).toEqual(request);
+      });
+
+      it('never copies credentials or any other server field into the result', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => response({
+          results: {
+            created: [{
+              index: 0, nemisId: '482915736045', defaultPassword: 'Nemis@123',
+              studentCredential: { username: 'a', password: 'secret1' },
+              parentCredential: { username: 'b', password: 'secret2' },
+            }],
+            failed: [],
+          },
+        })));
+        const json = JSON.stringify(await buildGateway().bulkClaimStudents(request));
+        expect(json).not.toMatch(/defaultPassword|studentCredential|parentCredential|secret|Nemis@123/);
+      });
+
+      it('maps the registry-unavailable message only when the flag is true', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => response({
+          results: { created: [], failed: [] }, registryUnavailable: true, registryUnavailableMessage: 'Registry is down.',
+        })));
+        expect((await buildGateway().bulkClaimStudents(request)).registryUnavailableMessage).toBe('Registry is down.');
+        vi.stubGlobal('fetch', vi.fn(async () => response({
+          results: { created: [], failed: [] }, registryUnavailableMessage: 'stray',
+        })));
+        expect((await buildGateway().bulkClaimStudents(request)).registryUnavailableMessage).toBeNull();
+      });
+
+      it('rejects malformed entries', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => response({ results: { created: [{ index: 'x', nemisId: 'n' }], failed: [] } })));
+        await expect(buildGateway().bulkClaimStudents(request)).rejects.toThrow();
+        vi.stubGlobal('fetch', vi.fn(async () => response({ results: { created: [], failed: [{ index: 1 }] } })));
+        await expect(buildGateway().bulkClaimStudents(request)).rejects.toThrow();
+        vi.stubGlobal('fetch', vi.fn(async () => response({})));
+        await expect(buildGateway().bulkClaimStudents(request)).rejects.toThrow();
+      });
+
+      it('a 409 surfaces as RemoteRejectedError with the server message', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () =>
+          errorResponse(409, { message: "Bulk import must target your institution's current academic year." })));
+        const error = await buildGateway().bulkClaimStudents(request).catch((e: unknown) => e);
+        expect(error).toBeInstanceOf(RemoteRejectedError);
+        expect((error as RemoteRejectedError).status).toBe(409);
+        expect((error as RemoteRejectedError).remoteMessage).toBe("Bulk import must target your institution's current academic year.");
+      });
+
+      it('a network failure is an OfflineError', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('fetch failed'); }));
+        expect(await buildGateway().bulkClaimStudents(request).catch((e: unknown) => e)).toBeInstanceOf(OfflineError);
+      });
+    });
+
     it('a network failure is an OfflineError with the text the sync worker matches', async () => {
       vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('fetch failed'); }));
       const error = await buildGateway().lookupStudent({ nemisId: '482915736045', dateOfBirth: '2012-01-01' })
