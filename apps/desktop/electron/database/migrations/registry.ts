@@ -26,6 +26,7 @@ import { replaceAdmissionNumberWithNemisId } from './024-replace-admission-numbe
 import { makeStudentTransfersPullOnly } from './025-make-student-transfers-pull-only';
 import { addSyncQueueSequence } from './026-add-sync-queue-sequence';
 import { addStudentAssertedNoNemisId } from './027-add-student-asserted-no-nemis-id';
+import { addTransferDisplayFields } from './028-add-transfer-display-fields';
 
 /**
  * Every migration, ascending by version. Append only — never edit or reorder
@@ -59,4 +60,5 @@ export const migrations: readonly Migration[] = [
   makeStudentTransfersPullOnly,
   addSyncQueueSequence,
   addStudentAssertedNoNemisId,
+  addTransferDisplayFields,
 ];

@@ -483,6 +483,23 @@ describe('ProvisioningImporter', () => {
     ]);
   });
 
+  it('imports the transfer display fields, and an older server row without them as nulls', () => {
+    const importer = new ProvisioningImporter(manager);
+    importer.import(snapshotOf({
+      ...BASE_DATA,
+      studentTransfers: [
+        transferRow('t1', { studentName: 'Musu Kollie', studentNemisId: '482915736045', fromInstitutionName: 'Other', toInstitutionName: 'Ours' }),
+        transferRow('t2'),
+      ],
+    }), CONTEXT);
+    expect(manager.connection.prepare(
+      `SELECT id, studentName, studentNemisId, fromInstitutionName, toInstitutionName FROM student_transfers ORDER BY id`,
+    ).all()).toEqual([
+      { id: 't1', studentName: 'Musu Kollie', studentNemisId: '482915736045', fromInstitutionName: 'Other', toInstitutionName: 'Ours' },
+      { id: 't2', studentName: null, studentNemisId: null, fromInstitutionName: null, toInstitutionName: null },
+    ]);
+  });
+
   it('moves a departed student on a delta merge without queuing anything', () => {
     const importer = new ProvisioningImporter(manager);
     importer.import(snapshotOf({ ...BASE_DATA, students: [student('s1', 'Ada')] }), CONTEXT);
