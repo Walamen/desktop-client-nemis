@@ -187,6 +187,27 @@ describe('EndOfYearOutcomesPage', () => {
     await waitFor(() => expect(cohort).toHaveBeenCalledTimes(2));
   });
 
+  it('shows a failed save without the bracketed IPC code, and falls back for non-IPC errors', async () => {
+    const { save } = stubNemis();
+    const { user } = await renderPage();
+    await pickGrade(user);
+    await findRow('Ama Kollie');
+    save.mockRejectedValueOnce(new Error('[REMOTE_REJECTED] The server said no.'));
+    await user.click(screen.getByRole('button', { name: 'Save outcomes' }));
+    expect(await screen.findByText("Couldn't save the outcomes: The server said no.")).toBeInTheDocument();
+    save.mockRejectedValueOnce(new Error('socket exploded'));
+    await user.click(screen.getByRole('button', { name: 'Save outcomes' }));
+    expect(await screen.findByText("Couldn't save the outcomes: Please try again.")).toBeInTheDocument();
+  });
+
+  it('online but the guidance call fails with [OFFLINE]: shows the offline averages note', async () => {
+    stubNemis({ guidance: async () => { throw new Error('[OFFLINE] No connection.'); } });
+    const { user } = await renderPage();
+    await pickGrade(user);
+    await findRow('Ama Kollie');
+    expect(await screen.findByText('Averages are shown when online.')).toBeInTheDocument();
+  });
+
   it('refuses to save a Promoted row with no next grade', async () => {
     const { save } = stubNemis({
       cohorts: [{ rows: [cohortRow({ outcome: null })], unenrolledCount: 0 }],

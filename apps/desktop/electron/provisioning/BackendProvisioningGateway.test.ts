@@ -156,8 +156,12 @@ describe('BackendProvisioningGateway', () => {
     it('a 400 on the retry without the flag is surfaced, not retried again', async () => {
       const fetchMock = vi.fn(async () => errorResponse(400, { message: 'bad' }));
       vi.stubGlobal('fetch', fetchMock);
-      await expect(buildGateway().downloadSnapshot('device-1')).rejects.toBeInstanceOf(RemoteRejectedError);
+      const gateway = buildGateway();
+      await expect(gateway.downloadSnapshot('device-1')).rejects.toBeInstanceOf(RemoteRejectedError);
       expect(fetchMock).toHaveBeenCalledTimes(2);
+      // The flag was not proven unsupported, so the next download still sends it.
+      await expect(gateway.downloadSnapshot('device-1')).rejects.toBeInstanceOf(RemoteRejectedError);
+      expect(includeOf(fetchMock, 2)).toBe('departedCohort');
     });
   });
 

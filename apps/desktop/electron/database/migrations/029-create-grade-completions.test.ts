@@ -54,4 +54,14 @@ describe('029-create-grade-completions', () => {
       .toEqual({ c: 0 });
     db.close();
   });
+
+  it('resets lastFullResyncAt so the next sync is a full resync', () => {
+    const db = new Database(':memory:');
+    for (const migration of migrations.filter((m) => m.version < 29)) migration.up(db);
+    db.prepare("INSERT INTO sync_metadata (id, schemaVersion, databaseVersion, createdAt, updatedAt, lastFullResyncAt) VALUES ('singleton', 1, 1, 'x', 'x', ?)").run('2026-10-01T00:00:00.000Z');
+    migrations.find((m) => m.version === 29)!.up(db);
+    expect(db.prepare("SELECT lastFullResyncAt FROM sync_metadata WHERE id='singleton'").get())
+      .toEqual({ lastFullResyncAt: null });
+    db.close();
+  });
 });

@@ -34,5 +34,14 @@ export const createGradeCompletions: Migration = {
       );
       CREATE INDEX idx_grade_completions_student ON grade_completions (studentId);
     `);
+    // Force the next sync cycle to be a full resync (DesktopSyncWorker treats a
+    // null sync_metadata.lastFullResyncAt as "full resync due"), so stamps and
+    // departed-cohort students that already exist on the server arrive now
+    // instead of waiting up to 24h for the next scheduled full resync. A no-op
+    // on a fresh DB (the singleton row is already null) or if the column is absent.
+    const cols = db.prepare(`PRAGMA table_info("sync_metadata")`).all() as { name: string }[];
+    if (cols.some((c) => c.name === 'lastFullResyncAt')) {
+      db.exec(`UPDATE sync_metadata SET lastFullResyncAt = NULL`);
+    }
   },
 };

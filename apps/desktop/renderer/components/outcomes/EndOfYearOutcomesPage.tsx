@@ -7,6 +7,7 @@ import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 import { useAcademicFoundationViewModel } from '@/lib/presentation/hooks/school-admin';
 import { useConnectivityStore } from '@/lib/presentation/hooks/shared';
 import { gradeCompletionBridge } from '@/services/nemis-bridge/school-admin/grade-completion-bridge';
+import { parseIpcError } from '@/lib/errors/parseIpcError';
 import { human } from '../students/shared';
 import { buildDecisions, draftFromRow, nameStudentIds, offeredGrades, type OutcomeDraft } from './outcomes-logic';
 import { OutcomeRow } from './OutcomeRow';
@@ -19,7 +20,7 @@ type Averages =
   | { status: 'idle' | 'offline' | 'error' }
   | { status: 'ok'; byId: ReadonlyMap<string, number | null> };
 
-const messageOf = (error: unknown) => (error instanceof Error ? error.message : String(error));
+const retryMessage = (error: unknown, fallback: string) => parseIpcError(error)?.message || fallback;
 
 const unenrolledNote = (n: number) =>
   n === 1
@@ -109,7 +110,7 @@ export function EndOfYearOutcomesPage() {
         if (!cancelled) setAverages({ status: 'ok', byId: new Map(rows.map((r) => [r.studentId, r.average])) });
       })
       .catch((e: unknown) => {
-        if (!cancelled) setAverages({ status: messageOf(e).includes('[OFFLINE]') ? 'offline' : 'error' });
+        if (!cancelled) setAverages({ status: parseIpcError(e)?.code === 'OFFLINE' ? 'offline' : 'error' });
       });
     return () => {
       cancelled = true;
@@ -151,7 +152,7 @@ export function EndOfYearOutcomesPage() {
       setNotice(SAVED_NOTE);
       setReloadKey((k) => k + 1);
     } catch (e) {
-      setError(`Couldn't save the outcomes: ${messageOf(e)}`);
+      setError(`Couldn't save the outcomes: ${retryMessage(e, 'Please try again.')}`);
     } finally {
       setSaving(false);
     }
@@ -166,7 +167,7 @@ export function EndOfYearOutcomesPage() {
       edited.current.delete(studentId);
       setReloadKey((k) => k + 1);
     } catch (e) {
-      setError(`Couldn't discard the change: ${messageOf(e)}`);
+      setError(`Couldn't discard the change: ${retryMessage(e, 'Please try again.')}`);
     } finally {
       setDiscarding(null);
     }

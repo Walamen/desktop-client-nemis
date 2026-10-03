@@ -93,8 +93,11 @@ export class BackendProvisioningGateway {
       // flag answers 400 to it. Retry once without, and stop asking for the
       // rest of this gateway's life. Any other failure is not about the flag.
       if (!(error instanceof RemoteRejectedError) || error.status !== 400) throw error;
+      // Remember only once the flagless retry succeeds: a 400 that was really
+      // about something else must not permanently disable the flag.
+      const result = await request(false);
       this.departedCohortUnsupported = true;
-      return request(false);
+      return result;
     }
   }
 
