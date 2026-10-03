@@ -368,8 +368,16 @@ export class SchoolAdminModuleService {
     // history); "our students" must exclude them. Other collections unchanged.
     const where =
       request.collection === 'students' ? ` WHERE ${workspaceStudentScope('students')}` : '';
+    // rowid is insert order, and the full resync re-inserts in server id
+    // order, so for transfers it says nothing about age. The inbox and badge
+    // read the capped page: PENDING first, so a live request never drops out,
+    // then newest first.
+    const orderBy =
+      request.collection === 'student_transfers'
+        ? `(status = 'PENDING') DESC, createdAt DESC, id`
+        : 'rowid DESC';
     const items = db
-      .prepare(`SELECT * FROM ${request.collection}${where} ORDER BY rowid DESC LIMIT ? OFFSET ?`)
+      .prepare(`SELECT * FROM ${request.collection}${where} ORDER BY ${orderBy} LIMIT ? OFFSET ?`)
       .all(limit, offset) as SchoolAdminRecord[];
     const total = (
       db.prepare(`SELECT COUNT(*) total FROM ${request.collection}${where}`).get() as { total: number }

@@ -410,4 +410,28 @@ describe('SchoolAdminModuleService', () => {
     expect(service.list({ collection: 'student_transfers' }).total).toBe(1);
     workspaces.close();
   });
+
+  // Final-review fix wave (I1): the 24h full resync re-inserts rows in server
+  // id order, so rowid says nothing about age. A PENDING request must never
+  // fall outside the capped page, and decided rows come newest first.
+  it('lists transfers PENDING first, then newest first, regardless of insert order', () => {
+    const { workspaces, service } = setup();
+    const insert = workspaces.active.database.connection.prepare(
+      `INSERT INTO student_transfers
+         (id, studentId, fromInstitutionId, toInstitutionId, requestedBy, reason, status, createdAt, updatedAt)
+       VALUES (?,?,'school-1','school-2','user-1','Relocation',?,?,?)`,
+    );
+    // The PENDING row is inserted FIRST (lowest rowid) and is the oldest.
+    insert.run('t-pending', 'student-p', 'PENDING', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z');
+    for (let index = 0; index < 5; index += 1) {
+      const day = String(14 - index).padStart(2, '0');
+      const at = `2026-02-${day}T00:00:00.000Z`;
+      insert.run(`t-${index}`, `student-${index}`, 'APPROVED', at, at);
+    }
+
+    const result = service.list({ collection: 'student_transfers', limit: 3 });
+    expect(result.total).toBe(6);
+    expect(result.items.map((item) => item.id)).toEqual(['t-pending', 't-0', 't-1']);
+    workspaces.close();
+  });
 });
