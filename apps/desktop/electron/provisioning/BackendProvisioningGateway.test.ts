@@ -345,7 +345,7 @@ describe('BackendProvisioningGateway', () => {
       expect(init.method).toBe('DELETE');
     });
 
-    it('searchSchools GETs approved, active institutions and keeps only id/name/code', async () => {
+    it('searchSchools GETs the destination-schools endpoint and keeps only id/name/code', async () => {
       const fetchMock = vi.fn(async () => response([
         { id: 'i1', name: 'Central High', code: 'CH', countyId: 'should-not-leak' },
         { id: 7, name: 'bad row' },
@@ -353,11 +353,19 @@ describe('BackendProvisioningGateway', () => {
       vi.stubGlobal('fetch', fetchMock);
       expect(await buildGateway().searchSchools('cent')).toEqual([{ id: 'i1', name: 'Central High', code: 'CH' }]);
       const [url, init] = fetchMock.mock.calls[0] as unknown as [URL, RequestInit];
-      expect(url.pathname).toBe('/institutions');
+      expect(url.pathname).toBe('/student-transfers/destination-schools');
+      expect([...url.searchParams.keys()]).toEqual(['search']);
       expect(url.searchParams.get('search')).toBe('cent');
-      expect(url.searchParams.get('approvalStatus')).toBe('APPROVED');
-      expect(url.searchParams.get('isActive')).toBe('true');
       expect(init.method ?? 'GET').toBe('GET');
+    });
+
+    it('searchSchools encodes the query as a single search param', async () => {
+      const fetchMock = vi.fn(async () => response([]));
+      vi.stubGlobal('fetch', fetchMock);
+      await buildGateway().searchSchools('a&b=c');
+      const [url] = fetchMock.mock.calls[0] as unknown as [URL];
+      expect(url.searchParams.get('search')).toBe('a&b=c');
+      expect([...url.searchParams.keys()]).toEqual(['search']);
     });
 
     it('searchSchools accepts a paginated { data: [...] } envelope too', async () => {

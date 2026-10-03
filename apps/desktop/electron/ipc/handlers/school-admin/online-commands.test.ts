@@ -52,6 +52,17 @@ describe('transfer school search', () => {
     expect(await search.handler('cent')).toEqual([{ id: 'i1', name: 'Central High', code: 'CH' }]);
     expect(refresh).not.toHaveBeenCalled();
   });
+
+  it('trims the query before it reaches the gateway and measures the max on the trimmed text', async () => {
+    const { calls, handle } = capture();
+    const gateway = transferGateway();
+    registerTransferHandlers(handle, gateway, vi.fn(async () => true));
+    const search = calls.get('transfer:search-schools')!;
+    await search.handler('  cent  ');
+    expect(gateway.searchSchools).toHaveBeenCalledWith('cent');
+    expect(() => search.validate([`  ${'x'.repeat(100)}  `])).not.toThrow();
+    expect(() => search.validate(['  c  '])).toThrow();
+  });
 });
 
 describe('registry IPC handlers', () => {

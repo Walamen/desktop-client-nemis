@@ -210,11 +210,11 @@ export class BackendProvisioningGateway {
   }
 
   /** Destination-school search for "New transfer" — the desktop only stores
-   * its own institution. Same query portal-web makes. Read-only. */
+   * its own institution. Dedicated server endpoint (the generic institutions list is caller-scoped). Read-only. */
   async searchSchools(query: string): Promise<SchoolSearchResult[]> {
-    const params = new URLSearchParams({ search: query, approvalStatus: 'APPROVED', isActive: 'true' });
+    const params = new URLSearchParams({ search: query });
     return this.authorized(
-      `/institutions?${params.toString()}`,
+      `/student-transfers/destination-schools?${params.toString()}`,
       { method: 'GET' },
       toSchoolResults,
       ONLINE_COMMAND,

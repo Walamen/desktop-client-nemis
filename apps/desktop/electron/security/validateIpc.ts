@@ -981,7 +981,11 @@ export function assertTransferCreateArgs(args: readonly unknown[]): void {
 export function assertSchoolSearchArgs(args: readonly unknown[]): void {
   assertArity(args, 1);
   const [query] = args;
-  if (typeof query !== 'string' || query.trim().length < 2 || query.length > 100) {
+  if (typeof query !== 'string') {
+    throw new IPCError('Expected a school search of 2 to 100 characters.');
+  }
+  const trimmed = query.trim();
+  if (trimmed.length < 2 || trimmed.length > 100) {
     throw new IPCError('Expected a school search of 2 to 100 characters.');
   }
 }
