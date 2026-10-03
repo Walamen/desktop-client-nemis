@@ -211,4 +211,58 @@ describe('ClassTermPicker', () => {
     expect(await screen.findByText('Choose a grade to see its classes.')).toBeInTheDocument();
     expect(classesList).not.toHaveBeenCalled();
   });
+
+  it("no empty hint while classes reload over another grade's stale list", async () => {
+    // The foundation store is shared app-wide: another page left GRADE_8
+    // classes in it. While this picker's GRADE_7 load is in flight the status
+    // is 'refreshing' with that stale list, which filters to nothing.
+    let calls = 0;
+    stubNemis({
+      classes: () => {
+        calls += 1;
+        if (calls === 1) {
+          return Promise.resolve({ items: [{ ...jss1a, id: 'c8', name: 'JSS2-A', gradeLevel: 'GRADE_8' }], total: 1 });
+        }
+        return new Promise(() => {});
+      },
+    });
+    const layer = createRendererPresentation();
+    await layer.bootstrap.run();
+    const foundation = layer.viewModels.academicFoundation;
+    await foundation.loadClasses();
+    expect(foundation.store.getState().classes.status).toBe('success');
+
+    render(
+      <PresentationProvider layer={layer}>
+        <Harness gradeLevel="GRADE_7" onChange={vi.fn()} />
+      </PresentationProvider>,
+    );
+    await waitFor(() => expect(foundation.store.getState().classes.status).toBe('refreshing'));
+    expect(await screen.findByRole('option', { name: 'Term 1' })).toBeInTheDocument();
+    expect(screen.queryByText(/No classes for/)).toBeNull();
+    expect(selectNear(/^class/i).querySelector('option')?.textContent).toBe('Loading…');
+  });
+
+  it("never lists another year's terms while the current year's terms reload", async () => {
+    const oldTerm = { ...term1, id: 't0', academicYearId: 'y0', name: 'Old Term' };
+    stubNemis({
+      years: async () => [currentYear, pastYear],
+      terms: (academicYearId) => (academicYearId === 'y0' ? Promise.resolve([oldTerm]) : new Promise(() => {})),
+    });
+    const layer = createRendererPresentation();
+    await layer.bootstrap.run();
+    const foundation = layer.viewModels.academicFoundation;
+    await foundation.loadTerms('y0');
+    expect(foundation.store.getState().terms.status).toBe('success');
+
+    render(
+      <PresentationProvider layer={layer}>
+        <Harness gradeLevel="GRADE_7" onChange={vi.fn()} />
+      </PresentationProvider>,
+    );
+    expect(await screen.findByRole('option', { name: 'JSS1-A' })).toBeInTheDocument();
+    await waitFor(() => expect(foundation.store.getState().terms.status).toBe('refreshing'));
+    expect(screen.queryByRole('option', { name: 'Old Term' })).toBeNull();
+    expect(selectNear(/^term/i).querySelector('option')?.textContent).toBe('Loading…');
+  });
 });

@@ -97,10 +97,17 @@ export function ClassTermPicker({
           .filter((c) => c.isActive && c.gradeLevel === gradeLevel && c.academicYearId === yearId)
           .map((c) => ({ value: c.id, label: c.name }))
       : [];
+  // Only this year's terms: the shared store may still hold another year's
+  // list while this year's reloads.
   const termOptions =
     terms.status === 'success' || terms.status === 'refreshing'
-      ? terms.data.map((t) => ({ value: t.id, label: t.name }))
+      ? terms.data.filter((t) => t.academicYearId === yearId).map((t) => ({ value: t.id, label: t.name }))
       : [];
+  // A reload whose stale list (another grade's / year's, from the shared
+  // store) filters to nothing is still loading, not empty.
+  const classesLoaded =
+    classes.status === 'success' || (classes.status === 'refreshing' && classOptions.length > 0);
+  const termsLoaded = terms.status === 'success' || (terms.status === 'refreshing' && termOptions.length > 0);
 
   return (
     <div className="space-y-3">
@@ -114,8 +121,7 @@ export function ClassTermPicker({
             Try again
           </Button>
         </div>
-      ) : classes.status === 'empty' ||
-        ((classes.status === 'success' || classes.status === 'refreshing') && classOptions.length === 0) ? (
+      ) : classes.status === 'empty' || (classes.status === 'success' && classOptions.length === 0) ? (
         <p className="text-sm text-amber-700">
           No classes for {human(gradeLevel)} — create one first.
         </p>
@@ -123,7 +129,7 @@ export function ClassTermPicker({
         <Select
           label="Class"
           required
-          placeholder={classes.status === 'success' || classes.status === 'refreshing' ? 'Select class' : 'Loading…'}
+          placeholder={classesLoaded ? 'Select class' : 'Loading…'}
           options={classOptions}
           value={value.classId}
           onChange={(e) => onChange({ ...value, academicYearId: yearId, classId: e.target.value })}
@@ -142,7 +148,7 @@ export function ClassTermPicker({
         <Select
           label="Term"
           required
-          placeholder={terms.status === 'success' || terms.status === 'refreshing' ? 'Select term' : 'Loading…'}
+          placeholder={termsLoaded ? 'Select term' : 'Loading…'}
           options={termOptions}
           value={value.termId}
           onChange={(e) => onChange({ ...value, academicYearId: yearId, termId: e.target.value })}
