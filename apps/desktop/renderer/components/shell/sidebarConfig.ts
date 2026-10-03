@@ -66,6 +66,11 @@ export const sidebarConfigs: Record<DesktopPortalRole, SidebarConfig> = {
             icon: ArrowRightLeft,
             badge: 'transfers',
           },
+          {
+            name: 'End-of-Year Outcomes',
+            href: '/government/school-admin/students/promote',
+            icon: GraduationCap,
+          },
           { name: 'Teachers & Staff', href: '/government/school-admin/teachers-staff', icon: GiTeacher },
           { name: 'Parents & Guardians', href: '/government/school-admin/parents-guardians', icon: RiParentFill },
         ],

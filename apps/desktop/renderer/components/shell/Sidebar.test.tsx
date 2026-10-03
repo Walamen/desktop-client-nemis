@@ -80,6 +80,20 @@ describe('Sidebar', () => {
     expect(transfersLink()).toHaveAttribute('href', '/government/school-admin/students/inter-school-transfer');
   });
 
+  it('shows the End-of-Year Outcomes entry for a school admin only', () => {
+    const { unmount } = render(<Sidebar role={SystemRole.INSTITUTION_ADMIN} />);
+    expect(screen.getByText('End-of-Year Outcomes').closest('a')).toHaveAttribute(
+      'href',
+      '/government/school-admin/students/promote',
+    );
+    unmount();
+    for (const role of [SystemRole.COUNTY_ADMIN, SystemRole.DEO, SystemRole.MINISTRY_ADMIN, SystemRole.TEACHER]) {
+      const view = render(<Sidebar role={role} />);
+      expect(screen.queryByText('End-of-Year Outcomes')).toBeNull();
+      view.unmount();
+    }
+  });
+
   it('badges Student Transfers with the pending-decision count from local rows', async () => {
     stubRows([pushToUs('a'), pushToUs('b'), pushToUs('c')]);
     render(<Sidebar role={SystemRole.INSTITUTION_ADMIN} />);
