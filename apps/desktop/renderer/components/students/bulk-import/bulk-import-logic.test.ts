@@ -46,10 +46,42 @@ describe('partitionRows', () => {
     const p = partitionRows(rows, GradeLevel.GRADE_5);
     expect(p.local.map((r) => r.originalIndex)).toEqual([2]);
     expect(p.claim.map((r) => r.originalIndex)).toEqual([3]);
+    expect(p.failed).toEqual([
+      { originalIndex: 0, error: 'Fix before importing: firstName: Required' },
+      {
+        originalIndex: 1,
+        error: 'Grade level "GRADE_6" does not match the selected class grade "GRADE_5"',
+      },
+    ]);
+  });
+
+  it('fails a Luhn-bad NEMIS ID row with its reason', () => {
+    const id = generateNemisId();
+    const bad = id.slice(0, 11) + String((Number(id[11]) + 1) % 10);
+    const p = partitionRows([mk(), mk({ nemisId: bad })], GradeLevel.GRADE_5);
     expect(p.failed).toEqual([{
       originalIndex: 1,
-      error: 'Grade level "GRADE_6" does not match the selected class grade "GRADE_5"',
+      error: 'Fix before importing: nemisId: Invalid NEMIS ID (12 digits, check digit)',
     }]);
+  });
+});
+
+describe('parseWorkbookToRows template example', () => {
+  const header = HEADERS;
+  const line = (first: string, last: string, dob: string) =>
+    [first, last, dob, 'MALE', '2026-09-01', 'GRADE_5', '', 'Jane', 'Doe', 'Mother', '+231770123456', ''];
+  const parse = (...lines: string[][]) => {
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([header, ...lines]), 'Students');
+    return parseWorkbookToRows(toBytes(wb));
+  };
+
+  it('keeps a real John and skips only the exact example row', () => {
+    const rows = parse(line('John', 'Smith', '2011-02-03'), line('John', 'Doe', '2010-05-15'), line('John', 'Doe', '2012-01-01'));
+    expect(rows.map((r) => `${r.firstName} ${r.lastName} ${r.dateOfBirth}`)).toEqual([
+      'John Smith 2011-02-03',
+      'John Doe 2012-01-01',
+    ]);
   });
 });
 

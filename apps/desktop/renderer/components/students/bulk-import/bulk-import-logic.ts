@@ -56,10 +56,10 @@ export function validateRow(row: BulkRow): Record<string, string> {
 }
 
 // ─── Excel template + parsing (SheetJS `xlsx`) — mirrors the web portal's
-// bulk-import wizard. Two real gaps stay dropped here, same as before: no
-// Guardian Email column (no such column on this device's guardian schema)
-// and no login-credential output on the results step (no online account
-// system on an offline device to issue credentials from). ──
+// bulk-import wizard. One real gap stays dropped here, same as before: no
+// Guardian Email column (no such column on this device's guardian schema).
+// The results step shows each student's sign-in line (NEMIS ID or a sync
+// note), never a password. ──
 
 export const HEADERS: string[] = [
   'First Name *', 'Last Name *', 'Date of Birth * (YYYY-MM-DD)',
@@ -90,9 +90,13 @@ export function parseDateCell(value: unknown): string {
   return str;
 }
 
+const EXAMPLE_FIRST_NAME = 'John';
+const EXAMPLE_LAST_NAME = 'Doe';
+const EXAMPLE_DATE_OF_BIRTH = '2010-05-15';
+
 export function downloadTemplate(): void {
   const example = [
-    'John', 'Doe', '2010-05-15', 'MALE', new Date().toISOString().slice(0, 10),
+    EXAMPLE_FIRST_NAME, EXAMPLE_LAST_NAME, EXAMPLE_DATE_OF_BIRTH, 'MALE', new Date().toISOString().slice(0, 10),
     'GRADE_5', '', 'Jane', 'Doe', 'Mother', '+231770123456', 'john.doe@example.com',
   ];
   const studentsSheet = XLSX.utils.aoa_to_sheet([HEADERS, example]);
@@ -143,7 +147,13 @@ export function parseWorkbookToRows(data: Uint8Array): BulkRow[] {
   return raw
     .filter((r) => {
       const firstName = pick(r, 'First Name *', 'First Name', 'firstName');
-      return firstName && firstName !== 'John';
+      if (!firstName) return false;
+      // Skip only the template's example row, not every student named John.
+      const isExample =
+        firstName === EXAMPLE_FIRST_NAME &&
+        pick(r, 'Last Name *', 'Last Name', 'lastName') === EXAMPLE_LAST_NAME &&
+        parseDateCell(r['Date of Birth * (YYYY-MM-DD)'] ?? r['Date of Birth'] ?? r['dateOfBirth'] ?? '') === EXAMPLE_DATE_OF_BIRTH;
+      return !isExample;
     })
     .map((r) => {
       const row: BulkRow = {
@@ -196,7 +206,12 @@ export function partitionRows(
   const claim: IndexedRow[] = [];
   const failed: { originalIndex: number; error: string }[] = [];
   rows.forEach((row, originalIndex) => {
-    if (Object.keys(row.errors).length > 0) return;
+    const errorEntries = Object.entries(row.errors);
+    if (errorEntries.length > 0) {
+      const detail = errorEntries.map(([field, message]) => `${field}: ${message}`).join('; ');
+      failed.push({ originalIndex, error: `Fix before importing: ${detail}` });
+      return;
+    }
     if (row.gradeLevel.toUpperCase() !== String(classGrade).toUpperCase()) {
       failed.push({ originalIndex, error: gradeMismatchMessage(row.gradeLevel, String(classGrade)) });
       return;

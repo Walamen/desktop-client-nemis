@@ -252,6 +252,35 @@ describe('BulkImportPage', () => {
     ).toBeInTheDocument();
   });
 
+  it('an invalid row is reported as failed and Retry keeps failed rows by original index', async () => {
+    const id = generateNemisId();
+    const badId = id.slice(0, 11) + String((Number(id[11]) + 1) % 10);
+    const { createAndEnroll } = stubNemis({
+      createAndEnroll: vi
+        .fn()
+        .mockResolvedValueOnce(studentView('482915736045'))
+        .mockRejectedValueOnce(new Error('[VALIDATION_FAILED] Guardian phone is invalid.')),
+    });
+    const { user } = await renderPage();
+    await upload(user, [sheetRow('Amy', { nemisId: badId }), sheetRow('Bola'), sheetRow('Cece')]);
+    await pickBatch(user);
+    await waitFor(() => expect(importButtons().every((b) => !b.disabled)).toBe(true));
+    await runImport(user);
+
+    expect(createAndEnroll).toHaveBeenCalledTimes(2);
+    expect(
+      within(entryFor('Row 1')).getByText(/Fix before importing: nemisId: Invalid NEMIS ID/),
+    ).toBeInTheDocument();
+    expect(within(entryFor('Row 3')).getByText('Guardian phone is invalid.')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Retry Failed Rows' }));
+    await screen.findByText('Batch placement');
+    const names = Array.from(document.querySelectorAll('input[placeholder="First name"]'))
+      .map((i) => (i as HTMLInputElement).value)
+      .filter((v) => v !== 'Musu');
+    expect(names).toEqual(['Amy', 'Cece']);
+  });
+
   it('offline: no bulk claim; NEMIS-ID rows go to retry with the offline copy; local rows are still created', async () => {
     const { bulkClaim, createAndEnroll } = stubNemis();
     const { user } = await renderPage({ online: false });

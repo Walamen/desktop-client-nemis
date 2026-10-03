@@ -101,6 +101,42 @@ describe('StudentSyncStatusService', () => {
     expect(service.isCreateSynced('s-1')).toEqual({ synced: true });
   });
 
+  function conflictRow(db: Db, entityId: string, operationType: string, status: string) {
+    seq += 1;
+    db.prepare(
+      `INSERT INTO sync_conflicts (id, operationId, entityType, entityId, operationType, reason, status, createdAt)
+       VALUES (?, NULL, 'students', ?, ?, 'rejected', ?, ?)`,
+    ).run(`c-${seq}`, entityId, operationType, status, T);
+  }
+
+  it('is not synced when the server rejected the create (unresolved conflict, queue row completed)', () => {
+    const { db, service } = setup();
+    queueRow(db, 's-1', 'create', 'completed');
+    conflictRow(db, 's-1', 'create', 'unresolved');
+    expect(service.isCreateSynced('s-1')).toEqual({ synced: false });
+  });
+
+  it('is synced once a create conflict is resolved', () => {
+    const { db, service } = setup();
+    queueRow(db, 's-1', 'create', 'completed');
+    conflictRow(db, 's-1', 'create', 'accept_remote');
+    expect(service.isCreateSynced('s-1')).toEqual({ synced: true });
+  });
+
+  it('ignores an unresolved conflict on an update', () => {
+    const { db, service } = setup();
+    queueRow(db, 's-1', 'create', 'completed');
+    conflictRow(db, 's-1', 'update', 'unresolved');
+    expect(service.isCreateSynced('s-1')).toEqual({ synced: true });
+  });
+
+  it('is not synced when a later create is pending after a completed one', () => {
+    const { db, service } = setup();
+    queueRow(db, 's-1', 'create', 'completed');
+    queueRow(db, 's-1', 'create', 'pending');
+    expect(service.isCreateSynced('s-1')).toEqual({ synced: false });
+  });
+
   it('is school-admin only', () => {
     const { service } = setup({ ...admin, role: SystemRole.TEACHER });
     expect(() => service.isCreateSynced('s-1')).toThrow(/school administrator/);
