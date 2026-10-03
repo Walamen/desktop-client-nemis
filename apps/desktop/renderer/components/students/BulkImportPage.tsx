@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState, type ChangeEvent, type DragEv
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Download, Upload, Trash2, Plus, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
-import * as XLSX from 'xlsx';
 import type { GradeLevel as GradeLevelValue } from '@nemis-desktop/types';
 import { useViewModel } from '@/hooks/use-view-model';
 import { useSettingsViewModel, useStudentProfileViewModel, useStudentsListViewModel } from '@/lib/presentation/hooks/school-admin';
@@ -12,21 +11,7 @@ import { Input } from '@nemis-desktop/ui';
 import { formatNemisId } from '@nemis-desktop/shared';
 import { grades, human } from './shared';
 
-interface BulkRow {
-  id: string;
-  firstName: string;
-  lastName: string;
-  dateOfBirth: string;
-  gender: string;
-  admissionDate: string;
-  gradeLevel: string;
-  guardianFirstName: string;
-  guardianLastName: string;
-  guardianRelationship: string;
-  guardianPhone: string;
-  studentEmail: string;
-  errors: Record<string, string>;
-}
+import { makeId, validateRow, downloadTemplate, parseWorkbookToRows, type BulkRow } from './bulk-import/bulk-import-logic';
 
 type Step = 'upload' | 'review' | 'done';
 
@@ -38,9 +23,6 @@ interface BulkImportResult {
   failedRows: { index: number; error: string }[];
 }
 
-const makeId = () => Math.random().toString(36).slice(2, 10);
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const VALID_GRADES = new Set<string>(grades);
 
 const emptyRow = (): BulkRow => ({
   id: makeId(),
@@ -50,6 +32,7 @@ const emptyRow = (): BulkRow => ({
   gender: '',
   admissionDate: new Date().toISOString().slice(0, 10),
   gradeLevel: '',
+  nemisId: '',
   guardianFirstName: '',
   guardianLastName: '',
   guardianRelationship: '',
@@ -57,136 +40,6 @@ const emptyRow = (): BulkRow => ({
   studentEmail: '',
   errors: {},
 });
-
-function validateRow(row: BulkRow): Record<string, string> {
-  const errors: Record<string, string> = {};
-  if (!row.firstName.trim()) errors.firstName = 'Required';
-  if (!row.lastName.trim()) errors.lastName = 'Required';
-
-  if (!row.dateOfBirth.trim()) errors.dateOfBirth = 'Required';
-  else if (Number.isNaN(new Date(row.dateOfBirth).getTime())) errors.dateOfBirth = 'Invalid date (YYYY-MM-DD)';
-
-  if (!row.gender.trim()) errors.gender = 'Required';
-  else if (!['MALE', 'FEMALE'].includes(row.gender.toUpperCase())) errors.gender = 'Must be MALE or FEMALE';
-
-  if (!row.admissionDate.trim()) errors.admissionDate = 'Required';
-  else if (Number.isNaN(new Date(row.admissionDate).getTime())) errors.admissionDate = 'Invalid date (YYYY-MM-DD)';
-
-  if (!row.gradeLevel.trim()) errors.gradeLevel = 'Required';
-  else if (!VALID_GRADES.has(row.gradeLevel.toUpperCase())) errors.gradeLevel = 'Invalid grade level';
-
-  if (!row.guardianFirstName.trim()) errors.guardianFirstName = 'Required';
-  if (!row.guardianLastName.trim()) errors.guardianLastName = 'Required';
-  if (!row.guardianRelationship.trim()) errors.guardianRelationship = 'Required';
-  if (!row.guardianPhone.trim()) errors.guardianPhone = 'Required';
-
-  if (row.studentEmail.trim() && !EMAIL_RE.test(row.studentEmail.trim())) errors.studentEmail = 'Invalid email';
-
-  return errors;
-}
-
-// ─── Excel template + parsing (SheetJS `xlsx`) — mirrors the web portal's
-// bulk-import wizard. Two real gaps stay dropped here, same as before: no
-// Guardian Email column (no such column on this device's guardian schema)
-// and no login-credential output on the results step (no online account
-// system on an offline device to issue credentials from). ──
-
-const HEADERS: string[] = [
-  'First Name *', 'Last Name *', 'Date of Birth * (YYYY-MM-DD)',
-  'Gender * (MALE/FEMALE)', 'Admission Date * (YYYY-MM-DD)', 'Grade Level * (KG/K1/K2/GRADE_1...GRADE_12)',
-  'Guardian First Name *', 'Guardian Last Name *', 'Guardian Relationship *', 'Guardian Phone *', 'Student Email',
-];
-
-/** Normalizes an Excel date cell (real `Date` when `cellDates: true`, or a
- * plain string typed by hand) down to `YYYY-MM-DD`. */
-function parseDateCell(value: unknown): string {
-  if (!value) return '';
-  if (value instanceof Date) {
-    const y = value.getUTCFullYear();
-    const m = String(value.getUTCMonth() + 1).padStart(2, '0');
-    const d = String(value.getUTCDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
-  }
-  const str = String(value).trim();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
-  const parsed = new Date(str);
-  if (!Number.isNaN(parsed.getTime())) {
-    const y = parsed.getUTCFullYear();
-    const m = String(parsed.getUTCMonth() + 1).padStart(2, '0');
-    const d = String(parsed.getUTCDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
-  }
-  return str;
-}
-
-function downloadTemplate(): void {
-  const example = [
-    'John', 'Doe', '2010-05-15', 'MALE', new Date().toISOString().slice(0, 10),
-    'GRADE_5', 'Jane', 'Doe', 'Mother', '+231770123456', 'john.doe@example.com',
-  ];
-  const studentsSheet = XLSX.utils.aoa_to_sheet([HEADERS, example]);
-  studentsSheet['!cols'] = HEADERS.map(() => ({ wch: 30 }));
-
-  // Reference sheet values come straight from the real gender/grade options
-  // used elsewhere on this page, so it can't drift out of sync with them.
-  const genderValues = ['MALE', 'FEMALE'];
-  const refRows: string[][] = [['Valid Genders', 'Valid Grade Levels']];
-  for (let i = 0; i < Math.max(genderValues.length, grades.length); i += 1) {
-    refRows.push([genderValues[i] ?? '', grades[i] ?? '']);
-  }
-  const refSheet = XLSX.utils.aoa_to_sheet(refRows);
-  refSheet['!cols'] = [{ wch: 15 }, { wch: 15 }];
-
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, studentsSheet, 'Students');
-  XLSX.utils.book_append_sheet(wb, refSheet, 'Reference');
-  XLSX.writeFile(wb, 'student-bulk-import-template.xlsx');
-}
-
-function pick(record: Record<string, unknown>, ...keys: string[]): string {
-  for (const key of keys) {
-    const value = record[key];
-    if (value !== undefined && value !== '') return String(value).trim();
-  }
-  return '';
-}
-
-/** Reads the first sheet of an uploaded workbook. `XLSX.read` with
- * `type: 'array'` auto-detects the underlying format, so this also accepts
- * plain .csv files uploaded through the same picker — not just .xlsx. */
-function parseWorkbookToRows(data: Uint8Array): BulkRow[] {
-  const wb = XLSX.read(data, { type: 'array', cellDates: true });
-  const firstSheetName = wb.SheetNames[0];
-  if (!firstSheetName) return [];
-  const ws = wb.Sheets[firstSheetName];
-  if (!ws) return [];
-  const raw = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: '' });
-
-  return raw
-    .filter((r) => {
-      const firstName = pick(r, 'First Name *', 'First Name', 'firstName');
-      return firstName && firstName !== 'John';
-    })
-    .map((r) => {
-      const row: BulkRow = {
-        id: makeId(),
-        firstName: pick(r, 'First Name *', 'First Name', 'firstName'),
-        lastName: pick(r, 'Last Name *', 'Last Name', 'lastName'),
-        dateOfBirth: parseDateCell(r['Date of Birth * (YYYY-MM-DD)'] ?? r['Date of Birth'] ?? r['dateOfBirth'] ?? ''),
-        gender: pick(r, 'Gender * (MALE/FEMALE)', 'Gender', 'gender').toUpperCase(),
-        admissionDate: parseDateCell(r['Admission Date * (YYYY-MM-DD)'] ?? r['Admission Date'] ?? r['admissionDate'] ?? ''),
-        gradeLevel: pick(r, 'Grade Level * (KG/K1/K2/GRADE_1...GRADE_12)', 'Grade Level', 'gradeLevel').toUpperCase(),
-        guardianFirstName: pick(r, 'Guardian First Name *', 'Guardian First Name', 'guardianFirstName'),
-        guardianLastName: pick(r, 'Guardian Last Name *', 'Guardian Last Name', 'guardianLastName'),
-        guardianRelationship: pick(r, 'Guardian Relationship *', 'Guardian Relationship', 'guardianRelationship'),
-        guardianPhone: pick(r, 'Guardian Phone *', 'Guardian Phone', 'guardianPhone'),
-        studentEmail: pick(r, 'Student Email', 'studentEmail'),
-        errors: {},
-      };
-      row.errors = validateRow(row);
-      return row;
-    });
-}
 
 const inputClass = (hasError: boolean) =>
   `w-full px-2 py-1.5 text-sm rounded border ${hasError ? 'border-red-400 bg-red-50' : 'border-gray-300'} focus:outline-none focus:ring-1 focus:ring-sky-500/40`;
