@@ -18,7 +18,14 @@ import {
 import { genders, grades, human } from '../shared';
 import { ClaimStudentPanel } from './ClaimStudentPanel';
 import { ClassTermPicker, isClassTermComplete, type ClassTermValue } from './ClassTermPicker';
-import { GuardianStep, ReviewStep, type GuardianDraft } from './CreateStudentSteps';
+import {
+  GuardianStep,
+  MAX_GUARDIANS,
+  ReviewStep,
+  isGuardianComplete,
+  isGuardianStarted,
+  type GuardianDraft,
+} from './CreateStudentSteps';
 import { FindStudentStep, type FindOutcome } from './FindStudentStep';
 import { RequestReleasePanel } from './RequestReleasePanel';
 import { branchForLookup, type WizardBranch } from './wizard-logic';
@@ -83,10 +90,11 @@ export function AddStudentWizard() {
     setGuardians((prev) => prev.map((g, i) => (i === index ? { ...g, [field]: value } : g)));
   };
   const addGuardian = () =>
-    setGuardians((prev) => [
-      ...prev,
-      { firstName: '', lastName: '', relationship: '', phoneNumber: '', email: '', isPrimary: false },
-    ]);
+    setGuardians((prev) =>
+      prev.length >= MAX_GUARDIANS
+        ? prev
+        : [...prev, { firstName: '', lastName: '', relationship: '', phoneNumber: '', email: '', isPrimary: false }],
+    );
   const removeGuardian = (index: number) => setGuardians((prev) => prev.filter((_, i) => i !== index));
   // A class belongs to one grade: a new grade invalidates the chosen class
   // (the term does not depend on grade, so it is kept).
@@ -180,6 +188,11 @@ export function AddStudentWizard() {
     return true;
   };
   const validateStep3 = () => {
+    // A half-filled guardian would otherwise be dropped silently on save.
+    if (guardians.some((g) => isGuardianStarted(g) && !isGuardianComplete(g))) {
+      setStepError("Complete or remove each guardian you've started.");
+      return false;
+    }
     // Mirrors CreateAndEnrollStudentUseCase: the server creates each
     // guardian's parent login before the student's own, so a shared email
     // would get the student rejected on sync.

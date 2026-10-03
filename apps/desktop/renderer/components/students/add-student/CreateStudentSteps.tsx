@@ -12,6 +12,19 @@ export interface GuardianDraft {
   isPrimary: boolean;
 }
 
+/** Most guardians one student can be given in the wizard. */
+export const MAX_GUARDIANS = 10;
+
+/** Whether the admin has typed anything into this draft. */
+export function isGuardianStarted(g: GuardianDraft): boolean {
+  return [g.firstName, g.lastName, g.relationship, g.phoneNumber, g.email].some((v) => v.trim() !== '');
+}
+
+/** A started draft needs these before it can be saved. */
+export function isGuardianComplete(g: GuardianDraft): boolean {
+  return [g.firstName, g.lastName, g.relationship, g.phoneNumber].every((v) => v.trim() !== '');
+}
+
 export function GuardianStep({
   guardians,
   updateGuardian,
@@ -76,7 +89,13 @@ export function GuardianStep({
           </label>
         </div>
       ))}
-      <Button type="button" variant="secondary" fullWidth onClick={addGuardian}>
+      <Button
+        type="button"
+        variant="secondary"
+        fullWidth
+        disabled={guardians.length >= MAX_GUARDIANS}
+        onClick={addGuardian}
+      >
         Add another guardian
       </Button>
     </div>

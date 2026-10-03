@@ -554,4 +554,62 @@ describe('AddStudentWizard', () => {
     await user.click(screen.getByRole('button', { name: 'Next' }));
     expect(await screen.findByRole('heading', { name: 'Grade & Class', level: 2 })).toBeInTheDocument();
   });
+
+  /** Checkbox path through Student Information to Guardian Information. */
+  async function toGuardianStep(user: User) {
+    await user.click(screen.getByRole('checkbox', { name: 'This child has no NEMIS ID (first-time enrollee)' }));
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await screen.findByRole('heading', { name: 'Student Information', level: 2 });
+    await user.type(textboxNear(/^first name/i), 'Grace');
+    await user.type(textboxNear(/^last name/i), 'Toe');
+    await user.type(textboxNear(/^date of birth/i), '2015-01-01');
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    await screen.findByRole('heading', { name: 'Guardian Information', level: 2 });
+  }
+
+  it('a started guardian must be completed (or removed) before leaving Guardian Information', async () => {
+    stubNemis();
+    const { user } = await renderWizard();
+    await toGuardianStep(user);
+
+    // Only an email typed: still a started draft.
+    await user.type(textboxNear(/guardian email/i), 'john@example.com');
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    expect(await screen.findByText("Complete or remove each guardian you've started.")).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Guardian Information', level: 2 })).toBeInTheDocument();
+
+    // Name and phone but no relationship: still incomplete.
+    await user.type(textboxNear(/guardian first name/i), 'John');
+    await user.type(textboxNear(/guardian last name/i), 'Toe');
+    await user.type(textboxNear(/guardian phone/i), '0770000000');
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    expect(screen.getByText("Complete or remove each guardian you've started.")).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Guardian Information', level: 2 })).toBeInTheDocument();
+
+    await user.type(textboxNear(/relationship/i), 'Father');
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    expect(await screen.findByRole('heading', { name: 'Grade & Class', level: 2 })).toBeInTheDocument();
+  });
+
+  it('a fully blank guardian draft is allowed', async () => {
+    stubNemis();
+    const { user } = await renderWizard();
+    await toGuardianStep(user);
+
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    expect(await screen.findByRole('heading', { name: 'Grade & Class', level: 2 })).toBeInTheDocument();
+  });
+
+  it('caps "Add another guardian" at 10', async () => {
+    stubNemis();
+    const { user } = await renderWizard();
+    await toGuardianStep(user);
+
+    const add = screen.getByRole('button', { name: 'Add another guardian' });
+    for (let i = 0; i < 9; i += 1) await user.click(add);
+    expect(screen.getByRole('heading', { name: 'Guardian 10', level: 3 })).toBeInTheDocument();
+    expect(add).toBeDisabled();
+    await user.click(add);
+    expect(screen.queryByRole('heading', { name: 'Guardian 11', level: 3 })).toBeNull();
+  });
 });
