@@ -395,4 +395,4 @@ Handler (in `registerTransferHandlers`; widen `TransferGateway` to include `'sea
 
 - Desktop (binary set aside, node build in place): `pnpm vitest run && pnpm typecheck && pnpm lint` — only the known failures; lint shows the 6 pre-existing errors. Restore the Electron binary afterwards.
 - Server (`Nemis/apps/Server`): `npx tsc --noEmit && npx jest` — only the known failure(s).
-- Deploy coupling: the desktop tolerates a server without the display fields (Task 2), so the two can deploy in either order. Record both branch heads for the merge decision.
+- Deploy coupling: the desktop tolerates a server without the display fields (Task 2), but the new `GET /student-transfers/destination-schools` endpoint (added by the final-review ruling) exists only on the new server — against an old server, New transfer's school search fails. **Deploy the server first**, then ship the desktop. Record both branch heads for the merge decision.
