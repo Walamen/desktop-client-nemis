@@ -38,8 +38,10 @@ export function TransfersInboxPage() {
   const profile = useViewModel(settings.store, (s) => s.profile);
   const connectivity = useConnectivityStore();
   const online = useViewModel(connectivity.store, (s) => s.isOnline);
+  const lastSyncAt = useViewModel(connectivity.store, (s) => s.lastSyncAt);
 
   const [rows, setRows] = useState<LocalTransfer[] | null>(null);
+  const [loaded, setLoaded] = useState<{ count: number; total: number }>({ count: 0, total: 0 });
   const [loadError, setLoadError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [tab, setTab] = useState<Tab>('toUs');
@@ -51,6 +53,12 @@ export function TransfersInboxPage() {
     void settings.loadCurrentSchool();
   }, [settings]);
 
+  // The sync note promises the change appears after a sync; once one has
+  // completed (and useRevalidateOnSync has reloaded the rows) it is stale.
+  useEffect(() => {
+    setNotice(null);
+  }, [lastSyncAt]);
+
   useRevalidateOnSync(() => {
     let cancelled = false;
     sharedBridge
@@ -58,6 +66,7 @@ export function TransfersInboxPage() {
       .then((result) => {
         if (cancelled) return;
         setRows(result.items.map(toLocalTransfer).filter((r): r is LocalTransfer => r !== null));
+        setLoaded({ count: result.items.length, total: result.total });
         setLoadError(false);
       })
       .catch(() => {
@@ -69,6 +78,7 @@ export function TransfersInboxPage() {
   }, [reloadKey]);
 
   const us = profile.status === 'success' || profile.status === 'refreshing' ? profile.data.id : '';
+  const profileFailed = profile.status === 'error' || profile.status === 'empty';
   const now = Date.now();
 
   // Lapse depends on the clock, so the split is recomputed on every render.
@@ -78,7 +88,8 @@ export function TransfersInboxPage() {
   const ours = split.ourRequests.filter((r) => r.status === 'PENDING').sort(byCreated);
   const history = [...split.requestsToUs, ...split.ourRequests]
     .filter((r) => r.status !== 'PENDING')
-    .sort(newestFirst((r) => r.reviewedAt ?? r.createdAt));
+    // updatedAt is the last change; a cancel sets no reviewedAt, only this.
+    .sort(newestFirst((r) => r.updatedAt ?? r.reviewedAt ?? r.createdAt));
   const pendingCount = countPendingDecisions(split.requestsToUs, now);
   const oursIds = new Set(split.ourRequests.map((r) => r.id));
 
@@ -101,7 +112,7 @@ export function TransfersInboxPage() {
     <div className="space-y-5 p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Inter-school transfers</h1>
+          <h1 className="text-2xl font-semibold">Student Transfers</h1>
           <p className="text-sm text-slate-500">
             Transfer requests involving this school. Acting on a request needs a connection.
           </p>
@@ -136,7 +147,14 @@ export function TransfersInboxPage() {
           </button>
         ))}
       </div>
-      {loadError ? (
+      {profileFailed ? (
+        <div className="text-sm text-red-700">
+          Couldn&apos;t load your school profile.{' '}
+          <Button type="button" variant="secondary" onClick={() => void settings.loadCurrentSchool()}>
+            Try again
+          </Button>
+        </div>
+      ) : loadError ? (
         <div className="text-sm text-red-700">
           Couldn&apos;t load transfers.{' '}
           <Button type="button" variant="secondary" onClick={() => setReloadKey((k) => k + 1)}>
@@ -163,6 +181,11 @@ export function TransfersInboxPage() {
             />
           ))}
         </ul>
+      )}
+      {rows !== null && us && loaded.total > loaded.count && (
+        <p className="text-xs text-slate-500">
+          Showing the {loaded.count} most recent of {loaded.total} transfers.
+        </p>
       )}
     </div>
   );

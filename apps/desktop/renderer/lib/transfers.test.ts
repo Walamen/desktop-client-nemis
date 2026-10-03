@@ -20,7 +20,7 @@ function row(over: Partial<LocalTransfer>): LocalTransfer {
     id: 'r', studentId: 's', fromInstitutionId: 'other', toInstitutionId: US,
     status: 'PENDING', initiatedBy: 'ORIGIN_SCHOOL', lapsesAt: null,
     classId: null, termId: null, toGradeLevel: null, reason: null, reviewNotes: null,
-    requestedDate: null, reviewedAt: null, createdAt: null,
+    requestedDate: null, reviewedAt: null, createdAt: null, updatedAt: null,
     studentName: null, studentNemisId: null, fromInstitutionName: null, toInstitutionName: null,
     ...over,
   };
@@ -34,6 +34,12 @@ describe('toLocalTransfer', () => {
   it('parses a minimal record with defaults', () => {
     const t = toLocalTransfer({ id: 'a', studentId: 's', fromInstitutionId: 'f', toInstitutionId: 't', status: 'PENDING' });
     expect(t).toMatchObject({ id: 'a', studentId: 's', fromInstitutionId: 'f', toInstitutionId: 't', status: 'PENDING', initiatedBy: 'ORIGIN_SCHOOL', lapsesAt: null, classId: null, termId: null, studentName: null });
+  });
+  it('carries updatedAt', () => {
+    const t = toLocalTransfer({
+      id: 'a', studentId: 's', fromInstitutionId: 'f', toInstitutionId: 't', updatedAt: '2026-09-15T10:00:00.000Z',
+    });
+    expect(t?.updatedAt).toBe('2026-09-15T10:00:00.000Z');
   });
   it('rejects a record missing ids', () => {
     expect(toLocalTransfer({ id: 'a', studentId: 's', fromInstitutionId: 'f' })).toBeNull();

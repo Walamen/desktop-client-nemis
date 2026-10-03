@@ -49,6 +49,10 @@ export function TransferRow({
   const decided = day(row.reviewedAt);
   const lapses = row.status === 'PENDING' ? day(row.lapsesAt) : null;
   const noNemisId = !row.studentNemisId;
+  // Another school's pull against us that has lapsed: no action is left for
+  // us, so say why the row has no buttons.
+  const lapsedAgainstUs =
+    row.status === 'PENDING' && lapsed && row.initiatedBy === 'RECEIVING_SCHOOL' && row.fromInstitutionId === us;
   const form = { row, online, onClose: () => onOpen(null), onDone };
 
   return (
@@ -79,6 +83,11 @@ export function TransferRow({
         </div>
         <TransferStatusChip status={row.status} lapsed={lapsed} ours={ours} />
       </div>
+      {lapsedAgainstUs && (
+        <p className="mt-3 text-xs text-slate-600">
+          The 14-day window has passed — {otherSchool} can now complete this transfer.
+        </p>
+      )}
       {actions.length > 0 && openAction === null && (
         <div className="mt-3 space-y-2">
           <div className="flex flex-wrap gap-2">

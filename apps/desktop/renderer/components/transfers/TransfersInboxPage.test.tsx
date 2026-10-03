@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PresentationProvider } from '@/lib/presentation/presentation-provider';
 import { createRendererPresentation } from '@/lib/presentation/create-renderer-presentation';
@@ -75,6 +75,8 @@ const decidedNew = base({
   createdAt: '2026-08-15T10:00:00.000Z',
 });
 
+const SYNC_NOTE = 'Saved — this will appear once this device syncs.';
+
 const ALL_ROWS = [pushToUs, pushPlaced, pullFromUs, ourLapsed, ourPush, decidedOld, decidedNew];
 
 type Stubs = {
@@ -83,11 +85,14 @@ type Stubs = {
   cancel?: (id: string) => Promise<unknown>;
   create?: (req: unknown) => Promise<unknown>;
   claim?: (req: unknown) => Promise<unknown>;
+  total?: number;
+  summary?: () => Promise<unknown>;
 };
 
 function stubNemis(stubs: Stubs = {}) {
   const rows = stubs.rows ?? ALL_ROWS;
-  const list = vi.fn(async () => ({ items: rows, total: rows.length }));
+  const list = vi.fn(async () => ({ items: rows, total: stubs.total ?? rows.length }));
+  const getSummary = vi.fn(stubs.summary ?? (async () => school));
   const review = vi.fn(stubs.review ?? (async () => ({ data: { id: 'x' }, refreshed: true })));
   const cancel = vi.fn(stubs.cancel ?? (async () => ({ data: { id: 'x' }, refreshed: true })));
   const create = vi.fn(stubs.create ?? (async () => ({ data: { id: 'new' }, refreshed: true })));
@@ -101,7 +106,7 @@ function stubNemis(stubs: Stubs = {}) {
     total: 1, limit: 20, offset: 0,
   }));
   (window as unknown as { nemis: unknown }).nemis = {
-    school: { getSummary: vi.fn(async () => school) },
+    school: { getSummary },
     academicYear: { getCurrent: vi.fn(async () => null), list: vi.fn(async () => [currentYear]) },
     term: { getCurrent: vi.fn(async () => null), list: vi.fn(async () => [term1]) },
     classes: { list: vi.fn(async () => ({ items: [jss1a, jss2a], total: 2 })) },
@@ -110,7 +115,7 @@ function stubNemis(stubs: Stubs = {}) {
     registry: { claim },
     student: { list: studentList },
   };
-  return { list, review, cancel, create, searchSchools, claim, studentList };
+  return { list, review, cancel, create, searchSchools, claim, studentList, getSummary };
 }
 
 afterEach(() => {
@@ -236,6 +241,11 @@ describe('TransfersInboxPage', () => {
     await user.click(within(rowOf('Bendu Sirleaf')).getByRole('button', { name: 'Confirm approval' }));
     await waitFor(() => expect(review).toHaveBeenCalledTimes(1));
     expect(review.mock.calls[0]?.[0]).toStrictEqual({ id: 'tr-placed', status: 'APPROVED' });
+    // refreshed: true — the local copy is already current, so no sync note.
+    await waitFor(() =>
+      expect(within(rowOf('Bendu Sirleaf')).queryByRole('button', { name: 'Confirm approval' })).toBeNull(),
+    );
+    expect(screen.queryByText(SYNC_NOTE)).toBeNull();
   });
 
   it('Reject sends no class or term and is never gated on placement', async () => {
@@ -330,7 +340,22 @@ describe('TransfersInboxPage', () => {
     const bendu = await findRow('Bendu Sirleaf');
     await user.click(within(bendu).getByRole('button', { name: 'Approve' }));
     await user.click(within(rowOf('Bendu Sirleaf')).getByRole('button', { name: 'Confirm approval' }));
-    expect(await screen.findByText('Saved — this will appear once this device syncs.')).toBeInTheDocument();
+    expect(await screen.findByText(SYNC_NOTE)).toBeInTheDocument();
+  });
+
+  it('the sync note clears when the next sync completes', async () => {
+    const { list } = stubNemis({ review: async () => ({ data: { id: 'tr-placed' }, refreshed: false }) });
+    const { user, layer } = await renderPage();
+
+    const bendu = await findRow('Bendu Sirleaf');
+    await user.click(within(bendu).getByRole('button', { name: 'Approve' }));
+    await user.click(within(rowOf('Bendu Sirleaf')).getByRole('button', { name: 'Confirm approval' }));
+    expect(await screen.findByText(SYNC_NOTE)).toBeInTheDocument();
+
+    const loadsBefore = list.mock.calls.length;
+    act(() => layer.stores.connectivity.markSyncCompleted('2026-10-03T12:00:00.000Z'));
+    await waitFor(() => expect(list.mock.calls.length).toBeGreaterThan(loadsBefore));
+    await waitFor(() => expect(screen.queryByText(SYNC_NOTE)).toBeNull());
   });
 
   it('offline: rows render, every action and New transfer are disabled, and the search is never called', async () => {
@@ -397,5 +422,109 @@ describe('TransfersInboxPage', () => {
     await waitFor(() =>
       expect(create).toHaveBeenCalledWith({ studentId: 's5', toInstitutionId: 'inst-3', reason: 'Family relocating' }),
     );
+  });
+
+  it('is headed Student Transfers', async () => {
+    stubNemis();
+    await renderPage();
+    expect(screen.getByRole('heading', { level: 1, name: 'Student Transfers' })).toBeInTheDocument();
+  });
+
+  it('says when the list is truncated', async () => {
+    stubNemis({ total: 300 });
+    await renderPage();
+    await findRow('Ama Kollie');
+    expect(screen.getByText('Showing the 7 most recent of 300 transfers.')).toBeInTheDocument();
+  });
+
+  it('shows no truncation note when every transfer is loaded', async () => {
+    stubNemis();
+    await renderPage();
+    await findRow('Ama Kollie');
+    expect(screen.queryByText(/most recent of/)).toBeNull();
+  });
+
+  it('Approve on a push with no grade asks for one, filters classes by it and sends class and term', async () => {
+    const { review } = stubNemis({ rows: [{ ...pushToUs, toGradeLevel: null }] });
+    const { user } = await renderPage();
+
+    const ama = await findRow('Ama Kollie');
+    await user.click(within(ama).getByRole('button', { name: 'Approve' }));
+    const row = rowOf('Ama Kollie');
+    const grade = selectNear(/^grade/i, row);
+    expect(grade.value).toBe('');
+    const confirm = within(row).getByRole('button', { name: 'Confirm approval' });
+    expect(confirm).toBeDisabled();
+
+    await user.selectOptions(grade, 'GRADE_8');
+    await waitFor(() => expect(selectNear(/^class/i, row).querySelector('option[value="c8"]')).not.toBeNull());
+    // The class picker only offers the chosen grade's classes.
+    expect(selectNear(/^class/i, row).querySelector('option[value="c1"]')).toBeNull();
+    await pickClassAndTerm(user, 'c8');
+    expect(confirm).toBeEnabled();
+    await user.click(confirm);
+
+    await waitFor(() => expect(review).toHaveBeenCalledTimes(1));
+    expect(review.mock.calls[0]?.[0]).toStrictEqual({ id: 'tr-push', status: 'APPROVED', classId: 'c8', termId: 't1' });
+  });
+
+  it('a lapsed pull against us explains that the other school can now complete it', async () => {
+    stubNemis({
+      rows: [
+        { ...pullFromUs, lapsesAt: PAST },
+        { ...pullFromUs, id: 'tr-pull-noname', studentId: 's9', studentName: 'Hawa Noname', lapsesAt: PAST, toInstitutionName: null },
+      ],
+    });
+    await renderPage();
+
+    const comfort = await findRow('Comfort Doe');
+    expect(buttonsIn(comfort)).toEqual([]);
+    expect(
+      within(comfort).getByText('The 14-day window has passed — Third School can now complete this transfer.'),
+    ).toBeInTheDocument();
+    expect(
+      within(rowOf('Hawa Noname')).getByText('The 14-day window has passed — inst-3 can now complete this transfer.'),
+    ).toBeInTheDocument();
+  });
+
+  it('History orders by last change, so a cancelled request (never reviewed) sorts by when it was cancelled', async () => {
+    const cancelled = base({
+      id: 'tr-cancelled', studentId: 's8', fromInstitutionId: US, toInstitutionId: 'inst-3', status: 'CANCELLED',
+      reviewedAt: null, studentName: 'Hawa Cancelled', studentNemisId: null,
+      createdAt: '2026-06-01T10:00:00.000Z', updatedAt: '2026-09-15T10:00:00.000Z',
+    });
+    stubNemis({ rows: [decidedOld, decidedNew, cancelled] });
+    const { user } = await renderPage();
+
+    await user.click(screen.getByRole('tab', { name: 'History' }));
+    await findRow('Hawa Cancelled');
+    const items = screen.getAllByRole('listitem').map((li) => li.getAttribute('aria-label'));
+    expect(items).toEqual(['Transfer of Hawa Cancelled', 'Transfer of Gbessay Newer', 'Transfer of Fatu Older']);
+  });
+
+  it('a school profile that fails to load offers a retry instead of loading forever', async () => {
+    let fail = true;
+    const { getSummary } = stubNemis({
+      summary: async () => {
+        if (fail) throw new Error('[INTERNAL] profile read failed');
+        return school;
+      },
+    });
+    const { user } = await renderPage();
+
+    expect(await screen.findByText(/Couldn.t load your school profile\./)).toBeInTheDocument();
+    expect(screen.queryByText('Loading…')).toBeNull();
+    fail = false;
+    const callsBefore = getSummary.mock.calls.length;
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(getSummary.mock.calls.length).toBeGreaterThan(callsBefore));
+    expect(await findRow('Ama Kollie')).toBeInTheDocument();
+  });
+
+  it('a missing school profile (empty) also offers the retry', async () => {
+    stubNemis({ summary: async () => null });
+    await renderPage();
+    expect(await screen.findByText(/Couldn.t load your school profile\./)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
   });
 });

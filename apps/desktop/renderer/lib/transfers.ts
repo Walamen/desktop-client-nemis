@@ -18,6 +18,8 @@ export interface LocalTransfer {
   requestedDate: string | null;
   reviewedAt: string | null;
   createdAt: string | null;
+  /** Last change on the server (a cancel sets no reviewedAt, only this). */
+  updatedAt: string | null;
   studentName: string | null;
   studentNemisId: string | null;
   fromInstitutionName: string | null;
@@ -50,6 +52,7 @@ export function toLocalTransfer(record: SchoolAdminRecord): LocalTransfer | null
     requestedDate: str(record.requestedDate),
     reviewedAt: str(record.reviewedAt),
     createdAt: str(record.createdAt),
+    updatedAt: str(record.updatedAt),
     studentName: str(record.studentName),
     studentNemisId: str(record.studentNemisId),
     fromInstitutionName: str(record.fromInstitutionName),
