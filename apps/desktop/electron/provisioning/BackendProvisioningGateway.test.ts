@@ -344,6 +344,26 @@ describe('BackendProvisioningGateway', () => {
       expect(url).toEqual(new URL('https://nemis.example/student-transfers/t%201'));
       expect(init.method).toBe('DELETE');
     });
+
+    it('searchSchools GETs approved, active institutions and keeps only id/name/code', async () => {
+      const fetchMock = vi.fn(async () => response([
+        { id: 'i1', name: 'Central High', code: 'CH', countyId: 'should-not-leak' },
+        { id: 7, name: 'bad row' },
+      ]));
+      vi.stubGlobal('fetch', fetchMock);
+      expect(await buildGateway().searchSchools('cent')).toEqual([{ id: 'i1', name: 'Central High', code: 'CH' }]);
+      const [url, init] = fetchMock.mock.calls[0] as unknown as [URL, RequestInit];
+      expect(url.pathname).toBe('/institutions');
+      expect(url.searchParams.get('search')).toBe('cent');
+      expect(url.searchParams.get('approvalStatus')).toBe('APPROVED');
+      expect(url.searchParams.get('isActive')).toBe('true');
+      expect(init.method ?? 'GET').toBe('GET');
+    });
+
+    it('searchSchools accepts a paginated { data: [...] } envelope too', async () => {
+      vi.stubGlobal('fetch', vi.fn(async () => response({ data: [{ id: 'i1', name: 'Central High', code: 'CH' }], meta: {} })));
+      expect(await buildGateway().searchSchools('cent')).toEqual([{ id: 'i1', name: 'Central High', code: 'CH' }]);
+    });
   });
 });
 

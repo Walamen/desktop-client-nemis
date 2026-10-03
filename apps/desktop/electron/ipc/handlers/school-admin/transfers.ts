@@ -6,6 +6,7 @@ import {
 import type { BackendProvisioningGateway } from '@app/provisioning/BackendProvisioningGateway';
 import type { IpcHandle } from '@app/ipc/registrar';
 import {
+  assertSchoolSearchArgs,
   assertSingleIdArg,
   assertTransferCreateArgs,
   assertTransferReviewArgs,
@@ -14,7 +15,7 @@ import { runOnline } from './online';
 
 export type TransferGateway = Pick<
   BackendProvisioningGateway,
-  'createTransfer' | 'reviewTransfer' | 'cancelTransfer'
+  'createTransfer' | 'reviewTransfer' | 'cancelTransfer' | 'searchSchools'
 >;
 
 /** Transfers are pull-only through sync (spec §5.1); every change goes
@@ -32,5 +33,9 @@ export function registerTransferHandlers(
   );
   handle(IpcChannels.TRANSFER_CANCEL, assertSingleIdArg, (id: string) =>
     runOnline(() => gateway.cancelTransfer(id), refresh),
+  );
+  // Read-only lookup: no refresh, nothing changed.
+  handle(IpcChannels.TRANSFER_SEARCH_SCHOOLS, assertSchoolSearchArgs, (query: string) =>
+    gateway.searchSchools(query.trim()),
   );
 }

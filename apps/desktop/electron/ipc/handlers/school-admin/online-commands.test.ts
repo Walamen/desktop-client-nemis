@@ -34,8 +34,25 @@ function transferGateway() {
     createTransfer: vi.fn(async () => ({ id: 'transfer-2' })),
     reviewTransfer: vi.fn(async () => ({ id: 'transfer-3' })),
     cancelTransfer: vi.fn(async (id: string) => ({ id })),
+    searchSchools: vi.fn(async () => [{ id: 'i1', name: 'Central High', code: 'CH' }]),
   };
 }
+
+describe('transfer school search', () => {
+  it('search-schools validates the query (2..100 chars) and does not refresh', async () => {
+    const { calls, handle } = capture();
+    const gateway = transferGateway();
+    const refresh = vi.fn(async () => true);
+    registerTransferHandlers(handle, gateway, refresh);
+    const search = calls.get('transfer:search-schools')!;
+    expect(() => search.validate(['ce'])).not.toThrow();
+    expect(() => search.validate(['c'])).toThrow();
+    expect(() => search.validate(['x'.repeat(101)])).toThrow();
+    expect(() => search.validate([5])).toThrow();
+    expect(await search.handler('cent')).toEqual([{ id: 'i1', name: 'Central High', code: 'CH' }]);
+    expect(refresh).not.toHaveBeenCalled();
+  });
+});
 
 describe('registry IPC handlers', () => {
   it('lookup validates, normalises the NEMIS ID, and does NOT refresh', async () => {

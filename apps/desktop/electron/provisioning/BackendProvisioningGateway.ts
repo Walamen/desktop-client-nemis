@@ -16,6 +16,7 @@ import {
   type RegistryReleaseRequest,
   type RegistryReleaseResult,
   type RemoteRecordRef,
+  type SchoolSearchResult,
   type TransferCreateRequest,
   type TransferReviewRequest,
   type DeviceIdentity,
@@ -208,6 +209,18 @@ export class BackendProvisioningGateway {
     return { id };
   }
 
+  /** Destination-school search for "New transfer" — the desktop only stores
+   * its own institution. Same query portal-web makes. Read-only. */
+  async searchSchools(query: string): Promise<SchoolSearchResult[]> {
+    const params = new URLSearchParams({ search: query, approvalStatus: 'APPROVED', isActive: 'true' });
+    return this.authorized(
+      `/institutions?${params.toString()}`,
+      { method: 'GET' },
+      toSchoolResults,
+      ONLINE_COMMAND,
+    );
+  }
+
   private async authorized<T>(
     path: string,
     init: RequestInit,
@@ -285,6 +298,17 @@ async function readRemoteMessage(response: Response): Promise<string | undefined
     // Non-JSON body (proxy error page, empty body).
   }
   return undefined;
+}
+
+function toSchoolResults(value: unknown): SchoolSearchResult[] {
+  const list = Array.isArray(value) ? value : asRecord(value).data;
+  if (!Array.isArray(list)) return [];
+  return list.flatMap((item) => {
+    const row = asRecord(item);
+    return typeof row.id === 'string' && typeof row.name === 'string'
+      ? [{ id: row.id, name: row.name, code: typeof row.code === 'string' ? row.code : '' }]
+      : [];
+  });
 }
 
 function requireId(value: unknown): string {

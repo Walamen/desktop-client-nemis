@@ -1,6 +1,7 @@
 import type {
   OnlineCommandResult,
   RemoteRecordRef,
+  SchoolSearchResult,
   TransferCreateRequest,
   TransferReviewRequest,
 } from '@nemis-desktop/types';
@@ -13,4 +14,6 @@ export const transferBridge = {
     api().transfer.review(request),
   cancelTransfer: (id: string): Promise<OnlineCommandResult<RemoteRecordRef>> =>
     api().transfer.cancel(id),
+  searchSchools: (query: string): Promise<SchoolSearchResult[]> =>
+    api().transfer.searchSchools(query),
 };

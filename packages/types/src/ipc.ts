@@ -7,6 +7,7 @@ import type {
   RegistryReleaseRequest,
   RegistryReleaseResult,
   RemoteRecordRef,
+  SchoolSearchResult,
   TransferCreateRequest,
   TransferReviewRequest,
 } from './registry';
@@ -274,6 +275,7 @@ export interface IpcContract {
     result: OnlineCommandResult<RemoteRecordRef>;
   };
   'transfer:cancel': { args: [id: string]; result: OnlineCommandResult<RemoteRecordRef> };
+  'transfer:search-schools': { args: [query: string]; result: SchoolSearchResult[] };
 }
 
 export type IpcChannel = keyof IpcContract;
@@ -372,6 +374,7 @@ export const IpcChannels = {
   TRANSFER_CREATE: 'transfer:create',
   TRANSFER_REVIEW: 'transfer:review',
   TRANSFER_CANCEL: 'transfer:cancel',
+  TRANSFER_SEARCH_SCHOOLS: 'transfer:search-schools',
 } as const satisfies Record<string, IpcChannel>;
 
 // Compile-time exhaustiveness: adding a channel to IpcContract without

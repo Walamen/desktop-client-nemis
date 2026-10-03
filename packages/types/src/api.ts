@@ -102,6 +102,7 @@ import type {
   RegistryReleaseRequest,
   RegistryReleaseResult,
   RemoteRecordRef,
+  SchoolSearchResult,
   TransferCreateRequest,
   TransferReviewRequest,
 } from './registry';
@@ -254,6 +255,7 @@ export interface TransferApi {
   create(request: TransferCreateRequest): Promise<OnlineCommandResult<RemoteRecordRef>>;
   review(request: TransferReviewRequest): Promise<OnlineCommandResult<RemoteRecordRef>>;
   cancel(id: string): Promise<OnlineCommandResult<RemoteRecordRef>>;
+  searchSchools(query: string): Promise<SchoolSearchResult[]>;
 }
 
 export interface NemisApi {

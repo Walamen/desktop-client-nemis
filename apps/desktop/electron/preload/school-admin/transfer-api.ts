@@ -6,4 +6,5 @@ export const transferApi: TransferApi = {
   create: (request) => invoke(IpcChannels.TRANSFER_CREATE, request),
   review: (request) => invoke(IpcChannels.TRANSFER_REVIEW, request),
   cancel: (id) => invoke(IpcChannels.TRANSFER_CANCEL, id),
+  searchSchools: (query) => invoke(IpcChannels.TRANSFER_SEARCH_SCHOOLS, query),
 };

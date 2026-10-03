@@ -978,6 +978,14 @@ export function assertTransferCreateArgs(args: readonly unknown[]): void {
   assertOptionalEnumMember(request.toGradeLevel, 'toGradeLevel', GRADE_LEVEL_VALUES);
 }
 
+export function assertSchoolSearchArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [query] = args;
+  if (typeof query !== 'string' || query.trim().length < 2 || query.length > 100) {
+    throw new IPCError('Expected a school search of 2 to 100 characters.');
+  }
+}
+
 export function assertTransferReviewArgs(args: readonly unknown[]): void {
   assertArity(args, 1);
   const [request] = args;

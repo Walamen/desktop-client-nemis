@@ -83,6 +83,12 @@ export interface RegistryReleaseResult {
   lapsesAt: string | null;
 }
 
+export interface SchoolSearchResult {
+  id: string;
+  name: string;
+  code: string;
+}
+
 export interface RemoteRecordRef {
   id: string;
 }
