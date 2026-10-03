@@ -38,8 +38,8 @@ const REMOTE_MESSAGE_MAX = 500;
  * untrusted bytes, so it is flattened to one printable line and capped. */
 export function sanitizeRemoteMessage(value: string | undefined): string | undefined {
   if (!value) return undefined;
-  // eslint-disable-next-line no-control-regex
   const cleaned = value
+    // eslint-disable-next-line no-control-regex
     .replace(/[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
