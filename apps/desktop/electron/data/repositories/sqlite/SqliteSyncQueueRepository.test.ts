@@ -155,15 +155,62 @@ describe('SqliteSyncQueueRepository', () => {
     expect(rescheduled.nextAttemptAt).toBe('2026-07-29T00:05:00.000Z');
   });
 
-  it('claimBatch skips pending items whose nextAttemptAt is in the future', () => {
+  it('claimBatch skips a backed-off row and holds back every row written after it', () => {
+    // A backed-off student's guardian link / enrolment (later seq) must not be
+    // pushed ahead of it, or the server rejects them as conflicts.
     const first = repo.enqueue(op('e1'));
-    repo.enqueue(op('e2'));
+    const second = repo.enqueue(op('e2'));
+    repo.enqueue(op('e3'));
+    repo.enqueue(op('e4'));
+    repo.scheduleRetry(second.id, '2026-08-01T00:00:00.000Z');
+
+    expect(repo.nextBatch(10).map((row) => row.id)).toEqual([first.id]);
+    expect(repo.claimBatch(10).map((row) => row.id)).toEqual([first.id]);
+    expect(repo.claimBatch(10)).toEqual([]);
+    expect(repo.countByStatus('pending')).toBe(3);
+  });
+
+  it('claimBatch releases the held-back rows in seq order once the backed-off row is due', () => {
+    const first = repo.enqueue(op('e1'));
+    const second = repo.enqueue(op('e2'));
+    const third = repo.enqueue(op('e3'));
+    repo.scheduleRetry(first.id, '2026-07-16T00:05:00.000Z');
+    expect(repo.claimBatch(10)).toEqual([]);
+
+    vi.setSystemTime(new Date('2026-07-16T00:05:00.001Z'));
+
+    expect(repo.claimBatch(10).map((row) => row.id)).toEqual([first.id, second.id, third.id]);
+  });
+
+  it('a dead-lettered row never holds back the rows after it', () => {
+    const first = repo.enqueue(op('e1'));
+    const second = repo.enqueue(op('e2'));
+    const third = repo.enqueue(op('e3'));
+    // Dead-lettering as DesktopSyncWorker does it: failed + deadLetter=1,
+    // with the last scheduled nextAttemptAt still in the future.
     repo.scheduleRetry(first.id, '2026-08-01T00:00:00.000Z');
+    repo.markFailed(first.id);
+    test.context.connection.prepare(`UPDATE sync_queue SET deadLetter=1 WHERE id=?`).run(first.id);
 
-    const claimed = repo.claimBatch(10);
+    expect(repo.claimBatch(10).map((row) => row.id)).toEqual([second.id, third.id]);
+  });
 
-    expect(claimed).toHaveLength(1);
-    expect(claimed[0]!.entityId).toBe('e2');
+  it('enqueue stamps a seq after rows the outbox triggers already wrote', () => {
+    // An outbox trigger stamps MAX(seq)+1 itself; simulate one at seq 41.
+    test.context.connection
+      .prepare(
+        `INSERT INTO sync_queue (id,entityType,entityId,operationType,payload,retryCount,status,createdAt,updatedAt,seq)
+         VALUES ('trigger-row','students','s0','create','{}',0,'pending',?,?,41)`,
+      )
+      .run('2026-07-16T00:00:00.000Z', '2026-07-16T00:00:00.000Z');
+
+    const item = repo.enqueue(op('e1'));
+
+    const { seq } = test.context.connection.prepare(`SELECT seq FROM sync_queue WHERE id=?`).get(item.id) as {
+      seq: number;
+    };
+    expect(seq).toBe(42);
+    expect(repo.claimBatch(10).map((row) => row.id)).toEqual(['trigger-row', item.id]);
   });
 
   it('claimBatch includes pending items whose nextAttemptAt has already elapsed', () => {

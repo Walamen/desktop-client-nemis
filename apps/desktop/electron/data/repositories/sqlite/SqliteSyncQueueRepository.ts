@@ -83,9 +83,22 @@ export class SqliteSyncQueueRepository
   }
 
   nextBatch(limit: number): SyncQueueItem[] {
+    const now = nowIso();
+    // A backed-off row holds back every row written after it: its dependants
+    // (a student's guardian link and enrolment) would otherwise be pushed
+    // first and rejected. Only pending rows block — a dead-lettered row is
+    // 'failed' and never retries on its own, so it must not stall the queue.
+    const { blocker } = this.statements
+      .get(
+        `SELECT MIN(seq) AS blocker FROM sync_queue
+         WHERE status = 'pending' AND deadLetter = 0
+           AND nextAttemptAt IS NOT NULL AND nextAttemptAt > ?`,
+      )
+      .get(now) as { blocker: number | null };
+    const due = and(eq('status', 'pending'), or(isNull('nextAttemptAt'), lte('nextAttemptAt', now)));
     return this.selectWhere(
       'nextBatch',
-      and(eq('status', 'pending'), or(isNull('nextAttemptAt'), lte('nextAttemptAt', nowIso()))),
+      blocker === null ? due : and(due, or(isNull('seq'), lt('seq', blocker))),
       {
         orderBy: [
           // Write order (migration 026). createdAt/id only break the tie for

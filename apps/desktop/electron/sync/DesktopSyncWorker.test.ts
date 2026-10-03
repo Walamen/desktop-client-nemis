@@ -824,6 +824,29 @@ describe('DesktopSyncWorker retry policy', () => {
     });
   });
 
+  it('resolveConflict with resolution "keep_local" stamps a seq after every row already queued', () => {
+    // The re-queued write must push after work already waiting (e.g. the
+    // conflicting row's own dependants), never NULL-first ahead of it.
+    const now = '2026-01-01T00:00:00.000Z';
+    manager.connection.prepare(`
+      INSERT INTO sync_queue (id,entityType,entityId,operationType,payload,retryCount,status,createdAt,updatedAt,seq)
+      VALUES ('queued-1','students','s2','create','{}',0,'pending',?,?,7)
+    `).run(now, now);
+    manager.connection.prepare(`
+      INSERT INTO sync_conflicts
+        (id,operationId,entityType,entityId,operationType,localPayload,remotePayload,reason,status,createdAt,resolvedAt)
+      VALUES ('conflict-seq',NULL,'students','s1','update','{"firstName":"Ada"}',NULL,'stale write','unresolved',?,NULL)
+    `).run(now);
+
+    const worker = new DesktopSyncWorker(workspaces, {} as BackendProvisioningGateway, alwaysOnline());
+    worker.resolveConflict({ conflictId: 'conflict-seq', resolution: 'keep_local' });
+
+    const requeued = manager.connection
+      .prepare(`SELECT seq FROM sync_queue WHERE entityType='students' AND entityId='s1'`)
+      .get() as { seq: number | null };
+    expect(requeued.seq).toBe(8);
+  });
+
   it('resolveConflict with resolution "keep_local" rejects a conflict from a bespoke push path instead of queuing junk work', () => {
     // FeeReversalSyncService writes sync_conflicts rows for fee_payment_reversals
     // (entityId = the payment's id, not the reversal's, and no outbox triggers
