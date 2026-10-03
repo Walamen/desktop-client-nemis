@@ -372,6 +372,15 @@ describe('BackendProvisioningGateway', () => {
       vi.stubGlobal('fetch', vi.fn(async () => response({ data: [{ id: 'i1', name: 'Central High', code: 'CH' }], meta: {} })));
       expect(await buildGateway().searchSchools('cent')).toEqual([{ id: 'i1', name: 'Central High', code: 'CH' }]);
     });
+
+    // An unreadable body is a server fault, not "no schools match".
+    it.each([{ message: 'unexpected' }, { data: 'nope' }, 'text', null])(
+      'searchSchools refuses a malformed body (%j) instead of returning no matches',
+      async (body) => {
+        vi.stubGlobal('fetch', vi.fn(async () => response(body)));
+        await expect(buildGateway().searchSchools('cent')).rejects.toThrow('Malformed server response.');
+      },
+    );
   });
 });
 

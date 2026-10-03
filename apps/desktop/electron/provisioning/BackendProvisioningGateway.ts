@@ -302,7 +302,8 @@ async function readRemoteMessage(response: Response): Promise<string | undefined
 
 function toSchoolResults(value: unknown): SchoolSearchResult[] {
   const list = Array.isArray(value) ? value : asRecord(value).data;
-  if (!Array.isArray(list)) return [];
+  // An unreadable body is a server fault, not "no schools match".
+  if (!Array.isArray(list)) throw new Error('Malformed server response.');
   return list.flatMap((item) => {
     const row = asRecord(item);
     return typeof row.id === 'string' && typeof row.name === 'string'
