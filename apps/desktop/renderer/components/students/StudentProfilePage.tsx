@@ -16,6 +16,8 @@ import {
 } from '@nemis-desktop/ui';
 import { formatNemisId } from '@nemis-desktop/shared';
 import { useViewModel } from '@/hooks/use-view-model';
+import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
+import { studentBridge } from '@/services/nemis-bridge/school-admin/student-bridge';
 import {
   useAcademicFoundationViewModel,
   useEnrollmentViewModel,
@@ -68,6 +70,23 @@ export function StudentProfilePage() {
   const [movingEnrollmentId, setMovingEnrollmentId] = useState('');
   const [movingClassId, setMovingClassId] = useState('');
   const [targetClassId, setTargetClassId] = useState('');
+  // null = unknown (not checked yet, or the check failed): show no login note.
+  const [createSynced, setCreateSynced] = useState<boolean | null>(null);
+  useRevalidateOnSync(() => {
+    if (!id) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const synced = await studentBridge.isCreateSynced(id);
+        if (!cancelled) setCreateSynced(synced);
+      } catch {
+        if (!cancelled) setCreateSynced(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
   useEffect(() => {
     const value = queryId();
     setId(value);
@@ -156,6 +175,13 @@ export function StudentProfilePage() {
             <p className="text-gray-500 text-sm mt-1">
               NEMIS ID: <span className="font-mono font-medium text-gray-700">{d.nemisId ? formatNemisId(d.nemisId) : '—'}</span>
             </p>
+            {createSynced !== null && (
+              <p className="text-gray-500 text-xs mt-1">
+                {createSynced && d.nemisId
+                  ? `Signs in to the student portal with NEMIS ID ${formatNemisId(d.nemisId)}`
+                  : 'Student login becomes available after this record syncs.'}
+              </p>
+            )}
             <div className="flex flex-wrap justify-center sm:justify-start gap-2 mt-3">
               <Badge variant={d.status.label === 'Active' ? 'success' : 'neutral'} size="sm">
                 {d.status.label}

@@ -1,6 +1,7 @@
 import { IpcChannels } from '@nemis-desktop/types';
 import type { ApplicationLayer } from '@nemis-desktop/application';
 import type { IpcHandle } from '@app/ipc/registrar';
+import type { StudentSyncStatusService } from '@app/data/services/StudentSyncStatusService';
 import {
   assertSingleIdArg,
   assertListStudentsArgs,
@@ -13,7 +14,11 @@ import {
   assertMoveEnrollmentClassArgs,
   assertNoArgs,
 } from '@app/security/validateIpc';
-export function registerStudentHandlers(handle: IpcHandle, app: ApplicationLayer): void {
+export function registerStudentHandlers(
+  handle: IpcHandle,
+  app: ApplicationLayer,
+  syncStatus: StudentSyncStatusService,
+): void {
   handle(
     IpcChannels.STUDENT_LIST,
     assertListStudentsArgs,
@@ -68,5 +73,9 @@ export function registerStudentHandlers(handle: IpcHandle, app: ApplicationLayer
     IpcChannels.STUDENT_GET_STATISTICS,
     assertNoArgs,
     async () => (await app.reporting.getStudentStatistics()).data,
+  );
+  // Read-only: has the student's local create synced yet (gates the sign-in note).
+  handle(IpcChannels.STUDENT_CREATE_SYNCED, assertSingleIdArg, (id) =>
+    syncStatus.isCreateSynced(id),
   );
 }

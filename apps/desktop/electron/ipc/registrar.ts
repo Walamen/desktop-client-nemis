@@ -38,6 +38,7 @@ import type { BackendProvisioningGateway } from '@app/provisioning/BackendProvis
 import { registerTimetableHandlers } from '@app/ipc/handlers/school-admin/timetables';
 import { registerGradeCompletionHandlers } from '@app/ipc/handlers/school-admin/gradeCompletions';
 import { GradeCompletionService } from '@app/data/services/GradeCompletionService';
+import { StudentSyncStatusService } from '@app/data/services/StudentSyncStatusService';
 
 // Teacher portal's own channels — see electron/ipc/handlers/teacher/.
 import { registerTeacherDashboardHandlers } from '@app/ipc/handlers/teacher/dashboard';
@@ -80,7 +81,7 @@ export function registerIpcHandlers(
   registerTermHandlers(securedHandle, app);
   registerClassHandlers(securedHandle, app);
   registerSubjectHandlers(securedHandle, app);
-  registerStudentHandlers(securedHandle, app);
+  registerStudentHandlers(securedHandle, app, new StudentSyncStatusService(workspaces));
   registerTeacherDirectoryHandlers(securedHandle, app, workspaces);
   registerTimetableHandlers(securedHandle, app, workspaces);
   // Stateless over the active workspace, like SchoolAdminModuleService.

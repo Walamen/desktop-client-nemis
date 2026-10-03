@@ -3,7 +3,10 @@ import type { ApplicationLayer } from '@nemis-desktop/application';
 import type { IpcChannel } from '@nemis-desktop/types';
 import { EnrollmentStatus } from '@nemis-desktop/types';
 import type { IpcHandle, IpcValidator } from '@app/ipc/registrar';
+import type { StudentSyncStatusService } from '@app/data/services/StudentSyncStatusService';
 import { registerStudentHandlers } from './students';
+
+const noSyncStatus = {} as unknown as StudentSyncStatusService;
 
 interface Captured {
   validate: IpcValidator;
@@ -17,7 +20,7 @@ describe('student IPC handlers', () => {
       calls.set(channel, { validate, handler: handler as Captured['handler'] });
     }) as IpcHandle;
     const createAndEnroll = vi.fn(async () => ({ data: { id: 'student-1' } }));
-    registerStudentHandlers(handle, { students: { createAndEnroll }, academics: {} } as unknown as ApplicationLayer);
+    registerStudentHandlers(handle, { students: { createAndEnroll }, academics: {} } as unknown as ApplicationLayer, noSyncStatus);
     const channel = calls.get('student:create-and-enroll')!;
     const request = {
       institutionId: 'inst-1', firstName: 'Ada', lastName: 'Toe', dateOfBirth: '2015-01-01', gender: 'FEMALE',
@@ -59,7 +62,7 @@ describe('student IPC handlers', () => {
       students: {},
     } as unknown as ApplicationLayer;
 
-    registerStudentHandlers(handle, app);
+    registerStudentHandlers(handle, app, noSyncStatus);
     const move = calls.get('student:move-class')!;
     expect(() =>
       move.validate([{ enrollmentId: 'enr-1', targetClassId: 'class-2' }]),
@@ -72,5 +75,24 @@ describe('student IPC handlers', () => {
       enrollmentId: 'enr-1',
       targetClassId: 'class-2',
     });
+  });
+
+  it('validates one id and forwards the create-synced check to the sync-status service', async () => {
+    const calls = new Map<string, Captured>();
+    const handle = ((channel: IpcChannel, validate: IpcValidator, handler: unknown) => {
+      calls.set(channel, { validate, handler: handler as Captured['handler'] });
+    }) as IpcHandle;
+    const isCreateSynced = vi.fn(() => ({ synced: false }));
+    registerStudentHandlers(handle, {} as unknown as ApplicationLayer, {
+      isCreateSynced,
+    } as unknown as StudentSyncStatusService);
+    const channel = calls.get('student:create-synced')!;
+    expect(() => channel.validate(['s-1'])).not.toThrow();
+    expect(() => channel.validate([])).toThrow();
+    expect(() => channel.validate([''])).toThrow();
+    expect(() => channel.validate([5])).toThrow();
+    expect(() => channel.validate(['s-1', 'extra'])).toThrow();
+    expect(await channel.handler('s-1')).toEqual({ synced: false });
+    expect(isCreateSynced).toHaveBeenCalledWith('s-1');
   });
 });

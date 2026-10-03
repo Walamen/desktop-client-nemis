@@ -82,6 +82,7 @@ const SCHOOL_ADMIN_CHANNELS = new Set<IpcChannel>([
   IpcChannels.STUDENT_GET,
   IpcChannels.STUDENT_LIST_ENROLLMENTS,
   IpcChannels.STUDENT_GET_STATISTICS,
+  IpcChannels.STUDENT_CREATE_SYNCED,
 ]);
 
 // Reads a teacher's own screens genuinely need, in addition to school

@@ -68,6 +68,7 @@ describe('authorizeChannel', () => {
       IpcChannels.TEACHER_LIST,
       IpcChannels.TIMETABLE_LIST,
       IpcChannels.STUDENT_GET_STATISTICS,
+      IpcChannels.STUDENT_CREATE_SYNCED,
     ]) {
       expect(() => authorizeChannel(channel, workspace(SystemRole.TEACHER))).toThrow(
         /school administrator/,
@@ -81,6 +82,7 @@ describe('authorizeChannel', () => {
       IpcChannels.TEACHER_LIST,
       IpcChannels.TIMETABLE_LIST,
       IpcChannels.STUDENT_GET_STATISTICS,
+      IpcChannels.STUDENT_CREATE_SYNCED,
     ]) {
       expect(() =>
         authorizeChannel(channel, workspace(SystemRole.INSTITUTION_ADMIN)),

@@ -190,6 +190,7 @@ export interface IpcContract {
   };
   'student:list-enrollments': { args: [id: string]; result: EnrollmentResult[] };
   'student:get-statistics': { args: []; result: StudentStatisticsResult };
+  'student:create-synced': { args: [studentId: string]; result: { synced: boolean } };
   // Teacher Management (Phase 11)
   'teacher:list': { args: [request: TeacherListRequest]; result: TeacherPageResult };
   'teacher:get-profile': { args: [id: string]; result: TeacherProfileResult | null };
@@ -358,6 +359,7 @@ export const IpcChannels = {
   STUDENT_MOVE_CLASS: 'student:move-class',
   STUDENT_LIST_ENROLLMENTS: 'student:list-enrollments',
   STUDENT_GET_STATISTICS: 'student:get-statistics',
+  STUDENT_CREATE_SYNCED: 'student:create-synced',
   TEACHER_LIST: 'teacher:list',
   TEACHER_GET_PROFILE: 'teacher:get-profile',
   TEACHER_CREATE: 'teacher:create',

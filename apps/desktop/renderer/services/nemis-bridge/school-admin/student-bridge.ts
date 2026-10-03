@@ -35,4 +35,6 @@ export const studentBridge = {
   listStudentEnrollments: (id: string): Promise<EnrollmentResult[]> =>
     api().student.listEnrollments(id),
   getStudentStatistics: (): Promise<StudentStatisticsResult> => api().student.getStatistics(),
+  isCreateSynced: async (studentId: string): Promise<boolean> =>
+    (await api().student.isCreateSynced(studentId)).synced,
 };

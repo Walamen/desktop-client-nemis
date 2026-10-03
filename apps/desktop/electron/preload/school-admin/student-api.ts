@@ -14,4 +14,5 @@ export const studentApi: StudentApi = {
   moveClass: (request) => invoke(IpcChannels.STUDENT_MOVE_CLASS, request),
   listEnrollments: (id) => invoke(IpcChannels.STUDENT_LIST_ENROLLMENTS, id),
   getStatistics: () => invoke(IpcChannels.STUDENT_GET_STATISTICS),
+  isCreateSynced: (id) => invoke(IpcChannels.STUDENT_CREATE_SYNCED, id),
 };

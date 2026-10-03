@@ -200,6 +200,8 @@ export interface StudentApi {
   moveClass(request: MoveEnrollmentClassRequest): Promise<EnrollmentResult>;
   listEnrollments(id: string): Promise<EnrollmentResult[]>;
   getStatistics(): Promise<StudentStatisticsResult>;
+  /** False while the student's local create is still queued (no portal login yet). */
+  isCreateSynced(studentId: string): Promise<{ synced: boolean }>;
 }
 export interface TeacherApi {
   list(request: TeacherListRequest): Promise<TeacherPageResult>;
