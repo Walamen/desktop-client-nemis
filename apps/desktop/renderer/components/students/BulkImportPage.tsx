@@ -3,26 +3,36 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Download, Upload, Trash2, Plus, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Download, Upload, Trash2, Plus, CheckCircle, XCircle, AlertCircle, RotateCcw } from 'lucide-react';
 import type { GradeLevel as GradeLevelValue } from '@nemis-desktop/types';
 import { useViewModel } from '@/hooks/use-view-model';
-import { useSettingsViewModel, useStudentProfileViewModel, useStudentsListViewModel } from '@/lib/presentation/hooks/school-admin';
-import { Input } from '@nemis-desktop/ui';
+import { useSettingsViewModel, useStudentsListViewModel } from '@/lib/presentation/hooks/school-admin';
+import { useConnectivityStore } from '@/lib/presentation/hooks/shared';
+import { registryBridge } from '@/services/nemis-bridge/school-admin/registry-bridge';
+import { Input, Select } from '@nemis-desktop/ui';
 import { formatNemisId } from '@nemis-desktop/shared';
 import { grades, human } from './shared';
+import { ClassTermPicker, isClassTermComplete, type ClassTermValue } from './add-student/ClassTermPicker';
 
-import { makeId, validateRow, downloadTemplate, parseWorkbookToRows, type BulkRow } from './bulk-import/bulk-import-logic';
+import {
+  makeId,
+  validateRow,
+  downloadTemplate,
+  downloadRetryFile,
+  parseWorkbookToRows,
+  type BulkRow,
+  type RetryEntry,
+} from './bulk-import/bulk-import-logic';
+import { runBulkImport, type BulkImportOutcome } from './bulk-import/run-bulk-import';
 
 type Step = 'upload' | 'review' | 'done';
 
-interface BulkImportResult {
-  totalRequested: number;
-  created: number;
-  failed: number;
-  createdRows: { index: number; nemisId: string; studentId: string; guardianWarning?: string }[];
-  failedRows: { index: number; error: string }[];
+interface BulkImportResult extends BulkImportOutcome {
+  /** The review rows as submitted: every `originalIndex` points into this. */
+  rows: BulkRow[];
 }
 
+const EMPTY_TARGET: ClassTermValue = { academicYearId: '', classId: '', termId: '' };
 
 const emptyRow = (): BulkRow => ({
   id: makeId(),
@@ -44,12 +54,39 @@ const emptyRow = (): BulkRow => ({
 const inputClass = (hasError: boolean) =>
   `w-full px-2 py-1.5 text-sm rounded border ${hasError ? 'border-red-400 bg-red-50' : 'border-gray-300'} focus:outline-none focus:ring-1 focus:ring-sky-500/40`;
 
+const rowLabel = (originalIndex: number) => `Row ${originalIndex + 1}`;
+
+/** Retry entries grouped by reason, so a batch-level message (one server
+ * rejection for every NEMIS-ID row) is shown once, with its row numbers. */
+function groupRetry(retry: RetryEntry[]): { label: string; reason: string }[] {
+  const byReason = new Map<string, number[]>();
+  for (const entry of [...retry].sort((a, b) => a.originalIndex - b.originalIndex)) {
+    const list = byReason.get(entry.reason) ?? [];
+    list.push(entry.originalIndex + 1);
+    byReason.set(entry.reason, list);
+  }
+  return [...byReason.entries()].map(([reason, numbers]) => ({
+    reason,
+    label: numbers.length === 1 ? `Row ${numbers[0]}` : `Rows ${numbers.join(', ')}`,
+  }));
+}
+
+function Count({ testId, value, label, tone }: { testId: string; value: number; label: string; tone: string }) {
+  return (
+    <div data-testid={testId} className="rounded-2xl border border-gray-200 bg-white p-5 text-center shadow-sm">
+      <p className={`text-3xl font-bold ${tone}`}>{value}</p>
+      <p className="mt-1 text-sm text-gray-500">{label}</p>
+    </div>
+  );
+}
+
 export function BulkImportPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const settings = useSettingsViewModel();
   const listVm = useStudentsListViewModel();
-  const profileVm = useStudentProfileViewModel();
+  const connectivity = useConnectivityStore();
+  const online = useViewModel(connectivity.store, (s) => s.isOnline);
   const profile = useViewModel(settings.store, (s) => s.profile);
 
   const [step, setStep] = useState<Step>('upload');
@@ -57,6 +94,8 @@ export function BulkImportPage() {
   const [result, setResult] = useState<BulkImportResult | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [batchGrade, setBatchGrade] = useState<GradeLevelValue | ''>('');
+  const [target, setTarget] = useState<ClassTermValue>(EMPTY_TARGET);
 
   useEffect(() => {
     void settings.loadCurrentSchool();
@@ -113,63 +152,51 @@ export function BulkImportPage() {
   const addRow = () => setRows((prev) => [...prev, emptyRow()]);
 
   const validRows = rows.filter((r) => Object.keys(r.errors).length === 0);
+  const placementReady = Boolean(batchGrade) && isClassTermComplete(target);
+  const canImport = validRows.length > 0 && placementReady && Boolean(institutionId) && !isSubmitting;
 
   const handleSubmit = async () => {
-    if (validRows.length === 0 || !institutionId || isSubmitting) return;
+    if (!canImport || !institutionId || !batchGrade) return;
     setIsSubmitting(true);
-    const createdRows: BulkImportResult['createdRows'] = [];
-    const failedRows: BulkImportResult['failedRows'] = [];
-
-    // Sequential, not parallel — each row needs its own createStudent +
-    // createGuardian round trip through the ViewModel/IPC layer, and running
-    // them one at a time keeps per-row error attribution honest.
-    for (let index = 0; index < validRows.length; index += 1) {
-      const row = validRows[index]!;
-      try {
-        const studentOutcome = await listVm.createStudent({
-          institutionId,
-          firstName: row.firstName.trim(),
-          lastName: row.lastName.trim(),
-          admissionDate: row.admissionDate.trim() || undefined,
-          dateOfBirth: row.dateOfBirth.trim(),
-          gender: row.gender.toUpperCase() as 'MALE' | 'FEMALE',
-          gradeLevel: row.gradeLevel.toUpperCase() as GradeLevelValue,
-          email: row.studentEmail.trim() || undefined,
-        });
-        if (!studentOutcome.ok) {
-          failedRows.push({ index, error: 'Could not create student record.' });
-          continue;
-        }
-        let guardianWarning: string | undefined;
-        const guardianOutcome = await profileVm.createGuardian({
-          studentId: studentOutcome.data.id,
-          firstName: row.guardianFirstName.trim(),
-          lastName: row.guardianLastName.trim(),
-          relationship: row.guardianRelationship.trim(),
-          phoneNumber: row.guardianPhone.trim(),
-          isPrimary: true,
-        });
-        if (!guardianOutcome.ok) guardianWarning = 'Student created, but the guardian record failed — add it manually.';
-        // A freshly created student always has a nemisId (Student.create()
-        // requires one); the fallback only satisfies the type checker.
-        createdRows.push({ index, nemisId: studentOutcome.data.nemisId ?? '', studentId: studentOutcome.data.id, guardianWarning });
-      } catch (cause) {
-        failedRows.push({
-          index,
-          error: cause instanceof Error ? cause.message : 'Unexpected error creating this student.',
-        });
-      }
+    const submitted = rows;
+    try {
+      const outcome = await runBulkImport({
+        rows: submitted,
+        gradeLevel: batchGrade,
+        institutionId,
+        target,
+        online,
+        createAndEnroll: (request) => listVm.createAndEnrollStudent(request),
+        bulkClaim: (request) => registryBridge.bulkClaimStudents(request),
+      });
+      setResult({ ...outcome, rows: submitted });
+      setStep('done');
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setResult({ totalRequested: validRows.length, created: createdRows.length, failed: failedRows.length, createdRows, failedRows });
-    setStep('done');
-    setIsSubmitting(false);
   };
 
   const handleReset = () => {
     setRows([]);
     setResult(null);
     setStep('upload');
+  };
+
+  const handleRetryFailed = (failed: BulkImportResult) => {
+    // By original index into the rows as submitted — not by position in the
+    // valid subset, which shifts whenever an earlier row had errors.
+    const keep = new Set(failed.failed.map((f) => f.originalIndex));
+    setRows(failed.rows.filter((_, i) => keep.has(i)).map((r) => ({ ...r, errors: validateRow(r) })));
+    setStep('review');
+    setResult(null);
+  };
+
+  const importLabel = (suffix: string) =>
+    isSubmitting ? 'Importing…' : `Import ${validRows.length} ${suffix}${validRows.length !== 1 ? 's' : ''}`;
+
+  const nameOf = (r: BulkImportResult, originalIndex: number) => {
+    const row = r.rows[originalIndex];
+    return row ? `${row.firstName} ${row.lastName}`.trim() : '';
   };
 
   return (
@@ -191,8 +218,9 @@ export function BulkImportPage() {
             Back to Students
           </Link>
           <p className="mt-2 text-gray-600">
-            Download the template, fill in student details, upload, review, then import. Each row creates a real
-            offline student record plus a primary guardian, stored on this device and synced like any other change.
+            Download the template, fill in student details, upload, choose the class and term, review, then import.
+            Rows without a NEMIS ID are created on this device and enrolled in the chosen class; rows with a NEMIS ID
+            are claimed from the national registry, which needs a connection.
           </p>
         </div>
 
@@ -202,7 +230,7 @@ export function BulkImportPage() {
               <h2 className="mb-1 text-lg font-semibold text-gray-900">Step 1 — Download Template</h2>
               <p className="mb-4 text-sm text-gray-600">
                 Only required fields are marked with <strong>*</strong>. Grade level accepts KG, K1, K2, or GRADE_1
-                through GRADE_12.
+                through GRADE_12. Leave the NEMIS ID blank for a student who has never had one.
               </p>
               <button type="button" onClick={downloadTemplate}
                 className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
@@ -234,6 +262,28 @@ export function BulkImportPage() {
 
         {step === 'review' && (
           <div>
+            <div className="mb-5 max-w-2xl rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+              <h2 className="mb-1 text-lg font-semibold text-gray-900">Batch placement</h2>
+              <p className="mb-4 text-sm text-gray-600">
+                Every row is enrolled in this class and term. Rows whose grade level differs from the class grade are not imported.
+              </p>
+              <div className="space-y-3">
+                <Select
+                  label="Grade"
+                  required
+                  placeholder="Select grade"
+                  options={grades.map((g) => ({ value: g, label: human(g) }))}
+                  value={batchGrade}
+                  onChange={(e) => {
+                    // A class belongs to one grade; the term is kept.
+                    setBatchGrade(e.target.value as GradeLevelValue);
+                    setTarget((t) => ({ ...t, classId: '' }));
+                  }}
+                />
+                <ClassTermPicker gradeLevel={batchGrade} value={target} onChange={setTarget} />
+              </div>
+            </div>
+
             <div className="mb-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <span className="text-sm text-gray-600">
@@ -250,9 +300,9 @@ export function BulkImportPage() {
                   <Plus className="mr-1 inline h-4 w-4" />
                   Add Row
                 </button>
-                <button type="button" onClick={handleSubmit} disabled={validRows.length === 0 || isSubmitting}
+                <button type="button" onClick={() => void handleSubmit()} disabled={!canImport}
                   className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50">
-                  {isSubmitting ? 'Importing…' : `Import ${validRows.length} Student${validRows.length !== 1 ? 's' : ''}`}
+                  {importLabel('Student')}
                 </button>
               </div>
             </div>
@@ -268,6 +318,7 @@ export function BulkImportPage() {
                     <th className="whitespace-nowrap px-3 py-3 text-left text-xs font-semibold text-gray-600">Gender *</th>
                     <th className="min-w-[110px] whitespace-nowrap px-3 py-3 text-left text-xs font-semibold text-gray-600">Adm. Date *</th>
                     <th className="min-w-[130px] whitespace-nowrap px-3 py-3 text-left text-xs font-semibold text-gray-600">Grade Level *</th>
+                    <th className="min-w-[150px] whitespace-nowrap px-3 py-3 text-left text-xs font-semibold text-gray-600">NEMIS ID</th>
                     <th className="min-w-[110px] whitespace-nowrap px-3 py-3 text-left text-xs font-semibold text-gray-600">Guardian First *</th>
                     <th className="min-w-[110px] whitespace-nowrap px-3 py-3 text-left text-xs font-semibold text-gray-600">Guardian Last *</th>
                     <th className="min-w-[100px] whitespace-nowrap px-3 py-3 text-left text-xs font-semibold text-gray-600">Relationship *</th>
@@ -321,6 +372,11 @@ export function BulkImportPage() {
                           {row.errors.gradeLevel && <p className="mt-0.5 text-xs text-red-500">{row.errors.gradeLevel}</p>}
                         </td>
                         <td className="px-3 py-2 align-top">
+                          <Input type="text" value={row.nemisId} placeholder="Blank if new"
+                            onChange={(e) => updateRow(row.id, { nemisId: e.target.value })}
+                            error={row.errors.nemisId} />
+                        </td>
+                        <td className="px-3 py-2 align-top">
                           <Input type="text" value={row.guardianFirstName} placeholder="First name"
                             onChange={(e) => updateRow(row.id, { guardianFirstName: e.target.value })}
                             error={row.errors.guardianFirstName} />
@@ -370,9 +426,9 @@ export function BulkImportPage() {
                 <Plus className="mr-1 inline h-4 w-4" />
                 Add Row
               </button>
-              <button type="button" onClick={handleSubmit} disabled={validRows.length === 0 || isSubmitting}
+              <button type="button" onClick={() => void handleSubmit()} disabled={!canImport}
                 className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50">
-                {isSubmitting ? 'Importing…' : `Import ${validRows.length} Valid Student${validRows.length !== 1 ? 's' : ''}`}
+                {importLabel('Valid Student')}
               </button>
             </div>
           </div>
@@ -380,74 +436,106 @@ export function BulkImportPage() {
 
         {step === 'done' && result && (
           <div className="max-w-4xl">
-            <div className="mb-6 grid grid-cols-3 gap-4">
-              <div className="rounded-2xl border border-gray-200 bg-white p-6 text-center shadow-sm">
-                <p className="text-3xl font-bold text-gray-900">{result.totalRequested}</p>
-                <p className="mt-1 text-sm text-gray-500">Submitted</p>
-              </div>
-              <div className="rounded-2xl border border-gray-200 bg-white p-6 text-center shadow-sm">
-                <p className="text-3xl font-bold text-green-600">{result.created}</p>
-                <p className="mt-1 text-sm text-gray-500">Created</p>
-              </div>
-              <div className="rounded-2xl border border-gray-200 bg-white p-6 text-center shadow-sm">
-                <p className="text-3xl font-bold text-red-500">{result.failed}</p>
-                <p className="mt-1 text-sm text-gray-500">Failed</p>
-              </div>
+            <h2 className="mb-4 text-lg font-semibold text-gray-900">Import results</h2>
+
+            {result.registryUnavailableMessage && (
+              <p role="alert" className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">{result.registryUnavailableMessage}</p>
+            )}
+            {result.pendingSync && (
+              <p className="mb-4 rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-800">
+                Saved — claimed students will appear once this device syncs.
+              </p>
+            )}
+
+            <div className="mb-6 grid grid-cols-5 gap-3">
+              <Count testId="count-submitted" value={result.submitted} label="Submitted" tone="text-gray-900" />
+              <Count testId="count-created" value={result.created.length} label="Created on this device" tone="text-green-600" />
+              <Count testId="count-claimed" value={result.claimed.length} label="Claimed" tone="text-green-600" />
+              <Count testId="count-failed" value={result.failed.length} label="Failed" tone="text-red-500" />
+              <Count testId="count-retry" value={result.retry.length} label="To retry" tone="text-amber-600" />
             </div>
 
-            {result.createdRows.length > 0 && (
+            {result.created.length > 0 && (
               <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                <h3 className="mb-1 text-base font-semibold text-gray-900">Created Students</h3>
-                <p className="mb-4 text-sm text-gray-600">
-                  Each row created a real offline student record with a primary guardian. There are no login
-                  credentials to share — this device has no online account system to issue them from.
-                </p>
-                <div className="space-y-2">
-                  {result.createdRows.map((c) => (
-                    <div key={c.index} className="flex items-start gap-2 rounded-lg bg-green-50 p-3">
+                <h3 className="mb-3 text-base font-semibold text-gray-900">Created on this device</h3>
+                <ul className="space-y-2">
+                  {result.created.map((c) => (
+                    <li key={c.originalIndex} className="flex items-start gap-2 rounded-lg bg-green-50 p-3">
                       <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-green-500" />
                       <div>
+                        <p className="text-sm font-medium text-green-800">{rowLabel(c.originalIndex)}</p>
+                        <p className="text-sm text-green-900">{nameOf(result, c.originalIndex)}</p>
                         <p className="text-sm font-medium text-green-800">{formatNemisId(c.nemisId)}</p>
-                        {c.guardianWarning && <p className="mt-0.5 text-xs text-amber-700">{c.guardianWarning}</p>}
+                        <p className="mt-0.5 text-xs text-gray-600">Student login becomes available after this record syncs.</p>
                       </div>
-                    </div>
+                    </li>
                   ))}
-                </div>
+                </ul>
               </div>
             )}
 
-            {result.failedRows.length > 0 && (
+            {result.claimed.length > 0 && (
               <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                <h3 className="mb-1 text-base font-semibold text-red-700">Failed Students</h3>
-                <div className="mt-3 space-y-2">
-                  {result.failedRows.map((f) => (
-                    <div key={f.index} className="flex items-start gap-2 rounded-lg bg-red-50 p-3">
+                <h3 className="mb-3 text-base font-semibold text-gray-900">Claimed from the national registry</h3>
+                <ul className="space-y-2">
+                  {result.claimed.map((c) => (
+                    <li key={c.originalIndex} className="flex items-start gap-2 rounded-lg bg-green-50 p-3">
+                      <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-green-500" />
+                      <div>
+                        <p className="text-sm font-medium text-green-800">{rowLabel(c.originalIndex)}</p>
+                        <p className="text-sm text-green-900">{nameOf(result, c.originalIndex)}</p>
+                        <p className="mt-0.5 text-xs text-gray-600">{`Signs in to the student portal with NEMIS ID ${formatNemisId(c.nemisId)}`}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {result.failed.length > 0 && (
+              <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                <h3 className="mb-3 text-base font-semibold text-red-700">Failed</h3>
+                <ul className="space-y-2">
+                  {result.failed.map((f) => (
+                    <li key={f.originalIndex} className="flex items-start gap-2 rounded-lg bg-red-50 p-3">
                       <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
                       <div>
-                        <p className="text-sm font-medium text-red-800">Row {f.index + 1}</p>
+                        <p className="text-sm font-medium text-red-800">{rowLabel(f.originalIndex)}</p>
                         <p className="mt-0.5 text-xs text-red-600">{f.error}</p>
                       </div>
-                    </div>
+                    </li>
                   ))}
+                </ul>
+              </div>
+            )}
+
+            {result.retry.length > 0 && (
+              <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="text-base font-semibold text-amber-700">To retry</h3>
+                  <button type="button" onClick={() => downloadRetryFile(result.rows, result.retry)}
+                    className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                    <Download className="mr-2 inline h-4 w-4" />
+                    Download retry file
+                  </button>
                 </div>
+                <ul className="space-y-2">
+                  {groupRetry(result.retry).map((g) => (
+                    <li key={g.reason} className="flex items-start gap-2 rounded-lg bg-amber-50 p-3">
+                      <RotateCcw className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+                      <div>
+                        <p className="text-sm font-medium text-amber-800">{g.label}</p>
+                        <p className="mt-0.5 text-xs text-amber-700">{g.reason}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
 
             <div className="flex gap-3">
-              {result.failedRows.length > 0 && (
-                <button type="button"
-                  onClick={() => {
-                    // `failedRows[].index` is each row's position in `validRows`
-                    // as it stood at submission time — rows/validRows haven't
-                    // changed since, so that position still resolves to the
-                    // right row's stable `id` here.
-                    const failedIds = new Set(
-                      result.failedRows.map((f) => validRows[f.index]?.id).filter((id): id is string => Boolean(id)),
-                    );
-                    setRows((prev) => prev.filter((r) => failedIds.has(r.id)).map((r) => ({ ...r, errors: validateRow(r) })));
-                    setStep('review');
-                    setResult(null);
-                  }}
+              {result.failed.length > 0 && (
+                <button type="button" onClick={() => handleRetryFailed(result)}
                   className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
                   Retry Failed Rows
                 </button>
