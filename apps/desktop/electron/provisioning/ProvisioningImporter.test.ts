@@ -49,6 +49,26 @@ describe('ProvisioningImporter', () => {
     ).toBe(1);
   });
 
+  it('imports an account that has no email (a NEMIS ID student login)', () => {
+    const importer = new ProvisioningImporter(manager);
+    importer.import(
+      snapshotOf({
+        ...BASE_DATA,
+        users: [
+          ...(BASE_DATA.users ?? []),
+          {
+            id: 'user-2', firstName: 'Musu', middleName: null, lastName: 'Kollie',
+            email: null, isActive: true, version: 1,
+            updatedAt: '2026-01-01T00:00:00.000Z', lastModifiedBy: null,
+          },
+        ],
+      }),
+      CONTEXT,
+    );
+    expect(manager.connection.prepare('SELECT email FROM users WHERE id=?').get('user-2')).toEqual({ email: null });
+    expect(importer.getCompletion()).not.toBeNull();
+  });
+
   it('rejects corruption without replacing existing school data', () => {
     const importer = new ProvisioningImporter(manager);
     const snapshot = makeSnapshot();

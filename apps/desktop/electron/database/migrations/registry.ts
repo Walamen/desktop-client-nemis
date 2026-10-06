@@ -28,6 +28,7 @@ import { addSyncQueueSequence } from './026-add-sync-queue-sequence';
 import { addStudentAssertedNoNemisId } from './027-add-student-asserted-no-nemis-id';
 import { addTransferDisplayFields } from './028-add-transfer-display-fields';
 import { createGradeCompletions } from './029-create-grade-completions';
+import { makeUserEmailNullable } from './030-make-user-email-nullable';
 
 /**
  * Every migration, ascending by version. Append only — never edit or reorder
@@ -63,4 +64,5 @@ export const migrations: readonly Migration[] = [
   addStudentAssertedNoNemisId,
   addTransferDisplayFields,
   createGradeCompletions,
+  makeUserEmailNullable,
 ];
