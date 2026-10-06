@@ -5,7 +5,7 @@ export function toUserOutput(user: User): UserOutput {
   return {
     id: user.id,
     fullName: user.name.full,
-    email: user.email.value,
+    email: user.email?.value ?? null,
     isActive: user.isActive,
     roles: user.organizations.filter((o) => o.isActive).map((o) => o.role),
   };

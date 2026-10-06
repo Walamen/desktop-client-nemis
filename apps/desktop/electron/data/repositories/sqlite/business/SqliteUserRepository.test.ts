@@ -35,7 +35,7 @@ describe('SqliteUserRepository', () => {
       .run(SystemRole.INSTITUTION_ADMIN);
     const user = repo.findById('user-1');
     expect(user?.name.full).toBe('Martha Doe');
-    expect(user?.email.value).toBe('martha@school.edu.lr');
+    expect(user?.email?.value).toBe('martha@school.edu.lr');
     expect(user?.hasRole(SystemRole.INSTITUTION_ADMIN)).toBe(true);
   });
 
@@ -49,5 +49,18 @@ describe('SqliteUserRepository', () => {
       )
       .run(new Date().toISOString());
     expect(repo.findById('someone-else')).toBeNull();
+  });
+
+  it('findById reads an account that has no email', () => {
+    test.context.connection
+      .prepare(
+        `INSERT INTO users
+          (id, firstName, middleName, lastName, email, isActive, version, updatedAt)
+         VALUES ('user-2', 'Musu', NULL, 'Kollie', NULL, 1, 1, ?)`,
+      )
+      .run(new Date().toISOString());
+    const user = repo.findById('user-2');
+    expect(user?.name.full).toBe('Musu Kollie');
+    expect(user?.email).toBeNull();
   });
 });

@@ -3,7 +3,7 @@ import { SystemRole } from '@nemis-desktop/types';
 import { User } from './entities/user';
 import { UserOrganization } from './entities/user-organization';
 import { CanSyncEntity } from './specifications/can-sync-entity';
-import { EntityValidationException } from '../exceptions';
+import { EntityValidationException, InvalidValueObjectException } from '../exceptions';
 
 const ISO = '2026-07-17T00:00:00.000Z';
 
@@ -28,7 +28,7 @@ function newUser(): User {
 describe('User', () => {
   it('creates with a normalized email and emits UserCreated', () => {
     const user = newUser();
-    expect(user.email.value).toBe('ama@moe.gov.lr');
+    expect(user.email?.value).toBe('ama@moe.gov.lr');
     expect(user.name.full).toBe('Ama Kollie');
     expect(user.hasRole(SystemRole.TEACHER)).toBe(true);
     expect(user.hasRole(SystemRole.DEO)).toBe(false);
@@ -121,6 +121,23 @@ describe('User', () => {
     );
 
     expect(user.organizations).toHaveLength(1);
+  });
+
+  it('reconstitutes an account with no email (a NEMIS ID student login)', () => {
+    const user = User.reconstitute({
+      id: 'user-2', firstName: 'Musu', lastName: 'Kollie', email: null,
+      isActive: true, organizations: [], version: 1, updatedAt: ISO,
+    });
+    expect(user.email).toBeNull();
+  });
+
+  it('still rejects a present but malformed email on reconstitute', () => {
+    expect(() =>
+      User.reconstitute({
+        id: 'user-3', firstName: 'Joe', lastName: 'Wleh', email: 'not-an-email',
+        isActive: true, organizations: [], version: 1, updatedAt: ISO,
+      }),
+    ).toThrow(InvalidValueObjectException);
   });
 });
 

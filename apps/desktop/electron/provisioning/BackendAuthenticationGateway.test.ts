@@ -79,6 +79,19 @@ describe('BackendAuthenticationGateway', () => {
 
     expect(result.user.scope).toMatchObject({ type: scopeType, scopeId });
   });
+
+  it.each([
+    ['missing', undefined],
+    ['null', null],
+    ['empty', ''],
+  ])('refuses a signed-in user whose email is %s (desktop sign-in is email-only)', async (_label, email) => {
+    const response = jsonResponse({ success: true, data: { user: { ...backendUser, email } } });
+    setCookies(response, ['sid=session; HttpOnly']);
+    vi.stubGlobal('fetch', vi.fn(async () => response));
+    await expect(
+      new BackendAuthenticationGateway('https://nemis.example').authenticate('admin@school.edu', 'password'),
+    ).rejects.toThrow('did not match the backend contract');
+  });
 });
 
 function jsonResponse(body: unknown): Response {

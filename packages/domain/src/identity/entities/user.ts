@@ -10,7 +10,7 @@ export type UserId = EntityId<'User'>;
 
 interface UserState {
   name: PersonName;
-  email: EmailAddress;
+  email: EmailAddress | null;
   isActive: boolean;
   organizations: UserOrganization[];
 }
@@ -30,7 +30,7 @@ export interface ReconstituteUserInput {
   firstName: string;
   middleName?: string;
   lastName: string;
-  email: string;
+  email: string | null;
   isActive: boolean;
   organizations: UserOrganization[];
   version: number;
@@ -56,6 +56,7 @@ export class User extends AggregateRoot<UserId> {
         { field: 'organizations', message: 'must not be empty' },
       ]);
     }
+    const email = EmailAddress.create(input.email);
     const user = new User(
       input.id as UserId,
       {
@@ -64,7 +65,7 @@ export class User extends AggregateRoot<UserId> {
           middleName: input.middleName,
           lastName: input.lastName,
         }),
-        email: EmailAddress.create(input.email),
+        email,
         isActive: true,
         organizations: [...input.organizations],
       },
@@ -74,7 +75,7 @@ export class User extends AggregateRoot<UserId> {
       name: 'UserCreated',
       aggregateId: user.id,
       occurredAt: input.occurredAt,
-      email: user.email.value,
+      email: email.value,
     };
     user.addEvent(event);
     return user;
@@ -89,7 +90,9 @@ export class User extends AggregateRoot<UserId> {
           middleName: input.middleName,
           lastName: input.lastName,
         }),
-        email: EmailAddress.create(input.email),
+        // NULL only for an account that signs in by NEMIS ID (a student);
+        // a present email is still validated.
+        email: input.email === null ? null : EmailAddress.create(input.email),
         isActive: input.isActive,
         organizations: [...input.organizations],
       },
@@ -100,7 +103,7 @@ export class User extends AggregateRoot<UserId> {
   get name(): PersonName {
     return this.#state.name;
   }
-  get email(): EmailAddress {
+  get email(): EmailAddress | null {
     return this.#state.email;
   }
   get isActive(): boolean {

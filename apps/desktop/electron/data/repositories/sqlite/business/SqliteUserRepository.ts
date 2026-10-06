@@ -11,7 +11,7 @@ interface UserRow {
   firstName: string;
   middleName: string | null;
   lastName: string;
-  email: string;
+  email: string | null;
   isActive: number;
   version: number;
   updatedAt: string;
