@@ -157,14 +157,20 @@ export interface SidebarConfig {
 New file: `components/shell/active-nav.ts`.
 
 ```ts
-export function resolveActiveHref(pathname: string, config: SidebarConfig): string | null;
+export function resolveActiveHref(pathname: string, config: SidebarConfig, basePath: string): string | null;
 ```
+
+`basePath` is `headerConfigs[role].basePath`. *(Amended 2026-10-07 during
+planning: DEO and Teacher put their home page in a group rather than in
+`dashboardItem`, so the resolver needs the base path to keep that item
+exact-only.)*
 
 Rules:
 
 1. Strip one trailing slash from `pathname` and from every candidate (the
    static export uses `trailingSlash: true`).
-2. The `dashboardItem` matches **only** on exact equality.
+2. The `dashboardItem`, and any group item whose href equals `basePath`,
+   match **only** on exact equality.
 3. For every group item, the candidates are `href` plus `alsoActiveOn`. A
    candidate matches if `pathname === candidate` or
    `pathname.startsWith(candidate + '/')`. The segment boundary matters:
@@ -248,10 +254,10 @@ menu path as text instead of a link.
 
 | # | File | Today | Change |
 |---|---|---|---|
-| 1 | `app/government/school-admin/page.tsx` + `components/dashboard/InfoTile.tsx` | School / Academic Year / Current Term tiles show plain empty text | `InfoTile` gains optional `emptyHref` and `emptyLinkText`. When the tile is empty and `emptyHref` is set, it renders a `next/link`. The tiles link to `/school-profile`, `/academic-years` and `/terms`. |
+| 1 | `app/government/school-admin/page.tsx` + `components/dashboard/InfoTile.tsx` | School / Academic Year / Current Term tiles show plain empty text | `InfoTile` gains optional `emptyHref`. When the tile is empty and `emptyHref` is set, the existing `emptyText` renders as a `next/link`. The tiles link to `/school-profile`, `/academic-years` and `/terms`. |
 | 2 | `components/academic/AcademicFoundationPages.tsx` (`AcademicYearsPage`) | Terms column is plain number | Number links to `/terms?yearId=<id>` |
 | 3 | same file (`TermsPage`) | Always preselects current/first year | Reads `yearId` from `useSearchParams()` and preselects it if it is in the list. Otherwise it falls back to today's behaviour. Follow the existing `?id=` page pattern, including any `Suspense` wrapper the static export needs. |
-| 4 | `GradingPeriodsPanel.tsx` | "No terms configured…" | Add the link "Create terms" → `/terms` |
+| 4 | `GradingPeriodsPanel.tsx` | "No terms configured…" (also shown when there is no current **year**) | If no current year exists: "No current academic year is set." plus a link to `/academic-years`. If a year exists but has no terms: the existing text plus a "Create terms" link to `/terms`. |
 | 5 | `components/outcomes/EndOfYearOutcomesPage.tsx:183` | "Add one under Academic Years" | "Academic Years" becomes a link → `/academic-years` |
 | 6 | `components/reports/ReportsPage.tsx:111` | Error text "No term is set as current…" | The report error state carries an optional link. This case links to `/terms` ("Set a current term"). |
 | 7 | `components/finance/RecordPaymentPage.tsx:217` | "Loading the current term…" shown for loading **and** empty/error | Split the cases. Loading/idle keeps today's text. Empty shows "No current term is set — payment entry is disabled." plus a link to `/terms`. Error shows the error's `userMessage`. |
