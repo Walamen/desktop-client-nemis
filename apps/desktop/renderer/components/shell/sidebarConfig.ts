@@ -22,6 +22,8 @@ export interface SidebarNavItem {
   href: string;
   icon: ComponentType<{ className?: string }>;
   badge?: SidebarBadge;
+  /** Extra paths (exact or as a prefix) on which this item also counts as active. */
+  alsoActiveOn?: readonly string[];
 }
 
 export interface SidebarNavGroup {
@@ -36,6 +38,8 @@ export interface SidebarConfig {
   /** Optional ungrouped item rendered above the groups. */
   dashboardItem?: SidebarNavItem;
   navGroups: readonly SidebarNavGroup[];
+  /** Group headers become collapse toggles, remembered per device. Default false. */
+  collapsibleGroups?: boolean;
 }
 
 export interface HeaderConfig {
