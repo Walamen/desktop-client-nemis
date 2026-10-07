@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, type ComponentType } from 'react';
+import Link from 'next/link';
 import {
   AlertTriangle, Calendar, Clock3, Coffee, Copy, Download, Plus, Printer, Trash2, Users,
 } from 'lucide-react';
@@ -528,7 +529,13 @@ export function ClassSchedulePage() {
           <div className="space-y-4">
             <p className="text-sm text-gray-500">{human(cellEditor.day)} · {cellEditor.startTime} - {cellEditor.endTime}</p>
             {classTeachers.length === 0 ? (
-              <p className="text-sm italic text-gray-400">No teachers are assigned to this class yet. Assign them from the class detail page first.</p>
+              <p className="text-sm italic text-gray-500">
+                No teachers are assigned to this class yet.{' '}
+                <Link href={`/government/school-admin/classes/detail?id=${selectedClassId}`} className="text-blue-700 not-italic hover:underline">
+                  Assign them on the class page
+                </Link>{' '}
+                first.
+              </p>
             ) : (
               <Select
                 label="Teacher"

@@ -580,7 +580,11 @@ export function ClassDetailPage() {
                 Teacher <span className="text-red-500">*</span>
               </label>
               {teachersData.length === 0 ? (
-                <p className="text-sm text-gray-400 italic">No active teachers found. Add teachers from the Teachers module first.</p>
+                <p className="text-sm text-gray-500 italic">
+                  No active teachers found. Add them under{' '}
+                  <Link href="/government/school-admin/teachers-staff" className="text-blue-700 not-italic hover:underline">Teachers &amp; Staff</Link>{' '}
+                  first.
+                </p>
               ) : (
                 <select
                   value={teacherToAssign}

@@ -683,7 +683,12 @@ export function ClassesDirectoryPage() {
             {(!currentYearId || !selectedTermId) && (
               <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                 <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
-                <p className="text-sm text-amber-800">No active academic year or term is configured yet.</p>
+                <p className="text-sm text-amber-800">
+                  No active academic year or term is configured yet. Set them up in{' '}
+                  <Link href="/government/school-admin/academic-years" className="font-semibold underline">Academic Years</Link>
+                  {' '}and{' '}
+                  <Link href="/government/school-admin/terms" className="font-semibold underline">Terms</Link>.
+                </p>
               </div>
             )}
             {studentsToEnroll.length > 1 && (

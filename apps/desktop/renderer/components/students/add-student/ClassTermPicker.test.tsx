@@ -85,7 +85,7 @@ function selectNear(labelPattern: RegExp): HTMLSelectElement {
   return select;
 }
 
-const EMPTY_HINT = 'No classes for GRADE 7 — create one first.';
+const EMPTY_HINT = 'No classes for GRADE 7 — create one under Teaching → Classes, then return.';
 
 describe('ClassTermPicker', () => {
   it('lists only the current year classes of the chosen grade, then terms', async () => {
@@ -142,6 +142,7 @@ describe('ClassTermPicker', () => {
     stubNemis({ classes: async () => ({ items: [], total: 0 }) });
     await renderPicker('GRADE_7');
     expect(await screen.findByText(EMPTY_HINT)).toBeInTheDocument();
+    expect(screen.queryByRole('link')).toBeNull(); // the wizard holds typed data: text only, never a link
   });
 
   it('shows a retry, not the empty hint, when loading classes fails', async () => {

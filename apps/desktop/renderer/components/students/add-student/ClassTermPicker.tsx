@@ -123,7 +123,7 @@ export function ClassTermPicker({
         </div>
       ) : classes.status === 'empty' || (classes.status === 'success' && classOptions.length === 0) ? (
         <p className="text-sm text-amber-700">
-          No classes for {human(gradeLevel)} — create one first.
+          No classes for {human(gradeLevel)} — create one under Teaching → Classes, then return.
         </p>
       ) : (
         <Select
@@ -143,7 +143,7 @@ export function ClassTermPicker({
           </Button>
         </div>
       ) : terms.status === 'empty' ? (
-        <p className="text-sm text-amber-700">No terms in this academic year — create one first.</p>
+        <p className="text-sm text-amber-700">No terms in this academic year — create one under Academic Setup → Terms, then return.</p>
       ) : (
         <Select
           label="Term"
