@@ -45,6 +45,7 @@ const transfersLink = () => screen.getByText('Student Transfers').closest('a') a
 
 beforeEach(() => {
   vi.mocked(usePathname).mockReturnValue('/government/school-admin');
+  window.localStorage.clear();
   listMock.mockReset();
   stubRows([]);
 });
@@ -160,5 +161,70 @@ describe('Sidebar', () => {
   it('renders a role with no dashboardItem without crashing', () => {
     render(<Sidebar role={SystemRole.DEO} />);
     expect(screen.getByText('Schools').closest('a')).toHaveAttribute('href', '/government/deo/schools');
+  });
+});
+
+const STORE_KEY = `nemis.sidebar.collapsed.${SystemRole.INSTITUTION_ADMIN}`;
+const groupToggle = (label: string) => screen.getByRole('button', { name: new RegExp(`^${label}`) });
+
+describe('Sidebar collapsible groups', () => {
+  it('starts with every group open', () => {
+    render(<Sidebar role={SystemRole.INSTITUTION_ADMIN} />);
+    expect(groupToggle('ACADEMIC SETUP')).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('link', { name: 'Academic Years' })).toBeVisible();
+  });
+
+  it('collapses and re-expands a group, remembering the choice', () => {
+    const { unmount } = render(<Sidebar role={SystemRole.INSTITUTION_ADMIN} />);
+    fireEvent.click(groupToggle('ACADEMIC SETUP'));
+    expect(groupToggle('ACADEMIC SETUP')).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('link', { name: 'Academic Years' })).toBeNull();
+    expect(JSON.parse(window.localStorage.getItem(STORE_KEY) ?? '[]')).toEqual(['ACADEMIC SETUP']);
+    unmount();
+
+    render(<Sidebar role={SystemRole.INSTITUTION_ADMIN} />);
+    expect(groupToggle('ACADEMIC SETUP')).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(groupToggle('ACADEMIC SETUP'));
+    expect(screen.getByRole('link', { name: 'Academic Years' })).toBeVisible();
+    expect(JSON.parse(window.localStorage.getItem(STORE_KEY) ?? '[]')).toEqual([]);
+  });
+
+  it('forces open the group holding the current page', () => {
+    window.localStorage.setItem(STORE_KEY, JSON.stringify(['ACADEMIC SETUP']));
+    vi.mocked(usePathname).mockReturnValue('/government/school-admin/terms');
+    render(<Sidebar role={SystemRole.INSTITUTION_ADMIN} />);
+    expect(groupToggle('ACADEMIC SETUP')).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('link', { name: 'Terms' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it.each([['{}'], ['"x"'], ['not json'], ['[1,null]']])('treats stored value %s as all open', (raw) => {
+    window.localStorage.setItem(STORE_KEY, raw);
+    render(<Sidebar role={SystemRole.INSTITUTION_ADMIN} />);
+    expect(groupToggle('ACADEMIC SETUP')).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('keeps working when storage throws', () => {
+    const get = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('denied'); });
+    const set = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('denied'); });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    render(<Sidebar role={SystemRole.INSTITUTION_ADMIN} />);
+    expect(groupToggle('STUDENTS')).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.click(groupToggle('STUDENTS'));
+    expect(groupToggle('STUDENTS')).toHaveAttribute('aria-expanded', 'false');
+    expect(warn).toHaveBeenCalled();
+    get.mockRestore(); set.mockRestore(); warn.mockRestore();
+  });
+
+  it('shows the transfers badge total on a collapsed STUDENTS header', async () => {
+    stubRows([pushToUs('a'), pushToUs('b')]);
+    window.localStorage.setItem(STORE_KEY, JSON.stringify(['STUDENTS']));
+    render(<Sidebar role={SystemRole.INSTITUTION_ADMIN} />);
+    await waitFor(() => expect(groupToggle('STUDENTS')).toHaveTextContent('2'));
+  });
+
+  it('renders plain, non-button group headers for a role without collapsibleGroups', () => {
+    render(<Sidebar role={SystemRole.COUNTY_ADMIN} />);
+    expect(screen.getByText('PEOPLE')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^PEOPLE/ })).toBeNull();
   });
 });
