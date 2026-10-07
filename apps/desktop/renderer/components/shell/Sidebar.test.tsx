@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { createStore } from 'zustand/vanilla';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SystemRole } from '@nemis-desktop/types';
 
 vi.mock('next/navigation', () => ({
@@ -48,6 +48,10 @@ beforeEach(() => {
   window.localStorage.clear();
   listMock.mockReset();
   stubRows([]);
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 describe('Sidebar', () => {
@@ -204,15 +208,14 @@ describe('Sidebar collapsible groups', () => {
   });
 
   it('keeps working when storage throws', () => {
-    const get = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('denied'); });
-    const set = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('denied'); });
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('denied'); });
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('denied'); });
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     render(<Sidebar role={SystemRole.INSTITUTION_ADMIN} />);
     expect(groupToggle('STUDENTS')).toHaveAttribute('aria-expanded', 'true');
     fireEvent.click(groupToggle('STUDENTS'));
     expect(groupToggle('STUDENTS')).toHaveAttribute('aria-expanded', 'false');
     expect(warn).toHaveBeenCalled();
-    get.mockRestore(); set.mockRestore(); warn.mockRestore();
   });
 
   it('shows the transfers badge total on a collapsed STUDENTS header', async () => {

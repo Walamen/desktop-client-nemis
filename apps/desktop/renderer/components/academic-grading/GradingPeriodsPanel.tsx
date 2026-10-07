@@ -156,7 +156,12 @@ export function GradingPeriodsPanel() {
     }
   };
 
-  const termOptions = terms.status === 'success' || terms.status === 'refreshing' ? terms.data : [];
+  // The foundation ViewModel is an app-wide singleton: `terms` may still hold
+  // another year's terms until loadTerms(current) resolves, so only offer
+  // terms that belong to the current year.
+  const termOptions = (terms.status === 'success' || terms.status === 'refreshing') && (year.status === 'success' || year.status === 'refreshing')
+    ? terms.data.filter((t) => t.academicYearId === year.data.id)
+    : [];
 
   return (
     <div className="space-y-6">
@@ -194,21 +199,28 @@ export function GradingPeriodsPanel() {
               </div>
             </button>
           ))}
-          {termOptions.length === 0 && year.status === 'empty' && (
-            <p className="text-sm text-slate-500">
-              No current academic year is set.{' '}
-              <Link href="/government/school-admin/academic-years" className="text-blue-700 hover:underline">
-                Set up an academic year
-              </Link>
-            </p>
-          )}
-          {termOptions.length === 0 && (year.status === 'success' || year.status === 'refreshing') && (
-            <p className="text-sm text-slate-500">
-              No terms configured for the current academic year.{' '}
-              <Link href="/government/school-admin/terms" className="text-blue-700 hover:underline">
-                Create terms
-              </Link>
-            </p>
+          {termOptions.length === 0 && (
+            year.status === 'empty' ? (
+              <p className="text-sm text-slate-500">
+                No current academic year is set.{' '}
+                <Link href="/government/school-admin/academic-years" className="text-blue-700 hover:underline">
+                  Set up an academic year
+                </Link>
+              </p>
+            ) : year.status === 'error' ? (
+              <p className="text-sm text-red-700">{year.error.userMessage}</p>
+            ) : terms.status === 'error' ? (
+              <p className="text-sm text-red-700">{terms.error.userMessage}</p>
+            ) : (year.status === 'success' || year.status === 'refreshing') && (terms.status === 'empty' || terms.status === 'success' || terms.status === 'refreshing') ? (
+              <p className="text-sm text-slate-500">
+                No terms configured for the current academic year.{' '}
+                <Link href="/government/school-admin/terms" className="text-blue-700 hover:underline">
+                  Create terms
+                </Link>
+              </p>
+            ) : (
+              <p className="text-sm text-slate-500">Loading terms…</p>
+            )
           )}
         </div>
       </div>

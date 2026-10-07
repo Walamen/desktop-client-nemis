@@ -17,11 +17,11 @@ const year = (over: Record<string, unknown>) => ({
 const CURRENT = year({});
 const OLD = year({ id: 'y0', code: '2024/2025', isCurrent: false, status: 'CLOSED', termCount: 3 });
 
-function stubNemis() {
+function stubNemis(years: unknown[] = [OLD, CURRENT]) {
   (window as unknown as { nemis: unknown }).nemis = {
     dashboard: { getOverview: vi.fn(async () => ({ totalStudents: 0, totalClasses: 0, totalSubjects: 0, attendanceToday: { present: 0, total: 0 }, studentsByGrade: [], recentlyEnrolled: [] })) },
     school: { getSummary: vi.fn(async () => null) },
-    academicYear: { getCurrent: vi.fn(async () => null), list: vi.fn(async () => [OLD, CURRENT]) },
+    academicYear: { getCurrent: vi.fn(async () => null), list: vi.fn(async () => years) },
     term: { getCurrent: vi.fn(async () => null), list: vi.fn(async () => []) },
     identity: { getCurrentUser: vi.fn(async () => null) },
     device: { getInfo: vi.fn(async () => null) },
@@ -62,6 +62,12 @@ describe('AcademicYearsPage', () => {
       '/government/school-admin/terms?yearId=y0',
     );
   });
+
+  it('uses the singular for a year with one term', async () => {
+    stubNemis([year({ termCount: 1 })]);
+    await renderWithLayer(<AcademicYearsPage />);
+    expect(await screen.findByRole('link', { name: '1 term in 2025/2026' })).toBeInTheDocument();
+  });
 });
 
 describe('TermsPage', () => {
@@ -77,5 +83,15 @@ describe('TermsPage', () => {
     window.history.replaceState({}, '', '/?yearId=deleted-year');
     await renderWithLayer(<TermsPage />);
     await waitFor(() => expect(yearSelect()).toHaveValue('y1'));
+  });
+
+  it('sends the admin to Academic Years when none exist yet', async () => {
+    stubNemis([]);
+    await renderWithLayer(<TermsPage />);
+    expect(await screen.findByText('No academic year yet.')).toBeInTheDocument();
+    expect(screen.getByText('Create academic year').closest('a')).toHaveAttribute(
+      'href',
+      '/government/school-admin/academic-years',
+    );
   });
 });
