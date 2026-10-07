@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import Link from 'next/link';
 import type { CohortResult, GradeLevel } from '@nemis-desktop/types';
 import { Button, Select } from '@nemis-desktop/ui';
 import { useViewModel } from '@/hooks/use-view-model';
@@ -180,8 +181,11 @@ export function EndOfYearOutcomesPage() {
   if (years.status === 'empty') {
     body = (
       <p className="text-sm text-amber-700">
-        There are no academic years on this device. Add one under Academic Years, or sync this device, to record
-        outcomes.
+        There are no academic years on this device.{' '}
+        <Link href="/government/school-admin/academic-years" className="font-semibold underline">
+          Add one under Academic Years
+        </Link>
+        , or sync this device, to record outcomes.
       </p>
     );
   } else if (years.status === 'error') {

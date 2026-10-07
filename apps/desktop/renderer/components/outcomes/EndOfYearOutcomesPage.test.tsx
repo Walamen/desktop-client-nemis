@@ -314,6 +314,7 @@ describe('EndOfYearOutcomesPage', () => {
     const { cohort } = stubNemis({ years: [] });
     await renderPage();
     expect(await screen.findByText(/There are no academic years on this device/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Add one under Academic Years' })).toHaveAttribute('href', '/government/school-admin/academic-years');
     expect(cohort).not.toHaveBeenCalled();
   });
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import {
   Calendar, ClipboardCheck, Download, FileText, GraduationCap, RefreshCw, Search, Users, DollarSign, AlertTriangle,
 } from 'lucide-react';
@@ -31,7 +32,7 @@ const REPORT_TYPES: { id: ReportType; name: string; icon: typeof Users }[] = [
 type ReportState =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'error'; message: string }
+  | { status: 'error'; message: string; link?: { href: string; label: string } }
   | { status: 'success'; type: 'ENROLLMENT'; data: EnrollmentReportData; label: string; generatedAt: string }
   | { status: 'success'; type: 'ATTENDANCE'; data: AttendanceReportData; label: string; generatedAt: string }
   | { status: 'success'; type: 'ACADEMIC'; data: AcademicReportData; label: string; termName: string; generatedAt: string }
@@ -108,7 +109,7 @@ export function ReportsPage() {
         setReportState({ status: 'success', type: 'ATTENDANCE', data, label, generatedAt });
       } else if (selectedReport === 'ACADEMIC') {
         const effectiveTermId = termId || currentTerm?.id;
-        if (!effectiveTermId) { setReportState({ status: 'error', message: 'No term is set as current. Choose a year and term to generate this report.' }); return; }
+        if (!effectiveTermId) { setReportState({ status: 'error', message: 'No term is set as current. Choose a year and term to generate this report.', link: { href: '/government/school-admin/terms', label: 'Set a current term' } }); return; }
         const aggs = await loadClassAggregates(scopedClasses);
         const data = await buildAcademicReport(aggs, effectiveTermId);
         const termName = terms.find((t) => t.id === effectiveTermId)?.name ?? currentTerm?.name ?? 'Current Term';
@@ -303,6 +304,11 @@ export function ReportsPage() {
                 <div>
                   <p className="text-sm font-semibold text-red-700">Failed to load report</p>
                   <p className="mt-0.5 text-xs text-red-500">{reportState.message}</p>
+                  {reportState.link && (
+                    <Link href={reportState.link.href} className="mt-1 inline-block text-xs font-semibold text-red-700 underline">
+                      {reportState.link.label}
+                    </Link>
+                  )}
                 </div>
               </div>
             )}

@@ -13,6 +13,7 @@ import {
 } from './shared';
 import { PaymentRow, type EnrichedStudent } from './PaymentRow';
 import { PaymentHistoryPanel } from './PaymentHistoryPanel';
+import { CurrentTermNotice } from './CurrentTermNotice';
 
 const PAGE_SIZE = 20;
 
@@ -214,11 +215,7 @@ export function RecordPaymentPage() {
           </div>
         </div>
 
-        {!termReady && (
-          <div className="rounded-card border border-pending/30 bg-pending/10 px-4 py-2.5 text-xs text-pending">
-            Loading the current term — payment entry is disabled until it resolves.
-          </div>
-        )}
+        <CurrentTermNotice status={term.status} errorMessage={term.status === 'error' ? term.error.userMessage : undefined} />
 
         {!students ? (
           <div className="flex justify-center rounded-lg border border-slate-300 bg-white p-12">
