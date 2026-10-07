@@ -1,5 +1,6 @@
 import type { DesktopPortalRole } from '@nemis-desktop/types';
 import { headerConfigs, sidebarConfigs } from './sidebarConfig';
+import { normalizePath } from './active-nav';
 
 const titleCase = (s: string) => s.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
@@ -18,12 +19,13 @@ export function resolvePageTitle(
   role: DesktopPortalRole,
 ): { title: string; segments: string[] } {
   const header = headerConfigs[role];
-  const lastSegment = pathname.split('/').filter(Boolean).at(-1) ?? '';
+  const path = normalizePath(pathname);
+  const lastSegment = path.split('/').filter(Boolean).at(-1) ?? '';
   const title =
-    header.pageTitles?.[pathname] ??
-    sidebarItemName(pathname, role) ??
+    header.pageTitles?.[path] ??
+    sidebarItemName(path, role) ??
     titleCase(lastSegment);
-  const segments = pathname
+  const segments = path
     .slice(header.basePath.length)
     .split('/')
     .filter(Boolean)

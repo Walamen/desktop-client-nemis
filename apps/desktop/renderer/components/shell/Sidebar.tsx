@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { LogOut } from 'lucide-react';
 import { SystemRole, type DesktopPortalRole } from '@nemis-desktop/types';
-import { sidebarConfigs, type SidebarBadge } from './sidebarConfig';
+import { headerConfigs, sidebarConfigs, type SidebarBadge } from './sidebarConfig';
+import { resolveActiveHref } from './active-nav';
 import { useNotificationStore } from '../../lib/presentation/hooks/shared';
 import { useViewModel } from '../../hooks/use-view-model';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
@@ -18,7 +19,8 @@ export function Sidebar({
   const config = sidebarConfigs[role];
   const pathname = usePathname();
   const router = useRouter();
-  const isActive = (href: string) => pathname === href;
+  const activeHref = resolveActiveHref(pathname ?? '', config, headerConfigs[role].basePath);
+  const isActive = (href: string) => href === activeHref;
 
   const notifications = useNotificationStore();
   const unreadNotifications = useViewModel(notifications.store, (s) => s.notifications.length);
@@ -55,7 +57,8 @@ export function Sidebar({
           {config.dashboardItem && (
             <Link
               href={config.dashboardItem.href}
-              className={`flex items-center gap-3 px-4 py-3 transition-colors ${
+              aria-current={isActive(config.dashboardItem.href) ? 'page' : undefined}
+              className={`flex items-center gap-3 px-4 py-2.5 transition-colors ${
                 isActive(config.dashboardItem.href)
                   ? 'bg-slate-800 text-neutral-light'
                   : 'text-white/80 hover:bg-slate-900 hover:text-neutral-light'
@@ -68,9 +71,9 @@ export function Sidebar({
 
           {config.navGroups.map((group) => (
             <div key={group.label}>
-              <div className="border-t border-white/20 my-4" />
+              <div className="border-t border-white/20 my-3" />
               <div className="px-4 mb-2">
-                <span className="text-white/40 text-xs font-semibold tracking-wider">{group.label}</span>
+                <span className="text-white/60 text-xs font-semibold tracking-wider">{group.label}</span>
               </div>
               <div className="space-y-1">
                 {group.items.map((item) => {
@@ -81,7 +84,8 @@ export function Sidebar({
                     <Link
                       key={item.href}
                       href={item.href}
-                      className={`flex items-center gap-3 px-4 py-3 transition-colors ${
+                      aria-current={active ? 'page' : undefined}
+                      className={`flex items-center gap-3 px-4 py-2.5 transition-colors ${
                         active ? 'bg-slate-800 text-slate-100' : 'text-white/80 hover:bg-slate-900 hover:text-white'
                       }`}
                     >

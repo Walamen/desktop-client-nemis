@@ -12,8 +12,20 @@ describe('resolvePageTitle', () => {
 
   it('builds a breadcrumb trail for nested school-admin routes', () => {
     const r = resolvePageTitle('/government/school-admin/academic-grading/windows', SystemRole.INSTITUTION_ADMIN);
-    expect(r.title).toBe('Grade Windows');
+    expect(r.title).toBe('Grade Entry & Results');
     expect(r.segments).toEqual(['School Admin', 'Academic Grading', 'Windows']);
+  });
+
+  it('titles attendance from the sidebar name, with no override', () => {
+    expect(resolvePageTitle('/government/school-admin/attendance', SystemRole.INSTITUTION_ADMIN).title).toBe('Attendance');
+  });
+
+  it('keeps exact-match titles on sub-pages (no prefix inheritance)', () => {
+    expect(resolvePageTitle('/government/school-admin/students/profile', SystemRole.INSTITUTION_ADMIN).title).toBe('Profile');
+  });
+
+  it('ignores a trailing slash when resolving a title', () => {
+    expect(resolvePageTitle('/government/school-admin/terms/', SystemRole.INSTITUTION_ADMIN).title).toBe('Terms');
   });
 
   it('resolves a county page title from the sidebar config, with no explicit override', () => {

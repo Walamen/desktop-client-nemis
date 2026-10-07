@@ -1,17 +1,11 @@
 import {
   LayoutDashboard, Map, School, CheckCircle, BookOpen, CalendarCheck, Users,
-  Building2, FileText, CreditCard, Bell, MessageCircle,
-  Settings2Icon, MessageSquare, DollarSign, ClipboardCheck, ShieldCheck, Settings, UserCog,
+  Building2, CreditCard, Bell, MessageCircle,
+  MessageSquare, DollarSign, ClipboardCheck, ShieldCheck, Settings, UserCog,
   GraduationCap, ArrowRightLeft, UserCircle2, AlertTriangle, FileBarChart,
+  SlidersHorizontal, CalendarRange, CalendarDays, CalendarClock, Award, Clock, Receipt, Layers,
 } from 'lucide-react';
 import type { ComponentType } from 'react';
-import { FcDataConfiguration } from 'react-icons/fc';
-import { GiTeacher } from 'react-icons/gi';
-import { GrOverview } from 'react-icons/gr';
-import { MdSubject } from 'react-icons/md';
-import { PiClockUserBold, PiStudentDuotone } from 'react-icons/pi';
-import { RiParentFill } from 'react-icons/ri';
-import { SiGoogleclassroom } from 'react-icons/si';
 import { DESKTOP_PORTALS, SystemRole, type DesktopPortalRole } from '@nemis-desktop/types';
 import type { AvatarRole } from '@nemis-desktop/ui';
 
@@ -54,64 +48,80 @@ export interface HeaderConfig {
 
 export const sidebarConfigs: Record<DesktopPortalRole, SidebarConfig> = {
   [SystemRole.INSTITUTION_ADMIN]: {
+    collapsibleGroups: true,
     dashboardItem: {
       name: 'Overview',
       href: '/government/school-admin',
-      icon: GrOverview,
+      icon: LayoutDashboard,
     },
     navGroups: [
       {
-        label: 'User Management',
+        // Dependency order, not frequency: Terms reads termsPerYear from the
+        // grading config, and Assessment Periods auto-setup reads periodsPerTerm.
+        label: 'ACADEMIC SETUP',
         items: [
-          { name: 'Students', href: '/government/school-admin/students', icon: PiStudentDuotone },
+          { name: 'Grading System', href: '/government/school-admin/academic-grading', icon: SlidersHorizontal },
+          { name: 'Academic Years', href: '/government/school-admin/academic-years', icon: CalendarRange },
+          { name: 'Terms', href: '/government/school-admin/terms', icon: CalendarDays },
+          { name: 'Assessment Periods', href: '/government/school-admin/academic-grading/periods', icon: CalendarClock },
+          { name: 'Subjects', href: '/government/school-admin/subjects', icon: BookOpen },
+        ],
+      },
+      {
+        label: 'STUDENTS',
+        items: [
+          { name: 'Students', href: '/government/school-admin/students', icon: GraduationCap },
           {
             name: 'Student Transfers',
             href: '/government/school-admin/students/inter-school-transfer',
             icon: ArrowRightLeft,
             badge: 'transfers',
           },
-          {
-            name: 'End-of-Year Outcomes',
-            href: '/government/school-admin/students/promote',
-            icon: GraduationCap,
-          },
-          { name: 'Teachers & Staff', href: '/government/school-admin/teachers-staff', icon: GiTeacher },
-          { name: 'Parents & Guardians', href: '/government/school-admin/parents-guardians', icon: RiParentFill },
+          { name: 'Promotion & Outcomes', href: '/government/school-admin/students/promote', icon: Award },
         ],
       },
       {
-        label: 'ACADEMIC',
+        label: 'STAFF & FAMILIES',
         items: [
-          { name: 'Classes Management', href: '/government/school-admin/classes', icon: SiGoogleclassroom },
-          { name: 'Subjects Management', href: '/government/school-admin/subjects', icon: MdSubject },
-          { name: 'Attendence Management', href: '/government/school-admin/attendance', icon: CalendarCheck },
-          { name: 'Academic & Grading', href: '/government/school-admin/academic-grading', icon: FcDataConfiguration },
-          { name: 'Schedule', href: '/government/school-admin/timetable', icon: PiClockUserBold },
-          { name: 'Grade Windows', href: '/government/school-admin/academic-grading/windows', icon: FileText },
+          { name: 'Teachers & Staff', href: '/government/school-admin/teachers-staff', icon: UserCog },
+          { name: 'Parents & Guardians', href: '/government/school-admin/parents-guardians', icon: Users },
         ],
       },
       {
-        label: 'FINANCIAL',
+        label: 'TEACHING',
         items: [
-          { name: 'All Fees', href: '/government/school-admin/financial', icon: DollarSign },
+          { name: 'Classes', href: '/government/school-admin/classes', icon: School },
+          { name: 'Timetable', href: '/government/school-admin/timetable', icon: Clock },
+          { name: 'Attendance', href: '/government/school-admin/attendance', icon: CalendarCheck },
+          { name: 'Grade Entry & Results', href: '/government/school-admin/academic-grading/windows', icon: ClipboardCheck },
+        ],
+      },
+      {
+        label: 'FINANCE',
+        items: [
           { name: 'Record Payment', href: '/government/school-admin/financial/record-payment', icon: CreditCard },
+          { name: 'Fees & Billing', href: '/government/school-admin/financial', icon: Receipt },
         ],
       },
       {
-        label: 'REPORTS',
-        items: [{ name: 'Reports', href: '/government/school-admin/reports', icon: FileText }],
-      },
-      {
-        label: 'COMMUNICATION',
+        label: 'REPORTS & MESSAGES',
         items: [
+          { name: 'Reports', href: '/government/school-admin/reports', icon: FileBarChart },
           { name: 'Notifications', href: '/government/school-admin/notifications', icon: Bell },
           { name: 'Messages', href: '/government/school-admin/messages', icon: MessageCircle },
         ],
       },
       {
-        label: 'SYSTEM',
+        label: 'SCHOOL',
         items: [
-          { name: 'School Settings', href: '/government/school-admin/settings', icon: Settings2Icon },
+          {
+            name: 'Settings',
+            href: '/government/school-admin/settings',
+            icon: Settings,
+            alsoActiveOn: ['/government/school-admin/school-profile'],
+          },
+          { name: 'Grade Levels', href: '/government/school-admin/grade-levels', icon: Layers },
+          { name: 'Infrastructure & Alerts', href: '/government/school-admin/infrastructure', icon: AlertTriangle },
         ],
       },
     ],
@@ -298,15 +308,12 @@ export const sidebarConfigs: Record<DesktopPortalRole, SidebarConfig> = {
   },
 };
 
-/** Explicit overrides for the two school-admin routes whose header title genuinely differs
- * from the corresponding sidebar item's `name` (dashboard root, and the sidebar's
- * "Attendence" typo on the attendance route). All other routes resolve their title from the
- * sidebar config directly via `sidebarItemName` in `page-titles.ts`, so this map is
- * intentionally NOT a full mirror of `sidebarConfigs` — adding a redundant entry here would
- * just be duplicate, drift-prone state. */
+/** Explicit header-title overrides for school-admin routes whose title differs
+ * from the sidebar item's `name`. Only the dashboard root does. Every other
+ * route resolves its title from the sidebar config via `sidebarItemName` in
+ * `page-titles.ts`, so this is intentionally NOT a mirror of `sidebarConfigs`. */
 const SCHOOL_ADMIN_PAGE_TITLES: Record<string, string> = {
   '/government/school-admin': 'Dashboard Overview',
-  '/government/school-admin/attendance': 'Attendance Management',
 };
 
 export const headerConfigs: Record<DesktopPortalRole, HeaderConfig> = {

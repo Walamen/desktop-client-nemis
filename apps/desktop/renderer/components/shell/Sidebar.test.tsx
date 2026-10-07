@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SystemRole } from '@nemis-desktop/types';
 
 vi.mock('next/navigation', () => ({
-  usePathname: () => '/government/school-admin',
+  usePathname: vi.fn(() => '/government/school-admin'),
   useRouter: () => ({ replace: vi.fn() }),
 }));
 
@@ -29,6 +29,7 @@ vi.mock('@/services/nemis-bridge/shared', () => ({
   },
 }));
 
+import { usePathname } from 'next/navigation';
 import { Sidebar } from './Sidebar';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
 import { notifyTransfersChanged } from '@/lib/transfers';
@@ -43,17 +44,29 @@ const stubRows = (rows: Record<string, unknown>[]) =>
 const transfersLink = () => screen.getByText('Student Transfers').closest('a') as HTMLElement;
 
 beforeEach(() => {
+  vi.mocked(usePathname).mockReturnValue('/government/school-admin');
   listMock.mockReset();
   stubRows([]);
 });
 
 describe('Sidebar', () => {
-  it('renders school-admin nav groups and items with correct hrefs', () => {
+  it('renders the school-admin groups in order, with correct hrefs', () => {
     render(<Sidebar role={SystemRole.INSTITUTION_ADMIN} />);
-    expect(screen.getByText('Overview')).toBeInTheDocument();
-    expect(screen.getByText('Students').closest('a')).toHaveAttribute('href', '/government/school-admin/students');
-    expect(screen.getByText('Attendence Management')).toBeInTheDocument();
-    expect(screen.getByText('School Settings')).toBeInTheDocument();
+    const labels = ['ACADEMIC SETUP', 'STUDENTS', 'STAFF & FAMILIES', 'TEACHING', 'FINANCE', 'REPORTS & MESSAGES', 'SCHOOL'];
+    const rendered = labels.map((l) => screen.getByText(l));
+    for (let i = 1; i < rendered.length; i += 1) {
+      expect(rendered[i - 1]!.compareDocumentPosition(rendered[i]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
+    const href = (name: string) => screen.getByRole('link', { name }).getAttribute('href');
+    expect(href('Overview')).toBe('/government/school-admin');
+    expect(href('Grading System')).toBe('/government/school-admin/academic-grading');
+    expect(href('Academic Years')).toBe('/government/school-admin/academic-years');
+    expect(href('Terms')).toBe('/government/school-admin/terms');
+    expect(href('Assessment Periods')).toBe('/government/school-admin/academic-grading/periods');
+    expect(href('Attendance')).toBe('/government/school-admin/attendance');
+    expect(href('Grade Entry & Results')).toBe('/government/school-admin/academic-grading/windows');
+    expect(href('Grade Levels')).toBe('/government/school-admin/grade-levels');
+    expect(href('Infrastructure & Alerts')).toBe('/government/school-admin/infrastructure');
     expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
   });
 
@@ -80,16 +93,16 @@ describe('Sidebar', () => {
     expect(transfersLink()).toHaveAttribute('href', '/government/school-admin/students/inter-school-transfer');
   });
 
-  it('shows the End-of-Year Outcomes entry for a school admin only', () => {
+  it('shows the Promotion & Outcomes entry for a school admin only', () => {
     const { unmount } = render(<Sidebar role={SystemRole.INSTITUTION_ADMIN} />);
-    expect(screen.getByText('End-of-Year Outcomes').closest('a')).toHaveAttribute(
+    expect(screen.getByText('Promotion & Outcomes').closest('a')).toHaveAttribute(
       'href',
       '/government/school-admin/students/promote',
     );
     unmount();
     for (const role of [SystemRole.COUNTY_ADMIN, SystemRole.DEO, SystemRole.MINISTRY_ADMIN, SystemRole.TEACHER]) {
       const view = render(<Sidebar role={role} />);
-      expect(screen.queryByText('End-of-Year Outcomes')).toBeNull();
+      expect(screen.queryByText('Promotion & Outcomes')).toBeNull();
       view.unmount();
     }
   });
@@ -123,6 +136,25 @@ describe('Sidebar', () => {
       await Promise.resolve();
     });
     expect(listMock).not.toHaveBeenCalled();
+  });
+
+  it('marks the active item with aria-current', () => {
+    render(<Sidebar role={SystemRole.INSTITUTION_ADMIN} />);
+    expect(screen.getByRole('link', { name: 'Overview' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: 'Terms' })).not.toHaveAttribute('aria-current');
+  });
+
+  it('highlights the parent item on a sub-page', () => {
+    vi.mocked(usePathname).mockReturnValue('/government/school-admin/students/profile');
+    render(<Sidebar role={SystemRole.INSTITUTION_ADMIN} />);
+    expect(screen.getByRole('link', { name: 'Students' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: 'Overview' })).not.toHaveAttribute('aria-current');
+  });
+
+  it('keeps Settings highlighted on the school profile page', () => {
+    vi.mocked(usePathname).mockReturnValue('/government/school-admin/school-profile/');
+    render(<Sidebar role={SystemRole.INSTITUTION_ADMIN} />);
+    expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute('aria-current', 'page');
   });
 
   it('renders a role with no dashboardItem without crashing', () => {
