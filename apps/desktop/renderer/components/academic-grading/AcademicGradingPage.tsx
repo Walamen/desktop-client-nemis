@@ -6,10 +6,9 @@ import { CalendarRange, ClipboardList, DoorOpen, PenLine } from 'lucide-react';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
 import type { SchoolAdminRecord } from '@nemis-desktop/types';
 import { GradingConfigDrawer } from './GradingConfigDrawer';
-import { GradingPeriodsDrawer } from './GradingPeriodsDrawer';
 import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 
-type ModalKey = 'setup' | 'periods' | null;
+type ModalKey = 'setup' | null;
 
 const GUIDE_STEPS = [
   {
@@ -17,7 +16,7 @@ const GUIDE_STEPS = [
     body: 'Start here. Set your maximum marks, passing mark, number of terms per year, and periods per term. Also define your grade scale (A, B, C…).',
   },
   {
-    title: 'Create Grading Periods',
+    title: 'Create Assessment Periods',
     body: 'Define the academic periods teachers will be submitting grades for. Each period has a start date, end date, and status (Upcoming, Active, or Completed).',
   },
   {
@@ -74,10 +73,10 @@ export function AcademicGradingPage() {
           />
           <FeatureCard
             icon={<CalendarRange className="h-6 w-6 text-slate-500" />}
-            title="Grading Periods"
-            description="Create and manage grading periods for each term."
+            title="Assessment Periods"
+            description="Create and manage the assessment periods in each term."
             action="Manage Periods"
-            onClick={() => setActiveModal('periods')}
+            href="/government/school-admin/academic-grading/periods"
           />
           <FeatureCard
             icon={<DoorOpen className="h-6 w-6 text-slate-500" />}
@@ -120,7 +119,6 @@ export function AcademicGradingPage() {
       </div>
 
       <GradingConfigDrawer isOpen={activeModal === 'setup'} onClose={() => setActiveModal(null)} />
-      <GradingPeriodsDrawer isOpen={activeModal === 'periods'} onClose={() => setActiveModal(null)} />
     </div>
   );
 }
