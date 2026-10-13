@@ -74,22 +74,19 @@ import { normalizeNemisId } from '@nemis-desktop/shared/nemis-id';
 
 **`packages/domain/eslint.config.mjs`** (`domainImportGuard`):
 
-- `paths` keeps the exact-name entry banning `@nemis-desktop/shared` (the
-  package root). Its message becomes:
-  `'Domain layer must not depend on the infra-facing shared package (only @nemis-desktop/shared/nemis-id is allowed).'`
-- `patterns[0].group` replaces the single `'@nemis-desktop/shared/*'` entry
-  with:
-  ```js
-  '@nemis-desktop/shared/*',
-  '!@nemis-desktop/shared/nemis-id',
-  '@nemis-desktop/shared/nemis-id/*',
-  ```
-  (`'@nemis-desktop/shared'` stays in the group.) ESLint's
-  `no-restricted-imports` pattern groups use gitignore semantics: the negation
-  re-allows that subpath, and because re-including a path also re-includes
-  everything under it, the last line re-bans deeper paths. Net effect: exactly
-  `@nemis-desktop/shared/nemis-id` is allowed; every other subpath stays banned.
-- A comment above the negation explains the exception: `nemis-id.ts` is a
+- The exact `paths` entry for `@nemis-desktop/shared` and the
+  `'@nemis-desktop/shared/*'` group entry are both removed and replaced by a
+  single second `patterns` object using a case-insensitive `regex`:
+  `^@nemis-desktop/shared(?:/(?!nemis-id$).*)?$`, carrying the message
+  `'Domain layer must not depend on the infra-facing shared package (only @nemis-desktop/shared/nemis-id is allowed).'`.
+  Why not gitignore negation: a bare `@nemis-desktop/shared` group entry
+  excludes everything beneath it (parent exclusion), so a `!` re-include of the
+  subpath is impossible, and without the bare entry the exact-name `paths` ban
+  missed the spellings `'@nemis-desktop/shared/'` and `'@nemis-desktop/Shared'`,
+  which TypeScript resolves to the package root. The regex bans the root, every
+  other subpath, and the trailing-slash and mixed-case spellings, and allows
+  exactly `@nemis-desktop/shared/nemis-id`.
+- A comment above the regex pattern explains the exception: `nemis-id.ts` is a
   pure, dependency-free module (the NEMIS ID algorithm), the byte-identical
   twin of the server's copy, verified by golden fixtures — so the domain
   reuses it rather than duplicating it.
@@ -123,7 +120,16 @@ and asserts, by collecting `no-restricted-imports` messages:
 | `import { IPCError } from '@nemis-desktop/shared';` | reported |
 | `import { x } from '@nemis-desktop/shared/errors';` | reported |
 | `import { x } from '@nemis-desktop/shared/src/nemis-id';` | reported (the allowed subpath is exact) |
+| `import { IPCError } from '@nemis-desktop/shared/';` | reported (trailing slash) |
+| `import { IPCError } from '@nemis-desktop/Shared';` | reported (mixed case) |
+| `import { x } from '@nemis-desktop/shared/nemis-id/';` | reported (allowed subpath with trailing slash) |
+| `import { x } from '@nemis-desktop/shared/index';` | reported |
+| `import { x } from '@nemis-desktop/shared-extra';` | no `no-restricted-imports` message (regex is not over-broad) |
 | `import { app } from 'electron';` | reported (existing ban still works) |
+| a database path import | reported |
+
+The probe helper also asserts `eslint.isPathIgnored(filePath)` is `false` and
+the result has `fatalErrorCount` 0, so a probe cannot pass vacuously.
 
 The repo root is resolved from the test file's location
 (`fileURLToPath(new URL('../../..', import.meta.url))`). The probe file path

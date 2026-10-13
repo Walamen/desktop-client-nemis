@@ -16,7 +16,9 @@ beforeAll(() => {
 });
 
 async function ruleHits(source: string, filePath: string, ruleId: string): Promise<number> {
+  expect(await eslint.isPathIgnored(filePath)).toBe(false);
   const [result] = await eslint.lintText(source, { filePath });
+  expect(result?.fatalErrorCount ?? 0).toBe(0);
   return (result?.messages ?? []).filter((m) => m.ruleId === ruleId).length;
 }
 
@@ -27,11 +29,19 @@ describe('domain import guard', () => {
     expect(await restricted("import { normalizeNemisId } from '@nemis-desktop/shared/nemis-id';\nexport { normalizeNemisId };\n")).toBe(0);
   });
 
+  it('does not catch unrelated packages that share the prefix', async () => {
+    expect(await restricted("import { x } from '@nemis-desktop/shared-extra';\nexport { x };\n")).toBe(0);
+  });
+
   it.each([
     ["the shared package root", "import { IPCError } from '@nemis-desktop/shared';\nexport { IPCError };\n"],
     ['another shared subpath', "import { x } from '@nemis-desktop/shared/errors';\nexport { x };\n"],
     ['a look-alike of the allowed subpath', "import { x } from '@nemis-desktop/shared/src/nemis-id';\nexport { x };\n"],
     ['a path under the allowed subpath', "import { x } from '@nemis-desktop/shared/nemis-id/extra';\nexport { x };\n"],
+    ['the shared package root with a trailing slash', "import { IPCError } from '@nemis-desktop/shared/';\nexport { IPCError };\n"],
+    ['the shared package root in another case', "import { IPCError } from '@nemis-desktop/Shared';\nexport { IPCError };\n"],
+    ['the allowed subpath with a trailing slash', "import { x } from '@nemis-desktop/shared/nemis-id/';\nexport { x };\n"],
+    ['the shared index module', "import { x } from '@nemis-desktop/shared/index';\nexport { x };\n"],
     ['electron', "import { app } from 'electron';\nexport { app };\n"],
     ['a database path', "import { x } from '../../database/connection';\nexport { x };\n"],
   ])('still bans %s', async (_label, source) => {

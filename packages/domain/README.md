@@ -19,8 +19,7 @@ the `NemisId` value object). Imports of `electron`, `react`, `next`,
 `better-sqlite3`, `@nemis-desktop/shared` (the package root or any other subpath),
 or any `database/`/`data/`/`ipc/` path are banned and enforced by ESLint
 (`no-restricted-imports`; see `src/import-guard.test.ts`). The package compiles
-standalone:
-`pnpm --filter @nemis-desktop/domain typecheck`.
+standalone: `pnpm --filter @nemis-desktop/domain typecheck`.
 
 ## Layout
 
