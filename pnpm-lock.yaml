@@ -35,6 +35,9 @@ importers:
       eslint-plugin-react-hooks:
         specifier: ^5.1.0
         version: 5.2.0(eslint@9.39.5(jiti@2.7.0))
+      globals:
+        specifier: 14.0.0
+        version: 14.0.0
       jsdom:
         specifier: ^29.1.1
         version: 29.1.1

@@ -3,6 +3,7 @@ import tseslint from 'typescript-eslint';
 import reactPlugin from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import prettier from 'eslint-config-prettier';
+import globals from 'globals';
 import { domainImportGuard } from './packages/domain/eslint.config.mjs';
 import {
   applicationImportGuard,
@@ -55,6 +56,11 @@ export default tseslint.config(
     rules: {
       '@typescript-eslint/no-explicit-any': 'error',
     },
+  },
+  {
+    // Repo maintenance scripts (e.g. scripts/bump-desktop-version.mjs) run in Node.
+    files: ['scripts/**/*.{js,mjs,cjs}'],
+    languageOptions: { globals: globals.node },
   },
   domainImportGuard,
   applicationImportGuard,
