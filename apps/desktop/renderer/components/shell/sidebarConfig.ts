@@ -12,6 +12,7 @@ import { PiClockUserBold } from "react-icons/pi";
 import type { ComponentType } from 'react';
 import { DESKTOP_PORTALS, SystemRole, type DesktopPortalRole } from '@nemis-desktop/types';
 import type { AvatarRole } from '@nemis-desktop/ui';
+import { academicSetupHref } from '@/lib/academic-setup';
 
 export type SidebarBadge = 'notifications' | 'transfers';
 
@@ -95,7 +96,14 @@ export const sidebarConfigs: Record<DesktopPortalRole, SidebarConfig> = {
           { name: 'Classes', href: '/government/school-admin/classes', icon: School },
           { name: 'Timetable', href: '/government/school-admin/timetable', icon: Clock },
           { name: 'Attendance', href: '/government/school-admin/attendance', icon: CalendarCheck },
-          { name: 'Grade Entry & Results', href: '/government/school-admin/academic-grading/windows', icon: ClipboardCheck },
+          {
+            name: 'Grade Entry & Results',
+            href: academicSetupHref('windows'),
+            icon: ClipboardCheck,
+            // Active-item matching ignores query strings; this keeps the item
+            // highlighted on the View Grades results page under /windows/grades.
+            alsoActiveOn: ['/government/school-admin/academic-grading/windows'],
+          },
         ],
       },
       {

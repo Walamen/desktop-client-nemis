@@ -12,6 +12,7 @@ import type { SchoolAdminRecord } from '@nemis-desktop/types';
 import { queryId } from '@/components/classes/shared';
 import { GRADE_STATUS_STYLE, listGradesForPeriod, pctTone } from './shared';
 import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
+import { academicSetupHref } from '@/lib/academic-setup';
 
 /** Read-only grade review for a single window — mirrors portal-web's
  * windows/[id]/grades page. Desktop's `grades` table already stores one row
@@ -161,7 +162,7 @@ export function WindowGradesPage() {
       <div className="space-y-5 px-6 py-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <Link
-            href="/government/school-admin/academic-grading/windows"
+            href={academicSetupHref('windows')}
             className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-600 hover:border-secondary hover:text-secondary"
           >
             <ArrowLeft className="h-4 w-4" />

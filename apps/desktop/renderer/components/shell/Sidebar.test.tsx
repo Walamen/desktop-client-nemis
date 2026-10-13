@@ -70,7 +70,7 @@ describe('Sidebar', () => {
       expect(screen.queryByRole('link', { name: gone })).toBeNull();
     }
     expect(href('Attendance')).toBe('/government/school-admin/attendance');
-    expect(href('Grade Entry & Results')).toBe('/government/school-admin/academic-grading/windows');
+    expect(href('Grade Entry & Results')).toBe('/government/school-admin/academic-grading?open=windows');
     expect(href('Grade Levels')).toBe('/government/school-admin/grade-levels');
     expect(href('Infrastructure & Alerts')).toBe('/government/school-admin/infrastructure');
     expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
@@ -155,6 +155,13 @@ describe('Sidebar', () => {
     render(<Sidebar role={SystemRole.INSTITUTION_ADMIN} />);
     expect(screen.getByRole('link', { name: 'Students' })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('link', { name: 'Overview' })).not.toHaveAttribute('aria-current');
+  });
+
+  it('keeps Grade Entry & Results active on the View Grades results page', () => {
+    vi.mocked(usePathname).mockReturnValue('/government/school-admin/academic-grading/windows/grades');
+    render(<Sidebar role={SystemRole.INSTITUTION_ADMIN} />);
+    expect(screen.getByRole('link', { name: 'Grade Entry & Results' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: 'Academic Grading' })).not.toHaveAttribute('aria-current');
   });
 
   it('keeps Settings highlighted on the school profile page', () => {

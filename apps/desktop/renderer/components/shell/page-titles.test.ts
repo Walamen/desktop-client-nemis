@@ -11,9 +11,9 @@ describe('resolvePageTitle', () => {
   });
 
   it('builds a breadcrumb trail for nested school-admin routes', () => {
-    const r = resolvePageTitle('/government/school-admin/academic-grading/windows', SystemRole.INSTITUTION_ADMIN);
-    expect(r.title).toBe('Grade Entry & Results');
-    expect(r.segments).toEqual(['School Admin', 'Academic Grading', 'Windows']);
+    const r = resolvePageTitle('/government/school-admin/academic-grading/windows/grades', SystemRole.INSTITUTION_ADMIN);
+    expect(r.title).toBe('Grades');
+    expect(r.segments).toEqual(['School Admin', 'Academic Grading', 'Windows', 'Grades']);
   });
 
   it('titles attendance from the sidebar name, with no override', () => {
