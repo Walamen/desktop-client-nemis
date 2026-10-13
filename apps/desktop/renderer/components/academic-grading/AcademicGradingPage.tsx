@@ -1,19 +1,31 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
-import { CalendarRange, ClipboardList, DoorOpen, PenLine } from 'lucide-react';
+import { CalendarClock, CalendarDays, CalendarRange, ClipboardList, DoorOpen, PenLine } from 'lucide-react';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
 import type { SchoolAdminRecord } from '@nemis-desktop/types';
+import { parseSetupDrawerTarget } from '@/lib/academic-setup';
+import { queryParam } from '@/components/teachers/shared';
 import { GradingConfigDrawer } from './GradingConfigDrawer';
+import { AcademicYearsDrawer } from './AcademicYearsDrawer';
+import { TermsDrawer } from './TermsDrawer';
+import { AssessmentPeriodsDrawer } from './AssessmentPeriodsDrawer';
+import type { SetupDrawer, SetupNavigate } from './setup-drawers';
 import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
-
-type ModalKey = 'setup' | null;
 
 const GUIDE_STEPS = [
   {
     title: 'Configure the Grading System',
     body: 'Start here. Set your maximum marks, passing mark, number of terms per year, and periods per term. Also define your grade scale (A, B, C…).',
+  },
+  {
+    title: 'Create the Academic Year',
+    body: 'Add the school year with its start and end dates and set it as current. Terms, classes and reports all belong to the current year.',
+  },
+  {
+    title: 'Add Terms',
+    body: 'Add the terms in the academic year — how many comes from "terms per year" in the grading system — and set the current term.',
   },
   {
     title: 'Create Assessment Periods',
@@ -30,18 +42,42 @@ const GUIDE_STEPS = [
 ];
 
 /** School-admin Academic Grading landing page — mirrors portal-web's
- * academic-grading/page.tsx (GradingSystemManagement + Quick Start Guide).
- * Grade Entry stays disabled here: that's a teacher task (recording marks
- * against an open window), the same split already applied to Attendance —
- * school admins configure and review, teachers enter. */
+ * academic-grading/page.tsx (GradingSystemManagement + Quick Start Guide), and
+ * is also where the school's yearly setup lives: grading configuration,
+ * academic years, terms and assessment periods each open in a drawer, in
+ * dependency order. Links elsewhere open a drawer with ?open= (see
+ * lib/academic-setup.ts). Grade Entry stays disabled here: that's a teacher
+ * task (recording marks against an open window), the same split already
+ * applied to Attendance — school admins configure and review, teachers enter. */
 export function AcademicGradingPage() {
   const [windows, setWindows] = useState<SchoolAdminRecord[] | null>(null);
-  const [activeModal, setActiveModal] = useState<ModalKey>(null);
+  const [activeModal, setActiveModal] = useState<SetupDrawer | null>(null);
+  const [termsYearId, setTermsYearId] = useState('');
 
   useRevalidateOnSync(() => {
     void sharedBridge
       .listSchoolAdminRecords({ collection: 'grade_entry_windows', limit: 250 })
       .then((result) => setWindows(result.items));
+  }, []);
+
+  // Deep links (?open=terms&yearId=…) are read once on mount; in-page switches
+  // go through `navigate`, since a Link to this same route would not remount.
+  useEffect(() => {
+    const target = parseSetupDrawerTarget(queryParam('open'));
+    if (!target) return;
+    setTermsYearId(queryParam('yearId'));
+    setActiveModal(target);
+  }, []);
+
+  const navigate: SetupNavigate = useCallback((drawer, opts) => {
+    setTermsYearId(opts?.yearId ?? '');
+    setActiveModal(drawer);
+  }, []);
+
+  const close = useCallback(() => {
+    setActiveModal(null);
+    setTermsYearId('');
+    if (window.location.search) window.history.replaceState(null, '', window.location.pathname);
   }, []);
 
   const count = (status: string) => (windows ?? []).filter((w) => w.status === status).length;
@@ -69,14 +105,28 @@ export function AcademicGradingPage() {
             title="Grading Configuration"
             description="Set up institution-wide grading rules, grade scales, and policies."
             action="Configure System"
-            onClick={() => setActiveModal('setup')}
+            onClick={() => navigate('setup')}
           />
           <FeatureCard
             icon={<CalendarRange className="h-6 w-6 text-slate-500" />}
+            title="Academic Years"
+            description="Create the school year, set the current one, and close or archive past years."
+            action="Manage Years"
+            onClick={() => navigate('years')}
+          />
+          <FeatureCard
+            icon={<CalendarDays className="h-6 w-6 text-slate-500" />}
+            title="Terms"
+            description="Add the terms in each academic year and choose the current term."
+            action="Manage Terms"
+            onClick={() => navigate('terms')}
+          />
+          <FeatureCard
+            icon={<CalendarClock className="h-6 w-6 text-slate-500" />}
             title="Assessment Periods"
             description="Create and manage the assessment periods in each term."
             action="Manage Periods"
-            href="/government/school-admin/academic-grading/periods"
+            onClick={() => navigate('periods')}
           />
           <FeatureCard
             icon={<DoorOpen className="h-6 w-6 text-slate-500" />}
@@ -118,7 +168,10 @@ export function AcademicGradingPage() {
         </div>
       </div>
 
-      <GradingConfigDrawer isOpen={activeModal === 'setup'} onClose={() => setActiveModal(null)} />
+      <GradingConfigDrawer isOpen={activeModal === 'setup'} onClose={close} />
+      <AcademicYearsDrawer isOpen={activeModal === 'years'} onClose={close} onNavigate={navigate} />
+      <TermsDrawer isOpen={activeModal === 'terms'} onClose={close} onNavigate={navigate} yearId={termsYearId} />
+      <AssessmentPeriodsDrawer isOpen={activeModal === 'periods'} onClose={close} onNavigate={navigate} />
     </div>
   );
 }
