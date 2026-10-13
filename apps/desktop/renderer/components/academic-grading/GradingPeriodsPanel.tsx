@@ -1,14 +1,16 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Calendar, Plus, RefreshCw, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { Button, Input } from '@nemis-desktop/ui';
 import { useViewModel } from '@/hooks/use-view-model';
 import { useAcademicFoundationViewModel, useAcademicYearViewModel } from '@/lib/presentation/hooks/school-admin';
+import { academicSetupHref, type SetupDrawerTarget } from '@/lib/academic-setup';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
 import type { SchoolAdminRecord } from '@nemis-desktop/types';
 import { getGradingConfig, listPeriodsForTerm, PERIOD_STATUS_BADGE, periodStatus } from './shared';
+import type { SetupNavigate } from './setup-drawers';
 
 const PERIOD_TYPES = [
   { value: 'REGULAR_PERIOD', label: 'Regular' },
@@ -18,13 +20,15 @@ const PERIOD_TYPES = [
 
 const EMPTY_FORM = { name: '', type: 'REGULAR_PERIOD', startDate: '', endDate: '', weight: 100 };
 
-/** Assessment (grading) periods scoped to a term — the body of the
- * /academic-grading/periods page, mirroring portal-web's grading-periods page,
- * including "Auto Setup All Periods" (computed client-side from the
- * institution's real periodsPerTerm config and the term's real start/end
- * dates, then saved one row at a time through the same generic collection API
- * used for manual create). */
-export function GradingPeriodsPanel() {
+/** Assessment (grading) periods scoped to a term — the body of the Assessment
+ * Periods drawer on the Academic Grading page, mirroring portal-web's
+ * grading-periods page, including "Auto Setup All Periods" (computed
+ * client-side from the institution's real periodsPerTerm config and the
+ * term's real start/end dates, then saved one row at a time through the same
+ * generic collection API used for manual create). Inside the drawer,
+ * `onNavigate` switches to the Years/Terms drawers; without it the prompts
+ * are plain deep links. */
+export function GradingPeriodsPanel({ onNavigate }: { onNavigate?: SetupNavigate } = {}) {
   const academicYear = useAcademicYearViewModel();
   const foundation = useAcademicFoundationViewModel();
   const year = useViewModel(academicYear.store, (s) => s.current);
@@ -203,9 +207,9 @@ export function GradingPeriodsPanel() {
             year.status === 'empty' ? (
               <p className="text-sm text-slate-500">
                 No current academic year is set.{' '}
-                <Link href="/government/school-admin/academic-years" className="text-blue-700 hover:underline">
+                <SetupLink target="years" onNavigate={onNavigate}>
                   Set up an academic year
-                </Link>
+                </SetupLink>
               </p>
             ) : year.status === 'error' ? (
               <p className="text-sm text-red-700">{year.error.userMessage}</p>
@@ -214,9 +218,9 @@ export function GradingPeriodsPanel() {
             ) : (year.status === 'success' || year.status === 'refreshing') && (terms.status === 'empty' || terms.status === 'success' || terms.status === 'refreshing') ? (
               <p className="text-sm text-slate-500">
                 No terms configured for the current academic year.{' '}
-                <Link href="/government/school-admin/terms" className="text-blue-700 hover:underline">
+                <SetupLink target="terms" onNavigate={onNavigate}>
                   Create terms
-                </Link>
+                </SetupLink>
               </p>
             ) : (
               <p className="text-sm text-slate-500">Loading terms…</p>
@@ -362,5 +366,18 @@ export function GradingPeriodsPanel() {
         </div>
       )}
     </div>
+  );
+}
+
+function SetupLink({ target, onNavigate, children }: { target: SetupDrawerTarget; onNavigate?: SetupNavigate; children: ReactNode }) {
+  const className = 'text-blue-700 hover:underline';
+  return onNavigate ? (
+    <button type="button" className={className} onClick={() => onNavigate(target)}>
+      {children}
+    </button>
+  ) : (
+    <Link href={academicSetupHref(target)} className={className}>
+      {children}
+    </Link>
   );
 }

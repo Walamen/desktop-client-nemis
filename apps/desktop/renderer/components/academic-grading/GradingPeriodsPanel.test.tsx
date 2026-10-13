@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { PresentationProvider } from '@/lib/presentation/presentation-provider';
 import { createRendererPresentation } from '@/lib/presentation/create-renderer-presentation';
 
@@ -29,12 +29,12 @@ function stubNemis({ year, terms, yearFails = false, termsFail = false }: { year
   };
 }
 
-async function renderPanel() {
+async function renderPanel(props: { onNavigate?: () => void } = {}) {
   const layer = createRendererPresentation();
   await layer.bootstrap.run();
   return render(
     <PresentationProvider layer={layer}>
-      <GradingPeriodsPanel />
+      <GradingPeriodsPanel {...props} />
     </PresentationProvider>,
   );
 }
@@ -53,7 +53,7 @@ describe('GradingPeriodsPanel', () => {
   it('links to Terms when the current year has none', async () => {
     stubNemis({ year: YEAR, terms: [] });
     await renderPanel();
-    expect(await screen.findByRole('link', { name: 'Create terms' })).toHaveAttribute('href', '/government/school-admin/terms');
+    expect(await screen.findByRole('link', { name: 'Create terms' })).toHaveAttribute('href', '/government/school-admin/academic-grading?open=terms');
   });
 
   it('links to Academic Years when there is no current year at all', async () => {
@@ -61,7 +61,7 @@ describe('GradingPeriodsPanel', () => {
     await renderPanel();
     expect(await screen.findByRole('link', { name: 'Set up an academic year' })).toHaveAttribute(
       'href',
-      '/government/school-admin/academic-years',
+      '/government/school-admin/academic-grading?open=years',
     );
     expect(screen.queryByText(/No terms configured/)).toBeNull();
   });
@@ -88,5 +88,21 @@ describe('GradingPeriodsPanel', () => {
     await renderPanel();
     expect(await screen.findByText('Term 1')).toBeInTheDocument();
     expect(screen.queryByText('Old Term')).toBeNull();
+  });
+  it('switches to the Terms drawer instead of navigating when hosted in a drawer', async () => {
+    stubNemis({ year: YEAR, terms: [] });
+    const onNavigate = vi.fn();
+    await renderPanel({ onNavigate });
+    fireEvent.click(await screen.findByRole('button', { name: 'Create terms' }));
+    expect(onNavigate).toHaveBeenCalledWith('terms');
+    expect(screen.queryByRole('link', { name: 'Create terms' })).toBeNull();
+  });
+
+  it('switches to the Academic Years drawer when there is no current year', async () => {
+    stubNemis({ year: null, terms: [] });
+    const onNavigate = vi.fn();
+    await renderPanel({ onNavigate });
+    fireEvent.click(await screen.findByRole('button', { name: 'Set up an academic year' }));
+    expect(onNavigate).toHaveBeenCalledWith('years');
   });
 });
