@@ -131,6 +131,29 @@ describe('AcademicYearsDrawer status actions (edit view)', () => {
     expect(shown()).toEqual(['Set current', 'Close', 'Archive']);
   });
 
+  it('disables the status actions while the form has unsaved changes', async () => {
+    stubNemis({ years: [yearRow({ id: 'y3', code: '2026/2027', isCurrent: false })] });
+    await renderWithLayer(<AcademicYearsDrawer {...props()} />);
+    await openEdit('2026/2027');
+    const warning = "Save or cancel your changes before changing this year's status.";
+    const statusButtons = () => ['Set current', 'Close', 'Archive'].map((name) => screen.getByRole('button', { name }));
+
+    statusButtons().forEach((b) => expect(b).toBeEnabled());
+    expect(screen.queryByText(warning)).toBeNull();
+
+    fireEvent.change(field('Academic year code'), { target: { value: '2026/27' } });
+    statusButtons().forEach((b) => expect(b).toBeDisabled());
+    expect(screen.getByText(warning)).toBeInTheDocument();
+
+    fireEvent.change(field('Academic year code'), { target: { value: '2026/2027' } });
+    statusButtons().forEach((b) => expect(b).toBeEnabled());
+    expect(screen.queryByText(warning)).toBeNull();
+
+    fireEvent.change(field('End date'), { target: { value: '2027-08-31' } });
+    statusButtons().forEach((b) => expect(b).toBeDisabled());
+    expect(screen.getByText(warning)).toBeInTheDocument();
+  });
+
   it('offers only Restore for an archived year', async () => {
     stubNemis({ years: [yearRow({ id: 'y4', code: '2020/2021', isCurrent: false, status: 'ARCHIVED' })] });
     await renderWithLayer(<AcademicYearsDrawer {...props()} />);

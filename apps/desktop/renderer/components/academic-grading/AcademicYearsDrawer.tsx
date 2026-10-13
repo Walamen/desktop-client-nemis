@@ -35,6 +35,11 @@ function AcademicYearsManager({ onNavigate }: { onNavigate: SetupNavigate }) {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [makeCurrent, setMakeCurrent] = useState(false);
+  // A status change applies immediately and would silently drop unsaved edits
+  // to the code or dates, so the status actions wait until the form is clean.
+  const dirty =
+    editing !== null &&
+    (code !== editing.code || startDate !== editing.startDate || endDate !== editing.endDate);
   const backToList = useCallback(() => setView('list'), []);
   useEscapeCapture(view === 'form', backToList);
   useRevalidateOnSync(() => { void vm.loadAcademicYears(); }, [vm]);
@@ -94,18 +99,23 @@ function AcademicYearsManager({ onNavigate }: { onNavigate: SetupNavigate }) {
               <Badge variant={statusVariant(editing.status)} size="sm">{editing.status}</Badge>
               {editing.isCurrent && <span>Current academic year</span>}
             </p>
+            {dirty && (
+              <p role="status" className="text-sm text-amber-700">
+                Save or cancel your changes before changing this year&apos;s status.
+              </p>
+            )}
             <div className="flex flex-wrap gap-2">
               {editing.status === 'ACTIVE' && !editing.isCurrent && (
-                <Button type="button" size="sm" onClick={() => void setCurrent(editing)}>Set current</Button>
+                <Button type="button" size="sm" disabled={dirty} onClick={() => void setCurrent(editing)}>Set current</Button>
               )}
               {editing.status === 'ACTIVE' && !editing.isCurrent && (
-                <Button type="button" size="sm" variant="secondary" onClick={() => void setStatus(editing, AcademicYearStatus.CLOSED)}>Close</Button>
+                <Button type="button" size="sm" variant="secondary" disabled={dirty} onClick={() => void setStatus(editing, AcademicYearStatus.CLOSED)}>Close</Button>
               )}
               {editing.status !== 'ARCHIVED' && !editing.isCurrent && (
-                <Button type="button" size="sm" variant="secondary" onClick={() => void setStatus(editing, AcademicYearStatus.ARCHIVED)}>Archive</Button>
+                <Button type="button" size="sm" variant="secondary" disabled={dirty} onClick={() => void setStatus(editing, AcademicYearStatus.ARCHIVED)}>Archive</Button>
               )}
               {editing.status !== 'ACTIVE' && (
-                <Button type="button" size="sm" variant="secondary" onClick={() => void setStatus(editing, AcademicYearStatus.ACTIVE)}>Restore</Button>
+                <Button type="button" size="sm" variant="secondary" disabled={dirty} onClick={() => void setStatus(editing, AcademicYearStatus.ACTIVE)}>Restore</Button>
               )}
             </div>
           </section>
