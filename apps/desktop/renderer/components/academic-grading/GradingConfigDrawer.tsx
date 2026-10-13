@@ -72,7 +72,7 @@ export function GradingConfigDrawer({ isOpen, onClose }: { isOpen: boolean; onCl
   };
 
   return (
-    <Drawer isOpen={isOpen} onClose={onClose} title="Grading System Setup" size="lg">
+    <Drawer isOpen={isOpen} onClose={onClose} title="Grading System Setup" size="xl">
       {loading ? (
         <div className="flex h-64 items-center justify-center">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-secondary border-t-transparent" />

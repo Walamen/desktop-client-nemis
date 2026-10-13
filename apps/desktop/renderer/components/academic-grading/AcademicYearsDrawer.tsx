@@ -141,7 +141,7 @@ function AcademicYearsManager({ onNavigate }: { onNavigate: SetupNavigate }) {
                     {year.isCurrent && <Badge className="ml-2" size="sm">Current</Badge>}
                   </td>
                   <td className="p-3">{year.startDate} — {year.endDate}</td>
-                  <td className="p-3"><Badge variant={statusVariant(year.status)} size="sm">{year.status}</Badge></td>
+                  <td className="p-3"><Badge variant={statusVariant(year.status)} size="sm">{year.isCurrent ? 'Active' : "Inactive"}</Badge></td>
                   <td className="p-3">
                     <button
                       type="button"
