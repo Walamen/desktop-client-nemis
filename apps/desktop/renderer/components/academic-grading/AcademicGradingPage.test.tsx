@@ -16,6 +16,7 @@ vi.mock('@/services/nemis-bridge/shared', () => ({
   },
 }));
 
+import { sharedBridge } from '@/services/nemis-bridge/shared';
 import { AcademicGradingPage } from './AcademicGradingPage';
 import { CURRENT_YEAR, clearNemis, field, renderWithLayer, stubNemis } from './setup-test-support';
 
@@ -132,5 +133,26 @@ describe('AcademicGradingPage', () => {
     fireEvent.click(await screen.findByRole('button', { name: '3 terms in 2024/2025' }));
     expect(await drawerHeading('Terms')).toBeInTheDocument();
     await waitFor(() => expect(field('Academic year')).toHaveValue('y0'));
+  });
+
+  it('refreshes the window stat cards when a drawer closes', async () => {
+    stubNemis();
+    await renderWithLayer(<AcademicGradingPage />);
+    const activeValue = () => screen.getByText('Active Windows').nextElementSibling?.textContent;
+    await waitFor(() => expect(activeValue()).toBe('0'));
+    fireEvent.click(screen.getByRole('button', { name: 'Manage Windows' }));
+    await drawerHeading('Grade Entry Windows');
+    vi.mocked(sharedBridge.listSchoolAdminRecords).mockImplementation(async ({ collection }: { collection: string }) => ({
+      items: collection === 'grade_entry_windows'
+        ? [{ id: 'w1', name: 'W', status: 'OPEN', openDate: '2026-01-05', closeDate: '2026-01-20' }]
+        : [],
+      total: 0,
+    }));
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'Close drawer' }));
+      await waitFor(() => expect(activeValue()).toBe('1'));
+    } finally {
+      vi.mocked(sharedBridge.listSchoolAdminRecords).mockImplementation(async () => ({ items: [], total: 0 }));
+    }
   });
 });

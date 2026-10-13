@@ -74,6 +74,7 @@ describe('GradeEntryWindowsDrawer list view', () => {
     ['OPEN', 'Close Window', 'CLOSED', 'closedAt'],
     ['CLOSED', 'Publish Grades', 'PUBLISHED', 'publishedAt'],
     ['CLOSED', 'Reopen', 'OPEN', 'openedAt'],
+    ['PUBLISHED', 'Reopen', 'OPEN', 'openedAt'],
   ])('a %s window: %s saves status %s with %s', async (status, button, next, stamp) => {
     await renderDrawer([win({ status })]);
     fireEvent.click(await screen.findByRole('button', { name: button }));
@@ -99,6 +100,7 @@ describe('GradeEntryWindowsDrawer create view', () => {
     await renderDrawer([]);
     fireEvent.click(await screen.findByRole('button', { name: 'Create Window' }));
     expect(screen.getByRole('heading', { name: 'Create Grade Entry Window' })).toBeInTheDocument();
+    expect(field('Term')).toHaveFocus();
     await screen.findByRole('option', { name: 'Term 1' });
     expect(screen.queryByRole('option', { name: 'Old Year Term' })).toBeNull();
     expect(field('Grading Period')).toBeDisabled();
@@ -159,6 +161,19 @@ describe('GradeEntryWindowsDrawer unpublish view', () => {
       expect(save()).toHaveBeenCalledWith({ collection: 'grade_entry_windows', record: { id: 'w1', status: 'CLOSED' } }),
     );
     await waitFor(() => expect(screen.queryByRole('heading', { name: 'Unpublish Grades' })).toBeNull());
+  });
+
+  it('submits the unpublish only once when confirmed twice while the save is pending', async () => {
+    await renderDrawer([win({ status: 'PUBLISHED' })]);
+    fireEvent.click(await screen.findByRole('button', { name: 'Unpublish' }));
+    const input = screen.getByPlaceholderText('unpublish this window');
+    fireEvent.change(input, { target: { value: 'unpublish this window' } });
+    save().mockImplementationOnce(() => new Promise(() => {}));
+    fireEvent.keyDown(input, { key: 'Enter' });
+    fireEvent.click(screen.getByRole('button', { name: 'Unpublish' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Unpublish' }));
+    await waitFor(() => expect(save()).toHaveBeenCalledTimes(1));
+    expect(save()).toHaveBeenCalledTimes(1);
   });
 
   it('Escape leaves the confirmation without closing the drawer', async () => {

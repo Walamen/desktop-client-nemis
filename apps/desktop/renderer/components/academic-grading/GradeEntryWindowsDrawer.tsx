@@ -45,6 +45,7 @@ function GradeEntryWindowsManager() {
   const [creating, setCreating] = useState(false);
   const [unpublishTarget, setUnpublishTarget] = useState<SchoolAdminRecord | null>(null);
   const [unpublishInput, setUnpublishInput] = useState('');
+  const [unpublishing, setUnpublishing] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
 
   const backToList = useCallback(() => setView('list'), []);
@@ -122,15 +123,21 @@ function GradeEntryWindowsManager() {
   const beginUnpublish = (win: SchoolAdminRecord) => {
     setUnpublishTarget(win);
     setUnpublishInput('');
+    setUnpublishing(false);
     setView('unpublish');
   };
 
   const confirmUnpublish = async () => {
-    if (!unpublishTarget) return;
-    await transition(unpublishTarget, { status: 'CLOSED' });
-    setUnpublishTarget(null);
-    setUnpublishInput('');
-    setView('list');
+    if (!unpublishTarget || unpublishing) return;
+    setUnpublishing(true);
+    try {
+      await transition(unpublishTarget, { status: 'CLOSED' });
+      setUnpublishTarget(null);
+      setUnpublishInput('');
+      setView('list');
+    } finally {
+      setUnpublishing(false);
+    }
   };
 
   if (view === 'unpublish') {
@@ -155,7 +162,7 @@ function GradeEntryWindowsManager() {
             value={unpublishInput}
             onChange={(e) => setUnpublishInput(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && unpublishInput === UNPUBLISH_PHRASE) void confirmUnpublish();
+              if (e.key === 'Enter' && unpublishInput === UNPUBLISH_PHRASE && !unpublishing) void confirmUnpublish();
             }}
             placeholder={UNPUBLISH_PHRASE}
             autoFocus
@@ -172,7 +179,7 @@ function GradeEntryWindowsManager() {
           </button>
           <button
             type="button"
-            disabled={unpublishInput !== UNPUBLISH_PHRASE}
+            disabled={unpublishInput !== UNPUBLISH_PHRASE || unpublishing}
             onClick={() => void confirmUnpublish()}
             className="rounded-full bg-error px-4 py-2 text-sm font-medium text-white hover:bg-error/90 disabled:cursor-not-allowed disabled:opacity-40"
           >
@@ -197,6 +204,7 @@ function GradeEntryWindowsManager() {
                 setForm((f) => ({ ...f, gradingPeriodId: '' }));
               }}
               required
+              autoFocus
               className="w-full rounded-full border border-slate-300 px-3 py-2 text-sm outline-none focus:border-secondary focus:ring-2 focus:ring-secondary"
             >
               <option value="">Select term</option>
@@ -232,7 +240,6 @@ function GradeEntryWindowsManager() {
             onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
             placeholder="e.g., Period 1 Grade Entry"
             required
-            autoFocus
           />
 
           <div>

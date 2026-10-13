@@ -55,11 +55,15 @@ export function AcademicGradingPage() {
   const [activeModal, setActiveModal] = useState<SetupDrawer | null>(null);
   const [termsYearId, setTermsYearId] = useState('');
 
-  useRevalidateOnSync(() => {
+  const loadWindows = useCallback(() => {
     void sharedBridge
       .listSchoolAdminRecords({ collection: 'grade_entry_windows', limit: 250 })
       .then((result) => setWindows(result.items));
   }, []);
+
+  useRevalidateOnSync(() => {
+    loadWindows();
+  }, [loadWindows]);
 
   // Deep links (?open=terms&yearId=…) open a drawer whenever the query changes —
   // not just on mount: the sidebar is a persistent layout, so its "Grade Entry &
@@ -87,7 +91,9 @@ export function AcademicGradingPage() {
     setActiveModal(null);
     setTermsYearId('');
     if (window.location.search) window.history.replaceState(null, '', window.location.pathname);
-  }, []);
+    // The Windows drawer keeps its own list; refresh the stat cards after any drawer closes.
+    loadWindows();
+  }, [loadWindows]);
 
   const count = (status: string) => (windows ?? []).filter((w) => w.status === status).length;
 

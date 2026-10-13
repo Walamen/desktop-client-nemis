@@ -128,6 +128,10 @@ New `components/academic-grading/GradeEntryWindowsDrawer.tsx`, built like
   `<AcademicGradingPage />` in `<Suspense>` — required by Next for
   `useSearchParams` in a statically exported route (the build fails without
   it). Fallback: `null`.
+- `close` also reloads the page's own `grade_entry_windows` list (a stable
+  `loadWindows` callback, also used for revalidate-on-sync), so the Active /
+  Draft / Published / Total Windows stat cards reflect changes made in the
+  Windows drawer once any drawer is closed.
 - Quick Start Guide text is unchanged.
 
 ### 3. Links and sidebar
@@ -155,9 +159,12 @@ New `components/academic-grading/GradeEntryWindowsDrawer.tsx`, built like
 ## Error handling
 
 Unchanged from today: the lifecycle saves and the create save have no
-try/catch beyond the existing `finally { setCreating(false) }`; failures
-surface through the existing bridge/toast behaviour. The create view stays
-open on failure (only success returns to the list).
+try/catch beyond the existing `finally { setCreating(false) }`. The
+collections bridge passes IPC calls straight through with no toast, so a
+failed lifecycle save leaves the list unchanged with no message (same as the
+old page). The create view stays on the form on failure (only success returns
+to the list), and unpublish stays on its confirmation view. User-visible error
+feedback across the setup drawers is a follow-up.
 
 ## Testing
 
