@@ -20,6 +20,7 @@ import {
   downloadCsv, SummaryCard, ReportTable, ReportEmptyState, BarListChart, DonutChart, CHART_COLORS,
 } from './shared';
 import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
+import { academicSetupHref } from '@/lib/academic-setup';
 
 const REPORT_TYPES: { id: ReportType; name: string; icon: typeof Users }[] = [
   { id: 'ENROLLMENT', name: 'Enrollment', icon: Users },
@@ -109,7 +110,7 @@ export function ReportsPage() {
         setReportState({ status: 'success', type: 'ATTENDANCE', data, label, generatedAt });
       } else if (selectedReport === 'ACADEMIC') {
         const effectiveTermId = termId || currentTerm?.id;
-        if (!effectiveTermId) { setReportState({ status: 'error', message: 'No term is set as current. Choose a year and term to generate this report.', link: { href: '/government/school-admin/terms', label: 'Set a current term' } }); return; }
+        if (!effectiveTermId) { setReportState({ status: 'error', message: 'No term is set as current. Choose a year and term to generate this report.', link: { href: academicSetupHref('terms'), label: 'Set a current term' } }); return; }
         const aggs = await loadClassAggregates(scopedClasses);
         const data = await buildAcademicReport(aggs, effectiveTermId);
         const termName = terms.find((t) => t.id === effectiveTermId)?.name ?? currentTerm?.name ?? 'Current Term';

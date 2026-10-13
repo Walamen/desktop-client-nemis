@@ -30,8 +30,8 @@ describe('School Admin dashboard (fresh install)', () => {
     );
     await waitFor(() => expect(screen.getByText('Total Students')).toBeInTheDocument());
     expect(screen.getByText('School profile not set up yet').closest('a')).toHaveAttribute('href', '/government/school-admin/school-profile');
-    expect(screen.getByText('No academic year configured').closest('a')).toHaveAttribute('href', '/government/school-admin/academic-years');
-    expect(screen.getByText('No current term configured').closest('a')).toHaveAttribute('href', '/government/school-admin/terms');
+    expect(screen.getByText('No academic year configured').closest('a')).toHaveAttribute('href', '/government/school-admin/academic-grading?open=years');
+    expect(screen.getByText('No current term configured').closest('a')).toHaveAttribute('href', '/government/school-admin/academic-grading?open=terms');
     expect((await screen.findAllByText('No teachers found.')).length).toBeGreaterThan(0);
     // The old StatCard placeholder badge (exact text "sample") must be gone.
     // RecentActivityFeed's honest "Sample activity — live feed arrives with

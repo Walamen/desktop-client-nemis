@@ -9,6 +9,7 @@ import { useAcademicFoundationViewModel } from '@/lib/presentation/hooks/school-
 import { useConnectivityStore } from '@/lib/presentation/hooks/shared';
 import { gradeCompletionBridge } from '@/services/nemis-bridge/school-admin/grade-completion-bridge';
 import { parseIpcError } from '@/lib/errors/parseIpcError';
+import { academicSetupHref } from '@/lib/academic-setup';
 import { human } from '../students/shared';
 import { buildDecisions, draftFromRow, nameStudentIds, offeredGrades, type OutcomeDraft } from './outcomes-logic';
 import { OutcomeRow } from './OutcomeRow';
@@ -182,7 +183,7 @@ export function EndOfYearOutcomesPage() {
     body = (
       <p className="text-sm text-amber-700">
         There are no academic years on this device.{' '}
-        <Link href="/government/school-admin/academic-years" className="font-semibold underline">
+        <Link href={academicSetupHref('years')} className="font-semibold underline">
           Add one under Academic Years
         </Link>
         , or sync this device, to record outcomes.

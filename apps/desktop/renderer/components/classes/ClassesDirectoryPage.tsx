@@ -25,6 +25,7 @@ import { schoolAdminBridge } from '@/services/nemis-bridge/school-admin';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { fetchAllPages, formatGrade, getUnassignedStudents, type UnassignedStudent } from './shared';
 import { normalizeLimit } from '@/components/pageLimitNormalizer';
+import { academicSetupHref } from '@/lib/academic-setup';
 import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 /** Classes & Unassigned Students — mirrors portal-web's Class Management
  * page (header band, 4 stat tiles, tabbed table, edit/assign drawers). The
@@ -685,9 +686,9 @@ export function ClassesDirectoryPage() {
                 <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
                 <p className="text-sm text-amber-800">
                   No active academic year or term is configured yet. Set them up in{' '}
-                  <Link href="/government/school-admin/academic-years" className="font-semibold underline">Academic Years</Link>
+                  <Link href={academicSetupHref('years')} className="font-semibold underline">Academic Years</Link>
                   {' '}and{' '}
-                  <Link href="/government/school-admin/terms" className="font-semibold underline">Terms</Link>.
+                  <Link href={academicSetupHref('terms')} className="font-semibold underline">Terms</Link>.
                 </p>
               </div>
             )}

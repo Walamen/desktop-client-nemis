@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { academicSetupHref } from '@/lib/academic-setup';
 
 const BOX = 'rounded-card border border-pending/30 bg-pending/10 px-4 py-2.5 text-xs text-pending';
 
@@ -10,7 +11,7 @@ export function CurrentTermNotice({ status, errorMessage }: { status: string; er
     return (
       <div className={BOX}>
         No current term is set — payment entry is disabled.{' '}
-        <Link href="/government/school-admin/terms" className="font-semibold underline">Set a current term</Link>
+        <Link href={academicSetupHref('terms')} className="font-semibold underline">Set a current term</Link>
       </div>
     );
   }

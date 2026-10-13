@@ -17,7 +17,7 @@ describe('CurrentTermNotice', () => {
     render(<CurrentTermNotice status="empty" />);
     expect(screen.getByText(/No current term is set/)).toBeInTheDocument();
     expect(screen.queryByText(/Loading/)).toBeNull();
-    expect(screen.getByRole('link', { name: 'Set a current term' })).toHaveAttribute('href', '/government/school-admin/terms');
+    expect(screen.getByRole('link', { name: 'Set a current term' })).toHaveAttribute('href', '/government/school-admin/academic-grading?open=terms');
   });
 
   it('shows the load error instead of claiming it is loading', () => {

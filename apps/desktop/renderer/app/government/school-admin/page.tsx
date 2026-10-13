@@ -15,6 +15,7 @@ import {
 import { useCurrentUserViewModel } from '@/lib/presentation/hooks/shared';
 import { useTeacherDashboardViewModel } from '@/lib/presentation/hooks/teacher';
 import { useViewModel } from '@/hooks/use-view-model';
+import { academicSetupHref } from '@/lib/academic-setup';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { InfoTile } from '@/components/dashboard/InfoTile';
 import { DatabaseUnavailablePanel } from '@/components/dashboard/DatabaseUnavailablePanel';
@@ -124,8 +125,8 @@ export default function DashboardPage() {
             identical across both apps. */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <InfoTile label="School" value={profile.status === 'success' ? profile.data.name : null} emptyText="School profile not set up yet" emptyHref="/government/school-admin/school-profile" />
-          <InfoTile label="Academic Year" value={year.status === 'success' ? year.data.code : null} emptyText="No academic year configured" emptyHref="/government/school-admin/academic-years" />
-          <InfoTile label="Current Term" value={term.status === 'success' ? term.data.name : null} emptyText="No current term configured" emptyHref="/government/school-admin/terms" />
+          <InfoTile label="Academic Year" value={year.status === 'success' ? year.data.code : null} emptyText="No academic year configured" emptyHref={academicSetupHref('years')} />
+          <InfoTile label="Current Term" value={term.status === 'success' ? term.data.name : null} emptyText="No current term configured" emptyHref={academicSetupHref('terms')} />
         </div>
 
         {summaryReady && (
