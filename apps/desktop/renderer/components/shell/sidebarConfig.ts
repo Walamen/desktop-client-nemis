@@ -3,7 +3,7 @@ import {
   Building2, CreditCard, Bell, MessageCircle,
   MessageSquare, DollarSign, ClipboardCheck, ShieldCheck, Settings, UserCog,
   GraduationCap, ArrowRightLeft, UserCircle2, AlertTriangle, FileBarChart,
-  SlidersHorizontal, CalendarRange, CalendarDays, CalendarClock, Award, Clock, Receipt, Layers,
+  SlidersHorizontal, Award, Clock, Receipt, Layers,
 } from 'lucide-react';
 // Use react-icons for icons 
 import { GiTeacher } from "react-icons/gi";
@@ -65,14 +65,12 @@ export const sidebarConfigs: Record<DesktopPortalRole, SidebarConfig> = {
     },
     navGroups: [
       {
-        // Dependency order, not frequency: Terms reads termsPerYear from the
-        // grading config, and Assessment Periods auto-setup reads periodsPerTerm.
+        // Academic years, terms and assessment periods live in drawers on the
+        // Academic Grading page, in dependency order (grading config → years →
+        // terms → periods); see lib/academic-setup.ts for their deep links.
         label: 'ACADEMIC SETUP',
         items: [
-          { name: 'Grading System', href: '/government/school-admin/academic-grading', icon: SlidersHorizontal },
-          { name: 'Academic Years', href: '/government/school-admin/academic-years', icon: CalendarRange },
-          { name: 'Terms', href: '/government/school-admin/terms', icon: CalendarDays },
-          { name: 'Assessment Periods', href: '/government/school-admin/academic-grading/periods', icon: CalendarClock },
+          { name: 'Academic Grading', href: '/government/school-admin/academic-grading', icon: SlidersHorizontal },
           { name: 'Subjects', href: '/government/school-admin/subjects', icon: BookOpen },
         ],
       },

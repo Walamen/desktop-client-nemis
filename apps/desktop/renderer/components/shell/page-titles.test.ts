@@ -25,7 +25,11 @@ describe('resolvePageTitle', () => {
   });
 
   it('ignores a trailing slash when resolving a title', () => {
-    expect(resolvePageTitle('/government/school-admin/terms/', SystemRole.INSTITUTION_ADMIN).title).toBe('Terms');
+    expect(resolvePageTitle('/government/school-admin/subjects/', SystemRole.INSTITUTION_ADMIN).title).toBe('Subjects');
+  });
+
+  it('titles the Academic Grading page from its sidebar entry', () => {
+    expect(resolvePageTitle('/government/school-admin/academic-grading', SystemRole.INSTITUTION_ADMIN).title).toBe('Academic Grading');
   });
 
   it('resolves a county page title from the sidebar config, with no explicit override', () => {

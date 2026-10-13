@@ -64,10 +64,11 @@ describe('Sidebar', () => {
     }
     const href = (name: string) => screen.getByRole('link', { name }).getAttribute('href');
     expect(href('Overview')).toBe('/government/school-admin');
-    expect(href('Grading System')).toBe('/government/school-admin/academic-grading');
-    expect(href('Academic Years')).toBe('/government/school-admin/academic-years');
-    expect(href('Terms')).toBe('/government/school-admin/terms');
-    expect(href('Assessment Periods')).toBe('/government/school-admin/academic-grading/periods');
+    expect(href('Academic Grading')).toBe('/government/school-admin/academic-grading');
+    expect(href('Subjects')).toBe('/government/school-admin/subjects');
+    for (const gone of ['Grading System', 'Academic Years', 'Terms', 'Assessment Periods']) {
+      expect(screen.queryByRole('link', { name: gone })).toBeNull();
+    }
     expect(href('Attendance')).toBe('/government/school-admin/attendance');
     expect(href('Grade Entry & Results')).toBe('/government/school-admin/academic-grading/windows');
     expect(href('Grade Levels')).toBe('/government/school-admin/grade-levels');
@@ -146,7 +147,7 @@ describe('Sidebar', () => {
   it('marks the active item with aria-current', () => {
     render(<Sidebar role={SystemRole.INSTITUTION_ADMIN} />);
     expect(screen.getByRole('link', { name: 'Overview' })).toHaveAttribute('aria-current', 'page');
-    expect(screen.getByRole('link', { name: 'Terms' })).not.toHaveAttribute('aria-current');
+    expect(screen.getByRole('link', { name: 'Subjects' })).not.toHaveAttribute('aria-current');
   });
 
   it('highlights the parent item on a sub-page', () => {
@@ -175,30 +176,30 @@ describe('Sidebar collapsible groups', () => {
   it('starts with every group open', () => {
     render(<Sidebar role={SystemRole.INSTITUTION_ADMIN} />);
     expect(groupToggle('ACADEMIC SETUP')).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByRole('link', { name: 'Academic Years' })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Academic Grading' })).toBeVisible();
   });
 
   it('collapses and re-expands a group, remembering the choice', () => {
     const { unmount } = render(<Sidebar role={SystemRole.INSTITUTION_ADMIN} />);
     fireEvent.click(groupToggle('ACADEMIC SETUP'));
     expect(groupToggle('ACADEMIC SETUP')).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.queryByRole('link', { name: 'Academic Years' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Academic Grading' })).toBeNull();
     expect(JSON.parse(window.localStorage.getItem(STORE_KEY) ?? '[]')).toEqual(['ACADEMIC SETUP']);
     unmount();
 
     render(<Sidebar role={SystemRole.INSTITUTION_ADMIN} />);
     expect(groupToggle('ACADEMIC SETUP')).toHaveAttribute('aria-expanded', 'false');
     fireEvent.click(groupToggle('ACADEMIC SETUP'));
-    expect(screen.getByRole('link', { name: 'Academic Years' })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Academic Grading' })).toBeVisible();
     expect(JSON.parse(window.localStorage.getItem(STORE_KEY) ?? '[]')).toEqual([]);
   });
 
   it('forces open the group holding the current page', () => {
     window.localStorage.setItem(STORE_KEY, JSON.stringify(['ACADEMIC SETUP']));
-    vi.mocked(usePathname).mockReturnValue('/government/school-admin/terms');
+    vi.mocked(usePathname).mockReturnValue('/government/school-admin/subjects');
     render(<Sidebar role={SystemRole.INSTITUTION_ADMIN} />);
     expect(groupToggle('ACADEMIC SETUP')).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByRole('link', { name: 'Terms' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: 'Subjects' })).toHaveAttribute('aria-current', 'page');
   });
 
   it.each([['{}'], ['"x"'], ['not json'], ['[1,null]']])('treats stored value %s as all open', (raw) => {
