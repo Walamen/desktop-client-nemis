@@ -12,16 +12,10 @@ import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
 import { queryParam } from '@/components/teachers/shared';
 import { FormField, LoadState, statusVariant } from './foundation-ui';
+import { initialYearId } from '@/components/academic-grading/TermsDrawer';
 
 const gradeLevels = Object.values(GradeLevel);
 const labelGrade = (value: string) => value.replace('_', ' ').replace('GRADE ', 'Grade ');
-
-/** The year the Terms page opens on: the one named in ?yearId when it is on
- * this device, else the current year, else the first. */
-export function initialYearId(years: readonly { id: string; isCurrent: boolean }[], requested: string): string {
-  if (requested && years.some((y) => y.id === requested)) return requested;
-  return (years.find((y) => y.isCurrent) ?? years[0])?.id ?? '';
-}
 
 function Page({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
   return <div className="p-6 space-y-5"><div className="flex flex-wrap gap-3 justify-between items-center"><div><h1 className="text-2xl font-semibold text-slate-900">{title}</h1><p className="text-sm text-slate-500 mt-1">Managed locally and ready for future synchronization.</p></div>{action}</div>{children}</div>;

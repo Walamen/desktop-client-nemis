@@ -8,7 +8,7 @@ vi.mock('@/services/nemis-bridge/shared', () => ({
   sharedBridge: { listSchoolAdminRecords: vi.fn(async () => ({ items: [], total: 0 })) },
 }));
 
-import { AcademicYearsPage, TermsPage, initialYearId } from './AcademicFoundationPages';
+import { AcademicYearsPage, TermsPage } from './AcademicFoundationPages';
 
 const year = (over: Record<string, unknown>) => ({
   id: 'y1', institutionId: 'inst-1', code: '2025/2026', startDate: '2025-09-01', endDate: '2026-07-31',
@@ -41,16 +41,6 @@ const yearSelect = () => screen.getByText('Academic year').parentElement!.queryS
 afterEach(() => {
   delete (window as unknown as { nemis?: unknown }).nemis;
   window.history.replaceState({}, '', '/');
-});
-
-describe('initialYearId', () => {
-  const years = [{ id: 'y0', isCurrent: false }, { id: 'y1', isCurrent: true }];
-  it('uses the requested year when it exists', () => expect(initialYearId(years, 'y0')).toBe('y0'));
-  it('falls back to the current year for an unknown request', () => expect(initialYearId(years, 'gone')).toBe('y1'));
-  it('falls back to the current year when nothing is requested', () => expect(initialYearId(years, '')).toBe('y1'));
-  it('falls back to the first year when none is current', () =>
-    expect(initialYearId([{ id: 'a', isCurrent: false }], '')).toBe('a'));
-  it('returns empty for no years', () => expect(initialYearId([], 'y0')).toBe(''));
 });
 
 describe('AcademicYearsPage', () => {
