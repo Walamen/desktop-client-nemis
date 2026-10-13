@@ -50,7 +50,7 @@ Three new files in `apps/desktop/renderer/components/academic-grading/`:
   set current, status changes).
 - **`TermsDrawer.tsx`** — `Drawer size="xl"` titled "Terms". Owns the logic
   currently in `TermsPage` (year selector, `termsPerYear` from the grading
-  config, create/update/delete/set current). Accepts `initialYearId?: string`;
+  config, create/update/delete/set current). Accepts `yearId?: string`;
   the selected year is resolved with the existing `initialYearId()` helper
   (moved here from `AcademicFoundationPages.tsx`, signature unchanged).
 - **`AssessmentPeriodsDrawer.tsx`** — `Drawer size="xl"` titled "Assessment
