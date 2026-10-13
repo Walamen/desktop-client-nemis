@@ -7,9 +7,11 @@ import { Button, Input } from '@nemis-desktop/ui';
 import { useViewModel } from '@/hooks/use-view-model';
 import { useAcademicFoundationViewModel, useAcademicYearViewModel } from '@/lib/presentation/hooks/school-admin';
 import { academicSetupHref, type SetupDrawerTarget } from '@/lib/academic-setup';
+import { useNotificationStore } from '@/lib/presentation/hooks/shared';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
 import type { SchoolAdminRecord } from '@nemis-desktop/types';
 import { useEscapeCapture } from './use-escape-capture';
+import { formatSaveFailure, useSaveFeedback } from './save-feedback';
 import { getGradingConfig, listPeriodsForTerm, PERIOD_STATUS_BADGE, periodStatus } from './shared';
 import type { SetupNavigate } from './setup-drawers';
 
@@ -37,6 +39,8 @@ export function GradingPeriodsPanel({ onNavigate }: { onNavigate?: SetupNavigate
 
   const [selectedTermId, setSelectedTermId] = useState('');
   const [periods, setPeriods] = useState<SchoolAdminRecord[]>([]);
+  const runSave = useSaveFeedback();
+  const notifications = useNotificationStore();
   const [loadingPeriods, setLoadingPeriods] = useState(false);
   const [config, setConfig] = useState<SchoolAdminRecord | null>(null);
   const [settingUp, setSettingUp] = useState(false);
@@ -93,32 +97,40 @@ export function GradingPeriodsPanel({ onNavigate }: { onNavigate?: SetupNavigate
     const nextSequence = editing
       ? Number(editing.sequence)
       : Math.max(0, ...periods.map((p) => Number(p.sequence))) + 1;
-    await sharedBridge.saveSchoolAdminRecord({
-      collection: 'grading_periods',
-      record: {
-        ...(editing ? { id: editing.id } : {}),
-        academicYearId: year.data.id,
-        termId: selectedTermId,
-        name: form.name,
-        code: editing ? String(editing.code) : `P${nextSequence}`,
-        periodType: form.type,
-        sequence: nextSequence,
-        maxMarks: config?.maxMarks ?? 100,
-        passingMarks: config?.passingMarks ?? 50,
-        weight: form.weight,
-        startDate: form.startDate,
-        endDate: form.endDate,
-        isActive: true,
-      },
-    });
+    const result = await runSave(
+      () =>
+        sharedBridge.saveSchoolAdminRecord({
+          collection: 'grading_periods',
+          record: {
+            ...(editing ? { id: editing.id } : {}),
+            academicYearId: year.data.id,
+            termId: selectedTermId,
+            name: form.name,
+            code: editing ? String(editing.code) : `P${nextSequence}`,
+            periodType: form.type,
+            sequence: nextSequence,
+            maxMarks: config?.maxMarks ?? 100,
+            passingMarks: config?.passingMarks ?? 50,
+            weight: form.weight,
+            startDate: form.startDate,
+            endDate: form.endDate,
+            isActive: true,
+          },
+        }),
+      { success: 'Period saved.', failure: "Couldn't save the period." },
+    );
+    if (!result.ok) return;
     resetForm();
     await reloadPeriods(selectedTermId);
   };
 
   const remove = async (period: SchoolAdminRecord) => {
     if (!window.confirm('Are you sure you want to delete this period?')) return;
-    await sharedBridge.deleteSchoolAdminRecord({ collection: 'grading_periods', id: String(period.id) });
-    await reloadPeriods(selectedTermId);
+    const result = await runSave(
+      () => sharedBridge.deleteSchoolAdminRecord({ collection: 'grading_periods', id: String(period.id) }),
+      { success: 'Period deleted.', failure: "Couldn't delete the period." },
+    );
+    if (result.ok) await reloadPeriods(selectedTermId);
   };
 
   const autoSetup = async () => {
@@ -127,16 +139,17 @@ export function GradingPeriodsPanel({ onNavigate }: { onNavigate?: SetupNavigate
       ? terms.data.find((t) => t.id === selectedTermId)
       : undefined;
     if (!term) return;
+    const start = new Date(term.startDate).getTime();
+    const end = new Date(term.endDate).getTime();
+    const count = Math.max(1, Number(config.periodsPerTerm ?? 1));
+    const span = Math.max(1, Math.floor((end - start) / count));
+    const dayMs = 24 * 60 * 60 * 1000;
+    // Same collision fix as manual create: base off the highest sequence
+    // in use, not periods.length.
+    const base = Math.max(0, ...periods.map((p) => Number(p.sequence)));
     setSettingUp(true);
+    let created = 0;
     try {
-      const start = new Date(term.startDate).getTime();
-      const end = new Date(term.endDate).getTime();
-      const count = Math.max(1, Number(config.periodsPerTerm ?? 1));
-      const span = Math.max(1, Math.floor((end - start) / count));
-      const dayMs = 24 * 60 * 60 * 1000;
-      // Same collision fix as manual create: base off the highest sequence
-      // in use, not periods.length.
-      const base = Math.max(0, ...periods.map((p) => Number(p.sequence)));
       for (let i = 0; i < count; i += 1) {
         const periodStart = new Date(start + i * span);
         const periodEnd = new Date(i === count - 1 ? end : start + (i + 1) * span - dayMs);
@@ -157,11 +170,15 @@ export function GradingPeriodsPanel({ onNavigate }: { onNavigate?: SetupNavigate
             isActive: true,
           },
         });
+        created += 1;
       }
-      await reloadPeriods(selectedTermId);
+      notifications.success('Assessment periods created.');
+    } catch (error) {
+      notifications.error(formatSaveFailure(`Couldn't finish setting up periods — ${created} of ${count} were created.`, error));
     } finally {
       setSettingUp(false);
     }
+    await reloadPeriods(selectedTermId);
   };
 
   // The foundation ViewModel is an app-wide singleton: `terms` may still hold

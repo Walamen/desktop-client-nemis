@@ -11,7 +11,10 @@ vi.mock('@/services/nemis-bridge/shared', () => ({
   },
 }));
 
+import { sharedBridge } from '@/services/nemis-bridge/shared';
+import { ToastHost } from '@/components/shell/ToastHost';
 import { GradingPeriodsPanel } from './GradingPeriodsPanel';
+import { field } from './setup-test-support';
 
 const YEAR = { id: 'ay-1', institutionId: 'inst-1', code: '2025/2026', startDate: '2025-09-01', endDate: '2026-06-30', isCurrent: true };
 const TERM = { id: 'term-1', academicYearId: 'ay-1', name: 'Term 1', sequence: 1, startDate: '2025-09-01', endDate: '2025-12-15', isCurrent: true };
@@ -35,12 +38,17 @@ async function renderPanel(props: { onNavigate?: () => void } = {}) {
   return render(
     <PresentationProvider layer={layer}>
       <GradingPeriodsPanel {...props} />
+      <ToastHost />
     </PresentationProvider>,
   );
 }
 
 afterEach(() => {
   delete (window as unknown as { nemis?: unknown }).nemis;
+  vi.mocked(sharedBridge.listSchoolAdminRecords).mockImplementation(async () => ({ items: [], total: 0 }));
+  vi.mocked(sharedBridge.saveSchoolAdminRecord).mockReset();
+  vi.mocked(sharedBridge.deleteSchoolAdminRecord).mockReset();
+  vi.restoreAllMocks();
 });
 
 describe('GradingPeriodsPanel', () => {
@@ -104,5 +112,76 @@ describe('GradingPeriodsPanel', () => {
     await renderPanel({ onNavigate });
     fireEvent.click(await screen.findByRole('button', { name: 'Set up an academic year' }));
     expect(onNavigate).toHaveBeenCalledWith('years');
+  });
+});
+
+describe('GradingPeriodsPanel save feedback', () => {
+  const PERIOD = { id: 'gp1', termId: 'term-1', name: 'Period 1', sequence: 1, code: 'P1', startDate: '2025-09-01', endDate: '2025-10-15', weight: 100, periodType: 'REGULAR_PERIOD' };
+  const CONFIG = { id: 'c1', periodsPerTerm: 3, maxMarks: 100, passingMarks: 50 };
+  const serve = (byCollection: Record<string, unknown[]>) =>
+    vi.mocked(sharedBridge.listSchoolAdminRecords).mockImplementation(async ({ collection }: { collection: string }) => ({
+      items: (byCollection[collection] ?? []) as never,
+      total: 0,
+    }));
+
+  it('keeps the period form open and toasts the reason when a save fails', async () => {
+    stubNemis({ year: YEAR, terms: [TERM] });
+    await renderPanel();
+    fireEvent.click(await screen.findByText('Term 1'));
+    fireEvent.click(await screen.findByRole('button', { name: /Add Period/ }));
+    fireEvent.change(field('Period Name'), { target: { value: 'Midterm' } });
+    fireEvent.change(field('Start Date'), { target: { value: '2025-09-01' } });
+    fireEvent.change(field('End Date'), { target: { value: '2025-10-15' } });
+    vi.mocked(sharedBridge.saveSchoolAdminRecord).mockRejectedValueOnce(new Error('[VALIDATION_FAILED] Dates overlap Period 1'));
+    fireEvent.click(screen.getByRole('button', { name: 'Create Period' }));
+    expect(await screen.findByText("Couldn't save the period. Dates overlap Period 1")).toBeInTheDocument();
+    expect(field('Period Name')).toHaveValue('Midterm');
+  });
+
+  it('toasts a failed delete', async () => {
+    serve({ grading_periods: [PERIOD] });
+    stubNemis({ year: YEAR, terms: [TERM] });
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    await renderPanel();
+    fireEvent.click(await screen.findByText('Term 1'));
+    vi.mocked(sharedBridge.deleteSchoolAdminRecord).mockRejectedValueOnce(new Error('[CONFLICT] Grades exist for this period'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete' }));
+    expect(await screen.findByText("Couldn't delete the period. Grades exist for this period")).toBeInTheDocument();
+  });
+
+  it('reports how many periods auto setup created when it stops partway, and reloads', async () => {
+    serve({ institution_grading_configs: [CONFIG] });
+    stubNemis({ year: YEAR, terms: [TERM] });
+    await renderPanel();
+    fireEvent.click(await screen.findByText('Term 1'));
+    vi.mocked(sharedBridge.saveSchoolAdminRecord)
+      .mockResolvedValueOnce({} as never)
+      .mockRejectedValueOnce(new Error('[CONFLICT] Code P2 already exists'));
+    const periodListsBefore = vi.mocked(sharedBridge.listSchoolAdminRecords).mock.calls.filter(([r]) => r.collection === 'grading_periods').length;
+    const autoSetupButton = await screen.findByRole('button', { name: /Auto Setup All Periods/ });
+    await waitFor(() => expect(autoSetupButton).toBeEnabled()); // enabled once the grading config has loaded
+    fireEvent.click(autoSetupButton);
+    expect(
+      await screen.findByText("Couldn't finish setting up periods — 1 of 3 were created. Code P2 already exists"),
+    ).toBeInTheDocument();
+    expect(sharedBridge.saveSchoolAdminRecord).toHaveBeenCalledTimes(2);
+    await waitFor(() =>
+      expect(
+        vi.mocked(sharedBridge.listSchoolAdminRecords).mock.calls.filter(([r]) => r.collection === 'grading_periods').length,
+      ).toBeGreaterThan(periodListsBefore),
+    );
+  });
+
+  it('toasts when auto setup creates every period', async () => {
+    serve({ institution_grading_configs: [CONFIG] });
+    stubNemis({ year: YEAR, terms: [TERM] });
+    await renderPanel();
+    fireEvent.click(await screen.findByText('Term 1'));
+    vi.mocked(sharedBridge.saveSchoolAdminRecord).mockResolvedValue({} as never);
+    const autoSetupButton = await screen.findByRole('button', { name: /Auto Setup All Periods/ });
+    await waitFor(() => expect(autoSetupButton).toBeEnabled()); // enabled once the grading config has loaded
+    fireEvent.click(autoSetupButton);
+    expect(await screen.findByText('Assessment periods created.')).toBeInTheDocument();
+    expect(sharedBridge.saveSchoolAdminRecord).toHaveBeenCalledTimes(3);
   });
 });

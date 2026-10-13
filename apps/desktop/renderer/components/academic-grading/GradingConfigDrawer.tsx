@@ -3,8 +3,10 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { Button, Drawer, Input } from '@nemis-desktop/ui';
+import { useNotificationStore } from '@/lib/presentation/hooks/shared';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
 import type { SchoolAdminRecord } from '@nemis-desktop/types';
+import { describeSaveError } from './save-feedback';
 import { getGradingConfig, parseGradeScale, stringifyGradeScale, type GradeScaleItem } from './shared';
 
 /** Institution-wide grading configuration — mirrors portal-web's
@@ -13,6 +15,7 @@ import { getGradingConfig, parseGradeScale, stringifyGradeScale, type GradeScale
  * (hasExams/allowLateSubmission/requireAdminApproval) are preserved with the
  * same defaults rather than exposed, matching web's own scope. */
 export function GradingConfigDrawer({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+  const notifications = useNotificationStore();
   const [existing, setExisting] = useState<SchoolAdminRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -63,9 +66,10 @@ export function GradingConfigDrawer({ isOpen, onClose }: { isOpen: boolean; onCl
           requireAdminApproval: existing?.requireAdminApproval ?? true,
         },
       });
+      notifications.success('Grading configuration saved.');
       onClose();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Unable to save configuration.');
+      setError(describeSaveError(cause) || 'Unable to save configuration.');
     } finally {
       setSaving(false);
     }
