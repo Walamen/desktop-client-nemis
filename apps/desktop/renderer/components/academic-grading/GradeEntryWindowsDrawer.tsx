@@ -11,6 +11,7 @@ import { useAcademicFoundationViewModel, useAcademicYearViewModel } from '@/lib/
 import { sharedBridge } from '@/services/nemis-bridge/shared';
 import { formatDateShort, listAllWindows, listPeriodsForTerm, WINDOW_STATUS_CHIP, WINDOW_STATUS_RAIL } from './shared';
 import { useEscapeCapture } from './use-escape-capture';
+import { useSaveFeedback, type SaveMessages } from './save-feedback';
 import { useOpenSession, type SetupDrawerProps } from './setup-drawers';
 
 const EMPTY_FORM = { gradingPeriodId: '', name: '', description: '', openDate: '', closeDate: '' };
@@ -47,6 +48,7 @@ function GradeEntryWindowsManager() {
   const [unpublishInput, setUnpublishInput] = useState('');
   const [unpublishing, setUnpublishing] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
+  const runSave = useSaveFeedback();
 
   const backToList = useCallback(() => setView('list'), []);
   useEscapeCapture(view !== 'list', backToList);
@@ -85,21 +87,26 @@ function GradeEntryWindowsManager() {
     event.preventDefault();
     setCreating(true);
     try {
-      await sharedBridge.saveSchoolAdminRecord({
-        collection: 'grade_entry_windows',
-        record: {
-          gradingPeriodId: form.gradingPeriodId,
-          name: form.name,
-          description: form.description || null,
-          openDate: form.openDate,
-          closeDate: form.closeDate,
-          status: 'DRAFT',
-          // Matches the server's own default (grade-entry-window.service.ts) and the
-          // desktop's JSON-stringified storage convention for array-shaped fields in
-          // this generic collection API; the column is NOT NULL so this can't be null.
-          allowedRoles: JSON.stringify(['TEACHER']),
-        },
-      });
+      const result = await runSave(
+        () =>
+          sharedBridge.saveSchoolAdminRecord({
+            collection: 'grade_entry_windows',
+            record: {
+              gradingPeriodId: form.gradingPeriodId,
+              name: form.name,
+              description: form.description || null,
+              openDate: form.openDate,
+              closeDate: form.closeDate,
+              status: 'DRAFT',
+              // Matches the server's own default (grade-entry-window.service.ts) and the
+              // desktop's JSON-stringified storage convention for array-shaped fields in
+              // this generic collection API; the column is NOT NULL so this can't be null.
+              allowedRoles: JSON.stringify(['TEACHER']),
+            },
+          }),
+        { success: 'Grade entry window created.', failure: "Couldn't create the window." },
+      );
+      if (!result.ok) return;
       setForm(EMPTY_FORM);
       setSelectedTermId('');
       setView('list');
@@ -109,16 +116,25 @@ function GradeEntryWindowsManager() {
     }
   };
 
-  const transition = async (win: SchoolAdminRecord, changes: SchoolAdminRecord) => {
-    await sharedBridge.saveSchoolAdminRecord({ collection: 'grade_entry_windows', record: { id: win.id!, ...changes } });
-    await reload();
+  /** Saves a lifecycle change with toast feedback; reloads only on success. */
+  const transition = async (win: SchoolAdminRecord, changes: SchoolAdminRecord, messages: SaveMessages): Promise<boolean> => {
+    const result = await runSave(
+      () => sharedBridge.saveSchoolAdminRecord({ collection: 'grade_entry_windows', record: { id: win.id!, ...changes } }),
+      messages,
+    );
+    if (result.ok) await reload();
+    return result.ok;
   };
 
   const now = () => new Date().toISOString();
-  const openWindow = (win: SchoolAdminRecord) => void transition(win, { status: 'OPEN', openedAt: now() });
-  const closeWindow = (win: SchoolAdminRecord) => void transition(win, { status: 'CLOSED', closedAt: now() });
-  const publishGrades = (win: SchoolAdminRecord) => void transition(win, { status: 'PUBLISHED', publishedAt: now() });
-  const reopenWindow = (win: SchoolAdminRecord) => void transition(win, { status: 'OPEN', openedAt: now() });
+  const openWindow = (win: SchoolAdminRecord) =>
+    void transition(win, { status: 'OPEN', openedAt: now() }, { success: 'Window opened.', failure: "Couldn't open the window." });
+  const closeWindow = (win: SchoolAdminRecord) =>
+    void transition(win, { status: 'CLOSED', closedAt: now() }, { success: 'Window closed.', failure: "Couldn't close the window." });
+  const publishGrades = (win: SchoolAdminRecord) =>
+    void transition(win, { status: 'PUBLISHED', publishedAt: now() }, { success: 'Grades published.', failure: "Couldn't publish the grades." });
+  const reopenWindow = (win: SchoolAdminRecord) =>
+    void transition(win, { status: 'OPEN', openedAt: now() }, { success: 'Window reopened.', failure: "Couldn't reopen the window." });
 
   const beginUnpublish = (win: SchoolAdminRecord) => {
     setUnpublishTarget(win);
@@ -131,7 +147,8 @@ function GradeEntryWindowsManager() {
     if (!unpublishTarget || unpublishing) return;
     setUnpublishing(true);
     try {
-      await transition(unpublishTarget, { status: 'CLOSED' });
+      const ok = await transition(unpublishTarget, { status: 'CLOSED' }, { success: 'Grades unpublished.', failure: "Couldn't unpublish the grades." });
+      if (!ok) return;
       setUnpublishTarget(null);
       setUnpublishInput('');
       setView('list');

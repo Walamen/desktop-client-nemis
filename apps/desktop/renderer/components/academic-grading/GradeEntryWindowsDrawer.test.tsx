@@ -18,6 +18,7 @@ vi.mock('@/services/nemis-bridge/shared', () => ({
 }));
 
 import { sharedBridge } from '@/services/nemis-bridge/shared';
+import { ToastHost } from '@/components/shell/ToastHost';
 import { GradeEntryWindowsDrawer } from './GradeEntryWindowsDrawer';
 import { CURRENT_YEAR, clearNemis, field, renderWithLayer, stubNemis, termRow } from './setup-test-support';
 
@@ -35,7 +36,12 @@ async function renderDrawer(windows: Record<string, unknown>[], p = props()) {
   data.windows = windows;
   data.periods = [{ id: 'p1', termId: 't1', name: 'Period 1' }, { id: 'p9', termId: 't9', name: 'Other Term Period' }];
   stubNemis({ currentYear: CURRENT_YEAR, terms: [termRow(), termRow({ id: 't0', academicYearId: 'y0', name: 'Old Year Term' })] });
-  await renderWithLayer(<GradeEntryWindowsDrawer {...p} />);
+  await renderWithLayer(
+    <>
+      <GradeEntryWindowsDrawer {...p} />
+      <ToastHost />
+    </>,
+  );
   return p;
 }
 
@@ -183,5 +189,60 @@ describe('GradeEntryWindowsDrawer unpublish view', () => {
     await waitFor(() => expect(screen.queryByRole('heading', { name: 'Unpublish Grades' })).toBeNull());
     expect(p.onClose).not.toHaveBeenCalled();
     expect(save()).not.toHaveBeenCalled();
+  });
+});
+
+describe('GradeEntryWindowsDrawer save feedback', () => {
+  const listCalls = () =>
+    vi.mocked(sharedBridge.listSchoolAdminRecords).mock.calls.filter(([req]) => req.collection === 'grade_entry_windows').length;
+
+  it('toasts a successful lifecycle change', async () => {
+    await renderDrawer([win()]);
+    fireEvent.click(await screen.findByRole('button', { name: 'Open Window' }));
+    expect(await screen.findByText('Window opened.')).toBeInTheDocument();
+  });
+
+  it('toasts a failed lifecycle change with the reason and leaves the list alone', async () => {
+    await renderDrawer([win()]);
+    await screen.findByRole('button', { name: 'Open Window' });
+    const before = listCalls();
+    save().mockRejectedValueOnce(new Error('[VALIDATION_FAILED] Window dates overlap'));
+    fireEvent.click(screen.getByRole('button', { name: 'Open Window' }));
+    expect(await screen.findByText("Couldn't open the window. Window dates overlap")).toBeInTheDocument();
+    expect(listCalls()).toBe(before);
+    expect(screen.getByRole('button', { name: 'Open Window' })).toBeInTheDocument();
+  });
+
+  it('keeps the create form after a failed save, and a retry succeeds', async () => {
+    await renderDrawer([]);
+    fireEvent.click(await screen.findByRole('button', { name: 'Create Window' }));
+    await screen.findByRole('option', { name: 'Term 1' });
+    fireEvent.change(field('Term'), { target: { value: 't1' } });
+    await screen.findByRole('option', { name: 'Period 1' });
+    fireEvent.change(field('Grading Period'), { target: { value: 'p1' } });
+    fireEvent.change(field('Window Name'), { target: { value: 'Period 1 Entry' } });
+    fireEvent.change(field('Open Date'), { target: { value: '2026-01-05' } });
+    fireEvent.change(field('Close Date'), { target: { value: '2026-01-20' } });
+
+    save().mockRejectedValueOnce(new Error('Disk full'));
+    fireEvent.click(screen.getByRole('button', { name: 'Create Window' }));
+    expect(await screen.findByText("Couldn't create the window. Disk full")).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Create Grade Entry Window' })).toBeInTheDocument();
+    expect(field('Window Name')).toHaveValue('Period 1 Entry');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create Window' }));
+    expect(await screen.findByText('Grade entry window created.')).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole('heading', { name: 'Create Grade Entry Window' })).toBeNull());
+  });
+
+  it('keeps the unpublish confirmation after a failed save', async () => {
+    await renderDrawer([win({ status: 'PUBLISHED' })]);
+    fireEvent.click(await screen.findByRole('button', { name: 'Unpublish' }));
+    fireEvent.change(screen.getByPlaceholderText('unpublish this window'), { target: { value: 'unpublish this window' } });
+    save().mockRejectedValueOnce(new Error('[CONFLICT] Grades are being synced'));
+    fireEvent.click(screen.getByRole('button', { name: 'Unpublish' }));
+    expect(await screen.findByText("Couldn't unpublish the grades. Grades are being synced")).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Unpublish Grades' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Unpublish' })).toBeEnabled();
   });
 });
