@@ -132,9 +132,9 @@ describe('GradingPeriodsPanel save feedback', () => {
     fireEvent.change(field('Period Name'), { target: { value: 'Midterm' } });
     fireEvent.change(field('Start Date'), { target: { value: '2025-09-01' } });
     fireEvent.change(field('End Date'), { target: { value: '2025-10-15' } });
-    vi.mocked(sharedBridge.saveSchoolAdminRecord).mockRejectedValueOnce(new Error('[VALIDATION_FAILED] Dates overlap Period 1'));
+    vi.mocked(sharedBridge.saveSchoolAdminRecord).mockRejectedValueOnce(new Error('[VALIDATION_FAILED] The provided data failed validation.'));
     fireEvent.click(screen.getByRole('button', { name: 'Create Period' }));
-    expect(await screen.findByText("Couldn't save the period. Dates overlap Period 1")).toBeInTheDocument();
+    expect(await screen.findByText("Couldn't save the period. The provided data failed validation.")).toBeInTheDocument();
     expect(field('Period Name')).toHaveValue('Midterm');
   });
 
@@ -162,7 +162,7 @@ describe('GradingPeriodsPanel save feedback', () => {
     await waitFor(() => expect(autoSetupButton).toBeEnabled()); // enabled once the grading config has loaded
     fireEvent.click(autoSetupButton);
     expect(
-      await screen.findByText("Couldn't finish setting up periods — 1 of 3 were created. Code P2 already exists"),
+      await screen.findByText("Only 1 of 3 assessment periods was created. Add the rest with Add Period, or delete them and run Auto Setup again. Code P2 already exists"),
     ).toBeInTheDocument();
     expect(sharedBridge.saveSchoolAdminRecord).toHaveBeenCalledTimes(2);
     await waitFor(() =>

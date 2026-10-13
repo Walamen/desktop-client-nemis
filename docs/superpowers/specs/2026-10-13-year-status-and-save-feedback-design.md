@@ -59,7 +59,9 @@ const dirty =
 In the edit view's Status section:
 - Set current / Close / Archive / Restore get `disabled={dirty}` (their show/hide conditions are
   unchanged).
-- When `dirty`, render above the buttons:
+- When `dirty` AND at least one status action is visible (`status !== 'ACTIVE' || !isCurrent`; the
+  current active year shows none), render above the buttons, with `id="year-status-locked-reason"`;
+  each button carries `aria-describedby` pointing at it while `dirty`:
   `<p role="status" className="text-sm text-amber-700">Save or cancel your changes before changing this year's status.</p>`
 - Reverting the fields to their saved values clears `dirty` and re-enables the buttons. Saving
   returns to the list (existing behaviour), so the next edit starts clean.
@@ -123,7 +125,7 @@ open, values intact) so the admin can retry.
 - `autoSetup`: keep saving one period at a time; stop at the first failure. It does **not** use
   `runSave` per period (that would toast once per period). Instead it wraps the loop itself:
   - all saved → `notifications.success('Assessment periods created.')`
-  - failure after `n` of `count` saved → `notifications.error(`Couldn't finish setting up periods — ${n} of ${count} were created.` + (detail ? ' ' + detail : ''))`, with `detail = describeSaveError(err)`.
+  - failure after `n` of `count` saved → `notifications.error(`Only ${n} of ${count} assessment periods ${n === 1 ? 'was' : 'were'} created. Add the rest with Add Period, or delete them and run Auto Setup again.` + (detail ? ' ' + detail : ''))`, with `detail = describeSaveError(err)`. Re-running Auto Setup is not suggested because it creates a whole new set of periods, duplicating names and overlapping dates.
   - Reload the term's periods in both cases (so partially created periods show). `settingUp`
     still resets in `finally`.
 
@@ -139,6 +141,9 @@ open, values intact) so the admin can retry.
 After this change every save on the Academic Grading page reports its outcome: Years/Terms via the
 command pipeline (unchanged), Windows/Periods via `useSaveFeedback`, Grading Configuration via its
 inline box plus a success toast. No save throws an unhandled rejection from these screens.
+
+Note: IPC failures carry a fixed generic message per error code (`errorMapping.ts`), so toasts read
+e.g. "Couldn't save the period. The provided data failed validation." — not field-specific reasons.
 
 ## Testing
 
@@ -161,7 +166,7 @@ and uses it consistently.
   create view with values; a failed Unpublish keeps the confirmation view.
 - **`GradingPeriodsPanel.test.tsx`:** a failed save keeps the form open and toasts
   `Couldn't save the period. …`; a failed delete toasts `Couldn't delete the period.`; auto setup
-  failing on the 2nd of 3 saves toasts `Couldn't finish setting up periods — 1 of 3 were created.`
+  failing on the 2nd of 3 saves toasts `Only 1 of 3 assessment periods was created. Add the rest with Add Period, or delete them and run Auto Setup again.`
   and reloads.
 - **`GradingConfigDrawer`** (new test file if none exists): a failed save shows the readable
   message (no `[CODE]`) inline; a successful save toasts `Grading configuration saved.` and closes.

@@ -144,6 +144,7 @@ describe('AcademicYearsDrawer status actions (edit view)', () => {
     fireEvent.change(field('Academic year code'), { target: { value: '2026/27' } });
     statusButtons().forEach((b) => expect(b).toBeDisabled());
     expect(screen.getByText(warning)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Set current' })).toHaveAttribute('aria-describedby', 'year-status-locked-reason');
 
     fireEvent.change(field('Academic year code'), { target: { value: '2026/2027' } });
     statusButtons().forEach((b) => expect(b).toBeEnabled());
@@ -152,6 +153,15 @@ describe('AcademicYearsDrawer status actions (edit view)', () => {
     fireEvent.change(field('End date'), { target: { value: '2027-08-31' } });
     statusButtons().forEach((b) => expect(b).toBeDisabled());
     expect(screen.getByText(warning)).toBeInTheDocument();
+  });
+
+  it('does not show the unsaved-changes warning for the current year, which has no status buttons', async () => {
+    stubNemis();
+    await renderWithLayer(<AcademicYearsDrawer {...props()} />);
+    await openEdit(CURRENT_YEAR.code);
+    fireEvent.change(field('Academic year code'), { target: { value: '2025/26' } });
+    expect(shown()).toEqual([]);
+    expect(screen.queryByText("Save or cancel your changes before changing this year's status.")).toBeNull();
   });
 
   it('offers only Restore for an archived year', async () => {

@@ -206,9 +206,9 @@ describe('GradeEntryWindowsDrawer save feedback', () => {
     await renderDrawer([win()]);
     await screen.findByRole('button', { name: 'Open Window' });
     const before = listCalls();
-    save().mockRejectedValueOnce(new Error('[VALIDATION_FAILED] Window dates overlap'));
+    save().mockRejectedValueOnce(new Error('[VALIDATION_FAILED] The provided data failed validation.'));
     fireEvent.click(screen.getByRole('button', { name: 'Open Window' }));
-    expect(await screen.findByText("Couldn't open the window. Window dates overlap")).toBeInTheDocument();
+    expect(await screen.findByText("Couldn't open the window. The provided data failed validation.")).toBeInTheDocument();
     expect(listCalls()).toBe(before);
     expect(screen.getByRole('button', { name: 'Open Window' })).toBeInTheDocument();
   });

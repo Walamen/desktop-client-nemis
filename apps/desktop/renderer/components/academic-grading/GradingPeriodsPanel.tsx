@@ -174,7 +174,7 @@ export function GradingPeriodsPanel({ onNavigate }: { onNavigate?: SetupNavigate
       }
       notifications.success('Assessment periods created.');
     } catch (error) {
-      notifications.error(formatSaveFailure(`Couldn't finish setting up periods — ${created} of ${count} were created.`, error));
+      notifications.error(formatSaveFailure(`Only ${created} of ${count} assessment periods ${created === 1 ? 'was' : 'were'} created. Add the rest with Add Period, or delete them and run Auto Setup again.`, error));
     } finally {
       setSettingUp(false);
     }

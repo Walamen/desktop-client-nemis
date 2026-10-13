@@ -35,10 +35,10 @@ describe('GradingConfigDrawer save feedback', () => {
   it('shows the readable reason inline when the save fails, and stays open', async () => {
     const onClose = await renderConfig();
     vi.mocked(sharedBridge.saveSchoolAdminRecord).mockRejectedValueOnce(
-      new Error('[VALIDATION_FAILED] Passing marks cannot exceed maximum marks'),
+      new Error('[VALIDATION_FAILED] The provided data failed validation.'),
     );
     fireEvent.click(screen.getByRole('button', { name: 'Save Configuration' }));
-    expect(await screen.findByText('Passing marks cannot exceed maximum marks')).toBeInTheDocument();
+    expect(await screen.findByText('The provided data failed validation.')).toBeInTheDocument();
     expect(screen.queryByText(/\[VALIDATION_FAILED\]/)).toBeNull();
     expect(onClose).not.toHaveBeenCalled();
   });

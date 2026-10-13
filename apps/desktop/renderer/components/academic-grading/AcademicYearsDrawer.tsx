@@ -40,6 +40,9 @@ function AcademicYearsManager({ onNavigate }: { onNavigate: SetupNavigate }) {
   const dirty =
     editing !== null &&
     (code !== editing.code || startDate !== editing.startDate || endDate !== editing.endDate);
+  // The current active year has no status buttons, so there is nothing to hold.
+  const hasStatusActions = editing !== null && (editing.status !== 'ACTIVE' || !editing.isCurrent);
+  const lockedReasonId = dirty ? 'year-status-locked-reason' : undefined;
   const backToList = useCallback(() => setView('list'), []);
   useEscapeCapture(view === 'form', backToList);
   useRevalidateOnSync(() => { void vm.loadAcademicYears(); }, [vm]);
@@ -99,23 +102,23 @@ function AcademicYearsManager({ onNavigate }: { onNavigate: SetupNavigate }) {
               <Badge variant={statusVariant(editing.status)} size="sm">{editing.status}</Badge>
               {editing.isCurrent && <span>Current academic year</span>}
             </p>
-            {dirty && (
-              <p role="status" className="text-sm text-amber-700">
+            {dirty && hasStatusActions && (
+              <p id="year-status-locked-reason" role="status" className="text-sm text-amber-700">
                 Save or cancel your changes before changing this year&apos;s status.
               </p>
             )}
             <div className="flex flex-wrap gap-2">
               {editing.status === 'ACTIVE' && !editing.isCurrent && (
-                <Button type="button" size="sm" disabled={dirty} onClick={() => void setCurrent(editing)}>Set current</Button>
+                <Button type="button" size="sm" disabled={dirty} aria-describedby={lockedReasonId} onClick={() => void setCurrent(editing)}>Set current</Button>
               )}
               {editing.status === 'ACTIVE' && !editing.isCurrent && (
-                <Button type="button" size="sm" variant="secondary" disabled={dirty} onClick={() => void setStatus(editing, AcademicYearStatus.CLOSED)}>Close</Button>
+                <Button type="button" size="sm" variant="secondary" disabled={dirty} aria-describedby={lockedReasonId} onClick={() => void setStatus(editing, AcademicYearStatus.CLOSED)}>Close</Button>
               )}
               {editing.status !== 'ARCHIVED' && !editing.isCurrent && (
-                <Button type="button" size="sm" variant="secondary" disabled={dirty} onClick={() => void setStatus(editing, AcademicYearStatus.ARCHIVED)}>Archive</Button>
+                <Button type="button" size="sm" variant="secondary" disabled={dirty} aria-describedby={lockedReasonId} onClick={() => void setStatus(editing, AcademicYearStatus.ARCHIVED)}>Archive</Button>
               )}
               {editing.status !== 'ACTIVE' && (
-                <Button type="button" size="sm" variant="secondary" disabled={dirty} onClick={() => void setStatus(editing, AcademicYearStatus.ACTIVE)}>Restore</Button>
+                <Button type="button" size="sm" variant="secondary" disabled={dirty} aria-describedby={lockedReasonId} onClick={() => void setStatus(editing, AcademicYearStatus.ACTIVE)}>Restore</Button>
               )}
             </div>
           </section>
