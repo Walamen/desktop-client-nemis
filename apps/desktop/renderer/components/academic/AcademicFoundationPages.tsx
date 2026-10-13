@@ -11,10 +11,10 @@ import { useDeviceViewModel } from '@/lib/presentation/hooks/shared';
 import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
 import { queryParam } from '@/components/teachers/shared';
+import { FormField, LoadState, statusVariant } from './foundation-ui';
 
 const gradeLevels = Object.values(GradeLevel);
 const labelGrade = (value: string) => value.replace('_', ' ').replace('GRADE ', 'Grade ');
-const statusVariant = (status: string) => status === 'ACTIVE' ? 'success' : status === 'CLOSED' ? 'warning' : 'neutral';
 
 /** The year the Terms page opens on: the one named in ?yearId when it is on
  * this device, else the current year, else the first. */
@@ -26,13 +26,6 @@ export function initialYearId(years: readonly { id: string; isCurrent: boolean }
 function Page({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
   return <div className="p-6 space-y-5"><div className="flex flex-wrap gap-3 justify-between items-center"><div><h1 className="text-2xl font-semibold text-slate-900">{title}</h1><p className="text-sm text-slate-500 mt-1">Managed locally and ready for future synchronization.</p></div>{action}</div>{children}</div>;
 }
-function LoadState({ state, emptyTitle, emptyDescription, action }: { state: { status: string; error?: { userMessage: string } }; emptyTitle: string; emptyDescription: string; action?: ReactNode }) {
-  if (state.status === 'loading' || state.status === 'idle') return <Skeleton className="h-52 w-full rounded-card" />;
-  if (state.status === 'error') return <ErrorState message={state.error?.userMessage ?? 'Unable to load local data.'} />;
-  if (state.status === 'empty') return <EmptyState title={emptyTitle} description={emptyDescription} action={action} />;
-  return null;
-}
-function FormField({ children }: { children: ReactNode }) { return <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">{children}</div>; }
 
 export function AcademicYearsPage() {
   const vm = useAcademicFoundationViewModel();
