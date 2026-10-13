@@ -1,6 +1,6 @@
 import { ValueObject } from '../../core';
 import { InvalidValueObjectException } from '../../exceptions';
-import { normalizeNemisId } from '@nemis-desktop/shared';
+import { normalizeNemisId } from '@nemis-desktop/shared/nemis-id';
 
 interface NemisIdProps {
   value: string;

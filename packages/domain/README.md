@@ -13,10 +13,13 @@ rules; domain events are defined (not dispatched) and drained via
 
 ## Dependency rule
 
-The only permitted dependency is `@nemis-desktop/types` (enums + contracts). Imports
-of `electron`, `react`, `next`, `better-sqlite3`, `@nemis-desktop/shared`, or any
-`database/`/`data/`/`ipc/` path are banned and enforced by ESLint
-(`no-restricted-imports`). The package compiles standalone:
+The only permitted dependencies are `@nemis-desktop/types` (enums + contracts) and
+the pure `@nemis-desktop/shared/nemis-id` subpath (the NEMIS ID algorithm, used by
+the `NemisId` value object). Imports of `electron`, `react`, `next`,
+`better-sqlite3`, `@nemis-desktop/shared` (the package root or any other subpath),
+or any `database/`/`data/`/`ipc/` path are banned and enforced by ESLint
+(`no-restricted-imports`; see `src/import-guard.test.ts`). The package compiles
+standalone:
 `pnpm --filter @nemis-desktop/domain typecheck`.
 
 ## Layout
