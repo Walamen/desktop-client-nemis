@@ -1,57 +1,22 @@
 'use client';
 
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { useState, type FormEvent, type ReactNode } from 'react';
 import Link from 'next/link';
-import { AcademicYearStatus, GradeLevel, type GradeLevel as GradeLevelValue } from '@nemis-desktop/types';
-import type { AcademicYearRowView, ClassRowView, SubjectRowView, TermRowView } from '@nemis-desktop/presentation';
-import { Badge, Button, EmptyState, ErrorState, Input, Modal, Select, Skeleton } from '@nemis-desktop/ui';
+import { GradeLevel, type GradeLevel as GradeLevelValue } from '@nemis-desktop/types';
+import type { ClassRowView, SubjectRowView } from '@nemis-desktop/presentation';
+import { Badge, Button, Input, Modal, Select, Skeleton } from '@nemis-desktop/ui';
 import { useViewModel } from '@/hooks/use-view-model';
 import { useAcademicFoundationViewModel, useAcademicYearViewModel, useSettingsViewModel } from '@/lib/presentation/hooks/school-admin';
 import { useDeviceViewModel } from '@/lib/presentation/hooks/shared';
 import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
-import { sharedBridge } from '@/services/nemis-bridge/shared';
-import { queryParam } from '@/components/teachers/shared';
 import { academicSetupHref } from '@/lib/academic-setup';
-import { FormField, LoadState, statusVariant } from './foundation-ui';
-import { initialYearId } from '@/components/academic-grading/TermsDrawer';
+import { FormField, LoadState } from './foundation-ui';
 
 const gradeLevels = Object.values(GradeLevel);
 const labelGrade = (value: string) => value.replace('_', ' ').replace('GRADE ', 'Grade ');
 
 function Page({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
   return <div className="p-6 space-y-5"><div className="flex flex-wrap gap-3 justify-between items-center"><div><h1 className="text-2xl font-semibold text-slate-900">{title}</h1><p className="text-sm text-slate-500 mt-1">Managed locally and ready for future synchronization.</p></div>{action}</div>{children}</div>;
-}
-
-export function AcademicYearsPage() {
-  const vm = useAcademicFoundationViewModel();
-  const state = useViewModel(vm.store, (s) => s.academicYears);
-  const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<AcademicYearRowView | null>(null);
-  const [code, setCode] = useState(''); const [startDate, setStartDate] = useState(''); const [endDate, setEndDate] = useState(''); const [makeCurrent, setMakeCurrent] = useState(false);
-  useRevalidateOnSync(() => { void vm.loadAcademicYears(); }, [vm]);
-  const begin = (year?: AcademicYearRowView) => { setEditing(year ?? null); setCode(year?.code ?? ''); setStartDate(year?.startDate ?? ''); setEndDate(year?.endDate ?? ''); setMakeCurrent(year?.isCurrent ?? false); setOpen(true); };
-  const submit = async (event: FormEvent) => { event.preventDefault(); const result = editing ? await vm.updateAcademicYear({ id: editing.id, code, startDate, endDate }) : await vm.createAcademicYear({ code, startDate, endDate, makeCurrent }); if (result.ok) setOpen(false); };
-  const setStatus = async (year: AcademicYearRowView, status: typeof AcademicYearStatus[keyof typeof AcademicYearStatus]) => { if (window.confirm(`Change ${year.code} to ${status.toLowerCase()}?`)) await vm.setAcademicYearStatus(year.id, status); };
-  return <Page title="Academic Years" action={<Button onClick={() => begin()}>Create academic year</Button>}>
-    <LoadState state={state} emptyTitle="No Academic Year has been configured." emptyDescription="Create an academic year before setting up terms and classes." action={<Button onClick={() => begin()}>Create academic year</Button>} />
-    {(state.status === 'success' || state.status === 'refreshing') && <div className="overflow-x-auto bg-white border border-slate-200 rounded-card"><table className="min-w-full text-sm"><thead><tr className="text-left text-slate-500 border-b"><th className="p-4">Code</th><th className="p-4">Period</th><th className="p-4">Status</th><th className="p-4">Terms</th><th className="p-4">Classes</th><th className="p-4">Actions</th></tr></thead><tbody>{state.data.map((year) => <tr key={year.id} className="border-b last:border-0"><td className="p-4 font-medium">{year.code}{year.isCurrent && <Badge className="ml-2" size="sm">Current</Badge>}</td><td className="p-4">{year.startDate} — {year.endDate}</td><td className="p-4"><Badge variant={statusVariant(year.status)} size="sm">{year.status}</Badge></td><td className="p-4"><Link className="text-blue-700 hover:underline" href={`/government/school-admin/terms?yearId=${year.id}`} aria-label={`${year.termCount} ${year.termCount === 1 ? 'term' : 'terms'} in ${year.code}`}>{year.termCount}</Link></td><td className="p-4">{year.classCount}</td><td className="p-4 flex gap-2 flex-wrap"><Button size="sm" variant="secondary" onClick={() => begin(year)}>Edit</Button>{!year.isCurrent && year.status === 'ACTIVE' && <Button size="sm" onClick={() => void vm.setCurrentAcademicYear(year.id)}>Set current</Button>}{year.status === 'ACTIVE' && !year.isCurrent && <Button size="sm" variant="secondary" onClick={() => void setStatus(year, AcademicYearStatus.CLOSED)}>Close</Button>}{year.status !== 'ARCHIVED' && !year.isCurrent && <Button size="sm" variant="secondary" onClick={() => void setStatus(year, AcademicYearStatus.ARCHIVED)}>Archive</Button>}{year.status !== 'ACTIVE' && <Button size="sm" variant="secondary" onClick={() => void setStatus(year, AcademicYearStatus.ACTIVE)}>Restore</Button>}</td></tr>)}</tbody></table></div>}
-    <Modal isOpen={open} onClose={() => setOpen(false)} title={editing ? 'Edit Academic Year' : 'Create Academic Year'} footer={<><Button variant="secondary" onClick={() => setOpen(false)}>Cancel</Button><Button form="year-form" type="submit">Save</Button></>}><form id="year-form" onSubmit={(e) => void submit(e)} className="space-y-4"><Input label="Academic year code" required value={code} onChange={(e) => setCode(e.target.value)} placeholder="2026/2027" /><FormField><Input label="Start date" required type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /><Input label="End date" required type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} /></FormField>{!editing && <label className="flex gap-2 text-sm"><input type="checkbox" checked={makeCurrent} onChange={(e) => setMakeCurrent(e.target.checked)} /> Make this the current academic year</label>}</form></Modal>
-  </Page>;
-}
-
-export function TermsPage() {
-  const vm = useAcademicFoundationViewModel(); const years = useViewModel(vm.store, (s) => s.academicYears); const terms = useViewModel(vm.store, (s) => s.terms);
-  const [selectedYear, setSelectedYear] = useState(''); const [open, setOpen] = useState(false); const [editing, setEditing] = useState<TermRowView | null>(null); const [name, setName] = useState(''); const [sequence, setSequence] = useState(''); const [startDate, setStartDate] = useState(''); const [endDate, setEndDate] = useState(''); const [makeCurrent, setMakeCurrent] = useState(false);
-  const [termsPerYear, setTermsPerYear] = useState(2);
-  useRevalidateOnSync(() => { void vm.loadAcademicYears(); }, [vm]);
-  useEffect(() => { void sharedBridge.listSchoolAdminRecords({ collection: 'institution_grading_configs', limit: 1 }).then((result) => { const value = result.items[0]?.termsPerYear; if (typeof value === 'number') setTermsPerYear(value); }); }, []);
-  useEffect(() => { if ((years.status === 'success' || years.status === 'refreshing') && selectedYear === '') { const id = initialYearId(years.data, queryParam('yearId')); if (id) setSelectedYear(id); } }, [years, selectedYear]);
-  useRevalidateOnSync(() => { if (selectedYear) void vm.loadTerms(selectedYear); }, [vm, selectedYear]);
-  const begin = (term?: TermRowView) => { setEditing(term ?? null); setName(term?.name ?? ''); setSequence(term ? String(term.sequence) : ''); setStartDate(term?.startDate ?? ''); setEndDate(term?.endDate ?? ''); setMakeCurrent(term?.isCurrent ?? false); setOpen(true); };
-  const submit = async (event: FormEvent) => { event.preventDefault(); const result = editing ? await vm.updateTerm({ id: editing.id, name, sequence: Number(sequence), startDate, endDate }, selectedYear) : await vm.createTerm({ academicYearId: selectedYear, name, sequence: Number(sequence), startDate, endDate, makeCurrent }); if (result.ok) setOpen(false); };
-  const yearOptions = years.status === 'success' || years.status === 'refreshing' ? years.data.map((year) => ({ value: year.id, label: year.code })) : [];
-  const positionOptions = Array.from({ length: termsPerYear }, (_, i) => ({ value: String(i + 1), label: `Term ${i + 1}` }));
-  return <Page title="Terms" action={<Button disabled={!selectedYear} onClick={() => begin()}>Create term</Button>}><Select label="Academic year" value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} options={yearOptions} placeholder="Select academic year" />{years.status === 'empty' ? <EmptyState title="No academic year yet." description="Create an academic year before adding its terms." action={<Link href="/government/school-admin/academic-years"><Button>Create academic year</Button></Link>} /> : years.status === 'error' ? <ErrorState message={years.error.userMessage} /> : <LoadState state={terms} emptyTitle="No terms have been created." emptyDescription="Create terms within the selected academic year." action={selectedYear ? <Button onClick={() => begin()}>Create term</Button> : undefined} />}{(terms.status === 'success' || terms.status === 'refreshing') && <div className="bg-white border border-slate-200 rounded-card overflow-x-auto"><table className="min-w-full text-sm"><thead><tr className="text-left border-b text-slate-500"><th className="p-4">Term</th><th className="p-4">Period</th><th className="p-4">Status</th><th className="p-4">Actions</th></tr></thead><tbody>{terms.data.map((term) => <tr key={term.id} className="border-b last:border-0"><td className="p-4 font-medium">{term.name} <span className="font-normal text-xs text-slate-500">(Term {term.sequence})</span></td><td className="p-4">{term.startDate} — {term.endDate}</td><td className="p-4">{term.isCurrent ? <Badge variant="success" size="sm">Current</Badge> : '—'}</td><td className="p-4 flex gap-2"><Button size="sm" variant="secondary" onClick={() => begin(term)}>Edit</Button>{!term.isCurrent && <Button size="sm" onClick={() => void vm.setCurrentTerm(term.id, selectedYear)}>Set current</Button>}<Button size="sm" variant="destructive" onClick={() => { if (window.confirm(`Delete ${term.name}?`)) void vm.deleteTerm(term.id, selectedYear); }}>Delete</Button></td></tr>)}</tbody></table></div>}<Modal isOpen={open} onClose={() => setOpen(false)} title={editing ? 'Edit Term' : 'Create Term'} footer={<><Button variant="secondary" onClick={() => setOpen(false)}>Cancel</Button><Button form="term-form" type="submit">Save</Button></>}><form id="term-form" onSubmit={(e) => void submit(e)} className="space-y-4"><Input label="Term name" required value={name} onChange={(e) => setName(e.target.value)} /><Select label="Term position" required value={sequence} onChange={(e) => setSequence(e.target.value)} options={positionOptions} placeholder="Select position" /><FormField><Input label="Start date" type="date" required value={startDate} onChange={(e) => setStartDate(e.target.value)} /><Input label="End date" type="date" required value={endDate} onChange={(e) => setEndDate(e.target.value)} /></FormField>{!editing && <label className="flex gap-2 text-sm"><input type="checkbox" checked={makeCurrent} onChange={(e) => setMakeCurrent(e.target.checked)} /> Make this the current term</label>}</form></Modal></Page>;
 }
 
 export function GradeLevelsPage() {
