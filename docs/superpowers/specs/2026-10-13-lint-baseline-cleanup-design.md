@@ -78,15 +78,17 @@ import { normalizeNemisId } from '@nemis-desktop/shared/nemis-id';
   package root). Its message becomes:
   `'Domain layer must not depend on the infra-facing shared package (only @nemis-desktop/shared/nemis-id is allowed).'`
 - `patterns[0].group` replaces the single `'@nemis-desktop/shared/*'` entry
-  with the pair:
+  with:
   ```js
   '@nemis-desktop/shared/*',
   '!@nemis-desktop/shared/nemis-id',
+  '@nemis-desktop/shared/nemis-id/*',
   ```
   (`'@nemis-desktop/shared'` stays in the group.) ESLint's
-  `no-restricted-imports` pattern groups use gitignore semantics, so the
-  negation re-allows exactly that one subpath while every other subpath stays
-  banned.
+  `no-restricted-imports` pattern groups use gitignore semantics: the negation
+  re-allows that subpath, and because re-including a path also re-includes
+  everything under it, the last line re-bans deeper paths. Net effect: exactly
+  `@nemis-desktop/shared/nemis-id` is allowed; every other subpath stays banned.
 - A comment above the negation explains the exception: `nemis-id.ts` is a
   pure, dependency-free module (the NEMIS ID algorithm), the byte-identical
   twin of the server's copy, verified by golden fixtures — so the domain
@@ -143,12 +145,13 @@ built-ins — nothing the domain guard bans (the guard covers
   `nemis-id` + golden-fixture tests. (The `node` project's better-sqlite3 ABI
   failures live under `apps/desktop/electron` and `packages/application`, not in
   these two packages.)
-- The electron tests that construct `NemisId` through the domain still pass —
-  they exercise the same Vite resolver that bundles the Electron main process
-  (`@electron-forge/plugin-vite`). Run the electron test files that import
-  `@nemis-desktop/domain`'s students module (the plan names them); if the
-  better-sqlite3 ABI mismatch blocks them, run `pnpm rebuild:node` first and
-  restore with `pnpm rebuild:electron` afterwards, as the repo already does.
+- Consumer tests that construct `NemisId` through the domain from another
+  package still pass — they exercise the same Vite resolver that bundles the
+  Electron main process (`@electron-forge/plugin-vite`). Use the
+  SQLite-free application tests
+  `packages/application/src/mappers/students/student-mapper.test.ts` and
+  `packages/application/src/use-cases/academics/enroll-student.test.ts`, so no
+  better-sqlite3 ABI rebuild is needed.
 - `pnpm build:renderer` still succeeds.
 - No other file changes; `git diff --stat main` lists only the files named
   above plus `pnpm-lock.yaml`.
