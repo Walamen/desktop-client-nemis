@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { useState } from 'react';
+
+vi.mock('next/navigation', () => ({
+  useSearchParams: () => new URLSearchParams(window.location.search),
+  usePathname: () => window.location.pathname,
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+}));
 
 vi.mock('@/services/nemis-bridge/shared', () => ({
   sharedBridge: {
@@ -48,6 +55,7 @@ describe('AcademicGradingPage', () => {
     ['Manage Years', 'Academic Years'],
     ['Manage Terms', 'Terms'],
     ['Manage Periods', 'Assessment Periods'],
+    ['Manage Windows', 'Grade Entry Windows'],
   ])('%s opens the %s drawer', async (action, title) => {
     stubNemis({ currentYear: CURRENT_YEAR });
     await renderWithLayer(<AcademicGradingPage />);
@@ -61,6 +69,42 @@ describe('AcademicGradingPage', () => {
     await renderWithLayer(<AcademicGradingPage />);
     expect(await drawerHeading('Terms')).toBeInTheDocument();
     await waitFor(() => expect(field('Academic year')).toHaveValue('y0'));
+  });
+
+  it('opens the Windows drawer from ?open=windows', async () => {
+    stubNemis();
+    window.history.replaceState({}, '', '/?open=windows');
+    await renderWithLayer(<AcademicGradingPage />);
+    expect(await drawerHeading('Grade Entry Windows')).toBeInTheDocument();
+  });
+
+  it('opens a drawer when ?open= changes while the page is already showing (sidebar click)', async () => {
+    stubNemis();
+    function Harness() {
+      const [, setTick] = useState(0);
+      return (
+        <>
+          <button type="button" onClick={() => setTick((n) => n + 1)}>simulate navigation</button>
+          <AcademicGradingPage />
+        </>
+      );
+    }
+    await renderWithLayer(<Harness />);
+    expect(screen.queryByRole('heading', { level: 2, name: 'Grade Entry Windows' })).toBeNull();
+    window.history.pushState({}, '', '/?open=windows');
+    fireEvent.click(screen.getByRole('button', { name: 'simulate navigation' }));
+    expect(await drawerHeading('Grade Entry Windows')).toBeInTheDocument();
+  });
+
+  it('drops the query when switching drawers in-page, so the same deep link works again', async () => {
+    stubNemis();
+    window.history.replaceState({}, '', '/?open=years');
+    await renderWithLayer(<AcademicGradingPage />);
+    await drawerHeading('Academic Years');
+    const replace = vi.spyOn(window.history, 'replaceState');
+    fireEvent.click(await screen.findByRole('button', { name: '3 terms in 2024/2025' }));
+    expect(await drawerHeading('Terms')).toBeInTheDocument();
+    expect(replace).toHaveBeenCalledWith(null, '', '/');
   });
 
   it.each(['setup', 'bogus', ''])('opens nothing for ?open=%s', async (value) => {

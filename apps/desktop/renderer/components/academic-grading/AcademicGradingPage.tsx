@@ -2,15 +2,16 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { CalendarClock, CalendarDays, CalendarRange, ClipboardList, DoorOpen, PenLine } from 'lucide-react';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
 import type { SchoolAdminRecord } from '@nemis-desktop/types';
 import { parseSetupDrawerTarget } from '@/lib/academic-setup';
-import { queryParam } from '@/components/teachers/shared';
 import { GradingConfigDrawer } from './GradingConfigDrawer';
 import { AcademicYearsDrawer } from './AcademicYearsDrawer';
 import { TermsDrawer } from './TermsDrawer';
 import { AssessmentPeriodsDrawer } from './AssessmentPeriodsDrawer';
+import { GradeEntryWindowsDrawer } from './GradeEntryWindowsDrawer';
 import type { SetupDrawer, SetupNavigate } from './setup-drawers';
 import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 
@@ -44,7 +45,7 @@ const GUIDE_STEPS = [
 /** School-admin Academic Grading landing page — mirrors portal-web's
  * academic-grading/page.tsx (GradingSystemManagement + Quick Start Guide), and
  * is also where the school's yearly setup lives: grading configuration,
- * academic years, terms and assessment periods each open in a drawer, in
+ * academic years, terms, assessment periods and grade entry windows each open in a drawer, in
  * dependency order. Links elsewhere open a drawer with ?open= (see
  * lib/academic-setup.ts). Grade Entry stays disabled here: that's a teacher
  * task (recording marks against an open window), the same split already
@@ -60,18 +61,26 @@ export function AcademicGradingPage() {
       .then((result) => setWindows(result.items));
   }, []);
 
-  // Deep links (?open=terms&yearId=…) are read once on mount; in-page switches
-  // go through `navigate`, since a Link to this same route would not remount.
+  // Deep links (?open=terms&yearId=…) open a drawer whenever the query changes —
+  // not just on mount: the sidebar is a persistent layout, so its "Grade Entry &
+  // Results" link is a soft navigation that never remounts this page. A missing
+  // or unknown `open` does nothing (it must not close a drawer that is open).
+  const searchParams = useSearchParams();
+  const openParam = searchParams.get('open') ?? '';
+  const yearIdParam = searchParams.get('yearId') ?? '';
   useEffect(() => {
-    const target = parseSetupDrawerTarget(queryParam('open'));
+    const target = parseSetupDrawerTarget(openParam);
     if (!target) return;
-    setTermsYearId(queryParam('yearId'));
+    setTermsYearId(yearIdParam);
     setActiveModal(target);
-  }, []);
+  }, [openParam, yearIdParam]);
 
+  // In-page switches drop the query too, so following the same deep link later
+  // (e.g. the sidebar item again) is a real URL change and reopens its drawer.
   const navigate: SetupNavigate = useCallback((drawer, opts) => {
     setTermsYearId(opts?.yearId ?? '');
     setActiveModal(drawer);
+    if (window.location.search) window.history.replaceState(null, '', window.location.pathname);
   }, []);
 
   const close = useCallback(() => {
@@ -133,7 +142,7 @@ export function AcademicGradingPage() {
             title="Grade Entry Windows"
             description="Control when teachers can enter and submit grades."
             action="Manage Windows"
-            href="/government/school-admin/academic-grading/windows"
+            onClick={() => navigate('windows')}
           />
           <FeatureCard
             icon={<PenLine className="h-6 w-6 text-slate-400" />}
@@ -172,6 +181,7 @@ export function AcademicGradingPage() {
       <AcademicYearsDrawer isOpen={activeModal === 'years'} onClose={close} onNavigate={navigate} />
       <TermsDrawer isOpen={activeModal === 'terms'} onClose={close} onNavigate={navigate} yearId={termsYearId} />
       <AssessmentPeriodsDrawer isOpen={activeModal === 'periods'} onClose={close} onNavigate={navigate} />
+      <GradeEntryWindowsDrawer isOpen={activeModal === 'windows'} onClose={close} onNavigate={navigate} />
     </div>
   );
 }

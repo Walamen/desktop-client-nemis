@@ -6,6 +6,7 @@ describe('academicSetupHref', () => {
     ['years', '/government/school-admin/academic-grading?open=years'],
     ['terms', '/government/school-admin/academic-grading?open=terms'],
     ['periods', '/government/school-admin/academic-grading?open=periods'],
+    ['windows', '/government/school-admin/academic-grading?open=windows'],
   ] as const)('links %s to its drawer on the Academic Grading page', (drawer, href) => {
     expect(academicSetupHref(drawer)).toBe(href);
   });
@@ -24,11 +25,11 @@ describe('academicSetupHref', () => {
 });
 
 describe('parseSetupDrawerTarget', () => {
-  it.each(['years', 'terms', 'periods'])('accepts %s', (value) => {
+  it.each(['years', 'terms', 'periods', 'windows'])('accepts %s', (value) => {
     expect(parseSetupDrawerTarget(value)).toBe(value);
   });
 
-  it.each(['', 'setup', 'TERMS', 'windows', 'terms '])('rejects %j', (value) => {
+  it.each(['', 'setup', 'TERMS', 'terms '])('rejects %j', (value) => {
     expect(parseSetupDrawerTarget(value)).toBeNull();
   });
 });
