@@ -5,6 +5,15 @@ import {
   GraduationCap, ArrowRightLeft, UserCircle2, AlertTriangle, FileBarChart,
   SlidersHorizontal, CalendarRange, CalendarDays, CalendarClock, Award, Clock, Receipt, Layers,
 } from 'lucide-react';
+// Use react-icons for icons 
+import { GiTeacher } from "react-icons/gi";
+import { PiStudentDuotone } from "react-icons/pi";
+import { RiParentFill } from "react-icons/ri";
+import { SiGoogleclassroom } from "react-icons/si";
+import { GrOverview } from "react-icons/gr";
+import { MdSubject } from "react-icons/md";
+import { FcDataConfiguration } from "react-icons/fc";
+import { PiClockUserBold } from "react-icons/pi";
 import type { ComponentType } from 'react';
 import { DESKTOP_PORTALS, SystemRole, type DesktopPortalRole } from '@nemis-desktop/types';
 import type { AvatarRole } from '@nemis-desktop/ui';
@@ -52,7 +61,7 @@ export const sidebarConfigs: Record<DesktopPortalRole, SidebarConfig> = {
     dashboardItem: {
       name: 'Overview',
       href: '/government/school-admin',
-      icon: LayoutDashboard,
+      icon: GrOverview,
     },
     navGroups: [
       {
@@ -133,7 +142,7 @@ export const sidebarConfigs: Record<DesktopPortalRole, SidebarConfig> = {
     dashboardItem: {
       name: 'Dashboard',
       href: '/government/county',
-      icon: LayoutDashboard,
+      icon: GrOverview,
     },
     navGroups: [
       {
@@ -187,7 +196,7 @@ export const sidebarConfigs: Record<DesktopPortalRole, SidebarConfig> = {
     navGroups: [
       {
         label: 'OVERVIEW',
-        items: [{ name: 'Dashboard', href: '/government/deo', icon: LayoutDashboard }],
+        items: [{ name: 'Dashboard', href: '/government/deo', icon: GrOverview }],
       },
       {
         label: 'MAIN',
@@ -278,16 +287,16 @@ export const sidebarConfigs: Record<DesktopPortalRole, SidebarConfig> = {
     navGroups: [
       {
         label: 'OVERVIEW',
-        items: [{ name: 'Dashboard', href: '/government/teacher', icon: LayoutDashboard }],
+        items: [{ name: 'Dashboard', href: '/government/teacher', icon: GrOverview }],
       },
       {
         label: 'TEACHING',
         items: [
           { name: 'My School', href: '/government/teacher/my-school', icon: Map },
-          { name: 'My Classes', href: '/government/teacher/my-classes', icon: School },
+          { name: 'My Classes', href: '/government/teacher/my-classes', icon: SiGoogleclassroom },
           { name: 'Class Schedule', href: '/government/teacher/timetable', icon: CheckCircle },
           { name: 'Gradebook', href: '/government/teacher/grades', icon: CalendarCheck },
-          { name: 'Attendence', href: '/government/teacher/attendance', icon: CalendarCheck },
+          { name: 'Attendence', href: '/government/teacher/attendance', icon: PiClockUserBold },
         ],
       },
       {
