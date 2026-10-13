@@ -6,13 +6,8 @@ import {
   SlidersHorizontal, Award, Clock, Receipt, Layers,
 } from 'lucide-react';
 // Use react-icons for icons 
-import { GiTeacher } from "react-icons/gi";
-import { PiStudentDuotone } from "react-icons/pi";
-import { RiParentFill } from "react-icons/ri";
 import { SiGoogleclassroom } from "react-icons/si";
 import { GrOverview } from "react-icons/gr";
-import { MdSubject } from "react-icons/md";
-import { FcDataConfiguration } from "react-icons/fc";
 import { PiClockUserBold } from "react-icons/pi";
 import type { ComponentType } from 'react';
 import { DESKTOP_PORTALS, SystemRole, type DesktopPortalRole } from '@nemis-desktop/types';
