@@ -9,6 +9,7 @@ import { useAcademicFoundationViewModel, useAcademicYearViewModel } from '@/lib/
 import { academicSetupHref, type SetupDrawerTarget } from '@/lib/academic-setup';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
 import type { SchoolAdminRecord } from '@nemis-desktop/types';
+import { useEscapeCapture } from './use-escape-capture';
 import { getGradingConfig, listPeriodsForTerm, PERIOD_STATUS_BADGE, periodStatus } from './shared';
 import type { SetupNavigate } from './setup-drawers';
 
@@ -67,6 +68,9 @@ export function GradingPeriodsPanel({ onNavigate }: { onNavigate?: SetupNavigate
     setEditing(null);
     setShowForm(false);
   };
+
+  // Escape in the inline form behaves like Cancel instead of closing the drawer.
+  useEscapeCapture(showForm, resetForm);
 
   const startEdit = (period: SchoolAdminRecord) => {
     setEditing(period);

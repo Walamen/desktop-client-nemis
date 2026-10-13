@@ -55,6 +55,8 @@ function TermsManager({ requestedYearId, onNavigate }: { requestedYearId: string
     void sharedBridge.listSchoolAdminRecords({ collection: 'institution_grading_configs', limit: 1 }).then((result) => {
       const value = result.items[0]?.termsPerYear;
       if (typeof value === 'number') setTermsPerYear(value);
+    }).catch(() => {
+      // The position list keeps its default of 2 when the config can't be read.
     });
   }, []);
   useEffect(() => {
@@ -91,7 +93,7 @@ function TermsManager({ requestedYearId, onNavigate }: { requestedYearId: string
     return (
       <form onSubmit={(e) => void submit(e)} className="space-y-4">
         <h3 className="font-semibold text-slate-900">{editing ? 'Edit Term' : 'Create Term'}</h3>
-        <Input label="Term name" required value={name} onChange={(e) => setName(e.target.value)} />
+        <Input label="Term name" required autoFocus value={name} onChange={(e) => setName(e.target.value)} />
         <Select label="Term position" required value={sequence} onChange={(e) => setSequence(e.target.value)} options={positionOptions} placeholder="Select position" />
         <FormField>
           <Input label="Start date" type="date" required value={startDate} onChange={(e) => setStartDate(e.target.value)} />
@@ -141,7 +143,7 @@ function TermsManager({ requestedYearId, onNavigate }: { requestedYearId: string
               </tr>
             </thead>
             <tbody>
-              {terms.data.map((term) => (
+              {terms.data.filter((term) => term.academicYearId === selectedYear).map((term) => (
                 <tr key={term.id} className="border-b last:border-0">
                   <td className="p-3 font-medium">
                     {term.name} <span className="text-xs font-normal text-slate-500">(Term {term.sequence})</span>

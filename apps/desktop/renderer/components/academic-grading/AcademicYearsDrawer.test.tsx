@@ -55,6 +55,7 @@ describe('AcademicYearsDrawer form view', () => {
     await renderWithLayer(<AcademicYearsDrawer {...props()} />);
     fireEvent.click(await screen.findByRole('button', { name: 'Create academic year' }));
     expect(screen.getByRole('heading', { name: 'Create Academic Year' })).toBeInTheDocument();
+    expect(field('Academic year code')).toHaveFocus();
     expect(screen.queryByRole('button', { name: 'Edit 2024/2025' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(await screen.findByRole('button', { name: 'Edit 2024/2025' })).toBeInTheDocument();
@@ -147,6 +148,18 @@ describe('AcademicYearsDrawer status actions (edit view)', () => {
     expect(window.confirm).toHaveBeenCalledWith('Change 2024/2025 to archived?');
     await waitFor(() => expect(setStatus).toHaveBeenCalledWith(expect.objectContaining({ id: 'y0', status: 'ARCHIVED' })));
     expect(await screen.findByRole('button', { name: 'Edit 2024/2025' })).toBeInTheDocument();
+  });
+
+  it('sets the year current without a confirmation and returns to the list', async () => {
+    const setCurrent = vi.fn(async () => yearRow({ id: 'y3', code: '2026/2027', isCurrent: true }));
+    stubNemis({ years: [yearRow({ id: 'y3', code: '2026/2027', isCurrent: false })], academicYear: { setCurrent } });
+    const confirm = vi.spyOn(window, 'confirm');
+    await renderWithLayer(<AcademicYearsDrawer {...props()} />);
+    await openEdit('2026/2027');
+    fireEvent.click(screen.getByRole('button', { name: 'Set current' }));
+    await waitFor(() => expect(setCurrent).toHaveBeenCalledWith('y3'));
+    expect(confirm).not.toHaveBeenCalled();
+    expect(await screen.findByRole('button', { name: 'Edit 2026/2027' })).toBeInTheDocument();
   });
 
   it('does nothing when the confirmation is declined', async () => {

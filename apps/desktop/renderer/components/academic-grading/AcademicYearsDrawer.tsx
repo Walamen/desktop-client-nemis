@@ -72,7 +72,7 @@ function AcademicYearsManager({ onNavigate }: { onNavigate: SetupNavigate }) {
       <div className="space-y-6">
         <form onSubmit={(e) => void submit(e)} className="space-y-4">
           <h3 className="font-semibold text-slate-900">{editing ? 'Edit Academic Year' : 'Create Academic Year'}</h3>
-          <Input label="Academic year code" required value={code} onChange={(e) => setCode(e.target.value)} placeholder="2026/2027" />
+          <Input label="Academic year code" required autoFocus value={code} onChange={(e) => setCode(e.target.value)} placeholder="2026/2027" />
           <FormField>
             <Input label="Start date" required type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
             <Input label="End date" required type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />

@@ -26,6 +26,21 @@ describe('initialYearId', () => {
 });
 
 describe('TermsDrawer', () => {
+  it('only shows the selected year terms', async () => {
+    stubNemis({ terms: [termRow(), termRow({ id: 't9', academicYearId: 'y0', name: 'Old Year Term' })] });
+    await renderWithLayer(<TermsDrawer {...props()} />);
+    expect(await screen.findByText('Term 1')).toBeInTheDocument();
+    expect(screen.queryByText('Old Year Term')).toBeNull();
+  });
+
+  it('focuses the term name when the create form opens', async () => {
+    stubNemis();
+    await renderWithLayer(<TermsDrawer {...props()} />);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Create term' })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: 'Create term' }));
+    expect(field('Term name')).toHaveFocus();
+  });
+
   it('opens on the year it was given', async () => {
     stubNemis();
     await renderWithLayer(<TermsDrawer {...props('y0')} />);
