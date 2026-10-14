@@ -7,10 +7,45 @@ import { useViewModel } from '@/hooks/use-view-model';
 import { useAcademicFoundationViewModel } from '@/lib/presentation/hooks/school-admin';
 import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 
+/** One subject being typed in the multi-row create drawer. `error` is the
+ * save result for this row; validation errors are computed, not stored. */
+export interface SubjectDraftRow {
+  key: string;
+  name: string;
+  code: string;
+  description: string;
+  error?: string;
+}
+
+const makeKey = () => Math.random().toString(36).slice(2, 10);
+const emptyRow = (): SubjectDraftRow => ({ key: makeKey(), name: '', code: '', description: '' });
+const isBlank = (row: SubjectDraftRow) => !row.name.trim() && !row.code.trim() && !row.description.trim();
+
+/** Client-side checks for the create drawer: row key → message for rows that
+ * cannot be sent. Fully blank rows are skipped, not errors. Codes compare
+ * trimmed + uppercased, the same way CreateSubjectUseCase does. */
+export function validateDraftRows(rows: readonly SubjectDraftRow[]): Map<string, string> {
+  const errors = new Map<string, string>();
+  const seen = new Set<string>();
+  for (const row of rows) {
+    if (isBlank(row)) continue;
+    const code = row.code.trim().toUpperCase();
+    if (!row.name.trim() || !code) {
+      errors.set(row.key, 'Name and code are required');
+      continue;
+    }
+    if (seen.has(code)) errors.set(row.key, 'Duplicate code in this batch');
+    seen.add(code);
+  }
+  return errors;
+}
+
 /** Subjects — mirrors portal-web's Subject Management page (dark header
- * band, all-subjects table, create/edit drawer). Web's "Bulk Import" (.xlsx
- * upload) has no equivalent mutation on this device, so it's dropped rather
- * than faked; single create/edit/deactivate all use the real ViewModel. */
+ * band, all-subjects table, create/edit drawer). The create drawer takes
+ * several subjects at once: rows are checked here, codes already on the
+ * device are caught by vm.createSubjects, and only failed rows stay open.
+ * Web's "Bulk Import" (.xlsx upload) has no equivalent here; edit and
+ * deactivate stay single-subject. */
 export function SubjectsDirectoryPage() {
   const vm = useAcademicFoundationViewModel();
   const state = useViewModel(vm.store, (s) => s.subjects);
@@ -21,11 +56,13 @@ export function SubjectsDirectoryPage() {
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [description, setDescription] = useState('');
+  const [rows, setRows] = useState<SubjectDraftRow[]>(() => [emptyRow()]);
+  const [showValidation, setShowValidation] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useRevalidateOnSync(() => {
     void vm.loadSubjects();
-     
+
   }, []);
 
   const begin = (item?: SubjectRowView) => {
@@ -33,24 +70,65 @@ export function SubjectsDirectoryPage() {
     setName(item?.name ?? '');
     setCode(item?.code ?? '');
     setDescription(item?.description ?? '');
+    setRows([emptyRow()]);
+    setShowValidation(false);
     setDrawerOpen(true);
   };
 
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
+  const closeDrawer = () => {
+    setDrawerOpen(false);
+    setEditing(null);
+  };
+
+  const validationErrors = showValidation ? validateDraftRows(rows) : new Map<string, string>();
+  const countedRows = rows.filter((row) => !isBlank(row)).length;
+
+  /** Editing a row drops its stale save error. */
+  const updateRow = (key: string, patch: Partial<Pick<SubjectDraftRow, 'name' | 'code' | 'description'>>) =>
+    setRows((prev) => prev.map((row) => (row.key === key ? { ...row, ...patch, error: undefined } : row)));
+  const removeRow = (key: string) => setRows((prev) => prev.filter((row) => row.key !== key));
+  const addRow = () => setRows((prev) => [...prev, emptyRow()]);
+
+  const submitEdit = async (item: SubjectRowView) => {
     setSaving(true);
-    const result = editing
-      ? await vm.updateSubject({ id: editing.id, name, code, description: description || null })
-      : await vm.createSubject({ name, code, description: description || undefined });
+    const result = await vm.updateSubject({ id: item.id, name, code, description: description || null });
     setSaving(false);
-    if (result.ok) {
-      setDrawerOpen(false);
-      setEditing(null);
-    }
+    if (result.ok) closeDrawer();
+  };
+
+  const submitCreate = async () => {
+    setShowValidation(true);
+    if (validateDraftRows(rows).size > 0) return;
+    const toSend = rows.filter((row) => !isBlank(row));
+    if (toSend.length === 0) return;
+    setSaving(true);
+    const outcomes = await vm.createSubjects(
+      toSend.map((row) => ({ name: row.name, code: row.code, description: row.description || undefined })),
+    );
+    setSaving(false);
+    const failedRows = toSend.flatMap((row, i) => {
+      const outcome = outcomes[i];
+      return outcome && !outcome.ok ? [{ ...row, error: outcome.error.userMessage }] : [];
+    });
+    if (failedRows.length === 0) closeDrawer();
+    else setRows(failedRows);
+  };
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    void (editing ? submitEdit(editing) : submitCreate());
   };
 
   const isLoading = state.status === 'loading' || state.status === 'idle';
   const subjects = state.status === 'success' || state.status === 'refreshing' ? state.data : [];
+
+  const submitLabel = saving
+    ? 'Saving...'
+    : editing
+      ? 'Update'
+      : countedRows <= 1
+        ? 'Create subject'
+        : `Create ${countedRows} subjects`;
 
   return (
     <div className="min-h-full bg-slate-100">
@@ -154,17 +232,14 @@ export function SubjectsDirectoryPage() {
 
       <Drawer
         isOpen={drawerOpen}
-        onClose={() => {
-          setDrawerOpen(false);
-          setEditing(null);
-        }}
-        title={editing ? 'Edit Subject' : 'New Subject'}
+        onClose={closeDrawer}
+        title={editing ? 'Edit Subject' : 'New Subjects'}
         size="md"
         footer={
           <>
             <button
               type="button"
-              onClick={() => setDrawerOpen(false)}
+              onClick={closeDrawer}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
             >
               Cancel
@@ -172,41 +247,111 @@ export function SubjectsDirectoryPage() {
             <button
               type="submit"
               form="subject-form"
-              disabled={saving}
+              disabled={saving || (!editing && countedRows === 0)}
               className="px-4 py-2 text-sm font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-50"
             >
-              {saving ? 'Saving...' : editing ? 'Update' : 'Create'}
+              {submitLabel}
             </button>
           </>
         }
       >
-        <form id="subject-form" onSubmit={(e) => void submit(e)} className="space-y-4">
-          <Input
-            label="Subject Name"
-            type="text"
-            required
-            placeholder="e.g., Mathematics"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <Input
-            label="Subject Code"
-            type="text"
-            required
-            placeholder="e.g., MATH101"
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-          />
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-            <textarea
-              rows={3}
-              placeholder="Brief description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 text-sm"
-            />
-          </div>
+        <form id="subject-form" onSubmit={submit} className="space-y-4">
+          {editing ? (
+            <>
+              <Input
+                label="Subject Name"
+                type="text"
+                required
+                placeholder="e.g., Mathematics"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+              <Input
+                label="Subject Code"
+                type="text"
+                required
+                placeholder="e.g., MATH101"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                <textarea
+                  rows={3}
+                  placeholder="Brief description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 text-sm"
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              {rows.map((row, i) => {
+                const rowNumber = i + 1;
+                const error = validationErrors.get(row.key) ?? row.error;
+                return (
+                  <div
+                    key={row.key}
+                    className={`rounded-lg border p-3 space-y-3 ${error ? 'border-red-300 bg-red-50/40' : 'border-gray-200'}`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="grid flex-1 grid-cols-2 gap-3">
+                        <Input
+                          label="Subject Name"
+                          aria-label={`Subject Name (row ${rowNumber})`}
+                          type="text"
+                          placeholder="e.g., Mathematics"
+                          value={row.name}
+                          onChange={(e) => updateRow(row.key, { name: e.target.value })}
+                        />
+                        <Input
+                          label="Subject Code"
+                          aria-label={`Subject Code (row ${rowNumber})`}
+                          type="text"
+                          placeholder="e.g., MATH101"
+                          value={row.code}
+                          onChange={(e) => updateRow(row.key, { code: e.target.value })}
+                        />
+                      </div>
+                      {rows.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeRow(row.key)}
+                          title="Remove row"
+                          aria-label={`Remove row ${rowNumber}`}
+                          className="mt-8 p-1 text-gray-400 hover:text-red-600"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                    <Input
+                      label="Description"
+                      aria-label={`Description (row ${rowNumber})`}
+                      type="text"
+                      placeholder="Brief description (optional)"
+                      value={row.description}
+                      onChange={(e) => updateRow(row.key, { description: e.target.value })}
+                    />
+                    {error && (
+                      <p role="alert" className="text-xs text-red-600">
+                        {error}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+              <button
+                type="button"
+                onClick={addRow}
+                className="inline-flex items-center gap-1 text-sm font-medium text-sky-700 hover:text-sky-900"
+              >
+                <Plus className="w-4 h-4" />
+                Add another subject
+              </button>
+            </>
+          )}
         </form>
       </Drawer>
     </div>
