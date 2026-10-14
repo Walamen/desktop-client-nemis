@@ -18,6 +18,9 @@ slow.
 - Multi-row **drawer** on the same page — not a separate bulk page, no file upload.
 - On partial failure, rows that saved leave the drawer and failed rows stay with their error so they
   can be fixed and resubmitted. The drawer closes only when every row saved.
+- Codes that already exist on the device are caught by a **pre-check** before saving, with a clear
+  message (chosen 2026-10-14 after finding that the use case's own "already exists" text never
+  reaches the renderer — see Current state).
 
 ## Non-goals
 
@@ -29,6 +32,8 @@ slow.
 - No change to portal-web.
 - `components/academic/AcademicFoundationPages.tsx` (an older duplicate subject form) is untouched.
 - `BulkClassFormPage` has the same one-toast-per-row behaviour; it is noted, not fixed, here.
+- No change to IPC error mapping. That `WorkflowException` / `UseCaseException` text does not cross
+  IPC is an app-wide gap, recorded as a follow-up, not fixed here.
 
 ## Current state
 
@@ -43,6 +48,14 @@ slow.
 - `CreateSubjectUseCase` requires `name` and `code`, trims + uppercases the code, and rejects a code
   that already exists for the institution (`A subject with code "X" already exists.`).
 - Calling `vm.createSubject` in a loop would therefore produce N toasts and N list reloads.
+- **Server error text does not reach the renderer.** `WorkflowException` extends
+  `ApplicationException` (not `@nemis-desktop/shared`'s `ApplicationError`), so
+  `apps/desktop/electron/ipc/errorMapping.ts` maps it to `[UNEXPECTED_ERROR] An unexpected error
+  occurred.`; the renderer's `toPresentationError` then shows `Something went wrong. Please try
+  again.` A duplicate code therefore shows that generic text today, even on single create.
+- `ListSubjectsUseCase` clamps `limit` to 1..100 (IPC also rejects `limit` > 100); it accepts
+  `offset` and `includeInactive`, and returns `{ items, total, limit, offset }`.
+  `SqliteSubjectRepository.existsByCode` matches deactivated subjects too.
 
 ## Design
 
@@ -54,7 +67,17 @@ New public method on `AcademicFoundationViewModel`, next to `createSubject`:
 async createSubjects(dtos: readonly CreateSubjectDto[]): Promise<readonly CommandOutcome<SubjectOutput>[]>
 ```
 
-- Calls `this.deps.academics.createSubject(dto)` for each dto **sequentially**, in input order
+- **Pre-check first.** Before any create, fetch every subject on the device, deactivated included:
+  `academics.listSubjects({ limit: 100, offset, includeInactive: true })`, advancing `offset` by
+  the page size until `offset >= total` or a page comes back empty. Build a map
+  `code (trimmed, uppercased) → isActive`.
+  - A dto whose normalized code is in the map is **not sent**; its outcome is
+    `{ ok: false, error: new OperationFailedError(…) }` with message
+    `A subject with code "MATH" already exists.` or, when that subject is deactivated,
+    `A deactivated subject with code "MATH" already exists. Restore it instead.`
+  - If the pre-check fetch fails, skip it and send every dto (the server still rejects duplicates,
+    with the generic message). No extra toast for the failed pre-check.
+- Calls `this.deps.academics.createSubject(dto)` for each remaining dto **sequentially**, in input order
   (same reason as `BulkClassFormPage`: honest per-row error attribution, one write at a time).
 - Each failure is converted with `toPresentationError(err, 'command')`, the same conversion
   `executeCommand` uses, so `outcome.error.userMessage` matches what a single create would show.
@@ -95,13 +118,15 @@ Validation (client-side, before any call):
 - In a non-blank row, name and code are required: a row missing either shows
   `Name and code are required` and blocks submit. This is checked in code, **not** with the HTML
   `required` attribute — native validation would block submit on a blank row that should be skipped.
-  (Edit mode keeps `required` as today.)
+  (Edit mode keeps `required` as today. Note `@nemis-desktop/ui` `Input` does not forward `required`
+  to the `<input>`, so it only draws the asterisk.)
 - Row errors from validation appear only after the first submit attempt, so a freshly added empty row
   is not shown in red; after that they update as the user types.
 - Duplicate codes within the batch — compared trimmed and uppercased, matching the use case — mark
   every row after the first with that code as `Duplicate code in this batch`.
-- No client-side check against subjects already on the device (the visible list may be filtered or
-  paginated); the server's "already exists" error is shown under the row instead.
+- Codes that already exist on the device are checked by `vm.createSubjects` at submit time (see
+  §1), not against the visible list, which may be filtered or paginated. Their message shows under
+  the row like any other failure.
 
 Submit:
 - Sends the non-blank rows to `vm.createSubjects` (description `undefined` when blank, as today).
@@ -122,6 +147,12 @@ Presentation (`academic-foundation-view-model.test.ts`, Vitest, mocked `Academic
 - all fail → no reload; one error toast.
 - sequential: the second `createSubject` call does not start before the first resolves.
 - single row → `Subject created.`; empty input → `[]`, no toast, no reload.
+- pre-check: an existing active code (different case/spacing) → that row fails with the "already
+  exists" message and `createSubject` is never called for it; an existing deactivated code → the
+  "Restore it instead" message.
+- pre-check pages: with `total` 150, `listSubjects` is called with offsets 0 and 100 and
+  `includeInactive: true`; a code on the second page is caught.
+- pre-check fetch failure → every dto is still sent.
 
 Renderer (new `components/subjects/SubjectsDirectoryPage.test.tsx`, using `renderWithLayer` from
 `components/academic-grading/setup-test-support.tsx` and a `window.nemis.subject` stub with `list`
@@ -130,8 +161,8 @@ and `create`):
 - duplicate code in two rows → submit shows `Duplicate code in this batch`, `subject.create` not
   called.
 - a row with a name but no code → submit shows `Name and code are required`, nothing sent.
-- one row rejected by the server → only that row remains, showing the server message; drawer stays
-  open.
+- one row whose code already exists on the device → only that row remains, showing the "already
+  exists" message; drawer stays open.
 - blank extra row is ignored.
 
 Gate: `pnpm typecheck`, `pnpm lint`, `pnpm test` all green.
