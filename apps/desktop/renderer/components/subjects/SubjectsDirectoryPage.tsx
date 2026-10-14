@@ -59,6 +59,7 @@ export function SubjectsDirectoryPage() {
   const [rows, setRows] = useState<SubjectDraftRow[]>(() => [emptyRow()]);
   const [showValidation, setShowValidation] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [focusKey, setFocusKey] = useState<string | null>(null);
 
   useRevalidateOnSync(() => {
     void vm.loadSubjects();
@@ -71,6 +72,7 @@ export function SubjectsDirectoryPage() {
     setCode(item?.code ?? '');
     setDescription(item?.description ?? '');
     setRows([emptyRow()]);
+    setFocusKey(null);
     setShowValidation(false);
     setDrawerOpen(true);
   };
@@ -87,7 +89,11 @@ export function SubjectsDirectoryPage() {
   const updateRow = (key: string, patch: Partial<Pick<SubjectDraftRow, 'name' | 'code' | 'description'>>) =>
     setRows((prev) => prev.map((row) => (row.key === key ? { ...row, ...patch, error: undefined } : row)));
   const removeRow = (key: string) => setRows((prev) => prev.filter((row) => row.key !== key));
-  const addRow = () => setRows((prev) => [...prev, emptyRow()]);
+  const addRow = () => {
+    const row = emptyRow();
+    setFocusKey(row.key);
+    setRows((prev) => [...prev, row]);
+  };
 
   const submitEdit = async (item: SubjectRowView) => {
     setSaving(true);
@@ -108,7 +114,9 @@ export function SubjectsDirectoryPage() {
     setSaving(false);
     const failedRows = toSend.flatMap((row, i) => {
       const outcome = outcomes[i];
-      return outcome && !outcome.ok ? [{ ...row, error: outcome.error.userMessage }] : [];
+      return !outcome || !outcome.ok
+        ? [{ ...row, error: outcome?.ok === false ? outcome.error.userMessage : 'Not saved — please try again.' }]
+        : [];
     });
     if (failedRows.length === 0) closeDrawer();
     else setRows(failedRows);
@@ -232,7 +240,7 @@ export function SubjectsDirectoryPage() {
 
       <Drawer
         isOpen={drawerOpen}
-        onClose={closeDrawer}
+        onClose={saving ? () => {} : closeDrawer}
         title={editing ? 'Edit Subject' : 'New Subjects'}
         size="md"
         footer={
@@ -240,7 +248,8 @@ export function SubjectsDirectoryPage() {
             <button
               type="button"
               onClick={closeDrawer}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+              disabled={saving}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
             >
               Cancel
             </button>
@@ -301,6 +310,7 @@ export function SubjectsDirectoryPage() {
                           label="Subject Name"
                           aria-label={`Subject Name (row ${rowNumber})`}
                           type="text"
+                          autoFocus={row.key === focusKey}
                           placeholder="e.g., Mathematics"
                           value={row.name}
                           onChange={(e) => updateRow(row.key, { name: e.target.value })}

@@ -194,18 +194,18 @@ export class AcademicFoundationViewModel {
    * Returns one outcome per dto, same order. Never throws. */
   async createSubjects(dtos: readonly CreateSubjectDto[]): Promise<readonly CommandOutcome<SubjectOutput>[]> {
     if (dtos.length === 0) return [];
-    const existing = await this.existingSubjectCodes();
+    const existing = (await this.existingSubjectCodes()) ?? new Map<string, boolean>();
     const outcomes: CommandOutcome<SubjectOutput>[] = [];
     for (const dto of dtos) {
       const code = normalizeSubjectCode(dto.code);
-      const existingIsActive = existing?.get(code);
+      const existingIsActive = existing.get(code);
       if (existingIsActive !== undefined) {
         outcomes.push({
           ok: false,
           error: new OperationFailedError(
             existingIsActive
               ? `A subject with code "${code}" already exists.`
-              : `A deactivated subject with code "${code}" already exists. Restore it instead.`,
+              : `A deactivated subject with code "${code}" already exists. Tick "Include deactivated subjects" to find and restore it.`,
           ),
         });
         continue;
@@ -213,7 +213,7 @@ export class AcademicFoundationViewModel {
       try {
         const res = await this.deps.academics.createSubject(dto);
         for (const warning of res.warnings ?? []) this.deps.notifications.warning(warning);
-        existing?.set(code, true);
+        existing.set(code, true);
         outcomes.push({ ok: true, data: res.data });
       } catch (err) {
         outcomes.push({ ok: false, error: toPresentationError(err, 'command') });
@@ -248,7 +248,7 @@ export class AcademicFoundationViewModel {
       const codes = new Map<string, boolean>();
       let offset = 0;
       for (;;) {
-        const { data } = await this.deps.academics.listSubjects({ limit: SUBJECT_PAGE_MAX, offset, includeInactive: true });
+        const { data } = await this.deps.academics.listSubjects({ limit: SUBJECT_PAGE_MAX, offset, includeInactive: true, sort: 'code' });
         for (const subject of data.items) codes.set(normalizeSubjectCode(subject.code), subject.isActive);
         offset += data.items.length;
         if (data.items.length === 0 || offset >= data.total) return codes;

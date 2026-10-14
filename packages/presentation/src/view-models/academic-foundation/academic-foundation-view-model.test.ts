@@ -157,7 +157,7 @@ describe('AcademicFoundationViewModel.createSubjects', () => {
     const academics = makeBatchAcademics([{ code: 'ART', isActive: false }]);
     const { vm } = makeBatchVm(academics);
     const outcomes = await vm.createSubjects([{ name: 'Art', code: 'art' }]);
-    expect(messages(outcomes)).toEqual(['A deactivated subject with code "ART" already exists. Restore it instead.']);
+    expect(messages(outcomes)).toEqual(['A deactivated subject with code "ART" already exists. Tick "Include deactivated subjects" to find and restore it.']);
     expect(academics.createSubject).not.toHaveBeenCalled();
   });
 
@@ -168,6 +168,7 @@ describe('AcademicFoundationViewModel.createSubjects', () => {
     const outcomes = await vm.createSubjects([{ name: 'Late page', code: 's120' }]);
     expect(messages(outcomes)).toEqual(['A subject with code "S120" already exists.']);
     expect(preCheckCalls(academics).map(([dto]) => [dto.limit, dto.offset])).toEqual([[100, 0], [100, 100]]);
+    expect(preCheckCalls(academics).every(([dto]) => dto.sort === 'code')).toBe(true);
   });
 
   it('still sends every row when the pre-check cannot read the list', async () => {
@@ -177,6 +178,15 @@ describe('AcademicFoundationViewModel.createSubjects', () => {
     const outcomes = await vm.createSubjects([{ name: 'Mathematics', code: 'MATH' }]);
     expect(messages(outcomes)).toEqual(['ok']);
     expect(createdCodes(academics)).toEqual(['MATH']);
+  });
+
+  it('still catches a code repeated inside the batch when the pre-check cannot read the list', async () => {
+    const academics = makeBatchAcademics();
+    academics.listSubjects.mockRejectedValueOnce(new Error('db down'));
+    const { vm } = makeBatchVm(academics);
+    const outcomes = await vm.createSubjects([{ name: 'Mathematics', code: 'MATH' }, { name: 'Maths', code: 'math' }]);
+    expect(messages(outcomes)).toEqual(['ok', 'A subject with code "MATH" already exists.']);
+    expect(academics.createSubject).toHaveBeenCalledTimes(1);
   });
 
   it('catches a code repeated inside the batch', async () => {
@@ -192,7 +202,7 @@ describe('AcademicFoundationViewModel.createSubjects', () => {
     const { vm } = makeBatchVm(academics);
     vm.setSubjectFilters({ keyword: 'zzz', includeInactive: false });
     const outcomes = await vm.createSubjects([{ name: 'Art', code: 'ART' }]);
-    expect(messages(outcomes)).toEqual(['A deactivated subject with code "ART" already exists. Restore it instead.']);
+    expect(messages(outcomes)).toEqual(['A deactivated subject with code "ART" already exists. Tick "Include deactivated subjects" to find and restore it.']);
     expect(preCheckCalls(academics).every(([dto]) => dto.keyword === undefined)).toBe(true);
   });
 });

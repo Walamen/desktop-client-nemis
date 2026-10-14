@@ -74,7 +74,7 @@ async createSubjects(dtos: readonly CreateSubjectDto[]): Promise<readonly Comman
   - A dto whose normalized code is in the map is **not sent**; its outcome is
     `{ ok: false, error: new OperationFailedError(…) }` with message
     `A subject with code "MATH" already exists.` or, when that subject is deactivated,
-    `A deactivated subject with code "MATH" already exists. Restore it instead.`
+    `A deactivated subject with code "MATH" already exists. Tick "Include deactivated subjects" to find and restore it.`
   - If the pre-check fetch fails, skip it and send every dto (the server still rejects duplicates,
     with the generic message). No extra toast for the failed pre-check.
 - Calls `this.deps.academics.createSubject(dto)` for each remaining dto **sequentially**, in input order

@@ -154,4 +154,29 @@ describe('SubjectsDirectoryPage — create several subjects', () => {
     await waitFor(() => expect(subject.update).toHaveBeenCalledTimes(1));
     expect(subject.create).not.toHaveBeenCalled();
   });
+
+  it('cannot be closed while a save is running', async () => {
+    const subject = stubSubjects();
+    let release: () => void = () => {};
+    subject.create.mockImplementationOnce(
+      (req: { name: string; code: string }) =>
+        new Promise((resolve) => { release = () => resolve(subjectRow({ id: 'n', name: req.name, code: req.code })); }),
+    );
+    await openCreate();
+    fillRow(1, 'Mathematics', 'MATH');
+    fireEvent.click(screen.getByRole('button', { name: 'Create subject' }));
+    await waitFor(() => expect(subject.create).toHaveBeenCalledTimes(1));
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(drawerTitle('New Subjects')).not.toBeNull();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+    release();
+    await waitFor(() => expect(drawerTitle('New Subjects')).toBeNull());
+  });
+
+  it("moves focus to the new row's name after Add another subject", async () => {
+    stubSubjects();
+    await openCreate();
+    addRow();
+    expect(screen.getByLabelText('Subject Name (row 2)')).toHaveFocus();
+  });
 });
