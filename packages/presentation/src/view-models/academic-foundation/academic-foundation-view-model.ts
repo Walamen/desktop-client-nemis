@@ -22,6 +22,7 @@ import type { AcademicYearStatus } from '@nemis-desktop/types';
 import { createStore } from 'zustand/vanilla';
 import { executeCommand, trackQuery, type CommandOutcome } from '../../core/async-runner';
 import { idleState, type AsyncState } from '../../core/async-state';
+import { OperationFailedError, toPresentationError } from '../../errors';
 import { createPagination, toPageRequest, withPage, withTotal, type PaginationState } from '../../pagination/pagination';
 import type { NotificationStore } from '../../stores/notification-store';
 
@@ -52,6 +53,14 @@ export interface AcademicFoundationViewModelDeps {
 }
 
 const identity = <T>(value: T): T => value;
+
+/** ListSubjectsUseCase clamps `limit` to 100 and the IPC validator rejects more. */
+const SUBJECT_PAGE_MAX = 100;
+
+/** Same normalization CreateSubjectUseCase applies before its duplicate check. */
+const normalizeSubjectCode = (code: string): string => code.trim().toUpperCase();
+
+const subjectCount = (n: number): string => `${n} subject${n === 1 ? '' : 's'}`;
 
 /** Presentation facade for the complete Academic Foundation module. It keeps
  * all renderer data flowing through the ApplicationLayer and owns list reloads
@@ -177,6 +186,47 @@ export class AcademicFoundationViewModel {
   async createSubject(dto: CreateSubjectDto): Promise<CommandOutcome<SubjectOutput>> {
     return this.command(() => this.deps.academics.createSubject(dto), 'Subject created.', () => this.loadSubjects());
   }
+  /** Creates several subjects, one at a time and in order, for the
+   * multi-row New Subject drawer. Codes that already exist on the device
+   * (deactivated included) are rejected up front with a clear message —
+   * the use case's own "already exists" text does not survive IPC. One
+   * summary toast and at most one list reload for the whole batch.
+   * Returns one outcome per dto, same order. Never throws. */
+  async createSubjects(dtos: readonly CreateSubjectDto[]): Promise<readonly CommandOutcome<SubjectOutput>[]> {
+    if (dtos.length === 0) return [];
+    const existing = await this.existingSubjectCodes();
+    const outcomes: CommandOutcome<SubjectOutput>[] = [];
+    for (const dto of dtos) {
+      const code = normalizeSubjectCode(dto.code);
+      const existingIsActive = existing?.get(code);
+      if (existingIsActive !== undefined) {
+        outcomes.push({
+          ok: false,
+          error: new OperationFailedError(
+            existingIsActive
+              ? `A subject with code "${code}" already exists.`
+              : `A deactivated subject with code "${code}" already exists. Restore it instead.`,
+          ),
+        });
+        continue;
+      }
+      try {
+        const res = await this.deps.academics.createSubject(dto);
+        for (const warning of res.warnings ?? []) this.deps.notifications.warning(warning);
+        existing?.set(code, true);
+        outcomes.push({ ok: true, data: res.data });
+      } catch (err) {
+        outcomes.push({ ok: false, error: toPresentationError(err, 'command') });
+      }
+    }
+    const created = outcomes.filter((o) => o.ok).length;
+    const failed = outcomes.length - created;
+    if (failed === 0) this.deps.notifications.success(created === 1 ? 'Subject created.' : `${created} subjects created.`);
+    else if (created === 0) this.deps.notifications.error('No subjects were created — see the errors in the drawer.');
+    else this.deps.notifications.warning(`${subjectCount(created)} created, ${failed} failed — see the drawer.`);
+    if (created > 0) await this.loadSubjects();
+    return outcomes;
+  }
   async updateSubject(dto: UpdateSubjectDto): Promise<CommandOutcome<SubjectOutput>> {
     return this.command(() => this.deps.academics.updateSubject(dto), 'Subject updated.', () => this.loadSubjects());
   }
@@ -188,6 +238,24 @@ export class AcademicFoundationViewModel {
   }
   async unassignSubject(classId: string, subjectId: string): Promise<CommandOutcome<{ id: string }>> {
     return this.command(() => this.deps.academics.unassignSubjectFromClass({ classId, subjectId }), 'Subject removed from class.', async () => { await this.loadClassSubjects(classId); await this.loadClasses(); });
+  }
+
+  /** code → isActive for every subject on the device, ignoring the on-screen
+   * filters; null when the list cannot be read (the batch then relies on the
+   * use case's own duplicate check). */
+  private async existingSubjectCodes(): Promise<Map<string, boolean> | null> {
+    try {
+      const codes = new Map<string, boolean>();
+      let offset = 0;
+      for (;;) {
+        const { data } = await this.deps.academics.listSubjects({ limit: SUBJECT_PAGE_MAX, offset, includeInactive: true });
+        for (const subject of data.items) codes.set(normalizeSubjectCode(subject.code), subject.isActive);
+        offset += data.items.length;
+        if (data.items.length === 0 || offset >= data.total) return codes;
+      }
+    } catch {
+      return null;
+    }
   }
 
   private async command<T>(run: () => Promise<ApplicationResponse<T>>, successMessage: string, reload: () => Promise<void>): Promise<CommandOutcome<T>> {

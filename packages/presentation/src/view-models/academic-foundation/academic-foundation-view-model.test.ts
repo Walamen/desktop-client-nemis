@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { AcademicsApplicationService } from '@nemis-desktop/application';
+import type { AcademicsApplicationService, CreateSubjectDto, ListSubjectsDto } from '@nemis-desktop/application';
+import type { CommandOutcome } from '../../core/async-runner';
 import { NotificationStore } from '../../stores/notification-store';
 import { AcademicFoundationViewModel } from './academic-foundation-view-model';
 
@@ -27,5 +28,171 @@ describe('AcademicFoundationViewModel', () => {
     const vm = new AcademicFoundationViewModel({ academics: makeAcademics(), notifications: new NotificationStore() });
     await vm.loadClasses();
     expect(vm.store.getState().classes.status).toBe('empty');
+  });
+});
+
+const subjectOut = (code: string, over: Record<string, unknown> = {}) => ({
+  id: `id-${code}`, name: code, code, isActive: true, classCount: 0, ...over,
+});
+
+/** `existing` is what is already on the device; listSubjects pages through it
+ * like the real use case. createSubject echoes the dto back as a saved row. */
+function makeBatchAcademics(existing: ReadonlyArray<{ code: string; isActive: boolean }> = []) {
+  return {
+    listSubjects: vi.fn(async (dto: ListSubjectsDto) => {
+      const offset = dto.offset ?? 0;
+      const limit = dto.limit ?? 25;
+      const items = existing.slice(offset, offset + limit).map((s) => subjectOut(s.code, { isActive: s.isActive }));
+      return { data: { items, total: existing.length, limit, offset } };
+    }),
+    createSubject: vi.fn(async (dto: CreateSubjectDto) => ({
+      data: subjectOut(dto.code.trim().toUpperCase(), { name: dto.name }),
+    })),
+  };
+}
+
+type BatchAcademics = ReturnType<typeof makeBatchAcademics>;
+
+function makeBatchVm(academics: BatchAcademics) {
+  // null auto-dismiss: toasts stay in the store for the assertions.
+  const notifications = new NotificationStore({ success: null, info: null, warning: null, error: null });
+  const vm = new AcademicFoundationViewModel({
+    academics: academics as unknown as AcademicsApplicationService,
+    notifications,
+  });
+  return { vm, notifications };
+}
+
+const toasts = (n: NotificationStore) => n.store.getState().notifications.map((t) => [t.kind, t.message]);
+const messages = (outcomes: readonly CommandOutcome<unknown>[]) =>
+  outcomes.map((o) => (o.ok ? 'ok' : o.error.userMessage));
+/** The pre-check always asks for deactivated subjects; the list reload uses the on-screen filters. */
+const preCheckCalls = (a: BatchAcademics) => a.listSubjects.mock.calls.filter(([dto]) => dto.includeInactive === true);
+const reloads = (a: BatchAcademics) => a.listSubjects.mock.calls.filter(([dto]) => dto.includeInactive !== true).length;
+const createdCodes = (a: BatchAcademics) => a.createSubject.mock.calls.map(([dto]) => dto.code);
+
+describe('AcademicFoundationViewModel.createSubjects', () => {
+  it('creates every subject in order, then reloads once and shows one toast', async () => {
+    const academics = makeBatchAcademics();
+    const { vm, notifications } = makeBatchVm(academics);
+    const outcomes = await vm.createSubjects([{ name: 'Mathematics', code: 'MATH' }, { name: 'English', code: 'ENG' }]);
+    expect(messages(outcomes)).toEqual(['ok', 'ok']);
+    expect(createdCodes(academics)).toEqual(['MATH', 'ENG']);
+    expect(reloads(academics)).toBe(1);
+    expect(toasts(notifications)).toEqual([['success', '2 subjects created.']]);
+  });
+
+  it('uses the single-subject message for a batch of one', async () => {
+    const academics = makeBatchAcademics();
+    const { vm, notifications } = makeBatchVm(academics);
+    await vm.createSubjects([{ name: 'Mathematics', code: 'MATH' }]);
+    expect(toasts(notifications)).toEqual([['success', 'Subject created.']]);
+  });
+
+  it('keeps outcomes in order on partial failure, with one warning and one reload', async () => {
+    const academics = makeBatchAcademics();
+    academics.createSubject.mockImplementation(async (dto: CreateSubjectDto) => {
+      if (dto.code === 'BAD') throw new Error('boom');
+      return { data: subjectOut(dto.code, { name: dto.name }) };
+    });
+    const { vm, notifications } = makeBatchVm(academics);
+    const outcomes = await vm.createSubjects([{ name: 'Bad', code: 'BAD' }, { name: 'English', code: 'ENG' }]);
+    expect(messages(outcomes)).toEqual(['Something went wrong. Please try again.', 'ok']);
+    expect(reloads(academics)).toBe(1);
+    expect(toasts(notifications)).toEqual([['warning', '1 subject created, 1 failed — see the drawer.']]);
+  });
+
+  it('pluralises the warning when more than one subject saved', async () => {
+    const academics = makeBatchAcademics([{ code: 'MATH', isActive: true }]);
+    const { vm, notifications } = makeBatchVm(academics);
+    await vm.createSubjects([{ name: 'A', code: 'A' }, { name: 'B', code: 'B' }, { name: 'M', code: 'MATH' }]);
+    expect(toasts(notifications)).toEqual([['warning', '2 subjects created, 1 failed — see the drawer.']]);
+  });
+
+  it('does not reload and shows one error when nothing saved', async () => {
+    const academics = makeBatchAcademics();
+    academics.createSubject.mockRejectedValue(new Error('boom'));
+    const { vm, notifications } = makeBatchVm(academics);
+    const outcomes = await vm.createSubjects([{ name: 'A', code: 'A' }, { name: 'B', code: 'B' }]);
+    expect(outcomes.every((o) => !o.ok)).toBe(true);
+    expect(reloads(academics)).toBe(0);
+    expect(toasts(notifications)).toEqual([['error', 'No subjects were created — see the errors in the drawer.']]);
+  });
+
+  it('does not start the next create until the previous one finished', async () => {
+    const academics = makeBatchAcademics();
+    let release: () => void = () => {};
+    academics.createSubject.mockImplementationOnce(
+      () => new Promise((resolve) => { release = () => resolve({ data: subjectOut('MATH') }); }),
+    );
+    const { vm } = makeBatchVm(academics);
+    const pending = vm.createSubjects([{ name: 'Mathematics', code: 'MATH' }, { name: 'English', code: 'ENG' }]);
+    await vi.waitFor(() => expect(academics.createSubject).toHaveBeenCalledTimes(1));
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(academics.createSubject).toHaveBeenCalledTimes(1);
+    release();
+    await pending;
+    expect(createdCodes(academics)).toEqual(['MATH', 'ENG']);
+  });
+
+  it('returns nothing and does no work for an empty batch', async () => {
+    const academics = makeBatchAcademics();
+    const { vm, notifications } = makeBatchVm(academics);
+    expect(await vm.createSubjects([])).toEqual([]);
+    expect(academics.listSubjects).not.toHaveBeenCalled();
+    expect(academics.createSubject).not.toHaveBeenCalled();
+    expect(toasts(notifications)).toEqual([]);
+  });
+
+  it('rejects a code that already exists, ignoring case and spaces, without sending it', async () => {
+    const academics = makeBatchAcademics([{ code: 'MATH', isActive: true }]);
+    const { vm } = makeBatchVm(academics);
+    const outcomes = await vm.createSubjects([{ name: 'Maths', code: ' math ' }, { name: 'English', code: 'ENG' }]);
+    expect(messages(outcomes)).toEqual(['A subject with code "MATH" already exists.', 'ok']);
+    expect(createdCodes(academics)).toEqual(['ENG']);
+  });
+
+  it('points to restore when the existing subject is deactivated', async () => {
+    const academics = makeBatchAcademics([{ code: 'ART', isActive: false }]);
+    const { vm } = makeBatchVm(academics);
+    const outcomes = await vm.createSubjects([{ name: 'Art', code: 'art' }]);
+    expect(messages(outcomes)).toEqual(['A deactivated subject with code "ART" already exists. Restore it instead.']);
+    expect(academics.createSubject).not.toHaveBeenCalled();
+  });
+
+  it('pages through every subject for the pre-check', async () => {
+    const existing = Array.from({ length: 150 }, (_, i) => ({ code: `S${i}`, isActive: true }));
+    const academics = makeBatchAcademics(existing);
+    const { vm } = makeBatchVm(academics);
+    const outcomes = await vm.createSubjects([{ name: 'Late page', code: 's120' }]);
+    expect(messages(outcomes)).toEqual(['A subject with code "S120" already exists.']);
+    expect(preCheckCalls(academics).map(([dto]) => [dto.limit, dto.offset])).toEqual([[100, 0], [100, 100]]);
+  });
+
+  it('still sends every row when the pre-check cannot read the list', async () => {
+    const academics = makeBatchAcademics([{ code: 'MATH', isActive: true }]);
+    academics.listSubjects.mockRejectedValueOnce(new Error('db down'));
+    const { vm } = makeBatchVm(academics);
+    const outcomes = await vm.createSubjects([{ name: 'Mathematics', code: 'MATH' }]);
+    expect(messages(outcomes)).toEqual(['ok']);
+    expect(createdCodes(academics)).toEqual(['MATH']);
+  });
+
+  it('catches a code repeated inside the batch', async () => {
+    const academics = makeBatchAcademics();
+    const { vm } = makeBatchVm(academics);
+    const outcomes = await vm.createSubjects([{ name: 'Mathematics', code: 'MATH' }, { name: 'Maths', code: 'math' }]);
+    expect(messages(outcomes)).toEqual(['ok', 'A subject with code "MATH" already exists.']);
+    expect(createdCodes(academics)).toEqual(['MATH']);
+  });
+
+  it('pre-check ignores the on-screen filters', async () => {
+    const academics = makeBatchAcademics([{ code: 'ART', isActive: false }]);
+    const { vm } = makeBatchVm(academics);
+    vm.setSubjectFilters({ keyword: 'zzz', includeInactive: false });
+    const outcomes = await vm.createSubjects([{ name: 'Art', code: 'ART' }]);
+    expect(messages(outcomes)).toEqual(['A deactivated subject with code "ART" already exists. Restore it instead.']);
+    expect(preCheckCalls(academics).every(([dto]) => dto.keyword === undefined)).toBe(true);
   });
 });
