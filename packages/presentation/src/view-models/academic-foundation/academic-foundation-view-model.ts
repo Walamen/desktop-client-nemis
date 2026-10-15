@@ -40,6 +40,8 @@ export interface AcademicFoundationState {
   readonly classes: AsyncState<readonly ClassRowView[]>;
   /** Every class of one academic year (all pages) — see loadYearClasses. */
   readonly yearClasses: AsyncState<readonly ClassRowView[]>;
+  /** The academic year the latest loadYearClasses call was for ('' before any). */
+  readonly yearClassesYearId: string;
   readonly subjects: AsyncState<readonly SubjectRowView[]>;
   readonly classSubjects: AsyncState<readonly ClassSubjectRowView[]>;
   readonly gradeLevels: AsyncState<readonly GradeLevelCountView[]>;
@@ -72,10 +74,13 @@ const subjectCount = (n: number): string => `${n} subject${n === 1 ? '' : 's'}`;
 export class AcademicFoundationViewModel {
   readonly store = createStore<AcademicFoundationState>(() => ({
     academicYears: idleState(), terms: idleState(), currentTerm: idleState(),
-    classes: idleState(), yearClasses: idleState(), subjects: idleState(), classSubjects: idleState(), gradeLevels: idleState(),
+    classes: idleState(), yearClasses: idleState(), yearClassesYearId: '', subjects: idleState(), classSubjects: idleState(), gradeLevels: idleState(),
     classPagination: createPagination(), subjectPagination: createPagination(),
     classFilters: {}, subjectFilters: {},
   }));
+
+  /** Sequence of loadYearClasses calls: only the latest may write its result. */
+  private yearClassesSeq = 0;
 
   constructor(private readonly deps: AcademicFoundationViewModelDeps) {}
 
@@ -116,10 +121,18 @@ export class AcademicFoundationViewModel {
 
   /** Every class of one academic year, all pages, for pickers that must offer
    * every class (bulk import) — unlike `classes`, which is one 25-row page.
-   * Leaves `classes`, its filters and its pagination untouched. */
+   * Leaves `classes`, its filters and its pagination untouched. Always
+   * restarts from `loading` (another year's rows are never shown as
+   * `refreshing`), tags the slice with its year, and ignores a response that a
+   * newer call has superseded. */
   async loadYearClasses(academicYearId: string): Promise<void> {
+    const seq = ++this.yearClassesSeq;
+    this.store.setState({ yearClasses: { status: 'loading' }, yearClassesYearId: academicYearId });
     await trackQuery({
-      access: { get: () => this.store.getState().yearClasses, set: (yearClasses) => this.store.setState({ yearClasses }) },
+      access: {
+        get: () => this.store.getState().yearClasses,
+        set: (yearClasses) => { if (seq === this.yearClassesSeq) this.store.setState({ yearClasses }); },
+      },
       fetch: async () => {
         const items: ClassRowView[] = [];
         let offset = 0;

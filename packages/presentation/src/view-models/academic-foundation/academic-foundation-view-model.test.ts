@@ -266,4 +266,40 @@ describe('AcademicFoundationViewModel.loadYearClasses', () => {
     await vm.loadYearClasses('y1');
     expect(vm.store.getState().yearClasses.status).toBe('error');
   });
+
+  it('records which year it loaded and always starts from loading, never refreshing', async () => {
+    const vm = makeVm(pagedAcademics(2));
+    await vm.loadYearClasses('y1');
+    expect(vm.store.getState().yearClasses.status).toBe('success');
+    const seen: string[] = [];
+    vm.store.subscribe((s) => seen.push(s.yearClasses.status));
+    const pending = vm.loadYearClasses('y2');
+    expect(vm.store.getState().yearClasses).toEqual({ status: 'loading' });
+    expect(vm.store.getState().yearClassesYearId).toBe('y2');
+    await pending;
+    expect(seen).not.toContain('refreshing');
+    expect(vm.store.getState().yearClassesYearId).toBe('y2');
+  });
+
+  it('an earlier load that resolves last cannot overwrite the later year', async () => {
+    const resolvers: Record<string, () => void> = {};
+    const academics = {
+      listClasses: vi.fn((dto: ListClassesDto) =>
+        new Promise((resolve) => {
+          resolvers[dto.academicYearId as string] = () =>
+            resolve({ data: { items: [{ ...cls(1), academicYearId: dto.academicYearId }], total: 1, limit: 100, offset: 0 } });
+        })),
+    };
+    const vm = makeVm(academics);
+    const first = vm.loadYearClasses('y0');
+    const second = vm.loadYearClasses('y1');
+    resolvers.y1!();
+    await second;
+    resolvers.y0!();
+    await first;
+    const state = vm.store.getState();
+    expect(state.yearClassesYearId).toBe('y1');
+    expect(state.yearClasses.status).toBe('success');
+    if (state.yearClasses.status === 'success') expect(state.yearClasses.data.map((c) => c.academicYearId)).toEqual(['y1']);
+  });
 });

@@ -40,7 +40,7 @@ export function TermPicker({ value, onChange }: { value: TermValue; onChange: (v
   if (years.status === 'empty' || noCurrentYear) {
     return (
       <p className="text-sm text-amber-700">
-        There is no current academic year on this device. Set one under Academic Years before enrolling.
+        There is no current academic year on this device. Set one under Academic Setup → Academic Grading before enrolling.
       </p>
     );
   }
@@ -73,7 +73,7 @@ export function TermPicker({ value, onChange }: { value: TermValue; onChange: (v
           </Button>
         </div>
       ) : terms.status === 'empty' ? (
-        <p className="text-sm text-amber-700">No terms in this academic year — create one under Academic Setup → Terms, then return.</p>
+        <p className="text-sm text-amber-700">No terms in this academic year — create one under Academic Setup → Academic Grading, then return.</p>
       ) : (
         <Select
           label="Term"

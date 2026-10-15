@@ -114,10 +114,16 @@ export function BulkImportPage() {
 
   const foundation = useAcademicFoundationViewModel();
   const yearClasses = useViewModel(foundation.store, (s) => s.yearClasses);
+  const yearClassesYearId = useViewModel(foundation.store, (s) => s.yearClassesYearId);
   const years = useViewModel(foundation.store, (s) => s.academicYears);
+  // The store outlives the page: until this visit has requested the load, its
+  // yearClasses may still be the previous visit's.
+  const [classesRequestedFor, setClassesRequestedFor] = useState('');
 
   useEffect(() => {
-    if (term.academicYearId) void foundation.loadYearClasses(term.academicYearId);
+    if (!term.academicYearId) return;
+    setClassesRequestedFor(term.academicYearId);
+    void foundation.loadYearClasses(term.academicYearId);
   }, [foundation, term.academicYearId]);
 
   // Same test as TermPicker, which shows the full explanation above the grid.
@@ -128,14 +134,16 @@ export function BulkImportPage() {
   // null while loading or after a failed load: rows then show no class
   // errors and nothing is importable (never a "create one" on a failure).
   const classOptions = useMemo<ClassOption[] | null>(() => {
-    // No year yet: the shared store may still hold another year's classes.
+    // Only a load this visit requested for this year counts; the shared store
+    // may hold another year's (or the previous visit's) classes.
     if (!term.academicYearId) return null;
+    if (classesRequestedFor !== term.academicYearId || yearClassesYearId !== term.academicYearId) return null;
     if (yearClasses.status === 'empty') return [];
-    if (yearClasses.status !== 'success' && yearClasses.status !== 'refreshing') return null;
+    if (yearClasses.status !== 'success') return null;
     return yearClasses.data
       .filter((c) => c.isActive && c.academicYearId === term.academicYearId)
       .map((c) => ({ id: c.id, name: c.name, gradeLevel: c.gradeLevel }));
-  }, [yearClasses, term.academicYearId]);
+  }, [yearClasses, yearClassesYearId, classesRequestedFor, term.academicYearId]);
 
   const schoolName = profile.status === 'success' || profile.status === 'refreshing' ? profile.data.name : 'School';
   const institutionId = profile.status === 'success' || profile.status === 'refreshing' ? profile.data.id : null;
@@ -411,6 +419,9 @@ export function BulkImportPage() {
                             noCurrentYear ? (
                               // TermPicker above explains how to set one.
                               <p className="pt-2 text-xs text-amber-700">No current academic year</p>
+                            ) : years.status === 'error' ? (
+                              // TermPicker above has the retry.
+                              <p className="pt-2 text-xs text-red-700">Academic year not loaded</p>
                             ) : yearClasses.status === 'error' && term.academicYearId ? (
                               <p className="pt-2 text-xs text-red-700">
                                 Couldn&apos;t load classes.{' '}

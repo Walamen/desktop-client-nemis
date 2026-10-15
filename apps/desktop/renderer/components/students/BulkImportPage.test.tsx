@@ -275,6 +275,43 @@ describe('BulkImportPage', () => {
     expect(importButtons().every((b) => b.disabled)).toBe(true);
   });
 
+  it.each(['y1', 'y0'])(
+    'stale yearClasses of %s from an earlier visit never shows "create one" while the load is in flight',
+    async (staleYear) => {
+      let release: (v: unknown) => void = () => {};
+      stubNemis({ classes: () => new Promise((resolve) => { release = resolve; }) });
+      const { user, layer } = await renderPage();
+      layer.viewModels.academicFoundation.store.setState({
+        yearClasses: { status: 'success', data: [jss1a as never] },
+        yearClassesYearId: staleYear,
+      });
+      await upload(user, [sheetRow('Efua', { grade: 'GRADE_8' })]);
+      await screen.findByText('Academic year: 2025/2026');
+
+      expect(screen.queryByText(/create one/)).not.toBeInTheDocument();
+      expect(screen.getAllByText('Loading…').length).toBeGreaterThan(0);
+      expect(importButtons().every((b) => b.disabled)).toBe(true);
+
+      release({ items: [jss1a, jss2a], total: 2 });
+      await waitFor(() => expect(classSelect(1).value).toBe('c2'));
+      expect(screen.queryByText(/create one/)).not.toBeInTheDocument();
+    },
+  );
+
+  it('with the academic year failing to load the Class cell says so, never "create one", and Import stays disabled', async () => {
+    stubNemis();
+    (window as unknown as { nemis: { academicYear: { list: unknown } } }).nemis.academicYear.list = vi.fn(async () => {
+      throw new Error('[DB_ERROR] boom');
+    });
+    const { user } = await renderPage();
+    await upload(user, [sheetRow('Ama')]);
+
+    expect(await screen.findByText('Academic year not loaded')).toBeInTheDocument();
+    expect(screen.queryByText(/create one/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Loading…')).not.toBeInTheDocument();
+    expect(importButtons().every((b) => b.disabled)).toBe(true);
+  });
+
   it('a mixed batch online: local creates, one bulk claim of only the NEMIS-ID rows, results by row number', async () => {
     const idB = generateNemisId();
     const idD = generateNemisId();
@@ -352,7 +389,7 @@ describe('BulkImportPage', () => {
     const { bulkClaim, createAndEnroll } = stubNemis();
     const { user } = await renderPage();
     await upload(user, [sheetRow('Efua', { grade: 'GRADE_8', nemisId: generateNemisId() }), sheetRow('Ama')]);
-    expect(screen.getByText('No GRADE 8 class — create one under Teaching → Classes')).toBeInTheDocument();
+    expect(await screen.findByText('No GRADE 8 class — create one under Teaching → Classes')).toBeInTheDocument();
     await pickTerm(user);
     await runImport(user);
 
@@ -390,6 +427,8 @@ describe('BulkImportPage', () => {
       .map((i) => (i as HTMLInputElement).value)
       .filter((v) => v !== 'Musu');
     expect(names).toEqual(['Amy', 'Cece']);
+    // Placement survives the retry: Cece is back in her class.
+    await waitFor(() => expect(classSelect(2).value).toBe('c1'));
   });
 
   it('offline: no bulk claim; NEMIS-ID rows go to retry with the offline copy; local rows are still created', async () => {
