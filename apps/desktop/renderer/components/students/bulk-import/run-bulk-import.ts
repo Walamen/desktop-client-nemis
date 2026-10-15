@@ -32,7 +32,7 @@ export type CreateAndEnrollFn = (
 export type BulkClaimFn = (request: BulkClaimRequest) => Promise<OnlineCommandResult<BulkClaimResult>>;
 
 export interface BulkImportOutcome {
-  /** Valid rows that entered the import (local + claim + grade mismatches). */
+  /** Valid rows that entered the import (local + claim + rows failed before sending). */
   submitted: number;
   created: { originalIndex: number; nemisId: string }[];
   claimed: { originalIndex: number; nemisId: string }[];
@@ -46,7 +46,7 @@ export interface BulkImportOutcome {
 function toCreateRequest(
   { row }: IndexedRow,
   institutionId: string,
-  target: { academicYearId: string; classId: string; termId: string },
+  term: { academicYearId: string; termId: string },
 ): CreateAndEnrollStudentRequest {
   return {
     institutionId,
@@ -56,9 +56,9 @@ function toCreateRequest(
     gender: row.gender.toUpperCase() as Gender,
     gradeLevel: row.gradeLevel.toUpperCase() as GradeLevel,
     email: row.studentEmail.trim() || undefined,
-    academicYearId: target.academicYearId,
-    classId: target.classId,
-    termId: target.termId,
+    academicYearId: term.academicYearId,
+    classId: row.classId,
+    termId: term.termId,
     enrollmentDate: row.admissionDate.trim(),
     // A spreadsheet row with no ID asserts nothing (as on portal-web).
     assertedNoNemisId: false,
@@ -80,16 +80,16 @@ function toCreateRequest(
  * claim-call failure never undoes the local creates already done. */
 export async function runBulkImport(input: {
   rows: BulkRow[];
-  gradeLevel: GradeLevel;
   institutionId: string;
-  target: { academicYearId: string; classId: string; termId: string };
+  academicYearId: string;
+  termId: string;
   online: boolean;
   createAndEnroll: CreateAndEnrollFn;
   bulkClaim: BulkClaimFn;
 }): Promise<BulkImportOutcome> {
-  const { local, claim, failed: mismatched } = partitionRows(input.rows, input.gradeLevel);
+  const { local, claim, failed: invalid } = partitionRows(input.rows);
   const created: BulkImportOutcome['created'] = [];
-  const failed: BulkImportOutcome['failed'] = [...mismatched];
+  const failed: BulkImportOutcome['failed'] = [...invalid];
   let claimed: BulkImportOutcome['claimed'] = [];
   let retry: RetryEntry[] = [];
   let registryUnavailableMessage: string | null = null;
@@ -97,7 +97,7 @@ export async function runBulkImport(input: {
 
   for (const entry of local) {
     try {
-      const outcome = await input.createAndEnroll(toCreateRequest(entry, input.institutionId, input.target));
+      const outcome = await input.createAndEnroll(toCreateRequest(entry, input.institutionId, input));
       if (outcome.ok) {
         // A fresh local student always has a nemisId; the fallback only
         // satisfies the type checker.
@@ -119,9 +119,8 @@ export async function runBulkImport(input: {
     const { send, overflow } = splitClaimBatch(claim);
     try {
       const result = await input.bulkClaim({
-        classId: input.target.classId,
-        academicYearId: input.target.academicYearId,
-        termId: input.target.termId,
+        academicYearId: input.academicYearId,
+        termId: input.termId,
         students: toBulkClaimRows(send),
       });
       const mapped = mapClaimOutcome(send, result.data);
@@ -137,7 +136,7 @@ export async function runBulkImport(input: {
 
   failed.sort((a, b) => a.originalIndex - b.originalIndex);
   return {
-    submitted: local.length + claim.length + mismatched.length,
+    submitted: local.length + claim.length + invalid.length,
     created,
     claimed,
     failed,

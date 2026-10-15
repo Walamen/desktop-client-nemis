@@ -1,18 +1,18 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Download, Upload, Trash2, Plus, CheckCircle, XCircle, AlertCircle, RotateCcw } from 'lucide-react';
-import type { GradeLevel as GradeLevelValue } from '@nemis-desktop/types';
 import { useViewModel } from '@/hooks/use-view-model';
-import { useSettingsViewModel, useStudentsListViewModel } from '@/lib/presentation/hooks/school-admin';
+import { useAcademicFoundationViewModel, useSettingsViewModel, useStudentsListViewModel } from '@/lib/presentation/hooks/school-admin';
 import { useConnectivityStore } from '@/lib/presentation/hooks/shared';
 import { registryBridge } from '@/services/nemis-bridge/school-admin/registry-bridge';
-import { Input, Select } from '@nemis-desktop/ui';
+import { Input } from '@nemis-desktop/ui';
 import { formatNemisId } from '@nemis-desktop/shared';
 import { grades, human } from './shared';
-import { ClassTermPicker, isClassTermComplete, type ClassTermValue } from './add-student/ClassTermPicker';
+import { TermPicker, type TermValue } from './bulk-import/TermPicker';
+import { isImportable, placeRows, type ClassOption } from './bulk-import/class-placement';
 
 import {
   makeId,
@@ -32,7 +32,7 @@ interface BulkImportResult extends BulkImportOutcome {
   rows: BulkRow[];
 }
 
-const EMPTY_TARGET: ClassTermValue = { academicYearId: '', classId: '', termId: '' };
+const EMPTY_TERM: TermValue = { academicYearId: '', termId: '' };
 
 const emptyRow = (): BulkRow => ({
   id: makeId(),
@@ -105,13 +105,37 @@ export function BulkImportPage() {
   const [result, setResult] = useState<BulkImportResult | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [batchGrade, setBatchGrade] = useState<GradeLevelValue | ''>('');
-  const [target, setTarget] = useState<ClassTermValue>(EMPTY_TARGET);
+  const [term, setTerm] = useState<TermValue>(EMPTY_TERM);
 
   useEffect(() => {
     void settings.loadCurrentSchool();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const foundation = useAcademicFoundationViewModel();
+  const yearClasses = useViewModel(foundation.store, (s) => s.yearClasses);
+  const years = useViewModel(foundation.store, (s) => s.academicYears);
+
+  useEffect(() => {
+    if (term.academicYearId) void foundation.loadYearClasses(term.academicYearId);
+  }, [foundation, term.academicYearId]);
+
+  // Same test as TermPicker, which shows the full explanation above the grid.
+  const noCurrentYear =
+    years.status === 'empty' ||
+    ((years.status === 'success' || years.status === 'refreshing') && !years.data.some((y) => y.isCurrent));
+
+  // null while loading or after a failed load: rows then show no class
+  // errors and nothing is importable (never a "create one" on a failure).
+  const classOptions = useMemo<ClassOption[] | null>(() => {
+    // No year yet: the shared store may still hold another year's classes.
+    if (!term.academicYearId) return null;
+    if (yearClasses.status === 'empty') return [];
+    if (yearClasses.status !== 'success' && yearClasses.status !== 'refreshing') return null;
+    return yearClasses.data
+      .filter((c) => c.isActive && c.academicYearId === term.academicYearId)
+      .map((c) => ({ id: c.id, name: c.name, gradeLevel: c.gradeLevel }));
+  }, [yearClasses, term.academicYearId]);
 
   const schoolName = profile.status === 'success' || profile.status === 'refreshing' ? profile.data.name : 'School';
   const institutionId = profile.status === 'success' || profile.status === 'refreshing' ? profile.data.id : null;
@@ -149,26 +173,41 @@ export function BulkImportPage() {
   };
 
   const updateRow = (id: string, patch: Partial<Omit<BulkRow, 'id' | 'errors'>>) => {
-    setRows((prev) => validateRows(prev.map((r) => (r.id === id ? { ...r, ...patch } : r))));
+    // A grade change drops the picked class; placement re-resolves it.
+    setRows((prev) =>
+      validateRows(
+        prev.map((r) =>
+          r.id === id ? { ...r, ...patch, ...(patch.gradeLevel !== undefined && { classId: '' }) } : r,
+        ),
+      ),
+    );
   };
 
   const deleteRow = (id: string) => setRows((prev) => validateRows(prev.filter((r) => r.id !== id)));
   const addRow = () => setRows((prev) => validateRows([...prev, emptyRow()]));
 
-  const validRows = rows.filter((r) => Object.keys(r.errors).length === 0);
-  const placementReady = Boolean(batchGrade) && isClassTermComplete(target);
-  const canImport = validRows.length > 0 && placementReady && Boolean(institutionId) && !isSubmitting;
+  // Placement is derived, not stored: auto-picks and file class names
+  // re-resolve whenever rows or the class list change.
+  const placedRows = useMemo(() => placeRows(rows, classOptions), [rows, classOptions]);
+  const validRows = placedRows.filter(isImportable);
+  const errorRowCount = placedRows.filter((r) => Object.keys(r.errors).length > 0).length;
+  const canImport =
+    validRows.length > 0 &&
+    Boolean(term.academicYearId && term.termId) &&
+    classOptions !== null &&
+    Boolean(institutionId) &&
+    !isSubmitting;
 
   const handleSubmit = async () => {
-    if (!canImport || !institutionId || !batchGrade) return;
+    if (!canImport || !institutionId) return;
     setIsSubmitting(true);
-    const submitted = rows;
+    const submitted = placedRows;
     try {
       const outcome = await runBulkImport({
         rows: submitted,
-        gradeLevel: batchGrade,
         institutionId,
-        target,
+        academicYearId: term.academicYearId,
+        termId: term.termId,
         online,
         createAndEnroll: (request) => listVm.createAndEnrollStudent(request),
         bulkClaim: (request) => registryBridge.bulkClaimStudents(request),
@@ -222,9 +261,9 @@ export function BulkImportPage() {
             Back to Students
           </Link>
           <p className="mt-2 text-gray-600">
-            Download the template, fill in student details, upload, choose the class and term, review, then import.
-            Rows without a NEMIS ID are created on this device and enrolled in the chosen class; rows with a NEMIS ID
-            are claimed from the national registry, which needs a connection.
+            Download the template, fill in student details, upload, review each row&apos;s class, choose the term, then
+            import. Rows without a NEMIS ID are created on this device and enrolled in their row&apos;s class; rows with a
+            NEMIS ID are claimed from the national registry, which needs a connection.
           </p>
         </div>
 
@@ -234,7 +273,8 @@ export function BulkImportPage() {
               <h2 className="mb-1 text-lg font-semibold text-gray-900">Step 1 — Download Template</h2>
               <p className="mb-4 text-sm text-gray-600">
                 Only required fields are marked with <strong>*</strong>. Grade level accepts KG, K1, K2, or GRADE_1
-                through GRADE_12. Leave the NEMIS ID blank for a student who has never had one. Guardian Email gives
+                through GRADE_12. Leave the NEMIS ID blank for a student who has never had one. Class is optional: type
+                the class name as shown on the Classes page, or leave it blank and pick it on the review screen. Guardian Email gives
                 the guardian a parent login once the record syncs, unless that email already belongs to a student&apos;s
                 login. It is used for new students only; a student claimed by NEMIS ID keeps the guardians from their
                 previous school.
@@ -270,32 +310,18 @@ export function BulkImportPage() {
         {step === 'review' && (
           <div>
             <div className="mb-5 max-w-2xl rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-              <h2 className="mb-1 text-lg font-semibold text-gray-900">Batch placement</h2>
+              <h2 className="mb-1 text-lg font-semibold text-gray-900">Enrollment</h2>
               <p className="mb-4 text-sm text-gray-600">
-                Every row is enrolled in this class and term. Rows whose grade level differs from the class grade are not imported.
+                Each row is enrolled in its own class; choose the term once.
               </p>
-              <div className="space-y-3">
-                <Select
-                  label="Grade"
-                  required
-                  placeholder="Select grade"
-                  options={grades.map((g) => ({ value: g, label: human(g) }))}
-                  value={batchGrade}
-                  onChange={(e) => {
-                    // A class belongs to one grade; the term is kept.
-                    setBatchGrade(e.target.value as GradeLevelValue);
-                    setTarget((t) => ({ ...t, classId: '' }));
-                  }}
-                />
-                <ClassTermPicker gradeLevel={batchGrade} value={target} onChange={setTarget} />
-              </div>
+              <TermPicker value={term} onChange={setTerm} />
             </div>
 
             <div className="mb-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <span className="text-sm text-gray-600">
                   <span className="font-semibold text-green-700">{validRows.length}</span> valid /{' '}
-                  <span className="font-semibold text-red-600">{rows.length - validRows.length}</span> with errors
+                  <span className="font-semibold text-red-600">{errorRowCount}</span> with errors
                 </span>
                 <button type="button" onClick={() => setStep('upload')} className="text-xs text-gray-500 underline hover:text-gray-700">
                   Upload a different file
@@ -325,6 +351,7 @@ export function BulkImportPage() {
                     <th className="whitespace-nowrap px-3 py-3 text-left text-xs font-semibold text-gray-600">Gender *</th>
                     <th className="min-w-[110px] whitespace-nowrap px-3 py-3 text-left text-xs font-semibold text-gray-600">Adm. Date *</th>
                     <th className="min-w-[130px] whitespace-nowrap px-3 py-3 text-left text-xs font-semibold text-gray-600">Grade Level *</th>
+                    <th className="min-w-[140px] whitespace-nowrap px-3 py-3 text-left text-xs font-semibold text-gray-600">Class *</th>
                     <th className="min-w-[150px] whitespace-nowrap px-3 py-3 text-left text-xs font-semibold text-gray-600">NEMIS ID</th>
                     <th className="min-w-[110px] whitespace-nowrap px-3 py-3 text-left text-xs font-semibold text-gray-600">Guardian First *</th>
                     <th className="min-w-[110px] whitespace-nowrap px-3 py-3 text-left text-xs font-semibold text-gray-600">Guardian Last *</th>
@@ -337,7 +364,7 @@ export function BulkImportPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {rows.map((row, i) => {
+                  {placedRows.map((row, i) => {
                     const hasErrors = Object.keys(row.errors).length > 0;
                     return (
                       <tr key={row.id} className={hasErrors ? 'bg-red-50/40' : 'bg-white'}>
@@ -380,6 +407,36 @@ export function BulkImportPage() {
                           {row.errors.gradeLevel && <p className="mt-0.5 text-xs text-red-500">{row.errors.gradeLevel}</p>}
                         </td>
                         <td className="px-3 py-2 align-top">
+                          {classOptions === null ? (
+                            noCurrentYear ? (
+                              // TermPicker above explains how to set one.
+                              <p className="pt-2 text-xs text-amber-700">No current academic year</p>
+                            ) : yearClasses.status === 'error' && term.academicYearId ? (
+                              <p className="pt-2 text-xs text-red-700">
+                                Couldn&apos;t load classes.{' '}
+                                <button type="button" className="underline"
+                                  onClick={() => void foundation.loadYearClasses(term.academicYearId)}>
+                                  Try again
+                                </button>
+                              </p>
+                            ) : (
+                              <p className="pt-2 text-xs text-gray-500">Loading…</p>
+                            )
+                          ) : (
+                            <>
+                              <select aria-label={`Class for row ${i + 1}`} value={row.classId}
+                                onChange={(e) => updateRow(row.id, { classId: e.target.value, className: '' })}
+                                className={inputClass(Boolean(row.errors.classId))}>
+                                <option value="">Select class</option>
+                                {classOptions
+                                  .filter((c) => c.gradeLevel === row.gradeLevel.toUpperCase())
+                                  .map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                              </select>
+                              {row.errors.classId && <p className="mt-0.5 text-xs text-red-500">{row.errors.classId}</p>}
+                            </>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 align-top">
                           <Input type="text" value={row.nemisId} placeholder="Blank if new"
                             onChange={(e) => updateRow(row.id, { nemisId: e.target.value })}
                             error={row.errors.nemisId} />
@@ -415,7 +472,14 @@ export function BulkImportPage() {
                             error={row.errors.guardianEmail} />
                         </td>
                         <td className="px-3 py-2 pt-2.5 text-center align-top">
-                          {hasErrors ? <AlertCircle className="mx-auto h-5 w-5 text-red-400" /> : <CheckCircle className="mx-auto h-5 w-5 text-green-500" />}
+                          {hasErrors ? (
+                            <AlertCircle className="mx-auto h-5 w-5 text-red-400" />
+                          ) : isImportable(row) ? (
+                            <CheckCircle className="mx-auto h-5 w-5 text-green-500" />
+                          ) : (
+                            // No errors, but no class yet (classes loading, failed or no current year).
+                            <CheckCircle className="mx-auto h-5 w-5 text-gray-300" />
+                          )}
                         </td>
                         <td className="px-3 py-2 pt-2 align-top">
                           <button type="button" onClick={() => deleteRow(row.id)} title="Remove row"

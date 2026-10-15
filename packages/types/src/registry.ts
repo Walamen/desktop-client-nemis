@@ -48,6 +48,8 @@ export interface RegistryClaimRequest {
 export interface BulkClaimRow {
   /** Canonical 12 digits. */
   nemisId: string;
+  /** The class this row is enrolled in. Needs a server with per-row classes. */
+  classId: string;
   firstName: string;
   lastName: string;
   dateOfBirth: string; // YYYY-MM-DD
@@ -62,10 +64,9 @@ export interface BulkClaimRow {
 }
 
 export interface BulkClaimRequest {
-  classId: string;
   academicYearId: string;
   termId: string;
-  /** 1..500. */
+  /** 1..500; each row names its own class. */
   students: BulkClaimRow[];
 }
 

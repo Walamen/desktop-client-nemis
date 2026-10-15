@@ -963,10 +963,11 @@ const GENDER_VALUES: readonly string[] = Object.values(Gender);
 function assertBulkClaimRow(row: unknown, position: number): void {
   if (!isPlainObject(row)) throw new IPCError(`Expected row ${position + 1} to be an object.`);
   assertKnownKeys(row, [
-    'nemisId', 'firstName', 'lastName', 'dateOfBirth', 'gender', 'gradeLevel', 'admissionDate',
+    'nemisId', 'classId', 'firstName', 'lastName', 'dateOfBirth', 'gender', 'gradeLevel', 'admissionDate',
     'guardianFirstName', 'guardianLastName', 'guardianPhone', 'guardianRelationship', 'studentEmail',
   ]);
   assertNemisId(row.nemisId);
+  assertString(row.classId, 'classId', ID_MAX_LENGTH);
   assertString(row.firstName, 'firstName', NAME_MAX_LENGTH);
   assertString(row.lastName, 'lastName', NAME_MAX_LENGTH);
   assertIsoDate(row.dateOfBirth, 'dateOfBirth');
@@ -984,8 +985,7 @@ export function assertBulkClaimArgs(args: readonly unknown[]): void {
   assertArity(args, 1);
   const [request] = args;
   if (!isPlainObject(request)) throw new IPCError('Expected a request object.');
-  assertKnownKeys(request, ['classId', 'academicYearId', 'termId', 'students']);
-  assertString(request.classId, 'classId', ID_MAX_LENGTH);
+  assertKnownKeys(request, ['academicYearId', 'termId', 'students']);
   assertString(request.academicYearId, 'academicYearId', ID_MAX_LENGTH);
   assertString(request.termId, 'termId', ID_MAX_LENGTH);
   const students = request.students;

@@ -137,10 +137,10 @@ describe('registry IPC handlers', () => {
 describe('registry bulk claim handler', () => {
   const row = {
     nemisId: DASHED_ID, firstName: 'Musu', lastName: 'Kollie', dateOfBirth: '2012-01-01',
-    gender: 'FEMALE', gradeLevel: 'GRADE_7',
+    gender: 'FEMALE', gradeLevel: 'GRADE_7', classId: 'c',
     guardianFirstName: 'Ma', guardianLastName: 'Kollie', guardianPhone: '0770000000',
   };
-  const request = { classId: 'c', academicYearId: 'y', termId: 't', students: [row] };
+  const request = { academicYearId: 'y', termId: 't', students: [row] };
 
   function setup() {
     const { calls, handle } = capture();
@@ -184,6 +184,8 @@ describe('registry bulk claim handler', () => {
     ['a missing termId', { ...request, termId: undefined }],
     ['a non-array students', { ...request, students: 'x' }],
     ['a non-object row', { ...request, students: ['x'] }],
+    ['a row without a classId', { ...request, students: [{ ...row, classId: undefined }] }],
+    ['a batch-level classId', { ...request, classId: 'c' }],
   ])('rejects %s', (_label, bad) => {
     const { bulk } = setup();
     expect(() => bulk.validate([bad])).toThrow();

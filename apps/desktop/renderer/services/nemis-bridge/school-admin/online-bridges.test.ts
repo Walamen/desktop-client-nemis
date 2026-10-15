@@ -24,7 +24,7 @@ describe('online bridges', () => {
     expect(await registryBridge.lookupStudent({ nemisId: '482915736045', dateOfBirth: '2012-01-01' })).toEqual({ found: false });
     expect(await transferBridge.cancelTransfer('t-1')).toEqual({ data: { id: 't-1' }, refreshed: true });
     expect(registry.lookup).toHaveBeenCalledWith({ nemisId: '482915736045', dateOfBirth: '2012-01-01' });
-    const bulk = { classId: 'c', academicYearId: 'y', termId: 't', students: [] };
+    const bulk = { academicYearId: 'y', termId: 't', students: [] };
     expect((await registryBridge.bulkClaimStudents(bulk)).refreshed).toBe(true);
     expect(registry.bulkClaim).toHaveBeenCalledWith(bulk);
     expect(transfer.cancel).toHaveBeenCalledWith('t-1');

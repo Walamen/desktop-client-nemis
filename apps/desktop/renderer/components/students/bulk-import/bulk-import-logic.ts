@@ -249,26 +249,19 @@ export interface RetryEntry {
 /** The server accepts 1..500 rows per bulk-claim call. */
 export const MAX_CLAIM_ROWS = 500;
 
-export function gradeMismatchMessage(rowGrade: string, classGrade: string): string {
-  return `Grade level "${rowGrade}" does not match the selected class grade "${classGrade}"`;
-}
-
+/** A row only reaches the server with no errors and a class. */
 export function partitionRows(
   rows: BulkRow[],
-  classGrade: GradeLevel,
 ): { local: IndexedRow[]; claim: IndexedRow[]; failed: { originalIndex: number; error: string }[] } {
   const local: IndexedRow[] = [];
   const claim: IndexedRow[] = [];
   const failed: { originalIndex: number; error: string }[] = [];
   rows.forEach((row, originalIndex) => {
-    const errorEntries = Object.entries(row.errors);
+    const errors = row.classId ? row.errors : { ...row.errors, classId: row.errors.classId ?? 'Pick a class' };
+    const errorEntries = Object.entries(errors);
     if (errorEntries.length > 0) {
       const detail = errorEntries.map(([field, message]) => `${field}: ${message}`).join('; ');
       failed.push({ originalIndex, error: `Fix before importing: ${detail}` });
-      return;
-    }
-    if (row.gradeLevel.toUpperCase() !== String(classGrade).toUpperCase()) {
-      failed.push({ originalIndex, error: gradeMismatchMessage(row.gradeLevel, String(classGrade)) });
       return;
     }
     if (!row.nemisId.trim()) local.push({ originalIndex, row });
@@ -286,6 +279,7 @@ export function toBulkClaimRows(claim: IndexedRow[]): BulkClaimRow[] {
   return claim.map(({ row }) => {
     const out: BulkClaimRow = {
       nemisId: normalizeNemisId(row.nemisId) ?? row.nemisId,
+      classId: row.classId,
       firstName: row.firstName.trim(),
       lastName: row.lastName.trim(),
       dateOfBirth: row.dateOfBirth,

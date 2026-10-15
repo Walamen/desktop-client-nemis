@@ -269,10 +269,10 @@ describe('BackendProvisioningGateway', () => {
     describe('bulkClaimStudents', () => {
       const row = {
         nemisId: '482915736045', firstName: 'Musu', lastName: 'Kollie', dateOfBirth: '2012-01-01',
-        gender: 'FEMALE' as never, gradeLevel: 'GRADE_7' as never,
+        gender: 'FEMALE' as never, gradeLevel: 'GRADE_7' as never, classId: 'c',
         guardianFirstName: 'Ma', guardianLastName: 'Kollie', guardianPhone: '0770000000',
       };
-      const request = { classId: 'c', academicYearId: 'y', termId: 't', students: [row, row] };
+      const request = { academicYearId: 'y', termId: 't', students: [row, row] };
 
       it('posts the request as-is to /students/bulk and maps created and failed', async () => {
         const fetchMock = vi.fn(async () => response({

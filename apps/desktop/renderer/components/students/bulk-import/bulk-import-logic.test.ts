@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import * as XLSX from 'xlsx';
-import { GradeLevel } from '@nemis-desktop/types';
 import type { BulkClaimResult } from '@nemis-desktop/types';
 import { generateNemisId } from '@nemis-desktop/shared';
 import {
@@ -13,7 +12,7 @@ function mk(over: Partial<BulkRow> = {}): BulkRow {
   seq += 1;
   const row: BulkRow = {
     id: `r${seq}`, firstName: `First${seq}`, lastName: `Last${seq}`, dateOfBirth: '2012-03-04', gender: 'MALE',
-    admissionDate: '2026-09-01', gradeLevel: 'GRADE_5', className: '', classId: '', nemisId: '', guardianFirstName: 'Gf', guardianLastName: 'Gl',
+    admissionDate: '2026-09-01', gradeLevel: 'GRADE_5', className: '', classId: 'c5', nemisId: '', guardianFirstName: 'Gf', guardianLastName: 'Gl',
     guardianRelationship: 'Mother', guardianPhone: '+231770000000', studentEmail: '', guardianEmail: '', errors: {}, ...over,
   };
   row.errors = validateRow(row);
@@ -36,29 +35,25 @@ describe('validateRow nemisId', () => {
 });
 
 describe('partitionRows', () => {
-  it('sorts invalid, mismatched, local and claim with originalIndex preserved', () => {
+  it('sorts invalid, local and claim with originalIndex preserved; rows of any grade go through', () => {
     const rows = [
       mk({ firstName: '' }),
-      mk({ gradeLevel: 'GRADE_6' }),
+      mk({ gradeLevel: 'GRADE_6', classId: 'c6' }),
       mk(),
       mk({ nemisId: generateNemisId() }),
     ];
-    const p = partitionRows(rows, GradeLevel.GRADE_5);
-    expect(p.local.map((r) => r.originalIndex)).toEqual([2]);
+    const p = partitionRows(rows);
+    expect(p.local.map((r) => r.originalIndex)).toEqual([1, 2]);
     expect(p.claim.map((r) => r.originalIndex)).toEqual([3]);
     expect(p.failed).toEqual([
       { originalIndex: 0, error: 'Fix before importing: firstName: Required' },
-      {
-        originalIndex: 1,
-        error: 'Grade level "GRADE_6" does not match the selected class grade "GRADE_5"',
-      },
     ]);
   });
 
   it('fails a Luhn-bad NEMIS ID row with its reason', () => {
     const id = generateNemisId();
     const bad = id.slice(0, 11) + String((Number(id[11]) + 1) % 10);
-    const p = partitionRows([mk(), mk({ nemisId: bad })], GradeLevel.GRADE_5);
+    const p = partitionRows([mk(), mk({ nemisId: bad })]);
     expect(p.failed).toEqual([{
       originalIndex: 1,
       error: 'Fix before importing: nemisId: Invalid NEMIS ID (12 digits, check digit)',
@@ -94,6 +89,7 @@ describe('toBulkClaimRows', () => {
     const out = toBulkClaimRows(claim);
     expect(out.map((r) => r.nemisId)).toEqual([a, b]);
     expect(out[0]?.gradeLevel).toBe('GRADE_5');
+    expect(out.map((r) => r.classId)).toEqual(['c5', 'c5']);
   });
 });
 
@@ -102,7 +98,7 @@ describe('mapClaimOutcome', () => {
     mk(), mk({ nemisId: generateNemisId() }), mk({ firstName: '' }),
     mk({ nemisId: generateNemisId() }), mk(), mk({ nemisId: generateNemisId() }),
   ];
-  const claim = partitionRows(rows, GradeLevel.GRADE_5).claim;
+  const claim = partitionRows(rows).claim;
 
   it('aligns created and failed to original rows', () => {
     expect(claim.map((c) => c.originalIndex)).toEqual([1, 3, 5]);
