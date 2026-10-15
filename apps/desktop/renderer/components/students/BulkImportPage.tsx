@@ -233,8 +233,9 @@ export function BulkImportPage() {
               <p className="mb-4 text-sm text-gray-600">
                 Only required fields are marked with <strong>*</strong>. Grade level accepts KG, K1, K2, or GRADE_1
                 through GRADE_12. Leave the NEMIS ID blank for a student who has never had one. Guardian Email gives
-                the guardian a parent login once the record syncs — for new students only; a student claimed by NEMIS
-                ID keeps the guardians from their previous school.
+                the guardian a parent login once the record syncs, unless that email already belongs to a student&apos;s
+                login. It is used for new students only; a student claimed by NEMIS ID keeps the guardians from their
+                previous school.
               </p>
               <button type="button" onClick={downloadTemplate}
                 className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">

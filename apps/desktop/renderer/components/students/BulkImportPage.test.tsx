@@ -417,9 +417,9 @@ describe('BulkImportPage', () => {
   it('Step 1 explains guardian email is for new students only', async () => {
     stubNemis();
     await renderPage();
-    expect(screen.getByText(/Guardian Email gives the guardian a parent login/)).toHaveTextContent(
-      /new students only/,
-    );
+    const help = screen.getByText(/Guardian Email gives the guardian a parent login/);
+    expect(help).toHaveTextContent(/unless that email already belongs to a student's login/);
+    expect(help).toHaveTextContent(/new students only/);
   });
 
   it("flags a student email that is another row's guardian email until that row is removed", async () => {
