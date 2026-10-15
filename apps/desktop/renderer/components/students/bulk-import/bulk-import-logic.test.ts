@@ -13,7 +13,7 @@ function mk(over: Partial<BulkRow> = {}): BulkRow {
   seq += 1;
   const row: BulkRow = {
     id: `r${seq}`, firstName: `First${seq}`, lastName: `Last${seq}`, dateOfBirth: '2012-03-04', gender: 'MALE',
-    admissionDate: '2026-09-01', gradeLevel: 'GRADE_5', nemisId: '', guardianFirstName: 'Gf', guardianLastName: 'Gl',
+    admissionDate: '2026-09-01', gradeLevel: 'GRADE_5', className: '', classId: '', nemisId: '', guardianFirstName: 'Gf', guardianLastName: 'Gl',
     guardianRelationship: 'Mother', guardianPhone: '+231770000000', studentEmail: '', guardianEmail: '', errors: {}, ...over,
   };
   row.errors = validateRow(row);
@@ -69,7 +69,7 @@ describe('partitionRows', () => {
 describe('parseWorkbookToRows template example', () => {
   const header = HEADERS;
   const line = (first: string, last: string, dob: string) =>
-    [first, last, dob, 'MALE', '2026-09-01', 'GRADE_5', '', 'Jane', 'Doe', 'Mother', '+231770123456', ''];
+    [first, last, dob, 'MALE', '2026-09-01', 'GRADE_5', '', '', 'Jane', 'Doe', 'Mother', '+231770123456', ''];
   const parse = (...lines: string[][]) => {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([header, ...lines]), 'Students');
@@ -157,9 +157,10 @@ describe('retry workbook and template', () => {
     const parsed = parseWorkbookToRows(toBytes(wb));
     expect(parsed.map((r) => [r.firstName, r.nemisId])).toEqual([[rows[1]!.firstName, id], [rows[3]!.firstName, '']]);
   });
-  it('template headers include the NEMIS ID column after Grade Level', () => {
+  it('template headers: Grade Level, then Class, then NEMIS ID', () => {
     expect(HEADERS[5]).toMatch(/^Grade Level/);
-    expect(HEADERS[6]).toBe('NEMIS ID (leave blank for new students)');
+    expect(HEADERS[6]).toBe('Class');
+    expect(HEADERS[7]).toBe('NEMIS ID (leave blank for new students)');
   });
   it('parses a numeric NEMIS ID cell to its digit string', () => {
     const id = generateNemisId();
@@ -197,14 +198,14 @@ describe('guardian email', () => {
     return parseWorkbookToRows(toBytes(wb));
   };
   const base = [
-    'Ama', 'Kollie', '2014-03-02', 'FEMALE', '2026-09-01', 'GRADE_5', '',
+    'Ama', 'Kollie', '2014-03-02', 'FEMALE', '2026-09-01', 'GRADE_5', '', '',
     'Musu', 'Kollie', 'Mother', '+231770000000', 'ama@example.com',
   ];
 
   it('the template has a Guardian Email column right after Student Email', () => {
-    expect(HEADERS[11]).toBe('Student Email');
-    expect(HEADERS[12]).toBe('Guardian Email');
-    expect(HEADERS).toHaveLength(13);
+    expect(HEADERS[12]).toBe('Student Email');
+    expect(HEADERS[13]).toBe('Guardian Email');
+    expect(HEADERS).toHaveLength(14);
   });
 
   it('reads the Guardian Email column, trimmed', () => {
@@ -219,7 +220,7 @@ describe('guardian email', () => {
   });
 
   it('a file without the column parses with a blank guardian email and no new error', () => {
-    const [row] = parseSheet(HEADERS.slice(0, 12), base);
+    const [row] = parseSheet(HEADERS.slice(0, 13), base);
     expect(row?.guardianEmail).toBe('');
     expect(row?.errors).toEqual({});
   });
@@ -338,7 +339,7 @@ describe('validateRows cross-row emails', () => {
 
   it('is applied by parseWorkbookToRows', () => {
     const line = (first: string, studentEmail: string, guardianEmail: string) => [
-      first, 'Kollie', '2014-03-02', 'FEMALE', '2026-09-01', 'GRADE_5', '',
+      first, 'Kollie', '2014-03-02', 'FEMALE', '2026-09-01', 'GRADE_5', '', '',
       'Musu', 'Kollie', 'Mother', '+231770000000', studentEmail, guardianEmail,
     ];
     const wb = XLSX.utils.book_new();
@@ -393,7 +394,7 @@ describe('validateRows duplicate student emails', () => {
 
   it('parseWorkbookToRows applies it', () => {
     const line = (first: string) => [
-      first, 'Kollie', '2014-03-02', 'FEMALE', '2026-09-01', 'GRADE_5', '',
+      first, 'Kollie', '2014-03-02', 'FEMALE', '2026-09-01', 'GRADE_5', '', '',
       'Musu', 'Kollie', 'Mother', '+231770000000', 'kid@example.com',
     ];
     const wb = XLSX.utils.book_new();
@@ -401,5 +402,40 @@ describe('validateRows duplicate student emails', () => {
     const rows = parseWorkbookToRows(toBytes(wb));
     expect(rows[0]?.errors).toEqual({});
     expect(rows[1]?.errors.studentEmail).toBe(dup(1));
+  });
+});
+
+describe('Class column', () => {
+  const parseSheet = (header: string[], ...lines: unknown[][]) => {
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([header, ...lines]), 'Students');
+    return parseWorkbookToRows(toBytes(wb));
+  };
+  const line = (klass: unknown) => [
+    'Ama', 'Kollie', '2014-03-02', 'FEMALE', '2026-09-01', 'GRADE_3', klass, '',
+    'Musu', 'Kollie', 'Mother', '+231770000000', '', '',
+  ];
+
+  it('reads the Class cell trimmed, with no class id yet and no new error', () => {
+    const [row] = parseSheet(HEADERS, line('  3A '));
+    expect(row).toMatchObject({ className: '3A', classId: '', errors: {} });
+  });
+
+  it('reads a numeric class name as text', () => {
+    expect(parseSheet(HEADERS, line(7))[0]?.className).toBe('7');
+  });
+
+  it('a file without the Class column parses with a blank class', () => {
+    const header = HEADERS.filter((h) => h !== 'Class');
+    const withoutClass = line('').filter((_, i) => i !== 6);
+    expect(parseSheet(header, withoutClass)[0]).toMatchObject({ className: '', classId: '', errors: {} });
+  });
+
+  it('the retry file writes each row class name and re-imports it', () => {
+    const rows = [mk({ gradeLevel: 'GRADE_3', className: '3B', classId: 'c3b' })];
+    const wb = buildRetryWorkbook(rows, [{ originalIndex: 0, reason: 'x' }]);
+    const header = XLSX.utils.sheet_to_json<string[]>(wb.Sheets['Students']!, { header: 1 })[0];
+    expect(header?.[6]).toBe('Class');
+    expect(parseWorkbookToRows(toBytes(wb))[0]?.className).toBe('3B');
   });
 });

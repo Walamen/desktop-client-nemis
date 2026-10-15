@@ -2,6 +2,7 @@ import * as XLSX from 'xlsx';
 import type { BulkClaimResult, BulkClaimRow, Gender, GradeLevel } from '@nemis-desktop/types';
 import { normalizeNemisId } from '@nemis-desktop/shared';
 import { grades } from '../shared';
+import { CLASS_COLUMN_NOTE, CLASS_HEADER } from './class-placement';
 
 export interface BulkRow {
   id: string;
@@ -11,6 +12,10 @@ export interface BulkRow {
   gender: string;
   admissionDate: string;
   gradeLevel: string;
+  /** The file's Class cell; once placed, the resolved class's name. */
+  className: string;
+  /** The class picked in the grid or resolved by placeRows; '' when none. */
+  classId: string;
   /** Raw cell text; blank means create locally, otherwise claim online. */
   nemisId: string;
   guardianFirstName: string;
@@ -105,6 +110,7 @@ export function validateRows(rows: BulkRow[]): BulkRow[] {
 export const HEADERS: string[] = [
   'First Name *', 'Last Name *', 'Date of Birth * (YYYY-MM-DD)',
   'Gender * (MALE/FEMALE)', 'Admission Date * (YYYY-MM-DD)', 'Grade Level * (KG/K1/K2/GRADE_1...GRADE_12)',
+  CLASS_HEADER,
   NEMIS_ID_HEADER,
   'Guardian First Name *', 'Guardian Last Name *', 'Guardian Relationship *', 'Guardian Phone *', 'Student Email',
   'Guardian Email',
@@ -139,7 +145,7 @@ const EXAMPLE_DATE_OF_BIRTH = '2010-05-15';
 export function downloadTemplate(): void {
   const example = [
     EXAMPLE_FIRST_NAME, EXAMPLE_LAST_NAME, EXAMPLE_DATE_OF_BIRTH, 'MALE', new Date().toISOString().slice(0, 10),
-    'GRADE_5', '', 'Jane', 'Doe', 'Mother', '+231770123456', 'john.doe@example.com', 'jane.doe@example.com',
+    'GRADE_5', '', '', 'Jane', 'Doe', 'Mother', '+231770123456', 'john.doe@example.com', 'jane.doe@example.com',
   ];
   const studentsSheet = XLSX.utils.aoa_to_sheet([HEADERS, example]);
   studentsSheet['!cols'] = HEADERS.map(() => ({ wch: 30 }));
@@ -151,8 +157,9 @@ export function downloadTemplate(): void {
   for (let i = 0; i < Math.max(genderValues.length, grades.length); i += 1) {
     refRows.push([genderValues[i] ?? '', grades[i] ?? '']);
   }
+  refRows.push(['', ''], ['Class (optional)', CLASS_COLUMN_NOTE]);
   const refSheet = XLSX.utils.aoa_to_sheet(refRows);
-  refSheet['!cols'] = [{ wch: 15 }, { wch: 15 }];
+  refSheet['!cols'] = [{ wch: 18 }, { wch: 60 }];
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, studentsSheet, 'Students');
@@ -209,6 +216,8 @@ export function parseWorkbookToRows(data: Uint8Array): BulkRow[] {
         gender: pick(r, 'Gender * (MALE/FEMALE)', 'Gender', 'gender').toUpperCase(),
         admissionDate: parseDateCell(r['Admission Date * (YYYY-MM-DD)'] ?? r['Admission Date'] ?? r['admissionDate'] ?? ''),
         gradeLevel: pick(r, 'Grade Level * (KG/K1/K2/GRADE_1...GRADE_12)', PORTAL_GRADE_HEADER, 'Grade Level', 'gradeLevel').toUpperCase(),
+        className: pick(r, CLASS_HEADER, 'class'),
+        classId: '',
         nemisId: parseNemisIdCell(r[NEMIS_ID_HEADER] ?? r['NEMIS ID'] ?? r['nemisId'] ?? ''),
         guardianFirstName: pick(r, 'Guardian First Name *', 'Guardian First Name', 'guardianFirstName'),
         guardianLastName: pick(r, 'Guardian Last Name *', 'Guardian Last Name', 'guardianLastName'),
@@ -331,7 +340,7 @@ export function buildRetryWorkbook(rows: BulkRow[], retry: RetryEntry[]): XLSX.W
       return row ? [{ row, reason: entry.reason }] : [];
     })
     .map(({ row, reason }) => [
-      row.firstName, row.lastName, row.dateOfBirth, row.gender, row.admissionDate, row.gradeLevel,
+      row.firstName, row.lastName, row.dateOfBirth, row.gender, row.admissionDate, row.gradeLevel, row.className,
       row.nemisId, row.guardianFirstName, row.guardianLastName, row.guardianRelationship,
       row.guardianPhone, row.studentEmail, row.guardianEmail, reason,
     ]);

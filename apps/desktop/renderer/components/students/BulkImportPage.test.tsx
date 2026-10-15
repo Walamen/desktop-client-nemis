@@ -100,7 +100,7 @@ async function renderPage({ online = true }: { online?: boolean } = {}) {
 /** One spreadsheet row: name, grade and NEMIS ID vary; everything else is valid. */
 function sheetRow(firstName: string, { grade = 'GRADE_7', nemisId = '', admission = '2026-09-01' } = {}): string[] {
   return [
-    firstName, 'Kollie', '2014-03-02', 'FEMALE', admission, grade, nemisId,
+    firstName, 'Kollie', '2014-03-02', 'FEMALE', admission, grade, '', nemisId,
     'Musu', 'Kollie', 'Mother', '+231770000000', `${firstName.toLowerCase()}@example.com`,
   ];
 }

@@ -42,6 +42,8 @@ const emptyRow = (): BulkRow => ({
   gender: '',
   admissionDate: new Date().toISOString().slice(0, 10),
   gradeLevel: '',
+  className: '',
+  classId: '',
   nemisId: '',
   guardianFirstName: '',
   guardianLastName: '',

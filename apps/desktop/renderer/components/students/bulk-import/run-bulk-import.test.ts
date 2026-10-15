@@ -17,7 +17,7 @@ function mk(over: Partial<BulkRow> = {}): BulkRow {
   seq += 1;
   const row: BulkRow = {
     id: `r${seq}`, firstName: `First${seq}`, lastName: `Last${seq}`, dateOfBirth: '2012-03-04', gender: 'MALE',
-    admissionDate: '2026-09-01', gradeLevel: 'GRADE_5', nemisId: '', guardianFirstName: 'Gf', guardianLastName: 'Gl',
+    admissionDate: '2026-09-01', gradeLevel: 'GRADE_5', className: '', classId: '', nemisId: '', guardianFirstName: 'Gf', guardianLastName: 'Gl',
     guardianRelationship: 'Mother', guardianPhone: '+231770000000', studentEmail: '', guardianEmail: '', errors: {}, ...over,
   };
   row.errors = validateRow(row);
