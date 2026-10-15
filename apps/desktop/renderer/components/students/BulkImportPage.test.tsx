@@ -35,7 +35,8 @@ const jss1a = { id: 'c1', academicYearId: 'y1', name: 'JSS1-A', gradeLevel: 'GRA
 const SYNC_NOTE = 'Student login becomes available after this record syncs.';
 const OFFLINE_REASON = 'Needs a connection — import these rows again when online. Keep the NEMIS IDs.';
 const NO_PARENT_LOGIN = "No guardian email — the guardian won't get a parent login.";
-const parentLoginNote = (email: string) => `Parent login for ${email} is set up after this record syncs.`;
+const parentLoginNote = (email: string) =>
+  `Parent login for ${email} is set up after this record syncs, unless that email already belongs to a student's login.`;
 const guardianEmailInputs = () =>
   Array.from(document.querySelectorAll('input[placeholder="guardian@email.com"]')) as HTMLInputElement[];
 
@@ -438,5 +439,24 @@ describe('BulkImportPage', () => {
 
     await user.click(screen.getAllByTitle('Remove row')[0]!);
     expect(screen.queryByText("Already used as a guardian's email in row 1")).not.toBeInTheDocument();
+  });
+
+  it('flags a student email already used by an earlier row until that row is removed', async () => {
+    stubNemis();
+    const { user } = await renderPage();
+    await upload(user, [sheetRow('Ama'), sheetRow('Bola')]);
+
+    const studentInputs = Array.from(
+      document.querySelectorAll('input[placeholder="student@email.com"]'),
+    ) as HTMLInputElement[];
+    await user.clear(studentInputs[1]!);
+    await user.type(studentInputs[1]!, 'ama@example.com');
+
+    expect(screen.getByText("Already used as a student's email in row 1")).toBeInTheDocument();
+    expect(importButtons()[0]).toHaveTextContent('Import 1 Student');
+
+    await user.click(screen.getAllByTitle('Remove row')[0]!);
+    expect(screen.queryByText("Already used as a student's email in row 1")).not.toBeInTheDocument();
+    expect(importButtons()[0]).toHaveTextContent('Import 1 Student');
   });
 });

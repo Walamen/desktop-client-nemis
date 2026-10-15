@@ -352,3 +352,54 @@ describe('validateRows cross-row emails', () => {
     expect(rows[1]?.errors.studentEmail).toBe(msg(1));
   });
 });
+
+describe('validateRows duplicate student emails', () => {
+  const dup = (n: number) => `Already used as a student's email in row ${n}`;
+
+  it('flags every later row with the first row number; the first row stays valid', () => {
+    const out = validateRows([
+      mk({ studentEmail: 'kid@x.com' }), mk(), mk({ studentEmail: 'kid@x.com' }), mk({ studentEmail: 'kid@x.com' }),
+    ]);
+    expect(out[0]?.errors).toEqual({});
+    expect(out[1]?.errors).toEqual({});
+    expect(out[2]?.errors.studentEmail).toBe(dup(1));
+    expect(out[3]?.errors.studentEmail).toBe(dup(1));
+  });
+
+  it('compares trimmed and case-insensitively', () => {
+    const out = validateRows([mk({ studentEmail: ' Kid@X.com' }), mk({ studentEmail: 'kid@x.com ' })]);
+    expect(out[1]?.errors.studentEmail).toBe(dup(1));
+  });
+
+  it('ignores claim rows on either side', () => {
+    const claimFirst = validateRows([
+      mk({ nemisId: generateNemisId(), studentEmail: 'kid@x.com' }), mk({ studentEmail: 'kid@x.com' }),
+    ]);
+    expect(claimFirst.map((r) => r.errors)).toEqual([{}, {}]);
+    const claimSecond = validateRows([
+      mk({ studentEmail: 'kid@x.com' }), mk({ nemisId: generateNemisId(), studentEmail: 'kid@x.com' }),
+    ]);
+    expect(claimSecond.map((r) => r.errors)).toEqual([{}, {}]);
+  });
+
+  it('earlier rules keep precedence', () => {
+    expect(validateRows([mk({ studentEmail: 'a@bXc' }), mk({ studentEmail: 'a@bXc' })])[1]?.errors.studentEmail)
+      .toBe('Invalid email');
+    const out = validateRows([
+      mk({ studentEmail: 'fam@x.com' }), mk({ guardianEmail: 'fam@x.com' }), mk({ studentEmail: 'fam@x.com' }),
+    ]);
+    expect(out[2]?.errors.studentEmail).toBe("Already used as a guardian's email in row 2");
+  });
+
+  it('parseWorkbookToRows applies it', () => {
+    const line = (first: string) => [
+      first, 'Kollie', '2014-03-02', 'FEMALE', '2026-09-01', 'GRADE_5', '',
+      'Musu', 'Kollie', 'Mother', '+231770000000', 'kid@example.com',
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([HEADERS, line('Ama'), line('Bola')]), 'Students');
+    const rows = parseWorkbookToRows(toBytes(wb));
+    expect(rows[0]?.errors).toEqual({});
+    expect(rows[1]?.errors.studentEmail).toBe(dup(1));
+  });
+});

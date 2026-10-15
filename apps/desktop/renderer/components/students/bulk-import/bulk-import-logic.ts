@@ -77,14 +77,20 @@ export function validateRow(row: BulkRow): Record<string, string> {
 /** Validates every row, then the checks that need the whole batch. */
 export function validateRows(rows: BulkRow[]): BulkRow[] {
   // A new student's guardian email becomes a parent login on sync, so another
-  // new student's login can't use the same address. Claims ignore both emails.
+  // new student's login can't use the same address — and two new students
+  // can't share one login email either. Claims ignore both emails.
   const guardianEmails = rows.map((r) => (r.nemisId.trim() ? '' : r.guardianEmail.trim().toLowerCase()));
+  const studentEmails = rows.map((r) => (r.nemisId.trim() ? '' : r.studentEmail.trim().toLowerCase()));
   return rows.map((row, i) => {
     const errors = validateRow(row);
-    const studentEmail = row.studentEmail.trim().toLowerCase();
-    if (!row.nemisId.trim() && studentEmail && !errors.studentEmail) {
+    const studentEmail = studentEmails[i] ?? '';
+    if (studentEmail && !errors.studentEmail) {
       const other = guardianEmails.findIndex((g, j) => j !== i && g === studentEmail);
       if (other !== -1) errors.studentEmail = `Already used as a guardian's email in row ${other + 1}`;
+    }
+    if (studentEmail && !errors.studentEmail) {
+      const first = studentEmails.indexOf(studentEmail);
+      if (first < i) errors.studentEmail = `Already used as a student's email in row ${first + 1}`;
     }
     return { ...row, errors };
   });

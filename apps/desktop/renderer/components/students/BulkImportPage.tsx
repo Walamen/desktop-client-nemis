@@ -61,7 +61,7 @@ const rowLabel = (originalIndex: number) => `Row ${originalIndex + 1}`;
 function parentLoginNote(row: BulkRow | undefined): string {
   const email = row?.guardianEmail.trim();
   return email
-    ? `Parent login for ${email} is set up after this record syncs.`
+    ? `Parent login for ${email} is set up after this record syncs, unless that email already belongs to a student's login.`
     : "No guardian email — the guardian won't get a parent login.";
 }
 
