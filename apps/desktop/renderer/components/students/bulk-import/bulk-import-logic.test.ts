@@ -5,7 +5,7 @@ import type { BulkClaimResult } from '@nemis-desktop/types';
 import { generateNemisId } from '@nemis-desktop/shared';
 import {
   HEADERS, MAX_CLAIM_ROWS, allToRetry, buildRetryWorkbook, mapClaimOutcome, parseWorkbookToRows,
-  partitionRows, splitClaimBatch, toBulkClaimRows, validateRow, type BulkRow, type IndexedRow,
+  partitionRows, splitClaimBatch, toBulkClaimRows, validateRow, validateRows, type BulkRow, type IndexedRow,
 } from './bulk-import-logic';
 
 let seq = 0;
@@ -269,5 +269,86 @@ describe('guardian email', () => {
     const header = XLSX.utils.sheet_to_json<string[]>(wb.Sheets['Students']!, { header: 1 })[0];
     expect(header?.slice(-2)).toEqual(['Guardian Email', 'Reason']);
     expect(parseWorkbookToRows(toBytes(wb))[0]?.guardianEmail).toBe('musu@example.com');
+  });
+});
+
+describe('validateRows cross-row emails', () => {
+  const msg = (n: number) => `Already used as a guardian's email in row ${n}`;
+
+  it('flags a student email that is an earlier row\'s guardian email', () => {
+    const out = validateRows([mk({ guardianEmail: 'musu@x.com' }), mk({ studentEmail: 'musu@x.com' })]);
+    expect(out[0]?.errors.studentEmail).toBeUndefined();
+    expect(out[0]?.errors.guardianEmail).toBeUndefined();
+    expect(out[1]?.errors.studentEmail).toBe(msg(1));
+  });
+
+  it('flags a student email that is a later row\'s guardian email', () => {
+    const out = validateRows([mk({ studentEmail: 'musu@x.com' }), mk({ guardianEmail: 'musu@x.com' })]);
+    expect(out[0]?.errors.studentEmail).toBe(msg(2));
+    expect(out[1]?.errors).toEqual({});
+  });
+
+  it('compares trimmed and case-insensitively', () => {
+    const out = validateRows([mk({ guardianEmail: 'musu@x.com ' }), mk({ studentEmail: ' Musu@X.com' })]);
+    expect(out[1]?.errors.studentEmail).toBe(msg(1));
+  });
+
+  it('ignores claim rows on either side', () => {
+    const claimGuardian = validateRows([
+      mk({ nemisId: generateNemisId(), guardianEmail: 'musu@x.com' }),
+      mk({ studentEmail: 'musu@x.com' }),
+    ]);
+    expect(claimGuardian[1]?.errors.studentEmail).toBeUndefined();
+    const claimStudent = validateRows([
+      mk({ guardianEmail: 'musu@x.com' }),
+      mk({ nemisId: generateNemisId(), studentEmail: 'musu@x.com' }),
+    ]);
+    expect(claimStudent[1]?.errors.studentEmail).toBeUndefined();
+  });
+
+  it('lets a format error on the student email win', () => {
+    const out = validateRows([mk({ guardianEmail: 'musu@bXc' }), mk({ studentEmail: 'musu@bXc' })]);
+    expect(out[1]?.errors.studentEmail).toBe('Invalid email');
+  });
+
+  it('lets the same-row message win when the own guardian email also matches', () => {
+    const out = validateRows([
+      mk({ guardianEmail: 'musu@x.com' }),
+      mk({ studentEmail: 'musu@x.com', guardianEmail: 'musu@x.com' }),
+    ]);
+    expect(out[1]?.errors.studentEmail).toBe("Can't be the same as the guardian's email");
+  });
+
+  it('reports the first other row holding the address', () => {
+    const out = validateRows([
+      mk(), mk({ guardianEmail: 'musu@x.com' }), mk({ guardianEmail: 'musu@x.com' }), mk({ studentEmail: 'musu@x.com' }),
+    ]);
+    expect(out[3]?.errors.studentEmail).toBe(msg(2));
+  });
+
+  it('returns new rows without mutating the input, keeping ids and order', () => {
+    const input = [mk({ guardianEmail: 'musu@x.com' }), mk({ studentEmail: 'musu@x.com' })];
+    const snapshot = structuredClone(input);
+    const out = validateRows(input);
+    expect(input).toEqual(snapshot);
+    expect(out).not.toBe(input);
+    expect(out[1]).not.toBe(input[1]);
+    expect(out.map((r) => r.id)).toEqual(input.map((r) => r.id));
+  });
+
+  it('is applied by parseWorkbookToRows', () => {
+    const line = (first: string, studentEmail: string, guardianEmail: string) => [
+      first, 'Kollie', '2014-03-02', 'FEMALE', '2026-09-01', 'GRADE_5', '',
+      'Musu', 'Kollie', 'Mother', '+231770000000', studentEmail, guardianEmail,
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(
+      wb,
+      XLSX.utils.aoa_to_sheet([HEADERS, line('Ama', 'ama@x.com', 'family@x.com'), line('Bola', 'family@x.com', '')]),
+      'Students',
+    );
+    const rows = parseWorkbookToRows(toBytes(wb));
+    expect(rows[0]?.errors).toEqual({});
+    expect(rows[1]?.errors.studentEmail).toBe(msg(1));
   });
 });

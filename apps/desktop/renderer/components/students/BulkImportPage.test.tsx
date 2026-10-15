@@ -420,4 +420,23 @@ describe('BulkImportPage', () => {
       /new students only/,
     );
   });
+
+  it("flags a student email that is another row's guardian email until that row is removed", async () => {
+    stubNemis();
+    const { user } = await renderPage();
+    await upload(user, [[...sheetRow('Ama'), 'family@example.com'], sheetRow('Bola')]);
+
+    const studentInputs = Array.from(
+      document.querySelectorAll('input[placeholder="student@email.com"]'),
+    ) as HTMLInputElement[];
+    const bolaEmail = studentInputs[1]!;
+    await user.clear(bolaEmail);
+    await user.type(bolaEmail, 'family@example.com');
+
+    expect(screen.getByText("Already used as a guardian's email in row 1")).toBeInTheDocument();
+    expect(importButtons()[0]).toHaveTextContent('Import 1 Student');
+
+    await user.click(screen.getAllByTitle('Remove row')[0]!);
+    expect(screen.queryByText("Already used as a guardian's email in row 1")).not.toBeInTheDocument();
+  });
 });

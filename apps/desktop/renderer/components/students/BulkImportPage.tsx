@@ -16,7 +16,7 @@ import { ClassTermPicker, isClassTermComplete, type ClassTermValue } from './add
 
 import {
   makeId,
-  validateRow,
+  validateRows,
   downloadTemplate,
   downloadRetryFile,
   parseWorkbookToRows,
@@ -147,18 +147,11 @@ export function BulkImportPage() {
   };
 
   const updateRow = (id: string, patch: Partial<Omit<BulkRow, 'id' | 'errors'>>) => {
-    setRows((prev) =>
-      prev.map((r) => {
-        if (r.id !== id) return r;
-        const updated = { ...r, ...patch };
-        updated.errors = validateRow(updated);
-        return updated;
-      }),
-    );
+    setRows((prev) => validateRows(prev.map((r) => (r.id === id ? { ...r, ...patch } : r))));
   };
 
-  const deleteRow = (id: string) => setRows((prev) => prev.filter((r) => r.id !== id));
-  const addRow = () => setRows((prev) => [...prev, emptyRow()]);
+  const deleteRow = (id: string) => setRows((prev) => validateRows(prev.filter((r) => r.id !== id)));
+  const addRow = () => setRows((prev) => validateRows([...prev, emptyRow()]));
 
   const validRows = rows.filter((r) => Object.keys(r.errors).length === 0);
   const placementReady = Boolean(batchGrade) && isClassTermComplete(target);
@@ -195,7 +188,7 @@ export function BulkImportPage() {
     // By original index into the rows as submitted — not by position in the
     // valid subset, which shifts whenever an earlier row had errors.
     const keep = new Set(failed.failed.map((f) => f.originalIndex));
-    setRows(failed.rows.filter((_, i) => keep.has(i)).map((r) => ({ ...r, errors: validateRow(r) })));
+    setRows(validateRows(failed.rows.filter((_, i) => keep.has(i))));
     setStep('review');
     setResult(null);
   };

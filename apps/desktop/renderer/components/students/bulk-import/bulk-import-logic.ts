@@ -74,6 +74,22 @@ export function validateRow(row: BulkRow): Record<string, string> {
   return errors;
 }
 
+/** Validates every row, then the checks that need the whole batch. */
+export function validateRows(rows: BulkRow[]): BulkRow[] {
+  // A new student's guardian email becomes a parent login on sync, so another
+  // new student's login can't use the same address. Claims ignore both emails.
+  const guardianEmails = rows.map((r) => (r.nemisId.trim() ? '' : r.guardianEmail.trim().toLowerCase()));
+  return rows.map((row, i) => {
+    const errors = validateRow(row);
+    const studentEmail = row.studentEmail.trim().toLowerCase();
+    if (!row.nemisId.trim() && studentEmail && !errors.studentEmail) {
+      const other = guardianEmails.findIndex((g, j) => j !== i && g === studentEmail);
+      if (other !== -1) errors.studentEmail = `Already used as a guardian's email in row ${other + 1}`;
+    }
+    return { ...row, errors };
+  });
+}
+
 // ─── Excel template + parsing (SheetJS `xlsx`) — mirrors the web portal's
 // bulk-import wizard, including its `Guardian Email` header and its spelling
 // of the Grade Level header, so a file from either app imports here. The
@@ -167,7 +183,7 @@ export function parseWorkbookToRows(data: Uint8Array): BulkRow[] {
   if (!ws) return [];
   const raw = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: '' });
 
-  return raw
+  const parsed = raw
     .filter((r) => {
       const firstName = pick(r, 'First Name *', 'First Name', 'firstName');
       if (!firstName) return false;
@@ -196,9 +212,9 @@ export function parseWorkbookToRows(data: Uint8Array): BulkRow[] {
         guardianEmail: pick(r, 'Guardian Email', 'guardianEmail'),
         errors: {},
       };
-      row.errors = validateRow(row);
       return row;
     });
+  return validateRows(parsed);
 }
 
 
