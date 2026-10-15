@@ -48,6 +48,7 @@ const emptyRow = (): BulkRow => ({
   guardianRelationship: '',
   guardianPhone: '',
   studentEmail: '',
+  guardianEmail: '',
   errors: {},
 });
 
@@ -55,6 +56,14 @@ const inputClass = (hasError: boolean) =>
   `w-full px-2 py-1.5 text-sm rounded border ${hasError ? 'border-red-400 bg-red-50' : 'border-gray-300'} focus:outline-none focus:ring-1 focus:ring-sky-500/40`;
 
 const rowLabel = (originalIndex: number) => `Row ${originalIndex + 1}`;
+
+/** Whether the guardian of a created row gets a parent login on sync. */
+function parentLoginNote(row: BulkRow | undefined): string {
+  const email = row?.guardianEmail.trim();
+  return email
+    ? `Parent login for ${email} is set up after this record syncs.`
+    : "No guardian email — the guardian won't get a parent login.";
+}
 
 /** Retry entries grouped by reason, so a batch-level message (one server
  * rejection for every NEMIS-ID row) is shown once, with its row numbers. */
@@ -230,7 +239,9 @@ export function BulkImportPage() {
               <h2 className="mb-1 text-lg font-semibold text-gray-900">Step 1 — Download Template</h2>
               <p className="mb-4 text-sm text-gray-600">
                 Only required fields are marked with <strong>*</strong>. Grade level accepts KG, K1, K2, or GRADE_1
-                through GRADE_12. Leave the NEMIS ID blank for a student who has never had one.
+                through GRADE_12. Leave the NEMIS ID blank for a student who has never had one. Guardian Email gives
+                the guardian a parent login once the record syncs — for new students only; a student claimed by NEMIS
+                ID keeps the guardians from their previous school.
               </p>
               <button type="button" onClick={downloadTemplate}
                 className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
@@ -324,6 +335,7 @@ export function BulkImportPage() {
                     <th className="min-w-[100px] whitespace-nowrap px-3 py-3 text-left text-xs font-semibold text-gray-600">Relationship *</th>
                     <th className="min-w-[120px] whitespace-nowrap px-3 py-3 text-left text-xs font-semibold text-gray-600">Guardian Phone *</th>
                     <th className="min-w-[160px] whitespace-nowrap px-3 py-3 text-left text-xs font-semibold text-gray-600">Student Email</th>
+                    <th className="min-w-[160px] whitespace-nowrap px-3 py-3 text-left text-xs font-semibold text-gray-600">Guardian Email</th>
                     <th className="whitespace-nowrap px-3 py-3 text-center text-xs font-semibold text-gray-600">Status</th>
                     <th className="px-3 py-3" />
                   </tr>
@@ -401,6 +413,11 @@ export function BulkImportPage() {
                             onChange={(e) => updateRow(row.id, { studentEmail: e.target.value })}
                             error={row.errors.studentEmail} />
                         </td>
+                        <td className="px-3 py-2 align-top">
+                          <Input type="email" value={row.guardianEmail} placeholder="guardian@email.com"
+                            onChange={(e) => updateRow(row.id, { guardianEmail: e.target.value })}
+                            error={row.errors.guardianEmail} />
+                        </td>
                         <td className="px-3 py-2 pt-2.5 text-center align-top">
                           {hasErrors ? <AlertCircle className="mx-auto h-5 w-5 text-red-400" /> : <CheckCircle className="mx-auto h-5 w-5 text-green-500" />}
                         </td>
@@ -467,6 +484,7 @@ export function BulkImportPage() {
                         <p className="text-sm text-green-900">{nameOf(result, c.originalIndex)}</p>
                         <p className="text-sm font-medium text-green-800">{formatNemisId(c.nemisId)}</p>
                         <p className="mt-0.5 text-xs text-gray-600">Student login becomes available after this record syncs.</p>
+                        <p className="mt-0.5 text-xs text-gray-600">{parentLoginNote(result.rows[c.originalIndex])}</p>
                       </div>
                     </li>
                   ))}

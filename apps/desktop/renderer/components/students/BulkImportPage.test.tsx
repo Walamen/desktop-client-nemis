@@ -34,6 +34,10 @@ const jss1a = { id: 'c1', academicYearId: 'y1', name: 'JSS1-A', gradeLevel: 'GRA
 
 const SYNC_NOTE = 'Student login becomes available after this record syncs.';
 const OFFLINE_REASON = 'Needs a connection — import these rows again when online. Keep the NEMIS IDs.';
+const NO_PARENT_LOGIN = "No guardian email — the guardian won't get a parent login.";
+const parentLoginNote = (email: string) => `Parent login for ${email} is set up after this record syncs.`;
+const guardianEmailInputs = () =>
+  Array.from(document.querySelectorAll('input[placeholder="guardian@email.com"]')) as HTMLInputElement[];
 
 let created = 0;
 function studentView(nemisId: string) {
@@ -359,5 +363,61 @@ describe('BulkImportPage', () => {
 
     expect(screen.getByText('Saved — claimed students will appear once this device syncs.')).toBeInTheDocument();
     expectNoSecrets();
+  });
+
+  it('reads Guardian Email from the file, lets it be edited, and sends it with the guardian', async () => {
+    const { createAndEnroll } = stubNemis();
+    const { user } = await renderPage();
+    await upload(user, [[...sheetRow('Ama'), 'musu@example.com']]);
+
+    expect(screen.getByRole('columnheader', { name: 'Guardian Email' })).toBeInTheDocument();
+    expect(guardianEmailInputs().map((i) => i.value)).toEqual(['musu@example.com']);
+    await user.clear(guardianEmailInputs()[0]!);
+    await user.type(guardianEmailInputs()[0]!, 'musu.k@example.com');
+    await pickBatch(user);
+    await runImport(user);
+
+    const request = createAndEnroll.mock.calls[0]?.[0] as { guardians: { email?: string }[] };
+    expect(request.guardians[0]?.email).toBe('musu.k@example.com');
+    expect(within(entryFor('Row 1')).getByText(parentLoginNote('musu.k@example.com'))).toBeInTheDocument();
+    expectNoSecrets();
+  });
+
+  it('a blank guardian email imports and says the guardian gets no parent login', async () => {
+    const { createAndEnroll } = stubNemis();
+    const { user } = await renderPage();
+    await upload(user, [sheetRow('Ama')]);
+    await pickBatch(user);
+    await runImport(user);
+
+    const request = createAndEnroll.mock.calls[0]?.[0] as { guardians: { email?: string }[] };
+    expect(request.guardians[0]?.email).toBeUndefined();
+    expect(within(entryFor('Row 1')).getByText(NO_PARENT_LOGIN)).toBeInTheDocument();
+  });
+
+  it('Add Row adds a row with an empty Guardian Email field', async () => {
+    stubNemis();
+    const { user } = await renderPage();
+    await upload(user, [sheetRow('Ama')]);
+    await user.click(screen.getAllByRole('button', { name: /Add Row/ })[0]!);
+    expect(guardianEmailInputs().map((i) => i.value)).toEqual(['', '']);
+  });
+
+  it('a bad guardian email, or one equal to the student email, blocks the row in the grid', async () => {
+    stubNemis();
+    const { user } = await renderPage();
+    await upload(user, [[...sheetRow('Ama'), 'musu@bXc'], [...sheetRow('Bola'), 'bola@example.com']]);
+
+    expect(screen.getByText('Invalid email')).toBeInTheDocument();
+    expect(screen.getByText("Can't be the same as the guardian's email")).toBeInTheDocument();
+    expect(importButtons()[0]).toHaveTextContent('Import 0 Students');
+  });
+
+  it('Step 1 explains guardian email is for new students only', async () => {
+    stubNemis();
+    await renderPage();
+    expect(screen.getByText(/Guardian Email gives the guardian a parent login/)).toHaveTextContent(
+      /new students only/,
+    );
   });
 });
