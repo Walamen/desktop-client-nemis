@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { AcademicsApplicationService, CreateSubjectDto, ListSubjectsDto } from '@nemis-desktop/application';
+import type { AcademicsApplicationService, CreateSubjectDto, ListClassesDto, ListSubjectsDto } from '@nemis-desktop/application';
 import type { CommandOutcome } from '../../core/async-runner';
 import { NotificationStore } from '../../stores/notification-store';
 import { AcademicFoundationViewModel } from './academic-foundation-view-model';
@@ -204,5 +204,66 @@ describe('AcademicFoundationViewModel.createSubjects', () => {
     const outcomes = await vm.createSubjects([{ name: 'Art', code: 'ART' }]);
     expect(messages(outcomes)).toEqual(['A deactivated subject with code "ART" already exists. Tick "Include deactivated subjects" to find and restore it.']);
     expect(preCheckCalls(academics).every(([dto]) => dto.keyword === undefined)).toBe(true);
+  });
+});
+
+describe('AcademicFoundationViewModel.loadYearClasses', () => {
+  const cls = (n: number) => ({
+    id: `c${n}`, academicYearId: 'y1', name: `C${n}`, gradeLevel: 'GRADE_1', isActive: true, subjectCount: 0,
+  });
+
+  /** Pages through `total` classes like the real use case. */
+  function pagedAcademics(total: number) {
+    const all = Array.from({ length: total }, (_, i) => cls(i + 1));
+    return {
+      listClasses: vi.fn(async (dto: ListClassesDto) => {
+        const offset = dto.offset ?? 0;
+        const limit = dto.limit ?? 25;
+        return { data: { items: all.slice(offset, offset + limit), total, limit, offset } };
+      }),
+    };
+  }
+
+  const makeVm = (academics: unknown) =>
+    new AcademicFoundationViewModel({
+      academics: academics as AcademicsApplicationService,
+      notifications: new NotificationStore(),
+    });
+
+  it('pages through every class of the year, 100 at a time', async () => {
+    const academics = pagedAcademics(230);
+    const vm = makeVm(academics);
+    await vm.loadYearClasses('y1');
+    expect(academics.listClasses.mock.calls.map(([dto]) => dto)).toEqual([
+      { academicYearId: 'y1', limit: 100, offset: 0 },
+      { academicYearId: 'y1', limit: 100, offset: 100 },
+      { academicYearId: 'y1', limit: 100, offset: 200 },
+    ]);
+    const state = vm.store.getState().yearClasses;
+    expect(state.status).toBe('success');
+    if (state.status === 'success') expect(state.data).toHaveLength(230);
+  });
+
+  it('leaves the paginated class list, its filters and pagination alone', async () => {
+    const vm = makeVm(pagedAcademics(3));
+    vm.setClassFilters({ gradeLevel: 'GRADE_7' as never });
+    const before = vm.store.getState();
+    await vm.loadYearClasses('y1');
+    const after = vm.store.getState();
+    expect(after.classes).toBe(before.classes);
+    expect(after.classFilters).toBe(before.classFilters);
+    expect(after.classPagination).toBe(before.classPagination);
+  });
+
+  it('is empty when the year has no classes', async () => {
+    const vm = makeVm(pagedAcademics(0));
+    await vm.loadYearClasses('y1');
+    expect(vm.store.getState().yearClasses.status).toBe('empty');
+  });
+
+  it('is an error, not empty, when a page cannot be read', async () => {
+    const vm = makeVm({ listClasses: vi.fn(async () => { throw new Error('[DB_ERROR] boom'); }) });
+    await vm.loadYearClasses('y1');
+    expect(vm.store.getState().yearClasses.status).toBe('error');
   });
 });

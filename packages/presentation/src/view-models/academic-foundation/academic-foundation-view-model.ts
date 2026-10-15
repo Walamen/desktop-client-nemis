@@ -38,6 +38,8 @@ export interface AcademicFoundationState {
   readonly terms: AsyncState<readonly TermRowView[]>;
   readonly currentTerm: AsyncState<TermRowView>;
   readonly classes: AsyncState<readonly ClassRowView[]>;
+  /** Every class of one academic year (all pages) — see loadYearClasses. */
+  readonly yearClasses: AsyncState<readonly ClassRowView[]>;
   readonly subjects: AsyncState<readonly SubjectRowView[]>;
   readonly classSubjects: AsyncState<readonly ClassSubjectRowView[]>;
   readonly gradeLevels: AsyncState<readonly GradeLevelCountView[]>;
@@ -56,6 +58,8 @@ const identity = <T>(value: T): T => value;
 
 /** ListSubjectsUseCase clamps `limit` to 100 and the IPC validator rejects more. */
 const SUBJECT_PAGE_MAX = 100;
+/** ListClassesUseCase clamps `limit` to 100 and the IPC validator rejects more. */
+const CLASS_PAGE_MAX = 100;
 
 /** Same normalization CreateSubjectUseCase applies before its duplicate check. */
 const normalizeSubjectCode = (code: string): string => code.trim().toUpperCase();
@@ -68,7 +72,7 @@ const subjectCount = (n: number): string => `${n} subject${n === 1 ? '' : 's'}`;
 export class AcademicFoundationViewModel {
   readonly store = createStore<AcademicFoundationState>(() => ({
     academicYears: idleState(), terms: idleState(), currentTerm: idleState(),
-    classes: idleState(), subjects: idleState(), classSubjects: idleState(), gradeLevels: idleState(),
+    classes: idleState(), yearClasses: idleState(), subjects: idleState(), classSubjects: idleState(), gradeLevels: idleState(),
     classPagination: createPagination(), subjectPagination: createPagination(),
     classFilters: {}, subjectFilters: {},
   }));
@@ -106,6 +110,27 @@ export class AcademicFoundationViewModel {
       fetch: () => this.deps.academics.listClasses({ ...state.classFilters, ...page }),
       onData: (result) => this.store.setState((s) => ({ classPagination: withTotal(s.classPagination, result.total) })),
       map: (result) => result.items,
+      isEmpty: (rows) => rows.length === 0,
+    });
+  }
+
+  /** Every class of one academic year, all pages, for pickers that must offer
+   * every class (bulk import) — unlike `classes`, which is one 25-row page.
+   * Leaves `classes`, its filters and its pagination untouched. */
+  async loadYearClasses(academicYearId: string): Promise<void> {
+    await trackQuery({
+      access: { get: () => this.store.getState().yearClasses, set: (yearClasses) => this.store.setState({ yearClasses }) },
+      fetch: async () => {
+        const items: ClassRowView[] = [];
+        let offset = 0;
+        for (;;) {
+          const { data } = await this.deps.academics.listClasses({ academicYearId, limit: CLASS_PAGE_MAX, offset });
+          items.push(...data.items);
+          offset += data.items.length;
+          if (data.items.length === 0 || offset >= data.total) return { data: items };
+        }
+      },
+      map: identity,
       isEmpty: (rows) => rows.length === 0,
     });
   }
