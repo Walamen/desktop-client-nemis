@@ -18,7 +18,7 @@ function mk(over: Partial<BulkRow> = {}): BulkRow {
   const row: BulkRow = {
     id: `r${seq}`, firstName: `First${seq}`, lastName: `Last${seq}`, dateOfBirth: '2012-03-04', gender: 'MALE',
     admissionDate: '2026-09-01', gradeLevel: 'GRADE_5', nemisId: '', guardianFirstName: 'Gf', guardianLastName: 'Gl',
-    guardianRelationship: 'Mother', guardianPhone: '+231770000000', studentEmail: '', errors: {}, ...over,
+    guardianRelationship: 'Mother', guardianPhone: '+231770000000', studentEmail: '', guardianEmail: '', errors: {}, ...over,
   };
   row.errors = validateRow(row);
   return row;
@@ -147,5 +147,16 @@ describe('runBulkImport', () => {
     expect(out.failed).toEqual([
       { originalIndex: 0, error: 'Grade level "GRADE_6" does not match the selected class grade "GRADE_5"' },
     ]);
+  });
+
+  it('sends the guardian email trimmed, and no email when it is blank', async () => {
+    const createAndEnroll = okCreate();
+    await runBulkImport({
+      rows: [mk({ guardianEmail: '  musu@example.com ' }), mk()], gradeLevel: GradeLevel.GRADE_5,
+      institutionId: 'inst-1', target, online: true, createAndEnroll, bulkClaim: claimOk(),
+    });
+    const calls = vi.mocked(createAndEnroll).mock.calls.map((c) => c[0] as CreateAndEnrollStudentRequest);
+    expect(calls[0]?.guardians[0]?.email).toBe('musu@example.com');
+    expect(calls[1]?.guardians[0]?.email).toBeUndefined();
   });
 });

@@ -68,6 +68,7 @@ function toCreateRequest(
         lastName: row.guardianLastName.trim(),
         relationship: row.guardianRelationship.trim(),
         phoneNumber: row.guardianPhone.trim(),
+        email: row.guardianEmail.trim() || undefined,
         isPrimary: true,
       },
     ],

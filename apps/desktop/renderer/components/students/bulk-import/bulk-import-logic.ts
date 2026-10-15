@@ -18,6 +18,10 @@ export interface BulkRow {
   guardianRelationship: string;
   guardianPhone: string;
   studentEmail: string;
+  /** Optional; the server makes it the guardian's parent login when the
+   * record syncs. Used for new students only — a claim keeps the child's
+   * existing guardians. */
+  guardianEmail: string;
   errors: Record<string, string>;
 }
 
@@ -52,13 +56,28 @@ export function validateRow(row: BulkRow): Record<string, string> {
 
   if (row.studentEmail.trim() && !EMAIL_RE.test(row.studentEmail.trim())) errors.studentEmail = 'Invalid email';
 
+  const guardianEmail = row.guardianEmail.trim();
+  if (guardianEmail && !EMAIL_RE.test(guardianEmail)) errors.guardianEmail = 'Invalid email';
+
+  // The create use case refuses a student email equal to a guardian's (that
+  // address becomes the parent login), and IPC would show it only as a
+  // generic error. Claims ignore both emails, so only new students are checked.
+  if (
+    !row.nemisId.trim() &&
+    !errors.studentEmail &&
+    guardianEmail &&
+    row.studentEmail.trim().toLowerCase() === guardianEmail.toLowerCase()
+  ) {
+    errors.studentEmail = "Can't be the same as the guardian's email";
+  }
+
   return errors;
 }
 
 // ─── Excel template + parsing (SheetJS `xlsx`) — mirrors the web portal's
-// bulk-import wizard. One real gap stays dropped here, same as before: no
-// Guardian Email column (no such column on this device's guardian schema).
-// The results step shows each student's sign-in line (NEMIS ID or a sync
+// bulk-import wizard, including its `Guardian Email` header and its spelling
+// of the Grade Level header, so a file from either app imports here. The
+// results step shows each student's sign-in line (NEMIS ID or a sync
 // note), never a password. ──
 
 export const HEADERS: string[] = [
@@ -66,6 +85,7 @@ export const HEADERS: string[] = [
   'Gender * (MALE/FEMALE)', 'Admission Date * (YYYY-MM-DD)', 'Grade Level * (KG/K1/K2/GRADE_1...GRADE_12)',
   NEMIS_ID_HEADER,
   'Guardian First Name *', 'Guardian Last Name *', 'Guardian Relationship *', 'Guardian Phone *', 'Student Email',
+  'Guardian Email',
 ];
 
 /** Normalizes an Excel date cell (real `Date` when `cellDates: true`, or a
@@ -97,7 +117,7 @@ const EXAMPLE_DATE_OF_BIRTH = '2010-05-15';
 export function downloadTemplate(): void {
   const example = [
     EXAMPLE_FIRST_NAME, EXAMPLE_LAST_NAME, EXAMPLE_DATE_OF_BIRTH, 'MALE', new Date().toISOString().slice(0, 10),
-    'GRADE_5', '', 'Jane', 'Doe', 'Mother', '+231770123456', 'john.doe@example.com',
+    'GRADE_5', '', 'Jane', 'Doe', 'Mother', '+231770123456', 'john.doe@example.com', 'jane.doe@example.com',
   ];
   const studentsSheet = XLSX.utils.aoa_to_sheet([HEADERS, example]);
   studentsSheet['!cols'] = HEADERS.map(() => ({ wch: 30 }));
@@ -133,6 +153,9 @@ export function pick(record: Record<string, unknown>, ...keys: string[]): string
   return '';
 }
 
+/** portal-web's template spells the range with a single `…` (U+2026). */
+const PORTAL_GRADE_HEADER = 'Grade Level * (KG/K1/K2/GRADE_1…GRADE_12)';
+
 /** Reads the first sheet of an uploaded workbook. `XLSX.read` with
  * `type: 'array'` auto-detects the underlying format, so this also accepts
  * plain .csv files uploaded through the same picker — not just .xlsx. */
@@ -163,13 +186,14 @@ export function parseWorkbookToRows(data: Uint8Array): BulkRow[] {
         dateOfBirth: parseDateCell(r['Date of Birth * (YYYY-MM-DD)'] ?? r['Date of Birth'] ?? r['dateOfBirth'] ?? ''),
         gender: pick(r, 'Gender * (MALE/FEMALE)', 'Gender', 'gender').toUpperCase(),
         admissionDate: parseDateCell(r['Admission Date * (YYYY-MM-DD)'] ?? r['Admission Date'] ?? r['admissionDate'] ?? ''),
-        gradeLevel: pick(r, 'Grade Level * (KG/K1/K2/GRADE_1...GRADE_12)', 'Grade Level', 'gradeLevel').toUpperCase(),
+        gradeLevel: pick(r, 'Grade Level * (KG/K1/K2/GRADE_1...GRADE_12)', PORTAL_GRADE_HEADER, 'Grade Level', 'gradeLevel').toUpperCase(),
         nemisId: parseNemisIdCell(r[NEMIS_ID_HEADER] ?? r['NEMIS ID'] ?? r['nemisId'] ?? ''),
         guardianFirstName: pick(r, 'Guardian First Name *', 'Guardian First Name', 'guardianFirstName'),
         guardianLastName: pick(r, 'Guardian Last Name *', 'Guardian Last Name', 'guardianLastName'),
         guardianRelationship: pick(r, 'Guardian Relationship *', 'Guardian Relationship', 'guardianRelationship'),
         guardianPhone: pick(r, 'Guardian Phone *', 'Guardian Phone', 'guardianPhone'),
         studentEmail: pick(r, 'Student Email', 'studentEmail'),
+        guardianEmail: pick(r, 'Guardian Email', 'guardianEmail'),
         errors: {},
       };
       row.errors = validateRow(row);
@@ -287,7 +311,7 @@ export function buildRetryWorkbook(rows: BulkRow[], retry: RetryEntry[]): XLSX.W
     .map(({ row, reason }) => [
       row.firstName, row.lastName, row.dateOfBirth, row.gender, row.admissionDate, row.gradeLevel,
       row.nemisId, row.guardianFirstName, row.guardianLastName, row.guardianRelationship,
-      row.guardianPhone, row.studentEmail, reason,
+      row.guardianPhone, row.studentEmail, row.guardianEmail, reason,
     ]);
   const sheet = XLSX.utils.aoa_to_sheet([[...HEADERS, 'Reason'], ...lines]);
   sheet['!cols'] = [...HEADERS, 'Reason'].map(() => ({ wch: 30 }));

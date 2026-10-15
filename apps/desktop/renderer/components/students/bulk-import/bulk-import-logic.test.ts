@@ -14,7 +14,7 @@ function mk(over: Partial<BulkRow> = {}): BulkRow {
   const row: BulkRow = {
     id: `r${seq}`, firstName: `First${seq}`, lastName: `Last${seq}`, dateOfBirth: '2012-03-04', gender: 'MALE',
     admissionDate: '2026-09-01', gradeLevel: 'GRADE_5', nemisId: '', guardianFirstName: 'Gf', guardianLastName: 'Gl',
-    guardianRelationship: 'Mother', guardianPhone: '+231770000000', studentEmail: '', errors: {}, ...over,
+    guardianRelationship: 'Mother', guardianPhone: '+231770000000', studentEmail: '', guardianEmail: '', errors: {}, ...over,
   };
   row.errors = validateRow(row);
   return row;
@@ -187,5 +187,87 @@ describe('validateRow studentEmail', () => {
   it('accepts sam@school.com and rejects a@bXc', () => {
     expect(mk({ studentEmail: 'sam@school.com' }).errors.studentEmail).toBeUndefined();
     expect(mk({ studentEmail: 'a@bXc' }).errors.studentEmail).toBe('Invalid email');
+  });
+});
+
+describe('guardian email', () => {
+  const parseSheet = (header: string[], ...lines: string[][]) => {
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([header, ...lines]), 'Students');
+    return parseWorkbookToRows(toBytes(wb));
+  };
+  const base = [
+    'Ama', 'Kollie', '2014-03-02', 'FEMALE', '2026-09-01', 'GRADE_5', '',
+    'Musu', 'Kollie', 'Mother', '+231770000000', 'ama@example.com',
+  ];
+
+  it('the template has a Guardian Email column right after Student Email', () => {
+    expect(HEADERS[11]).toBe('Student Email');
+    expect(HEADERS[12]).toBe('Guardian Email');
+    expect(HEADERS).toHaveLength(13);
+  });
+
+  it('reads the Guardian Email column, trimmed', () => {
+    const [row] = parseSheet(HEADERS, [...base, '  musu@example.com ']);
+    expect(row?.guardianEmail).toBe('musu@example.com');
+    expect(row?.errors).toEqual({});
+  });
+
+  it('reads a camelCase guardianEmail header', () => {
+    const [row] = parseSheet(['First Name', 'guardianEmail'], ['Ama', 'musu@example.com']);
+    expect(row?.guardianEmail).toBe('musu@example.com');
+  });
+
+  it('a file without the column parses with a blank guardian email and no new error', () => {
+    const [row] = parseSheet(HEADERS.slice(0, 12), base);
+    expect(row?.guardianEmail).toBe('');
+    expect(row?.errors).toEqual({});
+  });
+
+  it('a portal-web file (its headers, … grade header, NEMIS ID) parses with no errors', () => {
+    const portalHeaders = [
+      'First Name *', 'Last Name *', 'Date of Birth * (YYYY-MM-DD)', 'Gender * (MALE/FEMALE)',
+      'Admission Date * (YYYY-MM-DD)', 'Grade Level * (KG/K1/K2/GRADE_1…GRADE_12)',
+      'Guardian First Name *', 'Guardian Last Name *', 'Guardian Relationship *', 'Guardian Phone *',
+      'Student Email', 'Guardian Email', 'NEMIS ID',
+    ];
+    const [row] = parseSheet(portalHeaders, [
+      'Ama', 'Kollie', '2014-03-02', 'FEMALE', '2026-09-01', 'GRADE_5',
+      'Musu', 'Kollie', 'Mother', '+231770000000', 'ama@example.com', 'musu@example.com', '',
+    ]);
+    expect(row).toMatchObject({
+      gradeLevel: 'GRADE_5', guardianEmail: 'musu@example.com', studentEmail: 'ama@example.com', nemisId: '',
+    });
+    expect(row?.errors).toEqual({});
+  });
+
+  it('accepts blank and a valid address, rejects a bad one', () => {
+    expect(mk().errors.guardianEmail).toBeUndefined();
+    expect(mk({ guardianEmail: 'musu@school.com' }).errors.guardianEmail).toBeUndefined();
+    expect(mk({ guardianEmail: 'musu@bXc' }).errors.guardianEmail).toBe('Invalid email');
+  });
+
+  it('rejects a new student whose email equals the guardian email, ignoring case and spaces', () => {
+    const row = mk({ studentEmail: ' Jane@School.com', guardianEmail: 'jane@school.com ' });
+    expect(row.errors.studentEmail).toBe("Can't be the same as the guardian's email");
+    expect(row.errors.guardianEmail).toBeUndefined();
+  });
+
+  it('keeps the format error when the student email is invalid as well as equal', () => {
+    expect(mk({ studentEmail: 'a@bXc', guardianEmail: 'a@bXc' }).errors.studentEmail).toBe('Invalid email');
+  });
+
+  it('does not block a claim row with the same two emails, and never sends the guardian email in a claim', () => {
+    const row = mk({ nemisId: generateNemisId(), studentEmail: 'jane@school.com', guardianEmail: 'jane@school.com' });
+    expect(row.errors).toEqual({});
+    const [out] = toBulkClaimRows([{ originalIndex: 0, row }]);
+    expect(out).not.toHaveProperty('guardianEmail');
+  });
+
+  it('the retry file keeps the guardian email in its own column', () => {
+    const wb = buildRetryWorkbook([mk({ guardianEmail: 'musu@example.com' })], [{ originalIndex: 0, reason: 'x' }]);
+    const header = XLSX.utils.sheet_to_json<string[]>(wb.Sheets['Students']!, { header: 1 })[0];
+    expect(header?.slice(-2)).toEqual(['Guardian Email', 'Reason']);
+    expect(parseWorkbookToRows(toBytes(wb))[0]?.guardianEmail).toBe('musu@example.com');
   });
 });
