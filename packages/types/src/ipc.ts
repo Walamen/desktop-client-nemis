@@ -59,6 +59,7 @@ import type {
   CountyDistrictsResult,
   CountyRemoveDeoRequest,
 } from './county-districts';
+import type { CountySchoolDetailResult, CountySchoolsResult } from './county-schools';
 import type {
   CreateGuardianRequest,
   CreateStudentRequest,
@@ -161,6 +162,8 @@ export interface IpcContract {
   'county:get-district': { args: [districtId: string]; result: CountyDistrictDetailResult | null };
   'county:assign-deo': { args: [request: CountyAssignDeoRequest]; result: OnlineCommandResult<null> };
   'county:remove-deo': { args: [request: CountyRemoveDeoRequest]; result: OnlineCommandResult<null> };
+  'county:list-schools': { args: []; result: CountySchoolsResult };
+  'county:get-school': { args: [schoolId: string]; result: CountySchoolDetailResult | null };
   'school:get-summary': { args: []; result: SchoolSummaryResult | null };
   'institution:list': { args: []; result: InstitutionSummaryResult[] };
   'academic-year:get-current': { args: []; result: AcademicYearResult | null };
@@ -351,6 +354,8 @@ export const IpcChannels = {
   COUNTY_GET_DISTRICT: 'county:get-district',
   COUNTY_ASSIGN_DEO: 'county:assign-deo',
   COUNTY_REMOVE_DEO: 'county:remove-deo',
+  COUNTY_LIST_SCHOOLS: 'county:list-schools',
+  COUNTY_GET_SCHOOL: 'county:get-school',
   SCHOOL_GET_SUMMARY: 'school:get-summary',
   INSTITUTION_LIST: 'institution:list',
   ACADEMIC_YEAR_GET_CURRENT: 'academic-year:get-current',

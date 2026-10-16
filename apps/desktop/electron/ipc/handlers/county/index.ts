@@ -3,3 +3,4 @@
 export { registerCountyDashboardHandlers } from './dashboard';
 export { registerCountyDistrictHandlers } from './districts';
 export { registerCountyDeoHandlers } from './deo';
+export { registerCountySchoolHandlers } from './schools';

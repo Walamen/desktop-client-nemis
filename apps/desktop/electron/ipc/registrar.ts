@@ -48,6 +48,7 @@ import {
   registerCountyDashboardHandlers,
   registerCountyDeoHandlers,
   registerCountyDistrictHandlers,
+  registerCountySchoolHandlers,
 } from '@app/ipc/handlers/county';
 
 export type IpcValidator = (args: readonly unknown[]) => void;
@@ -84,6 +85,7 @@ export function registerIpcHandlers(
   registerDashboardHandlers(securedHandle, app);
   registerCountyDashboardHandlers(securedHandle, app);
   registerCountyDistrictHandlers(securedHandle, app);
+  registerCountySchoolHandlers(securedHandle, app);
   registerSchoolHandlers(securedHandle, app);
   registerAcademicYearHandlers(securedHandle, app);
   registerTermHandlers(securedHandle, app);

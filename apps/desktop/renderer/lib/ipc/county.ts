@@ -8,5 +8,7 @@ export const countyIpc = {
     getDashboard: () => query(() => countyBridge.getDashboard()),
     listDistricts: () => query(() => countyBridge.listDistricts()),
     getDistrict: (districtId) => query(() => countyBridge.getDistrict(districtId)),
+    listSchools: () => query(() => countyBridge.listSchools()),
+    getSchool: (schoolId) => query(() => countyBridge.getSchool(schoolId)),
   }),
 };

@@ -36,6 +36,7 @@ import type {
   CountyDistrictsResult,
   CountyRemoveDeoRequest,
 } from './county-districts';
+import type { CountySchoolDetailResult, CountySchoolsResult } from './county-schools';
 import type {
   CreateGuardianRequest,
   CreateStudentRequest,
@@ -160,6 +161,8 @@ export interface CountyApi {
   getDistrict(districtId: string): Promise<CountyDistrictDetailResult | null>;
   assignDeo(request: CountyAssignDeoRequest): Promise<OnlineCommandResult<null>>;
   removeDeo(request: CountyRemoveDeoRequest): Promise<OnlineCommandResult<null>>;
+  listSchools(): Promise<CountySchoolsResult>;
+  getSchool(schoolId: string): Promise<CountySchoolDetailResult | null>;
 }
 export interface SchoolApi {
   getSummary(): Promise<SchoolSummaryResult | null>;

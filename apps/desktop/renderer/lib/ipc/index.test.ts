@@ -51,6 +51,17 @@ describe('createIpcApplicationLayer', () => {
     expect(getDistrict).toHaveBeenCalledWith('d-1');
   });
 
+  it('county.listSchools and county.getSchool return bridged data', async () => {
+    const getSchool = vi.fn(async () => null);
+    (window as unknown as { nemis: unknown }).nemis = fakeNemis({
+      county: { listSchools: vi.fn(async () => ({ schools: [] })), getSchool },
+    });
+    const app = createIpcApplicationLayer();
+    expect((await app.county.listSchools()).data).toEqual({ schools: [] });
+    expect((await app.county.getSchool('s-1')).data).toBeNull();
+    expect(getSchool).toHaveBeenCalledWith('s-1');
+  });
+
   it('identity.getCurrentUser maps null through to a null-data response', async () => {
     (window as unknown as { nemis: unknown }).nemis = fakeNemis({
       identity: { getCurrentUser: vi.fn(async () => null) },

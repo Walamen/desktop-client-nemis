@@ -7,3 +7,5 @@ export const useSchoolsViewModel = () => usePresentation().viewModels.schools;
 export const useCountyDashboardViewModel = () => usePresentation().viewModels.countyDashboard;
 export const useCountyDistrictsViewModel = () => usePresentation().viewModels.countyDistricts;
 export const useCountyDistrictDetailViewModel = () => usePresentation().viewModels.countyDistrictDetail;
+export const useCountySchoolsViewModel = () => usePresentation().viewModels.countySchools;
+export const useCountySchoolDetailViewModel = () => usePresentation().viewModels.countySchoolDetail;
