@@ -1025,6 +1025,26 @@ export function assertRegistryReleaseArgs(args: readonly unknown[]): void {
   assertString(request.reason, 'reason', DESCRIPTION_MAX_LENGTH);
 }
 
+// --- County (CEO) DEO commands ---------------------------------------------
+export function assertCountyAssignDeoArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [request] = args;
+  if (!isPlainObject(request)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(request, ['districtId', 'userId', 'replaceExisting']);
+  assertString(request.districtId, 'districtId', ID_MAX_LENGTH);
+  assertString(request.userId, 'userId', ID_MAX_LENGTH);
+  assertBoolean(request.replaceExisting, 'replaceExisting');
+}
+
+export function assertCountyRemoveDeoArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [request] = args;
+  if (!isPlainObject(request)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(request, ['districtId', 'userId']);
+  assertString(request.districtId, 'districtId', ID_MAX_LENGTH);
+  assertString(request.userId, 'userId', ID_MAX_LENGTH);
+}
+
 export function assertTransferCreateArgs(args: readonly unknown[]): void {
   assertArity(args, 1);
   const [request] = args;

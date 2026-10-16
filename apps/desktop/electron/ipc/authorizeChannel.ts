@@ -127,7 +127,13 @@ const TEACHER_ONLY_CHANNELS = new Set<IpcChannel>([
 
 // County (CEO) portal reads — county-wide aggregates that no other role's
 // screens use.
-const COUNTY_ADMIN_CHANNELS = new Set<IpcChannel>([IpcChannels.COUNTY_GET_DASHBOARD]);
+const COUNTY_ADMIN_CHANNELS = new Set<IpcChannel>([
+  IpcChannels.COUNTY_GET_DASHBOARD,
+  IpcChannels.COUNTY_LIST_DISTRICTS,
+  IpcChannels.COUNTY_GET_DISTRICT,
+  IpcChannels.COUNTY_ASSIGN_DEO,
+  IpcChannels.COUNTY_REMOVE_DEO,
+]);
 
 export function authorizeChannel(channel: IpcChannel, workspaces: WorkspaceManager): void {
   if (PUBLIC_CHANNELS.has(channel)) return;

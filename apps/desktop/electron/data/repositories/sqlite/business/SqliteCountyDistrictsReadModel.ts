@@ -49,7 +49,8 @@ type InstitutionRow = Omit<CountyDistrictInstitution, 'metadata' | 'isActive'> &
  * district pages read the metadata alone, as the web does. */
 function parseMetadata(profile: string | null): Record<string, unknown> | null {
   if (!profile) return null;
-  const { levels: _levels, ...metadata } = JSON.parse(profile) as Record<string, unknown>;
+  const metadata = { ...(JSON.parse(profile) as Record<string, unknown>) };
+  delete metadata.levels;
   return metadata;
 }
 

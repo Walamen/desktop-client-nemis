@@ -35,19 +35,24 @@ describe('authorizeChannel', () => {
     }
   });
 
-  it('allows the county dashboard only for a county administrator', () => {
-    expect(() =>
-      authorizeChannel(IpcChannels.COUNTY_GET_DASHBOARD, workspace(SystemRole.COUNTY_ADMIN)),
-    ).not.toThrow();
-    for (const role of [
-      SystemRole.INSTITUTION_ADMIN,
-      SystemRole.TEACHER,
-      SystemRole.DEO,
-      SystemRole.MINISTRY_ADMIN,
-    ]) {
-      expect(() => authorizeChannel(IpcChannels.COUNTY_GET_DASHBOARD, workspace(role))).toThrow(
-        /county administrator/,
-      );
+  it('allows every county channel only for a county administrator', () => {
+    const channels = [
+      IpcChannels.COUNTY_GET_DASHBOARD,
+      IpcChannels.COUNTY_LIST_DISTRICTS,
+      IpcChannels.COUNTY_GET_DISTRICT,
+      IpcChannels.COUNTY_ASSIGN_DEO,
+      IpcChannels.COUNTY_REMOVE_DEO,
+    ];
+    for (const channel of channels) {
+      expect(() => authorizeChannel(channel, workspace(SystemRole.COUNTY_ADMIN))).not.toThrow();
+      for (const role of [
+        SystemRole.INSTITUTION_ADMIN,
+        SystemRole.TEACHER,
+        SystemRole.DEO,
+        SystemRole.MINISTRY_ADMIN,
+      ]) {
+        expect(() => authorizeChannel(channel, workspace(role))).toThrow(/county administrator/);
+      }
     }
   });
 

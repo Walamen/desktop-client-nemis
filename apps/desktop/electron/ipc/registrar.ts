@@ -44,7 +44,11 @@ import { StudentSyncStatusService } from '@app/data/services/StudentSyncStatusSe
 import { registerTeacherDashboardHandlers } from '@app/ipc/handlers/teacher/dashboard';
 import { registerAssignmentHandlers } from '@app/ipc/handlers/teacher/assignments';
 // County (CEO) portal — see electron/ipc/handlers/county/.
-import { registerCountyDashboardHandlers } from '@app/ipc/handlers/county';
+import {
+  registerCountyDashboardHandlers,
+  registerCountyDeoHandlers,
+  registerCountyDistrictHandlers,
+} from '@app/ipc/handlers/county';
 
 export type IpcValidator = (args: readonly unknown[]) => void;
 
@@ -79,6 +83,7 @@ export function registerIpcHandlers(
 
   registerDashboardHandlers(securedHandle, app);
   registerCountyDashboardHandlers(securedHandle, app);
+  registerCountyDistrictHandlers(securedHandle, app);
   registerSchoolHandlers(securedHandle, app);
   registerAcademicYearHandlers(securedHandle, app);
   registerTermHandlers(securedHandle, app);
@@ -94,6 +99,7 @@ export function registerIpcHandlers(
   const refresh = () => syncWorker.pullNow();
   registerRegistryHandlers(securedHandle, gateway, refresh);
   registerTransferHandlers(securedHandle, gateway, refresh);
+  registerCountyDeoHandlers(securedHandle, gateway, refresh);
 
   registerTeacherDashboardHandlers(securedHandle, app);
   registerAssignmentHandlers(securedHandle, app, workspaces);

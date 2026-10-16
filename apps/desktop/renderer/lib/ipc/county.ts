@@ -6,5 +6,7 @@ import { group, query } from './core';
 export const countyIpc = {
   county: group<CountyApplicationService>('county', {
     getDashboard: () => query(() => countyBridge.getDashboard()),
+    listDistricts: () => query(() => countyBridge.listDistricts()),
+    getDistrict: (districtId) => query(() => countyBridge.getDistrict(districtId)),
   }),
 };

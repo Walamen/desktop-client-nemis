@@ -478,6 +478,31 @@ describe('BackendProvisioningGateway', () => {
       expect(JSON.parse(String(init.body))).toEqual({ status: 'APPROVED', classId: 'c', termId: 't' });
     });
 
+    it('assignDistrictOfficer POSTs replaceExisting to the district officers endpoint', async () => {
+      const fetchMock = vi.fn(async () => response({ id: 'org-1' }));
+      vi.stubGlobal('fetch', fetchMock);
+      expect(await buildGateway().assignDistrictOfficer({ districtId: 'd 1', userId: 'deo-1', replaceExisting: true })).toBeNull();
+      const [url, init] = fetchMock.mock.calls[0] as unknown as [URL, RequestInit];
+      expect(url).toEqual(new URL('https://nemis.example/districts/d%201/officers/deo-1'));
+      expect(init.method).toBe('POST');
+      expect(JSON.parse(String(init.body))).toEqual({ replaceExisting: true });
+    });
+
+    it('removeDistrictOfficer DELETEs the assignment', async () => {
+      const fetchMock = vi.fn(async () => response({ id: 'org-1', isActive: false }));
+      vi.stubGlobal('fetch', fetchMock);
+      expect(await buildGateway().removeDistrictOfficer({ districtId: 'd-1', userId: 'deo-1' })).toBeNull();
+      const [url, init] = fetchMock.mock.calls[0] as unknown as [URL, RequestInit];
+      expect(url).toEqual(new URL('https://nemis.example/districts/d-1/officers/deo-1'));
+      expect(init.method).toBe('DELETE');
+    });
+
+    it('assignDistrictOfficer surfaces the server refusal message', async () => {
+      vi.stubGlobal('fetch', vi.fn(async () => errorResponse(409, { message: 'This district already has an assigned DEO (A B). Confirm replacement to assign a new DEO.' })));
+      await expect(buildGateway().assignDistrictOfficer({ districtId: 'd-1', userId: 'deo-2', replaceExisting: false }))
+        .rejects.toMatchObject({ status: 409, remoteMessage: expect.stringContaining('already has an assigned DEO') });
+    });
+
     it('cancel DELETEs and returns the id it was given', async () => {
       const fetchMock = vi.fn(async () => response({ message: 'cancelled' }));
       vi.stubGlobal('fetch', fetchMock);

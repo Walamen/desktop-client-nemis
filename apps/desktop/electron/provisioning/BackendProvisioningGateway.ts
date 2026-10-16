@@ -21,6 +21,8 @@ import {
   type RegistryReleaseResult,
   type RemoteRecordRef,
   type SchoolSearchResult,
+  type CountyAssignDeoRequest,
+  type CountyRemoveDeoRequest,
   type TransferCreateRequest,
   type TransferReviewRequest,
   type DeviceIdentity,
@@ -245,6 +247,29 @@ export class BackendProvisioningGateway {
       ONLINE_COMMAND,
     );
     return { id };
+  }
+
+  /** County (CEO) Manage DEO: districts.service assignOfficer. The response
+   * is not used — the forced pull that follows writes local truth. */
+  async assignDistrictOfficer(request: CountyAssignDeoRequest): Promise<null> {
+    await this.authorized(
+      `/districts/${encodeURIComponent(request.districtId)}/officers/${encodeURIComponent(request.userId)}`,
+      { method: 'POST', body: JSON.stringify({ replaceExisting: request.replaceExisting }) },
+      () => undefined,
+      ONLINE_COMMAND,
+    );
+    return null;
+  }
+
+  /** County (CEO) Manage DEO: districts.service removeOfficer. */
+  async removeDistrictOfficer(request: CountyRemoveDeoRequest): Promise<null> {
+    await this.authorized(
+      `/districts/${encodeURIComponent(request.districtId)}/officers/${encodeURIComponent(request.userId)}`,
+      { method: 'DELETE' },
+      () => undefined,
+      ONLINE_COMMAND,
+    );
+    return null;
   }
 
   /** Destination-school search for "New transfer" — the desktop only stores

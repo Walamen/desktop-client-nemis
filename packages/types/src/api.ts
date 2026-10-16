@@ -31,6 +31,12 @@ import type {
 } from './dashboard';
 import type { CountyDashboardResult } from './county-dashboard';
 import type {
+  CountyAssignDeoRequest,
+  CountyDistrictDetailResult,
+  CountyDistrictsResult,
+  CountyRemoveDeoRequest,
+} from './county-districts';
+import type {
   CreateGuardianRequest,
   CreateStudentRequest,
   CreateAndEnrollStudentRequest,
@@ -150,6 +156,10 @@ export interface DashboardApi {
 /** County (CEO) portal reads. */
 export interface CountyApi {
   getDashboard(): Promise<CountyDashboardResult>;
+  listDistricts(): Promise<CountyDistrictsResult>;
+  getDistrict(districtId: string): Promise<CountyDistrictDetailResult | null>;
+  assignDeo(request: CountyAssignDeoRequest): Promise<OnlineCommandResult<null>>;
+  removeDeo(request: CountyRemoveDeoRequest): Promise<OnlineCommandResult<null>>;
 }
 export interface SchoolApi {
   getSummary(): Promise<SchoolSummaryResult | null>;

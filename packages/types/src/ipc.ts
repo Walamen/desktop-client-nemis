@@ -54,6 +54,12 @@ import type {
 } from './dashboard';
 import type { CountyDashboardResult } from './county-dashboard';
 import type {
+  CountyAssignDeoRequest,
+  CountyDistrictDetailResult,
+  CountyDistrictsResult,
+  CountyRemoveDeoRequest,
+} from './county-districts';
+import type {
   CreateGuardianRequest,
   CreateStudentRequest,
   CreateAndEnrollStudentRequest,
@@ -151,6 +157,10 @@ export interface IpcContract {
   'settings:get': { args: [key: string]; result: unknown };
   'dashboard:get-overview': { args: []; result: DashboardOverviewResult };
   'county:get-dashboard': { args: []; result: CountyDashboardResult };
+  'county:list-districts': { args: []; result: CountyDistrictsResult };
+  'county:get-district': { args: [districtId: string]; result: CountyDistrictDetailResult | null };
+  'county:assign-deo': { args: [request: CountyAssignDeoRequest]; result: OnlineCommandResult<null> };
+  'county:remove-deo': { args: [request: CountyRemoveDeoRequest]; result: OnlineCommandResult<null> };
   'school:get-summary': { args: []; result: SchoolSummaryResult | null };
   'institution:list': { args: []; result: InstitutionSummaryResult[] };
   'academic-year:get-current': { args: []; result: AcademicYearResult | null };
@@ -337,6 +347,10 @@ export const IpcChannels = {
   SETTINGS_GET: 'settings:get',
   DASHBOARD_GET_OVERVIEW: 'dashboard:get-overview',
   COUNTY_GET_DASHBOARD: 'county:get-dashboard',
+  COUNTY_LIST_DISTRICTS: 'county:list-districts',
+  COUNTY_GET_DISTRICT: 'county:get-district',
+  COUNTY_ASSIGN_DEO: 'county:assign-deo',
+  COUNTY_REMOVE_DEO: 'county:remove-deo',
   SCHOOL_GET_SUMMARY: 'school:get-summary',
   INSTITUTION_LIST: 'institution:list',
   ACADEMIC_YEAR_GET_CURRENT: 'academic-year:get-current',

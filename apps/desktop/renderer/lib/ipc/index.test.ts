@@ -40,6 +40,17 @@ describe('createIpcApplicationLayer', () => {
     expect(res.data.county).toEqual({ id: 'county-1', name: 'Grand Bassa' });
   });
 
+  it('county.listDistricts and county.getDistrict return bridged data', async () => {
+    const getDistrict = vi.fn(async () => null);
+    (window as unknown as { nemis: unknown }).nemis = fakeNemis({
+      county: { listDistricts: vi.fn(async () => ({ districts: [] })), getDistrict },
+    });
+    const app = createIpcApplicationLayer();
+    expect((await app.county.listDistricts()).data).toEqual({ districts: [] });
+    expect((await app.county.getDistrict('d-1')).data).toBeNull();
+    expect(getDistrict).toHaveBeenCalledWith('d-1');
+  });
+
   it('identity.getCurrentUser maps null through to a null-data response', async () => {
     (window as unknown as { nemis: unknown }).nemis = fakeNemis({
       identity: { getCurrentUser: vi.fn(async () => null) },
