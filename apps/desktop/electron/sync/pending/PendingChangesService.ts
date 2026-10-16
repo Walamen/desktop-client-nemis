@@ -58,7 +58,17 @@ export class PendingChangesService {
     return { records: this.labels.resolve(ctx.db, rows), total };
   }
 
+  /** Mirrors getSummary's degradation: a source that cannot be counted is
+   * skipped (and logged), so the badge equals the page total. */
   countPending(ctx: PendingContext): number {
-    return this.sources.reduce((sum, source) => sum + source.countPending(ctx), 0);
+    let total = 0;
+    for (const source of this.sources) {
+      try {
+        total += source.countPending(ctx);
+      } catch (error) {
+        logger.error(`PendingChangesService: the ${source.source} source could not be counted`, error);
+      }
+    }
+    return total;
   }
 }

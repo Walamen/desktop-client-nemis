@@ -4,7 +4,18 @@ import { logger } from '@app/services/logger';
 import { buildGroup } from './groups';
 import { PendingChangesService } from './PendingChangesService';
 import type { PendingSourceAdapter, RawPendingRow } from './types';
-import { NOW, PAST, ctx, memoryDb, queueRow, seedAssignment, seedGradeCompletion } from './pending.test-support';
+import {
+  FUTURE,
+  NOW,
+  PAST,
+  ctx,
+  memoryDb,
+  queueRow,
+  seedAssignment,
+  seedGradeCompletion,
+  seedReversal,
+  seedStudent,
+} from './pending.test-support';
 
 function fake(source: PendingSource, groups: PendingGroupSummary[], opts: { throws?: boolean; failed?: number; rows?: RawPendingRow[] } = {}): PendingSourceAdapter {
   return {
@@ -65,5 +76,47 @@ describe('PendingChangesService', () => {
     seedAssignment(db, 'a1');
     seedGradeCompletion(db, 'gc1');
     expect(new PendingChangesService().countPending(ctx(db))).toBe(4);
+  });
+
+  it('skips a source whose count throws, keeping the healthy source count', () => {
+    const logError = vi.spyOn(logger, 'error').mockImplementation(() => {});
+    try {
+      const broken: PendingSourceAdapter = {
+        ...fake('outbox', []),
+        countPending: vi.fn(() => {
+          throw new Error('boom');
+        }),
+      };
+      const service = new PendingChangesService([broken, fake('assignments', [buildGroup('assignments', 'assignments', { waiting: 2 }, PAST)])]);
+      expect(service.countPending(ctx(memoryDb()))).toBe(2);
+      expect(logError).toHaveBeenCalled();
+    } finally {
+      logError.mockRestore();
+    }
+  });
+
+  it('keeps the badge equal to the page total on a real database', () => {
+    const db = memoryDb();
+    // Outbox: one of each state. Sending, waiting, retrying, held, dead letter, completed.
+    queueRow(db, { id: 'o-wait', seq: 1 });
+    queueRow(db, { id: 'o-send', seq: 2, status: 'in_flight' });
+    queueRow(db, { id: 'o-retry', seq: 3, nextAttemptAt: FUTURE });
+    queueRow(db, { id: 'o-held', seq: 4 });
+    queueRow(db, { id: 'o-dead', seq: 5, status: 'failed', deadLetter: 1 });
+    queueRow(db, { id: 'o-done', seq: 6, status: 'completed' });
+    // Bespoke sources: one dirty assignment, one pending completion for this
+    // institution, one for another institution, one unsynced reversal.
+    seedAssignment(db, 'a1');
+    seedGradeCompletion(db, 'gc-here');
+    seedGradeCompletion(db, 'gc-other', { studentId: 's2', institutionId: 'school-2' });
+    seedStudent(db, 's1', 'Ama', 'Mensah');
+    seedReversal(db, 'r1', 'p1');
+
+    const service = new PendingChangesService();
+    const summary = service.getSummary(ctx(db));
+    // 4 outbox (waiting, sending, retrying, held) + 1 assignment + 1 grade completion + 1 reversal.
+    expect(summary.total).toBe(7);
+    expect(summary.total).toBe(service.countPending(ctx(db)));
+    expect(summary.failedCount).toBe(1);
   });
 });
