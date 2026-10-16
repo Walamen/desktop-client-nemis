@@ -15,6 +15,7 @@ import { useCountySchoolDetailViewModel } from "@/lib/presentation/hooks/county"
 import { useViewModel } from "@/hooks/use-view-model";
 import { useRevalidateOnSync } from "@/hooks/use-revalidate-on-sync";
 import { SchoolPhoto } from "@/components/county/schools/SchoolPhoto";
+import { resolveSchoolDetail } from "@/components/county/schools/school-detail-state";
 
 // ── Ownership ─────────────────────────────────────────────────────────────────
 
@@ -106,15 +107,10 @@ export function SchoolDetailPage() {
     if (schoolId) void vm.load(schoolId);
   }, [vm, schoolId]);
 
-  const loaded =
-    detail.status === "success" || detail.status === "refreshing" ? detail.data : null;
-  // The view model outlives the page: never show the previously opened school.
-  const school = loaded && loaded.id === schoolId ? loaded : null;
-  const isLoading =
-    !!schoolId &&
-    !school &&
-    (detail.status === "idle" || detail.status === "loading" || detail.status === "refreshing");
-  const isError = !schoolId || detail.status === "error" || detail.status === "empty";
+  const requestedId = useViewModel(vm.store, (s) => s.requestedId);
+  // The view model outlives the page: never show the previously opened
+  // school, nor a not-found left over from it.
+  const { school, isLoading, isError } = resolveSchoolDetail(schoolId, requestedId, detail);
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">

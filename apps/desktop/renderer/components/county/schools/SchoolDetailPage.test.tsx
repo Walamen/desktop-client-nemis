@@ -88,6 +88,17 @@ describe('County School detail page', () => {
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Alpha High' })).toBeInTheDocument());
     searchId = 's-2';
     rerender();
+    // Neither A's data nor a "not found" warning while B loads — only the spinner.
+    expect(screen.queryByText("School not found or you don't have access.")).not.toBeInTheDocument();
     await waitFor(() => expect(screen.queryByRole('heading', { name: 'Alpha High' })).not.toBeInTheDocument());
+    expect(screen.queryByText("School not found or you don't have access.")).not.toBeInTheDocument();
+  });
+
+  it('does not flash a stale not-found result from a previous id', async () => {
+    const { rerender } = renderWith(async (id) => (id === 's-1' ? null : new Promise(() => {})));
+    await waitFor(() => expect(screen.getByText("School not found or you don't have access.")).toBeInTheDocument());
+    searchId = 's-2';
+    rerender();
+    expect(screen.queryByText("School not found or you don't have access.")).not.toBeInTheDocument();
   });
 });

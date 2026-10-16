@@ -8,6 +8,9 @@ import type { SchoolDetailView } from './county-schools-views';
 
 export interface CountySchoolDetailState {
   readonly detail: AsyncState<SchoolDetailView>;
+  /** The school the latest load was for — `detail` may still describe an
+   * earlier one, since this view model outlives the page. */
+  readonly requestedId: string | null;
 }
 
 export interface CountySchoolDetailViewModelDeps {
@@ -16,7 +19,7 @@ export interface CountySchoolDetailViewModelDeps {
 
 /** County School detail page. An unknown or other-county id loads as `empty`. */
 export class CountySchoolDetailViewModel {
-  readonly store = createStore<CountySchoolDetailState>(() => ({ detail: idleState() }));
+  readonly store = createStore<CountySchoolDetailState>(() => ({ detail: idleState(), requestedId: null }));
 
   private readonly query: GetCountySchoolDetailUiQuery;
 
@@ -25,6 +28,7 @@ export class CountySchoolDetailViewModel {
   }
 
   async load(schoolId: string): Promise<void> {
+    this.store.setState({ requestedId: schoolId });
     await trackQuery({
       access: {
         get: () => this.store.getState().detail,

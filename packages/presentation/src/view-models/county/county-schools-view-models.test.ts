@@ -45,6 +45,15 @@ describe('CountySchoolDetailViewModel', () => {
     });
   });
 
+  it('records which school it was asked for as soon as a load starts', async () => {
+    const { app } = createTestApplication();
+    const vm = new CountySchoolDetailViewModel({ county: app.county });
+    expect(vm.store.getState().requestedId).toBeNull();
+    const loading = vm.load('s-9');
+    expect(vm.store.getState().requestedId).toBe('s-9');
+    await loading;
+  });
+
   it('is empty for an unknown school', async () => {
     const { app } = createTestApplication();
     const vm = new CountySchoolDetailViewModel({ county: app.county });
