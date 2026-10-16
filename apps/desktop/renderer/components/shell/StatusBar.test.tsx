@@ -66,4 +66,24 @@ describe('StatusBar', () => {
     expect(within(link).getByText('0')).toHaveAttribute('data-tone', 'none');
     expect(link).toHaveAttribute('href', '/government/teacher/sync-pending');
   });
+
+  it('shows conflicts in a red badge linking to the conflicts page', async () => {
+    getSyncStatus.mockResolvedValue({ ...status(0), conflicts: 2 });
+    render(<StatusBar />);
+    const link = await screen.findByRole('link', { name: '2 conflicts' });
+    expect(link).toHaveAttribute('href', '/government/teacher/sync-conflicts');
+    expect(within(link).getByText('2')).toHaveAttribute('data-tone', 'error');
+  });
+
+  it('uses the singular for one conflict and a neutral badge for none', async () => {
+    getSyncStatus.mockResolvedValue({ ...status(0), conflicts: 1 });
+    const { unmount } = render(<StatusBar />);
+    expect(await screen.findByRole('link', { name: '1 conflict' })).toBeInTheDocument();
+    unmount();
+
+    getSyncStatus.mockResolvedValue(status(0));
+    render(<StatusBar />);
+    const none = await screen.findByRole('link', { name: '0 conflicts' });
+    expect(within(none).getByText('0')).toHaveAttribute('data-tone', 'none');
+  });
 });

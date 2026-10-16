@@ -9,6 +9,7 @@ import {
   Database,
   RefreshCw,
   CloudUpload,
+  AlertTriangle,
   ChevronRight,
   type LucideIcon,
 } from 'lucide-react';
@@ -89,9 +90,14 @@ export function StatusBar() {
           ariaLabel={pendingLabel(localSync?.pending ?? 0)}
           tone="pending"
         />
-        <Link className={localSync?.conflicts ? 'font-semibold text-red-700' : ''} href={`${portalBase}/sync-conflicts`}>
-          {localSync?.conflicts ?? 0} conflicts
-        </Link>
+        <StatusBarLink
+          href={`${portalBase}/sync-conflicts`}
+          icon={AlertTriangle}
+          count={localSync?.conflicts ?? 0}
+          label={conflictWord(localSync?.conflicts ?? 0)}
+          ariaLabel={`${localSync?.conflicts ?? 0} ${conflictWord(localSync?.conflicts ?? 0)}`}
+          tone="error"
+        />
       </div>
       <span>NEMIS Desktop v{version ?? '—'}</span>
     </footer>
@@ -152,4 +158,8 @@ function StatusBarLink({
 
 function pendingLabel(count: number): string {
   return `${count} pending change${count === 1 ? '' : 's'}`;
+}
+
+function conflictWord(count: number): string {
+  return count === 1 ? 'conflict' : 'conflicts';
 }
