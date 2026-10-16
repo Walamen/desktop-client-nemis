@@ -66,6 +66,15 @@ describe('SqliteCountySchoolsReadModel', () => {
   });
   afterEach(() => test.cleanup());
 
+  it('lists only SCHOOL-type institutions, as the web asks findAll for type SCHOOL', () => {
+    school('s', 'Alpha');
+    school('t', 'Tech Institute');
+    db.prepare(`UPDATE institutions SET type = 'TVET' WHERE id = ?`).run('t');
+    expect(readModel.listActiveSchools().map((row) => row.id)).toEqual(['s']);
+    // findOne has no type filter: the detail page still opens a TVET.
+    expect(readModel.getSchool('t')).toMatchObject({ id: 't', type: 'TVET' });
+  });
+
   it('lists active own-county schools by name with district, levels, all-student count and photo', () => {
     county();
     district('d-1', 'Buchanan');

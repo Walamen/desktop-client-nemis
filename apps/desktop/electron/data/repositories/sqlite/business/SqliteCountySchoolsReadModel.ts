@@ -75,7 +75,7 @@ export class SqliteCountySchoolsReadModel implements ICountySchoolsReadModel {
           `SELECT i.id, i.name, i.code, i.type, i.isActive, d.name AS districtName, i.profile, i.details,
              (SELECT COUNT(*) FROM ${students} s WHERE s.institutionId = i.id) AS studentCount
            FROM ${institutions} i LEFT JOIN ${districts} d ON d.id = i.districtId
-           WHERE i.isActive = 1 AND ${OWN_COUNTY}
+           WHERE i.isActive = 1 AND i.type = 'SCHOOL' AND ${OWN_COUNTY}
            ORDER BY i.name ASC`,
         )
         .all() as ListRow[];

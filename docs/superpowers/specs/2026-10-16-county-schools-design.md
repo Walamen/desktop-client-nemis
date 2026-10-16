@@ -33,7 +33,7 @@ photos appear whenever the device is online.
 ## Background: what the web pages read
 
 **List** (`SchoolsPage`): `GET /institutions?countyId=` (institutions.service `findAll`):
-**active** institutions of the county, **any type**, ordered by name, with `district`,
+**active** institutions of the county of **type `SCHOOL`** (portal-web always sends `type: "SCHOOL"`), ordered by name, with `district`,
 `levels`, `_count.students` (all students, no `isActive` filter) and `photoUrl`. Plus
 `GET /counties/:id` (header name) and `GET /districts?countyId=` (Districts card = active
 districts of the county). Client-side: search over name/code/district name; "School Type"
@@ -91,7 +91,7 @@ Sent for every scope (small; ignored by School Admin / Teacher devices).
   counties)`, all rows when no county row has synced):
   ```ts
   listActiveSchools(): CountySchoolListItem[];
-  // active, any type, ORDER BY name: { id, name, code, type, isActive, districtName,
+  // active, type SCHOOL, ORDER BY name: { id, name, code, type, isActive, districtName,
   //   levels: string[] (profile.levels), studentCount (ALL students), photoUrl (details) }
   getSchool(id: string): CountySchoolDetailRow | null;
   // own county, any approval/active status: institution columns + metadata (profile minus
