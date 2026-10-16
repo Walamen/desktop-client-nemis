@@ -47,7 +47,7 @@ export function createApplicationComposition(
     institutions: dataLayer.repositories.institutions,
     districts: dataLayer.repositories.districts,
     countyAnalytics: dataLayer.repositories.countyAnalytics,
-    countyDistricts: new Proxy({} as never, { get: () => () => notBuilt('CountyDistricts') }),
+    countyDistricts: dataLayer.repositories.countyDistricts,
     users: dataLayer.repositories.users,
     academicYears: dataLayer.repositories.academicYears,
     classes: dataLayer.repositories.classes,

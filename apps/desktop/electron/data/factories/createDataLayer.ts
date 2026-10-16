@@ -3,6 +3,7 @@ import type {
   IInstitutionRepository,
   IDistrictRepository,
   ICountyAnalyticsReadModel,
+  ICountyDistrictsReadModel,
   IUserRepository,
   IAcademicYearRepository,
   IClassRepository,
@@ -32,6 +33,7 @@ import { SqliteSubjectRepository } from '../repositories/sqlite/business/SqliteS
 import { SqliteInstitutionRepository } from '../repositories/sqlite/business/SqliteInstitutionRepository';
 import { SqliteDistrictRepository } from '../repositories/sqlite/business/SqliteDistrictRepository';
 import { SqliteCountyAnalyticsReadModel } from '../repositories/sqlite/business/SqliteCountyAnalyticsReadModel';
+import { SqliteCountyDistrictsReadModel } from '../repositories/sqlite/business/SqliteCountyDistrictsReadModel';
 import { SqliteStudentRepository } from '../repositories/sqlite/business/SqliteStudentRepository';
 import { SqliteUserRepository } from '../repositories/sqlite/business/SqliteUserRepository';
 import { SqliteGuardianRepository } from '../repositories/sqlite/business/SqliteGuardianRepository';
@@ -63,6 +65,7 @@ export interface DataLayer {
     institutions: IInstitutionRepository;
     districts: IDistrictRepository;
     countyAnalytics: ICountyAnalyticsReadModel;
+    countyDistricts: ICountyDistrictsReadModel;
     users: IUserRepository;
     academicYears: IAcademicYearRepository;
     classes: IClassRepository;
@@ -127,6 +130,7 @@ export function createDataLayer(manager: DatabaseManager, log: DatabaseLogger): 
   const institutions = new SqliteInstitutionRepository(context);
   const districts = new SqliteDistrictRepository(context);
   const countyAnalytics = new SqliteCountyAnalyticsReadModel(context);
+  const countyDistricts = new SqliteCountyDistrictsReadModel(context);
   const users = new SqliteUserRepository(context);
   const academicYears = new SqliteAcademicYearRepository(context);
   const classes = new SqliteClassRepository(context);
@@ -174,6 +178,7 @@ export function createDataLayer(manager: DatabaseManager, log: DatabaseLogger): 
       institutions,
       districts,
       countyAnalytics,
+      countyDistricts,
       users,
       academicYears,
       classes,
