@@ -91,7 +91,8 @@ web; offline the pages stay readable and the DEO actions are clearly unavailable
   (`uniqueBy` id). Never `since`-filtered (unchanged), so every forced pull carries them.
   Other scopes unchanged.
 - **Row fields** (all scopes; harmless where unused):
-  - `users`: `phoneNumber`, `lastLoginAt` (ISO or null), `photoUrl` (from `imageUrl`).
+  - `users`: `phoneNumber`, `lastLoginAt` (ISO or null), `photoUrl` (from `imageUrl`),
+    `createdAt` (ISO; the web lists DEOs newest first, `orderBy createdAt desc`).
   - `districts`: `code`.
   - `institutions`: `contactPhone`, `contactPersonPhone`, `emisCode`, `officialSchoolCode`.
 - `DESKTOP_ROLES` already contains DEO (the role list the existing clause uses).
@@ -99,7 +100,7 @@ web; offline the pages stay readable and the DEO actions are clearly unavailable
 ### Desktop
 
 - **Migration 032** `add-county-districts-columns` (all nullable, `ALTER TABLE … ADD COLUMN`):
-  `districts.code`, `users.phoneNumber`, `users.lastLoginAt`, `users.photoUrl`,
+  `districts.code`, `users.phoneNumber`, `users.lastLoginAt`, `users.photoUrl`, `users.createdAt`,
   `institutions.contactPhone`, `institutions.contactPersonPhone`, `institutions.emisCode`,
   `institutions.officialSchoolCode`. None of these tables has outbox triggers.
 - `ProvisioningImporter` `SPECS`: add the new columns to `districts`, `users`, `institutions`.
