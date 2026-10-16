@@ -45,6 +45,13 @@ describe('StatusBar', () => {
     expect(link).toHaveAttribute('href', '/government/teacher/sync-pending');
   });
 
+  it('formats large pending counts with thousands separators', async () => {
+    getSyncStatus.mockResolvedValue(status(1250));
+    render(<StatusBar />);
+    const link = await screen.findByRole('link', { name: '1,250 pending changes' });
+    expect(within(link).getByText('1,250')).toHaveAttribute('data-tone', 'pending');
+  });
+
   it('uses the singular for one pending change', async () => {
     getSyncStatus.mockResolvedValue(status(1));
     render(<StatusBar />);

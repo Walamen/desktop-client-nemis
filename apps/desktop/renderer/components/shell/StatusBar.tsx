@@ -58,6 +58,8 @@ export function StatusBar() {
     return () => window.clearInterval(timer);
   }, [refresh]);
   const portalBase = (pathname ?? '/government/school-admin').split('/').slice(0, 3).join('/');
+  const pending = localSync?.pending ?? 0;
+  const conflicts = localSync?.conflicts ?? 0;
 
   return (
     <footer
@@ -85,17 +87,17 @@ export function StatusBar() {
         <StatusBarLink
           href={`${portalBase}/sync-pending`}
           icon={CloudUpload}
-          count={localSync?.pending ?? 0}
+          count={pending}
           label="pending"
-          ariaLabel={pendingLabel(localSync?.pending ?? 0)}
+          ariaLabel={pendingLabel(pending)}
           tone="pending"
         />
         <StatusBarLink
           href={`${portalBase}/sync-conflicts`}
           icon={AlertTriangle}
-          count={localSync?.conflicts ?? 0}
-          label={conflictWord(localSync?.conflicts ?? 0)}
-          ariaLabel={`${localSync?.conflicts ?? 0} ${conflictWord(localSync?.conflicts ?? 0)}`}
+          count={conflicts}
+          label={conflictWord(conflicts)}
+          ariaLabel={`${formatCount(conflicts)} ${conflictWord(conflicts)}`}
           tone="error"
         />
       </div>
@@ -139,16 +141,16 @@ function StatusBarLink({
       href={href}
       aria-label={ariaLabel}
       title={ariaLabel}
-      className="inline-flex items-center gap-1.5 rounded-button px-2 py-0.5 hover:bg-slate-200 hover:text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
+      className="inline-flex items-center gap-1.5 -mx-2 rounded-button px-2 py-0.5 hover:bg-slate-200 hover:text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
     >
       <Icon aria-hidden="true" className={`w-3.5 h-3.5 ${active ? ICON_TONE[tone] : ''}`} />
       <span
         data-tone={active ? tone : 'none'}
         className={`inline-flex min-w-[1.25rem] justify-center rounded-button px-1.5 text-[10px] font-semibold leading-4 ${
-          active ? BADGE_TONE[tone] : 'bg-slate-200 text-slate-700'
+          active ? BADGE_TONE[tone] : 'bg-white text-slate-700'
         }`}
       >
-        {count}
+        {formatCount(count)}
       </span>
       {label}
       <ChevronRight aria-hidden="true" className="w-3 h-3" />
@@ -156,8 +158,12 @@ function StatusBarLink({
   );
 }
 
+function formatCount(count: number): string {
+  return count.toLocaleString('en-US');
+}
+
 function pendingLabel(count: number): string {
-  return `${count} pending change${count === 1 ? '' : 's'}`;
+  return `${formatCount(count)} pending change${count === 1 ? '' : 's'}`;
 }
 
 function conflictWord(count: number): string {
