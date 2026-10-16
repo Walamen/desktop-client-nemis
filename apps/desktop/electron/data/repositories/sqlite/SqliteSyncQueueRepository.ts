@@ -32,6 +32,14 @@ const SYNC_QUEUE_COLUMNS = [
   'seq',
 ] as const;
 
+/** Lowest seq of a backed-off pending row. Every row written after it waits
+ * (nextBatch), so a student's guardian link and enrolment are never pushed
+ * before the student. Shared with the Pending changes page's "held" state.
+ * Bind: now (ISO). */
+export const OUTBOX_BLOCKER_SQL = `SELECT MIN(seq) AS blocker FROM sync_queue
+         WHERE status = 'pending' AND deadLetter = 0
+           AND nextAttemptAt IS NOT NULL AND nextAttemptAt > ?`;
+
 export class SqliteSyncQueueRepository
   extends BaseRepository<SyncQueueRow, SyncQueueItem>
   implements ISyncQueueRepository
@@ -89,11 +97,7 @@ export class SqliteSyncQueueRepository
     // first and rejected. Only pending rows block — a dead-lettered row is
     // 'failed' and never retries on its own, so it must not stall the queue.
     const { blocker } = this.statements
-      .get(
-        `SELECT MIN(seq) AS blocker FROM sync_queue
-         WHERE status = 'pending' AND deadLetter = 0
-           AND nextAttemptAt IS NOT NULL AND nextAttemptAt > ?`,
-      )
+      .get(OUTBOX_BLOCKER_SQL)
       .get(now) as { blocker: number | null };
     const due = and(eq('status', 'pending'), or(isNull('nextAttemptAt'), lte('nextAttemptAt', now)));
     return this.selectWhere(

@@ -12,6 +12,7 @@ import { ProvisioningImporter } from '@app/provisioning/ProvisioningImporter';
 import { AssignmentSyncService } from './AssignmentSyncService';
 import { FeeReversalSyncService } from './FeeReversalSyncService';
 import { GradeCompletionSyncService } from './GradeCompletionSyncService';
+import { FEE_REVERSAL_PENDING, GRADE_COMPLETION_PENDING } from './pendingPredicates';
 import { logger } from '@app/services/logger';
 import { hasRealDisagreement, unwrapLocalPayload } from '@nemis-desktop/shared';
 
@@ -118,12 +119,12 @@ export class DesktopSyncWorker {
       // deliberately stays below the queue drain (see feeReversalSync call), so
       // this only keeps the cycle alive long enough to reach it.
       reversalPending = workspace.database.connection.prepare(
-        `SELECT 1 found FROM fee_payment_reversals WHERE syncedAt IS NULL LIMIT 1`,
+        `SELECT 1 found FROM fee_payment_reversals WHERE ${FEE_REVERSAL_PENDING} LIMIT 1`,
       ).get() as { found: number } | undefined;
       // Queued end-of-year decisions are the same story: own REST path, never
       // a sync_queue row, so a pending one must keep an idle cycle alive.
       completionPending = workspace.database.connection.prepare(
-        `SELECT 1 found FROM grade_completions WHERE syncState='pending' AND institutionId=? LIMIT 1`,
+        `SELECT 1 found FROM grade_completions WHERE ${GRADE_COMPLETION_PENDING} LIMIT 1`,
       ).get(institutionIdOf(workspace.user)) as { found: number } | undefined;
     } catch (error) {
       this.#running = false;

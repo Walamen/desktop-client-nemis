@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { Database as SqliteDatabase } from 'better-sqlite3';
 import type { BackendProvisioningGateway } from '@app/provisioning/BackendProvisioningGateway';
 import { logger } from '@app/services/logger';
+import { FEE_REVERSAL_PENDING, feePaymentUnsettled } from './pendingPredicates';
 
 interface ReversalRow {
   id: string;
@@ -24,7 +25,7 @@ export class FeeReversalSyncService {
   async pushPending(db: SqliteDatabase): Promise<void> {
     const rows = db
       .prepare(
-        `SELECT id, paymentId, reason, notes FROM fee_payment_reversals WHERE syncedAt IS NULL`,
+        `SELECT id, paymentId, reason, notes FROM fee_payment_reversals WHERE ${FEE_REVERSAL_PENDING}`,
       )
       .all() as ReversalRow[];
 
@@ -33,13 +34,10 @@ export class FeeReversalSyncService {
       // Anything other than 'completed' means this payment's create is still
       // in flight, still queued, or has failed and may yet retry — in every
       // one of those cases the reversal must wait rather than race ahead.
-      const pendingCreate = db
-        .prepare(
-          `SELECT 1 FROM sync_queue
-           WHERE entityType='fee_payments' AND entityId=? AND status<>'completed' LIMIT 1`,
-        )
-        .get(row.paymentId);
-      if (pendingCreate) continue;
+      const { blocked } = db
+        .prepare(`SELECT ${feePaymentUnsettled('?')} AS blocked`)
+        .get(row.paymentId) as { blocked: number };
+      if (blocked) continue;
 
       try {
         await this.gateway.reverseFeePayment(row.paymentId, {

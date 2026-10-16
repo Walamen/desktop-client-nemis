@@ -3,6 +3,7 @@ import { RemoteRejectedError } from '@nemis-desktop/shared';
 import type { CompletionDecision, SaveCompletionsRequest } from '@nemis-desktop/types';
 import type { BackendProvisioningGateway } from '@app/provisioning/BackendProvisioningGateway';
 import { logger } from '@app/services/logger';
+import { GRADE_COMPLETION_PENDING, STUDENT_RECORDS_UNSETTLED } from './pendingPredicates';
 
 interface PendingRow {
   id: string;
@@ -45,14 +46,10 @@ export class GradeCompletionSyncService {
         // already has. Waits only on rows that can still go through —
         // dead-lettered ones (status 'failed') never self-resolve and would
         // block outcomes forever.
-        const blocking = db
-          .prepare(
-            `SELECT 1 FROM sync_queue
-             WHERE entityType IN ('students','enrollments') AND status IN ('pending','in_flight')
-             LIMIT 1`,
-          )
-          .get();
-        if (blocking) continue;
+        const { blocked } = db
+          .prepare(`SELECT ${STUDENT_RECORDS_UNSETTLED} AS blocked`)
+          .get() as { blocked: number };
+        if (blocked) continue;
 
         const decisions: CompletionDecision[] = rows.map((row) => ({
           studentId: row.studentId,
@@ -92,7 +89,7 @@ export class GradeCompletionSyncService {
       .prepare(
         `SELECT id, studentId, academicYearId, gradeLevel, outcome, nextGradeLevel, notes, updatedAt
          FROM grade_completions
-         WHERE syncState='pending' AND institutionId=?
+         WHERE ${GRADE_COMPLETION_PENDING}
          ORDER BY academicYearId, gradeLevel, studentId`,
       )
       .all(institutionId) as PendingRow[];

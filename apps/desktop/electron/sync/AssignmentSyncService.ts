@@ -2,6 +2,7 @@ import type { Database as SqliteDatabase } from 'better-sqlite3';
 import type { BackendProvisioningGateway } from '@app/provisioning/BackendProvisioningGateway';
 import { AttachmentStorage } from '@app/services/AttachmentStorage';
 import { logger } from '@app/services/logger';
+import { ASSIGNMENT_DIRTY, SUBMISSION_DIRTY } from './pendingPredicates';
 
 interface AssignmentRow {
   id: string;
@@ -40,7 +41,7 @@ export class AssignmentSyncService {
     const assignments = db
       .prepare(
         `SELECT id, remoteId, classId, subjectId, title, type, status, instructions, dueDate, totalMarks, attachmentUrl
-         FROM assignments WHERE syncedAt IS NULL OR updatedAt > syncedAt`,
+         FROM assignments WHERE ${ASSIGNMENT_DIRTY}`,
       )
       .all() as AssignmentRow[];
     for (const row of assignments) {
@@ -58,8 +59,7 @@ export class AssignmentSyncService {
         `SELECT s.id, s.studentId, s.grade, s.feedback, a.remoteId AS assignmentRemoteId
          FROM assignment_submissions s
          JOIN assignments a ON a.id = s.assignmentId
-         WHERE s.grade IS NOT NULL
-           AND (s.syncedAt IS NULL OR s.updatedAt > s.syncedAt)
+         WHERE ${SUBMISSION_DIRTY}
            AND a.remoteId IS NOT NULL`,
       )
       .all() as SubmissionRow[];
