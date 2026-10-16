@@ -2,6 +2,7 @@ import type {
   IStudentRepository,
   IInstitutionRepository,
   IDistrictRepository,
+  ICountyAnalyticsReadModel,
   IUserRepository,
   IAcademicYearRepository,
   IClassRepository,
@@ -30,6 +31,7 @@ import { SqliteTermRepository } from '../repositories/sqlite/business/SqliteTerm
 import { SqliteSubjectRepository } from '../repositories/sqlite/business/SqliteSubjectRepository';
 import { SqliteInstitutionRepository } from '../repositories/sqlite/business/SqliteInstitutionRepository';
 import { SqliteDistrictRepository } from '../repositories/sqlite/business/SqliteDistrictRepository';
+import { SqliteCountyAnalyticsReadModel } from '../repositories/sqlite/business/SqliteCountyAnalyticsReadModel';
 import { SqliteStudentRepository } from '../repositories/sqlite/business/SqliteStudentRepository';
 import { SqliteUserRepository } from '../repositories/sqlite/business/SqliteUserRepository';
 import { SqliteGuardianRepository } from '../repositories/sqlite/business/SqliteGuardianRepository';
@@ -60,6 +62,7 @@ export interface DataLayer {
     students: IStudentRepository;
     institutions: IInstitutionRepository;
     districts: IDistrictRepository;
+    countyAnalytics: ICountyAnalyticsReadModel;
     users: IUserRepository;
     academicYears: IAcademicYearRepository;
     classes: IClassRepository;
@@ -123,6 +126,7 @@ export function createDataLayer(manager: DatabaseManager, log: DatabaseLogger): 
   const students = new SqliteStudentRepository(context);
   const institutions = new SqliteInstitutionRepository(context);
   const districts = new SqliteDistrictRepository(context);
+  const countyAnalytics = new SqliteCountyAnalyticsReadModel(context);
   const users = new SqliteUserRepository(context);
   const academicYears = new SqliteAcademicYearRepository(context);
   const classes = new SqliteClassRepository(context);
@@ -169,6 +173,7 @@ export function createDataLayer(manager: DatabaseManager, log: DatabaseLogger): 
       students,
       institutions,
       districts,
+      countyAnalytics,
       users,
       academicYears,
       classes,

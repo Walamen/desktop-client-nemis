@@ -46,6 +46,7 @@ export function createApplicationComposition(
     students: dataLayer.repositories.students,
     institutions: dataLayer.repositories.institutions,
     districts: dataLayer.repositories.districts,
+    countyAnalytics: dataLayer.repositories.countyAnalytics,
     users: dataLayer.repositories.users,
     academicYears: dataLayer.repositories.academicYears,
     classes: dataLayer.repositories.classes,
@@ -62,7 +63,6 @@ export function createApplicationComposition(
     assessments: new Proxy({} as never, { get: () => () => notBuilt('Assessment') }),
     grades: new Proxy({} as never, { get: () => () => notBuilt('Grade') }),
     gradingConfigs: new Proxy({} as never, { get: () => () => notBuilt('GradingConfig') }),
-    countyAnalytics: new Proxy({} as never, { get: () => () => notBuilt('CountyAnalytics') }),
   };
   return createApplicationLayer(ports);
 }
