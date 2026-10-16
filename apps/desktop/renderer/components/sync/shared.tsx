@@ -10,6 +10,7 @@
 import { DIFF_IGNORED_KEYS, SYNC_METADATA_KEYS, isEmptyish, isPlainObject, unwrapLocalPayload, valuesEqual } from '@nemis-desktop/shared';
 
 export { isPlainObject, unwrapLocalPayload };
+export { humanizeEntityType, pickEntityLabel } from '@nemis-desktop/shared';
 
 /** - 'content': the two sides genuinely disagree on something a person set —
  *    the only bucket that actually needs a decision.
@@ -29,11 +30,6 @@ export interface DiffRow {
   bucket: DiffBucket;
 }
 
-const NAME_KEYS = [
-  'fullName', 'name', 'title', 'displayName',
-  'studentName', 'staffName', 'className', 'subjectName',
-];
-
 /** "enrollmentStatus" -> "Enrollment status", "classId" -> "Class ID". */
 export function humanizeKey(key: string): string {
   const words = key
@@ -47,16 +43,6 @@ export function humanizeKey(key: string): string {
       if (word.toLowerCase() === 'id') return 'ID';
       return index === 0 ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase() : word.toLowerCase();
     })
-    .join(' ');
-}
-
-/** "FEE_PAYMENT" -> "Fee Payment". */
-export function humanizeEntityType(entityType: string): string {
-  return entityType
-    .toLowerCase()
-    .split('_')
-    .filter(Boolean)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 }
 
@@ -114,30 +100,6 @@ export function diffFields(local: unknown, remote: unknown): { rows: DiffRow[]; 
   const bucketOrder: Record<DiffBucket, number> = { content: 0, serverAssigned: 1, metadata: 2, unchanged: 3 };
   rows.sort((a, b) => bucketOrder[a.bucket] - bucketOrder[b.bucket] || a.label.localeCompare(b.label));
   return { rows, comparable: true };
-}
-
-/** Best-effort human label for the affected record — a name beats a UUID. */
-export function pickEntityLabel(
-  localPayload: unknown,
-  remotePayload: unknown,
-  entityType: string,
-  entityId: string,
-): string {
-  const { edited, original } = unwrapLocalPayload(localPayload);
-  for (const payload of [edited, original, remotePayload]) {
-    if (!isPlainObject(payload)) continue;
-    for (const key of NAME_KEYS) {
-      const value = payload[key];
-      if (typeof value === 'string' && value.trim()) return value.trim();
-    }
-    const first = payload['firstName'];
-    const last = payload['lastName'];
-    if ((typeof first === 'string' && first) || (typeof last === 'string' && last)) {
-      return [first, last].filter((part) => typeof part === 'string' && part).join(' ');
-    }
-  }
-  const shortId = entityId.length > 8 ? `${entityId.slice(0, 8)}…` : entityId;
-  return `${humanizeEntityType(entityType)} · ${shortId}`;
 }
 
 export function relativeTime(dateStr: string): string {

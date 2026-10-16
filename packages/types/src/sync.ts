@@ -49,10 +49,64 @@ export interface ResolveSyncConflictRequest {
 }
 
 export interface DesktopSyncStatus {
+  /** Unsynced work across the outbox and every bespoke push path (pending +
+   * in flight, excluding failures) — same number as PendingSummary.total. */
   pending: number;
   inFlight: number;
   conflicts: number;
   lastSyncAt: string | null;
   status: 'never' | 'idle' | 'syncing' | 'failed';
   isOnline: boolean;
+}
+
+/** Where a piece of unsynced work is recorded on this device. */
+export type PendingSource = 'outbox' | 'assignments' | 'grade_completions' | 'fee_reversals';
+
+/** sending = in flight; waiting = goes on the next sync; retrying = backed
+ * off until nextAttemptAt; held = waits for an earlier item to sync first. */
+export type PendingItemState = 'sending' | 'waiting' | 'retrying' | 'held';
+
+export interface PendingGroupSummary {
+  /** `${source}:${entityType}`, e.g. 'outbox:attendance'. */
+  groupKey: string;
+  source: PendingSource;
+  label: string;
+  total: number;
+  byState: Record<PendingItemState, number>;
+  oldestAt: string;
+}
+
+export interface PendingRecord {
+  /** sync_queue.id for the outbox; the entity's own id for bespoke sources. */
+  id: string;
+  entityType: string;
+  entityId: string;
+  operationType: 'create' | 'update' | 'delete';
+  label: string;
+  state: PendingItemState;
+  createdAt: string;
+  nextAttemptAt: string | null;
+  retryCount: number;
+  lastError: string | null;
+  payload: unknown;
+}
+
+export interface PendingSummary {
+  groups: PendingGroupSummary[];
+  total: number;
+  /** Dead-lettered outbox rows + rejected grade completions. */
+  failedCount: number;
+  /** True when at least one source could not be read. */
+  partial: boolean;
+}
+
+export interface ListPendingRecordsRequest {
+  groupKey: string;
+  limit: number;
+  offset: number;
+}
+
+export interface ListPendingRecordsResult {
+  records: PendingRecord[];
+  total: number;
 }
