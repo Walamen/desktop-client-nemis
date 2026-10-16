@@ -30,6 +30,7 @@ import { addTransferDisplayFields } from './028-add-transfer-display-fields';
 import { createGradeCompletions } from './029-create-grade-completions';
 import { makeUserEmailNullable } from './030-make-user-email-nullable';
 import { addCountyDashboardColumns } from './031-add-county-dashboard-columns';
+import { addCountyDistrictsColumns } from './032-add-county-districts-columns';
 
 /**
  * Every migration, ascending by version. Append only — never edit or reorder
@@ -67,4 +68,5 @@ export const migrations: readonly Migration[] = [
   createGradeCompletions,
   makeUserEmailNullable,
   addCountyDashboardColumns,
+  addCountyDistrictsColumns,
 ];

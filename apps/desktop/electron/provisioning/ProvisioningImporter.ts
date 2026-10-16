@@ -64,9 +64,9 @@ interface TableSpec {
 }
 
 const SPECS: Record<ProvisioningCollection, TableSpec> = {
-  districts: spec('districts', ['id', 'name', 'countyId', 'isActive'], undefined, { isActive: 1 }),
-  institutions: spec('institutions', ['id','code','name','type','ownership','countyId','districtId','approvalStatus','street','communityTown','latitude','longitude','rejectionReason','profile','version','updatedAt','lastModifiedBy','isActive'], undefined, { isActive: 1 }),
-  users: spec('users', ['id','firstName','middleName','lastName','email','isActive','version','updatedAt','lastModifiedBy']),
+  districts: spec('districts', ['id', 'name', 'countyId', 'isActive', 'code'], undefined, { isActive: 1 }),
+  institutions: spec('institutions', ['id','code','name','type','ownership','countyId','districtId','approvalStatus','street','communityTown','latitude','longitude','rejectionReason','profile','version','updatedAt','lastModifiedBy','isActive','contactPhone','contactPersonPhone','emisCode','officialSchoolCode'], undefined, { isActive: 1 }),
+  users: spec('users', ['id','firstName','middleName','lastName','email','isActive','version','updatedAt','lastModifiedBy','phoneNumber','lastLoginAt','photoUrl','createdAt']),
   userOrganizations: spec('user_organizations', ['id','userId','role','institutionId','countyId','districtId','isActive']),
   academicYears: spec('academic_years', ['id','institutionId','code','startDate','endDate','isCurrent','status','version','updatedAt','lastModifiedBy']),
   terms: spec('terms', ['id','academicYearId','name','startDate','endDate','isCurrent','version','updatedAt','lastModifiedBy']),

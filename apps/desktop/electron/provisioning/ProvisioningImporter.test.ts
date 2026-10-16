@@ -484,6 +484,58 @@ describe('ProvisioningImporter', () => {
     expect(db.prepare(`SELECT createdAt FROM students`).get()).toEqual({ createdAt: null });
   });
 
+  it('imports DEO memberships, DEO users and the district/school/user contact columns', () => {
+    const importer = new ProvisioningImporter(manager);
+    importer.import(
+      snapshotOf({
+        ...BASE_DATA,
+        districts: [{ id: 'district-1', name: 'Sinkor', code: 'D1', countyId: 'county-1', isActive: true }],
+        institutions: [{ ...BASE_DATA.institutions![0]!, contactPhone: '0771111111', contactPersonPhone: null, emisCode: 'EMIS-1', officialSchoolCode: null }],
+        users: [
+          ...(BASE_DATA.users ?? []),
+          {
+            id: 'deo-1', firstName: 'Musu', middleName: null, lastName: 'Kollie', email: 'musu@moe.gov.lr',
+            isActive: true, phoneNumber: '0770000001', lastLoginAt: '2026-10-01T08:00:00.000Z',
+            photoUrl: 'https://img.example/deo-1.png', createdAt: '2026-01-05T00:00:00.000Z',
+            version: 1, updatedAt: '2026-10-01T08:00:00.000Z', lastModifiedBy: null,
+          },
+        ],
+        userOrganizations: [
+          ...(BASE_DATA.userOrganizations ?? []),
+          { id: 'org-deo-1', userId: 'deo-1', role: 'DEO', institutionId: null, countyId: 'county-1', districtId: 'district-1', isActive: true },
+        ],
+      }),
+      CONTEXT,
+    );
+    const db = manager.connection;
+    expect(db.prepare(`SELECT code FROM districts`).get()).toEqual({ code: 'D1' });
+    expect(db.prepare(`SELECT contactPhone, emisCode FROM institutions`).get()).toEqual({ contactPhone: '0771111111', emisCode: 'EMIS-1' });
+    expect(db.prepare(`SELECT phoneNumber, lastLoginAt, photoUrl, createdAt FROM users WHERE id='deo-1'`).get()).toEqual({
+      phoneNumber: '0770000001',
+      lastLoginAt: '2026-10-01T08:00:00.000Z',
+      photoUrl: 'https://img.example/deo-1.png',
+      createdAt: '2026-01-05T00:00:00.000Z',
+    });
+    expect(db.prepare(`SELECT role, districtId, isActive FROM user_organizations WHERE id='org-deo-1'`).get()).toEqual({
+      role: 'DEO', districtId: 'district-1', isActive: 1,
+    });
+  });
+
+  it('a merge flips a removed DEO to inactive', () => {
+    const importer = new ProvisioningImporter(manager);
+    const deo = {
+      id: 'deo-1', firstName: 'Musu', middleName: null, lastName: 'Kollie', email: 'musu@moe.gov.lr',
+      isActive: true, version: 1, updatedAt: '2026-10-01T08:00:00.000Z', lastModifiedBy: null,
+    };
+    const org = { id: 'org-deo-1', userId: 'deo-1', role: 'DEO', institutionId: null, countyId: 'county-1', districtId: 'district-1' };
+    importer.import(
+      snapshotOf({ ...BASE_DATA, users: [...(BASE_DATA.users ?? []), deo], userOrganizations: [...(BASE_DATA.userOrganizations ?? []), { ...org, isActive: true }] }),
+      CONTEXT,
+    );
+    importer.import(snapshotOf({ users: [deo], userOrganizations: [{ ...org, isActive: false }] }), CONTEXT, { merge: true });
+    expect(manager.connection.prepare(`SELECT isActive FROM user_organizations WHERE id='org-deo-1'`).get()).toEqual({ isActive: 0 });
+  });
+
   it('does not enforce the institutions.districtId -> districts dependency during a delta merge, per the design spec fallback', () => {
     // The districts table can legitimately be an incomplete subset (or, per
     // the missing-collection fix above, empty) during a delta merge — full
