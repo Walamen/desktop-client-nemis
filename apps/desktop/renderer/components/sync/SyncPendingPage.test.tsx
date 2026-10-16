@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DesktopSyncStatus, PendingRecord, PendingSummary } from '@nemis-desktop/types';
@@ -145,6 +145,59 @@ describe('SyncPendingPage', () => {
     header.focus();
     await user.keyboard('{Enter}');
     expect(header).toHaveAttribute('aria-expanded', 'true');
+  });
+});
+
+describe('SyncPendingPage group refresh', () => {
+  const page = (from: number, n: number, total: number) => ({
+    records: Array.from({ length: n }, (_, i) => record(from + i)),
+    total,
+  });
+
+  it('does not truncate a Load more result when a stale refresh lands afterwards', async () => {
+    let resolveRefresh: (v: ReturnType<typeof page>) => void = () => {};
+    bridge.listPendingRecords
+      .mockResolvedValueOnce(page(0, 50, 100))
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveRefresh = resolve; }))
+      .mockResolvedValueOnce(page(50, 50, 100));
+    const user = userEvent.setup();
+    render(<SyncPendingPage />);
+    await user.click(await screen.findByRole('button', { name: /Attendance/ }));
+    await screen.findByText('Student 0 · Grade 5A · 2026-10-14');
+    await user.click(screen.getByRole('button', { name: 'Sync now' }));
+    await waitFor(() => expect(bridge.listPendingRecords).toHaveBeenCalledTimes(2));
+    await user.click(screen.getByRole('button', { name: /Load more/ }));
+    expect(await screen.findByText('Student 99 · Grade 5A · 2026-10-14')).toBeInTheDocument();
+    await act(async () => { resolveRefresh(page(0, 50, 100)); });
+    expect(screen.getByText('Student 99 · Grade 5A · 2026-10-14')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Load more/ })).not.toBeInTheDocument();
+  });
+
+  it('clears a refresh error after a later successful refresh', async () => {
+    bridge.listPendingRecords
+      .mockResolvedValueOnce(page(0, 1, 1))
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockResolvedValue(page(0, 1, 1));
+    const user = userEvent.setup();
+    render(<SyncPendingPage />);
+    await user.click(await screen.findByRole('button', { name: /Attendance/ }));
+    await screen.findByText('Student 0 · Grade 5A · 2026-10-14');
+    await user.click(screen.getByRole('button', { name: 'Sync now' }));
+    expect(await screen.findByText(/Could not refresh these items/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Sync now' }));
+    await waitFor(() => expect(screen.queryByText(/Could not refresh these items/)).not.toBeInTheDocument());
+  });
+
+  it('keeps refreshing a group whose first page came back empty', async () => {
+    bridge.listPendingRecords
+      .mockResolvedValueOnce({ records: [], total: 0 })
+      .mockResolvedValue(page(0, 1, 1));
+    const user = userEvent.setup();
+    render(<SyncPendingPage />);
+    await user.click(await screen.findByRole('button', { name: /Attendance/ }));
+    expect(await screen.findByText('These changes have just synced.')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Sync now' }));
+    expect(await screen.findByText('Student 0 · Grade 5A · 2026-10-14')).toBeInTheDocument();
   });
 });
 

@@ -191,7 +191,9 @@ function GroupCard({
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const loadedCount = useRef(0);
+  const recordsRef = useRef<PendingRecord[] | null>(null);
+  const generation = useRef(0);
+  const busy = useRef(false);
 
   /** Reads [offset, offset+count) in requests of at most MAX_REQUEST. */
   const fetchRange = useCallback(
@@ -216,33 +218,50 @@ function GroupCard({
   const apply = (next: PendingRecord[], nextTotal: number) => {
     setRecords(next);
     setTotal(nextTotal);
-    loadedCount.current = next.length;
+    recordsRef.current = next;
+  };
+
+  /** Starts a request: it supersedes every older one, so a stale result is dropped. */
+  const begin = () => {
+    generation.current += 1;
+    return generation.current;
   };
 
   const loadFirstPage = async () => {
+    const mine = begin();
+    busy.current = true;
     setLoading(true);
     setError(null);
     try {
       const result = await fetchRange(0, PAGE_SIZE);
-      apply(result.records, result.total);
+      if (mine === generation.current) apply(result.records, result.total);
     } catch {
-      setError('Could not load these items. Try again shortly.');
+      if (mine === generation.current) setError('Could not load these items. Try again shortly.');
     } finally {
-      setLoading(false);
+      if (mine === generation.current) {
+        busy.current = false;
+        setLoading(false);
+      }
     }
   };
 
   const loadMore = async () => {
-    if (!records) return;
+    const base = recordsRef.current;
+    if (!base) return;
+    const mine = begin();
+    busy.current = true;
     setLoading(true);
     setError(null);
     try {
-      const result = await fetchRange(records.length, PAGE_SIZE);
-      apply([...records, ...result.records], result.total);
+      const result = await fetchRange(base.length, PAGE_SIZE);
+      if (mine === generation.current) apply([...base, ...result.records], result.total);
     } catch {
-      setError('Could not load more items. Try again shortly.');
+      if (mine === generation.current) setError('Could not load more items. Try again shortly.');
     } finally {
-      setLoading(false);
+      if (mine === generation.current) {
+        busy.current = false;
+        setLoading(false);
+      }
     }
   };
 
@@ -252,20 +271,22 @@ function GroupCard({
     if (next && records === null) void loadFirstPage();
   };
 
-  // Keep an open group in step with each summary refresh.
+  // Keep an open group in step with each summary refresh. Skipped while the
+  // user's own load is in flight (the next refresh catches up); a Load more
+  // clicked mid-refresh supersedes the refresh, so it can't truncate the list.
   useEffect(() => {
-    if (!expanded || loadedCount.current === 0) return;
-    let cancelled = false;
-    void fetchRange(0, Math.max(loadedCount.current, PAGE_SIZE))
+    const current = recordsRef.current;
+    if (!expanded || current === null || busy.current) return;
+    const mine = begin();
+    void fetchRange(0, Math.max(current.length, PAGE_SIZE))
       .then((result) => {
-        if (!cancelled) apply(result.records, result.total);
+        if (mine !== generation.current) return;
+        apply(result.records, result.total);
+        setError(null);
       })
       .catch(() => {
-        if (!cancelled) setError('Could not refresh these items. Showing the last list loaded.');
+        if (mine === generation.current) setError('Could not refresh these items. Showing the last list loaded.');
       });
-    return () => {
-      cancelled = true;
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshToken]);
 
