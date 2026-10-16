@@ -13,3 +13,4 @@ export * from './infra';
 export * from './teachers';
 export * from './timetables';
 export * from './assignments';
+export * from './county';

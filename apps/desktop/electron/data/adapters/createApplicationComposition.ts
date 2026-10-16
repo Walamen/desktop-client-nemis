@@ -62,6 +62,7 @@ export function createApplicationComposition(
     assessments: new Proxy({} as never, { get: () => () => notBuilt('Assessment') }),
     grades: new Proxy({} as never, { get: () => () => notBuilt('Grade') }),
     gradingConfigs: new Proxy({} as never, { get: () => () => notBuilt('GradingConfig') }),
+    countyAnalytics: new Proxy({} as never, { get: () => () => notBuilt('CountyAnalytics') }),
   };
   return createApplicationLayer(ports);
 }

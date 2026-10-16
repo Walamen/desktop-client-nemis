@@ -233,6 +233,7 @@ function deferredApplication(get: () => ApplicationLayer): ApplicationLayer {
     institution: deferredMember(get, 'institution'),
     infra: deferredMember(get, 'infra'),
     reporting: deferredMember(get, 'reporting'),
+    county: deferredMember(get, 'county'),
     teachers: deferredMember(get, 'teachers'),
     timetables: deferredMember(get, 'timetables'),
     assignments: deferredMember(get, 'assignments'),

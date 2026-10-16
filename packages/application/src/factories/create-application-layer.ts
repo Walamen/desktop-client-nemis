@@ -1,3 +1,6 @@
+import type { ICountyAnalyticsReadModel } from '../interfaces/county/county-analytics-read-model';
+import { GetCountyDashboardUseCase } from '../use-cases/county/get-county-dashboard';
+import { CountyApplicationService } from '../services/county-application-service';
 import type { IStudentRepository } from '../interfaces/students/student-repository';
 import type { IGuardianRepository } from '../interfaces/students/guardian-repository';
 import type { IEnrollmentRepository } from '../interfaces/academics/enrollment-repository';
@@ -145,6 +148,8 @@ export interface ApplicationPorts {
   users: IUserRepository;
   institutions: IInstitutionRepository;
   districts: IDistrictRepository;
+  /** County-wide aggregates for the County (CEO) dashboard. */
+  countyAnalytics: ICountyAnalyticsReadModel;
   gradingConfigs: IGradingConfigRepository;
   /** The authenticated user's id for this workspace (see GetCurrentUserDeps). */
   currentUserId: string;
@@ -170,6 +175,7 @@ export interface ApplicationLayer {
   institution: InstitutionApplicationService;
   infra: InfraApplicationService;
   reporting: ReportingApplicationService;
+  county: CountyApplicationService;
   teachers: TeacherApplicationService;
   timetables: TimetableApplicationService;
   assignments: AssignmentsApplicationService;
@@ -442,6 +448,14 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
     }),
   });
 
+  const county = new CountyApplicationService({
+    getDashboard: new GetCountyDashboardUseCase({
+      readModel: ports.countyAnalytics,
+      clock,
+      logger,
+    }),
+  });
+
   const teacherDeps = { teachers: ports.teachers, clock, logger };
   const archiveTeacher = new ArchiveTeacherUseCase(teacherDeps);
   const restoreTeacher = new RestoreTeacherUseCase(teacherDeps);
@@ -506,7 +520,8 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
   });
 
   return {
-    students, academics, attendance, assessments, identity, institution, infra, reporting, teachers,
+    students, academics, attendance, assessments, identity, institution, infra, reporting, county,
+    teachers,
     timetables, assignments,
   };
 }

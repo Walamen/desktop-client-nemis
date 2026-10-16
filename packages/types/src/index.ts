@@ -14,3 +14,4 @@ export * from './sync';
 export * from './school-admin';
 export * from './registry';
 export * from './grade-completions';
+export * from './county-dashboard';
