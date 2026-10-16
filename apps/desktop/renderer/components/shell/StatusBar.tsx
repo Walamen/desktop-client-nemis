@@ -73,7 +73,9 @@ export function StatusBar() {
           <Database className="w-3.5 h-3.5 text-active" />
           Local database ready
         </span>
-        <span>{localSync?.pending ?? 0} pending changes</span>
+        <Link className="hover:text-blue-700" href={`${portalBase}/sync-pending`}>
+          {pendingLabel(localSync?.pending ?? 0)}
+        </Link>
         <Link className={localSync?.conflicts ? 'font-semibold text-red-700' : ''} href={`${portalBase}/sync-conflicts`}>
           {localSync?.conflicts ?? 0} conflicts
         </Link>
@@ -81,4 +83,8 @@ export function StatusBar() {
       <span>NEMIS Desktop v{version ?? '—'}</span>
     </footer>
   );
+}
+
+function pendingLabel(count: number): string {
+  return `${count} pending change${count === 1 ? '' : 's'}`;
 }
