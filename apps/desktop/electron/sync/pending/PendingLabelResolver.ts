@@ -1,5 +1,5 @@
 import type { Database as SqliteDatabase } from 'better-sqlite3';
-import { pickEntityLabel } from '@nemis-desktop/shared';
+import { humanizeEntityType, pickEntityLabel } from '@nemis-desktop/shared';
 import type { PendingRecord } from '@nemis-desktop/types';
 import { logger } from '@app/services/logger';
 import type { RawPendingRow } from './types';
@@ -32,7 +32,7 @@ const LOOKUPS: Readonly<Record<string, string>> = {
   assignment_submissions: `SELECT x.id, ${STUDENT} || ' · ' || a.title AS label
     FROM assignment_submissions x JOIN students s ON s.id = x.studentId JOIN assignments a ON a.id = x.assignmentId
     WHERE x.id IN (__IDS__)`,
-  grade_completions: `SELECT gc.id, ${STUDENT} || ' · ' || gc.gradeLevel || ' · ' || gc.outcome AS label
+  grade_completions: `SELECT gc.id, ${STUDENT} AS label, gc.gradeLevel AS gradeLevel, gc.outcome AS outcome
     FROM grade_completions gc JOIN students s ON s.id = gc.studentId
     WHERE gc.id IN (__IDS__)`,
   fee_payments: `SELECT p.id, ${STUDENT} || ' · receipt ' || p.receiptNumber AS label
@@ -57,11 +57,14 @@ const LOOKUPS: Readonly<Record<string, string>> = {
   announcements: named('announcements', 'title'),
 };
 
+/** Entity types with a local-table label lookup (exported for the schema-drift test). */
+export const PENDING_LABEL_TYPES: readonly string[] = Object.keys(LOOKUPS);
+
 export class PendingLabelResolver {
   resolve(db: SqliteDatabase, rows: readonly RawPendingRow[]): PendingRecord[] {
     const idsByType = new Map<string, Set<string>>();
     for (const row of rows) {
-      if (!LOOKUPS[row.entityType]) continue;
+      if (!Object.hasOwn(LOOKUPS, row.entityType)) continue;
       const ids = idsByType.get(row.entityType) ?? new Set<string>();
       ids.add(row.entityId);
       idsByType.set(row.entityType, ids);
@@ -74,8 +77,12 @@ export class PendingLabelResolver {
       const list = [...ids];
       const sql = template.replace('__IDS__', list.map(() => '?').join(','));
       try {
-        for (const found of db.prepare(sql).all(...list) as Array<{ id: string; label: string | null }>) {
-          if (found.label) labels.set(`${entityType}\u0000${found.id}`, found.label);
+        for (const found of db.prepare(sql).all(...list) as Array<{ id: string; label: string | null; gradeLevel?: string; outcome?: string }>) {
+          if (!found.label) continue;
+          const label = entityType === 'grade_completions' && found.gradeLevel && found.outcome
+            ? [found.label, humanizeEntityType(found.gradeLevel), humanizeEntityType(found.outcome)].join(' · ')
+            : found.label;
+          labels.set(`${entityType}\u0000${found.id}`, label);
         }
       } catch (error) {
         logger.warn(`PendingLabelResolver: label lookup failed for ${entityType}`, error);

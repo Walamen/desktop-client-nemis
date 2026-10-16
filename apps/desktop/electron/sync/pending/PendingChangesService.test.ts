@@ -56,6 +56,20 @@ describe('PendingChangesService', () => {
     }
   });
 
+  it("keeps a source's groups when only its failure count cannot be read", () => {
+    const logError = vi.spyOn(logger, 'error').mockImplementation(() => {});
+    try {
+      const source = fake('outbox', [buildGroup('outbox', 'students', { waiting: 3 }, NOW)]);
+      source.countFailed = vi.fn(() => { throw new Error('boom'); });
+      const summary = new PendingChangesService([source]).getSummary(ctx(memoryDb()));
+      expect(summary).toMatchObject({ total: 3, failedCount: 0, partial: true });
+      expect(summary.groups).toHaveLength(1);
+      expect(logError).toHaveBeenCalled();
+    } finally {
+      logError.mockRestore();
+    }
+  });
+
   it('routes records by group key and caps the page size', () => {
     const outbox = fake('outbox', []);
     const service = new PendingChangesService([outbox]);

@@ -11,7 +11,7 @@ export function registerSyncHandlers(handle: IpcHandle, worker: DesktopSyncWorke
   handle(IpcChannels.SYNC_RUN, assertNoArgs, async () => {
     // A person pressing "Sync now" expects everything to be attempted, so
     // backed-off rows go now instead of waiting out their timers.
-    worker.releaseBackoff();
+    worker.releaseBackoff({ manual: true });
     await worker.syncActive();
     return worker.getStatus();
   });

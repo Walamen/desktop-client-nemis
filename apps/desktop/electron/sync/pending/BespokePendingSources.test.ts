@@ -74,6 +74,15 @@ describe('FeeReversalPendingSource', () => {
     expect(Object.fromEntries(rows.map((r) => [r.id, r.state]))).toEqual({ rev1: 'held', rev2: 'waiting' });
   });
 
+  it('holds a reversal whose payment create failed (dead-lettered)', () => {
+    const db = memoryDb();
+    seedReversal(db, 'rev1', 'pay-1');
+    queueRow(db, { id: 'q1', seq: 1, entityType: 'fee_payments', entityId: 'pay-1', status: 'failed', deadLetter: 1, retryCount: 5 });
+    expect(source.summarize(ctx(db))[0]).toMatchObject({ total: 1, byState: { held: 1, waiting: 0 } });
+    const { rows } = source.listRecords(ctx(db), 'fee_payment_reversals', 50, 0);
+    expect(rows[0]?.state).toBe('held');
+  });
+
   it('returns nothing for an entity type it does not own', () => {
     expect(source.listRecords(ctx(memoryDb()), 'students', 50, 0)).toEqual({ rows: [], total: 0 });
   });

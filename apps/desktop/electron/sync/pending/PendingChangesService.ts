@@ -35,13 +35,17 @@ export class PendingChangesService {
     let partial = false;
     for (const source of this.sources) {
       try {
-        const sourceGroups = source.summarize(ctx);
-        const sourceFailed = source.countFailed(ctx);
-        groups.push(...sourceGroups);
-        failedCount += sourceFailed;
+        groups.push(...source.summarize(ctx));
       } catch (error) {
         partial = true;
         logger.error(`PendingChangesService: the ${source.source} source could not be read`, error);
+        continue;
+      }
+      try {
+        failedCount += source.countFailed(ctx);
+      } catch (error) {
+        partial = true;
+        logger.error(`PendingChangesService: the ${source.source} failures could not be counted`, error);
       }
     }
     groups.sort((a, b) => a.oldestAt.localeCompare(b.oldestAt) || a.groupKey.localeCompare(b.groupKey));

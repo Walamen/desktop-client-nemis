@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
-import { PendingLabelResolver } from './PendingLabelResolver';
+import { logger } from '@app/services/logger';
+import { PENDING_LABEL_TYPES, PendingLabelResolver } from './PendingLabelResolver';
 import type { RawPendingRow } from './types';
-import { PAST, memoryDb, seedClass, seedStudent, seedSubject } from './pending.test-support';
+import { PAST, memoryDb, seedClass, seedGradeCompletion, seedStudent, seedSubject } from './pending.test-support';
 
 function raw(entityType: string, entityId: string, payload: unknown = null): RawPendingRow {
   return { id: `q-${entityId}`, entityType, entityId, operationType: 'create', state: 'waiting', createdAt: PAST, nextAttemptAt: null, retryCount: 0, lastError: null, payload };
@@ -58,5 +59,29 @@ describe('PendingLabelResolver', () => {
     const prepare = vi.spyOn(db, 'prepare');
     resolver.resolve(db, [raw('students', 's1'), raw('students', 's2'), raw('attendance', 'a1'), raw('attendance', 'a2'), raw('attendance', 'a3')]);
     expect(prepare).toHaveBeenCalledTimes(2);
+  });
+
+  it('humanises grade level and outcome for grade completions', () => {
+    const db = memoryDb();
+    seedStudent(db, 's1', 'Musu', 'Kollie');
+    seedGradeCompletion(db, 'gc1', { studentId: 's1' });
+    const [record] = resolver.resolve(db, [raw('grade_completions', 'gc1')]);
+    expect(record?.label).toBe('Musu Kollie · Grade 7 · Promoted');
+  });
+
+  it('does not treat inherited object keys as entity types', () => {
+    const [record] = resolver.resolve(memoryDb(), [raw('constructor', 'abcdef123456')]);
+    expect(record?.label).toBe('Constructor · abcdef12…');
+  });
+
+  it('every lookup runs against the real schema without a warning', () => {
+    const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+    try {
+      const db = memoryDb();
+      for (const type of PENDING_LABEL_TYPES) resolver.resolve(db, [raw(type, 'dummy-id')]);
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
   });
 });

@@ -401,13 +401,18 @@ export class DesktopSyncWorker {
     ).run(new Date().toISOString());
   }
 
-  /** Clears backoff so a reconnect-triggered sync can claim everything pending immediately. */
-  releaseBackoff(): void {
+  /** Clears backoff so a reconnect-triggered sync can claim everything pending immediately.
+   * A manual "Sync now" passes { manual: true }: rows one failure away from
+   * dead-lettering keep their timer, so repeated clicks during a server
+   * outage cannot burn through the retry budget. */
+  releaseBackoff(options?: { manual?: boolean }): void {
     const workspace = this.#activeWorkspaceOrNull();
     if (!workspace) return;
+    const guard = options?.manual ? ' AND retryCount < ?' : '';
+    const params = options?.manual ? [DEAD_LETTER_THRESHOLD - 1] : [];
     workspace.database.connection.prepare(
-      `UPDATE sync_queue SET nextAttemptAt=NULL WHERE status='pending' AND nextAttemptAt IS NOT NULL`,
-    ).run();
+      `UPDATE sync_queue SET nextAttemptAt=NULL WHERE status='pending' AND nextAttemptAt IS NOT NULL${guard}`,
+    ).run(...params);
   }
 
   /** Forces a delta pull now — after an online command changed server state

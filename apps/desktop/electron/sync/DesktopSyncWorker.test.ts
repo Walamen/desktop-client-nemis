@@ -677,6 +677,46 @@ describe('DesktopSyncWorker retry policy', () => {
     expect(row.nextAttemptAt).toBeNull();
   });
 
+  describe('releaseBackoff manual option', () => {
+    async function backedOff(entityId: string, retryCount: number) {
+      const item = await dataLayer.services.syncQueue.enqueue({
+        entityType: 'students', entityId, operationType: 'create', payload: { firstName: 'Ada' },
+      });
+      await dataLayer.services.syncQueue.scheduleRetry(item.id, '2099-01-01T00:00:00.000Z');
+      manager.connection.prepare('UPDATE sync_queue SET retryCount=? WHERE id=?').run(retryCount, item.id);
+      return item.id;
+    }
+    const nextAttempt = (id: string) =>
+      (manager.connection.prepare('SELECT nextAttemptAt FROM sync_queue WHERE id=?').get(id) as { nextAttemptAt: string | null }).nextAttemptAt;
+
+    it('manual release frees a backed-off row that the next sync then pushes', async () => {
+      const id = await backedOff('s1', 1);
+      const pushChanges = vi.fn().mockResolvedValue({ accepted: [id], conflicts: [], errors: [] });
+      const gateway = { pushChanges, downloadSnapshot: vi.fn() } as unknown as BackendProvisioningGateway;
+      const worker = new DesktopSyncWorker(workspaces, gateway, alwaysOnline());
+      worker.releaseBackoff({ manual: true });
+      expect(nextAttempt(id)).toBeNull();
+      await worker.syncActive().catch(() => undefined);
+      expect(pushChanges).toHaveBeenCalled();
+    });
+
+    it('manual release keeps backoff on a row one failure from dead-lettering', async () => {
+      const id = await backedOff('s1', 4);
+      const worker = new DesktopSyncWorker(workspaces, {} as BackendProvisioningGateway, alwaysOnline());
+      worker.releaseBackoff({ manual: true });
+      expect(nextAttempt(id)).toBe('2099-01-01T00:00:00.000Z');
+    });
+
+    it('release without the option frees every backed-off row (reconnect)', async () => {
+      const a = await backedOff('s1', 1);
+      const b = await backedOff('s2', 4);
+      const worker = new DesktopSyncWorker(workspaces, {} as BackendProvisioningGateway, alwaysOnline());
+      worker.releaseBackoff();
+      expect(nextAttempt(a)).toBeNull();
+      expect(nextAttempt(b)).toBeNull();
+    });
+  });
+
   it('recoverStaleInFlight returns items stranded in_flight by a dead process to pending', async () => {
     const item = await dataLayer.services.syncQueue.enqueue({
       entityType: 'students',

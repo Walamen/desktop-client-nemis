@@ -30,6 +30,7 @@ describe('registerSyncHandlers', () => {
     registerSyncHandlers(handle, worker);
     await calls.get(IpcChannels.SYNC_RUN)!.handler();
     expect(order).toEqual(['release', 'sync']);
+    expect(worker.releaseBackoff).toHaveBeenCalledWith({ manual: true });
   });
 
   it('serves the pending summary and validated record pages', async () => {
