@@ -84,6 +84,7 @@ export function StatusBar() {
           <Database className="w-3.5 h-3.5 text-active" />
           Local database ready
         </span>
+        
         <StatusBarLink
           href={`${portalBase}/sync-pending`}
           icon={CloudUpload}
@@ -101,6 +102,7 @@ export function StatusBar() {
           tone="error"
         />
       </div>
+      
       <span>NEMIS Desktop v{version ?? '—'}</span>
     </footer>
   );
@@ -109,7 +111,7 @@ export function StatusBar() {
 type StatusBarTone = 'pending' | 'error';
 
 const BADGE_TONE: Record<StatusBarTone, string> = {
-  pending: 'bg-pending/20 text-slate-900',
+  pending: 'bg-pending/80 text-slate-100',
   error: 'bg-error text-white',
 };
 const ICON_TONE: Record<StatusBarTone, string> = {
@@ -141,13 +143,13 @@ function StatusBarLink({
       href={href}
       aria-label={ariaLabel}
       title={ariaLabel}
-      className="inline-flex items-center gap-1.5 -mx-2 rounded-button px-2 py-0.5 hover:bg-slate-200 hover:text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
+      className="inline-flex items-center gap-1.5  rounded-sm px-2 py-1 border border-slate-300 hover:bg-slate-200 hover:text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
     >
-      <Icon aria-hidden="true" className={`w-3.5 h-3.5 ${active ? ICON_TONE[tone] : ''}`} />
+      <Icon aria-hidden="true" className={`w-4 h-4 ${active ? ICON_TONE[tone] : ''}`} />
       <span
         data-tone={active ? tone : 'none'}
-        className={`inline-flex min-w-[1.25rem] justify-center rounded-button px-1.5 text-[10px] font-semibold leading-4 ${
-          active ? BADGE_TONE[tone] : 'bg-white text-slate-700'
+        className={`inline-flex min-w-[2rem] justify-center  px-2.5 text-[12px] font-semibold leading-4 ${
+          active ? BADGE_TONE[tone] : 'bg-active/60 text-slate-100'
         }`}
       >
         {formatCount(count)}
