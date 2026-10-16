@@ -12,6 +12,10 @@ import { useRevalidateOnSync } from "@/hooks/use-revalidate-on-sync";
 import { parseIpcError } from "@/lib/errors/parseIpcError";
 import { countyBridge } from "@/services/nemis-bridge/county";
 
+// Same wording as the transfers inbox: the server took the change, the
+// follow-up pull did not run, so local data catches up on the next sync.
+const SYNC_NOTE = "Saved — this will appear once this device syncs.";
+
 // Desktop: online-command failures arrive as `[CODE] message` IPC errors.
 function getErrorMessage(error: unknown, fallback: string) {
   return parseIpcError(error)?.message || fallback;
@@ -35,6 +39,7 @@ export default function DistrictsManagementPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [assigningDeo, setAssigningDeo] = useState(false);
   const [removingDeo, setRemovingDeo] = useState(false);
+  const [syncNote, setSyncNote] = useState<string>("");
 
   useRevalidateOnSync(() => {
     void vm.load();
@@ -311,6 +316,7 @@ export default function DistrictsManagementPage() {
                         <button
                           onClick={() => {
                             setDeoError("");
+                            setSyncNote("");
                             setSelectedDeoUserId("");
                             setSelectedDistrict({
                               id: district.id,
@@ -426,6 +432,7 @@ export default function DistrictsManagementPage() {
                               <button
                                 onClick={() => {
                                   setDeoError("");
+                                  setSyncNote("");
                                   setSelectedDeoUserId("");
                                   setSelectedDistrict({
                                     id: district.id,
@@ -679,6 +686,7 @@ export default function DistrictsManagementPage() {
             setSelectedDistrict(null);
             setSelectedDeoUserId("");
             setDeoError("");
+            setSyncNote("");
           }}
           title={
             selectedDistrict
@@ -695,6 +703,7 @@ export default function DistrictsManagementPage() {
                   setSelectedDistrict(null);
                   setSelectedDeoUserId("");
                   setDeoError("");
+                  setSyncNote("");
                 }}
               >
                 Close
@@ -714,6 +723,7 @@ export default function DistrictsManagementPage() {
                 }
                 onClick={async () => {
                   setDeoError("");
+                  setSyncNote("");
                   if (!selectedDeoUserId) {
                     setDeoError("Please select a DEO");
                     return;
@@ -741,11 +751,13 @@ export default function DistrictsManagementPage() {
 
                   setAssigningDeo(true);
                   try {
-                    await countyBridge.assignDeo({
+                    const result = await countyBridge.assignDeo({
                       districtId: selectedDistrict!.id,
                       userId: selectedDeoUserId,
                       replaceExisting: replacingExisting,
                     });
+                    // The server took the change; only the follow-up pull failed.
+                    setSyncNote(result.refreshed ? "" : SYNC_NOTE);
                     await vm.load();
                     setSelectedDeoUserId("");
                   } catch (e) {
@@ -826,6 +838,12 @@ export default function DistrictsManagementPage() {
                 <p className="text-sm text-amber-700">
                   DEO changes need an internet connection.
                 </p>
+              </div>
+            )}
+
+            {syncNote && (
+              <div className="flex items-start gap-3 bg-sky-50 border border-sky-200 rounded-xl px-4 py-3">
+                <p className="text-sm text-sky-700">{syncNote}</p>
               </div>
             )}
 
@@ -976,12 +994,14 @@ export default function DistrictsManagementPage() {
                                   if (!confirmed) return;
 
                                   setDeoError("");
+                                  setSyncNote("");
                                   setRemovingDeo(true);
                                   try {
-                                    await countyBridge.removeDeo({
+                                    const result = await countyBridge.removeDeo({
                                       districtId: selectedDistrict!.id,
                                       userId: deoUser.id,
                                     });
+                                    setSyncNote(result.refreshed ? "" : SYNC_NOTE);
                                     await vm.load();
                                   } catch (e) {
                                     setDeoError(

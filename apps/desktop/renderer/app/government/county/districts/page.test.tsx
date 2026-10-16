@@ -149,6 +149,33 @@ describe('County District Management page', () => {
     );
   });
 
+  it('tells the admin the change is saved when the follow-up sync could not run', async () => {
+    mockNemis({
+      assignDeo: vi.fn(async () => ({ data: null, refreshed: false })),
+      removeDeo: vi.fn(async () => ({ data: null, refreshed: false })),
+    });
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Assign DEO')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Assign DEO'));
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'deo-2' } });
+    fireEvent.click(within(drawer()).getAllByText('Assign DEO').at(-1)!);
+    await waitFor(() =>
+      expect(within(drawer()).getByText('Saved — this will appear once this device syncs.')).toBeInTheDocument(),
+    );
+    expect(within(drawer()).queryByText(/Failed to assign DEO/)).not.toBeInTheDocument();
+  });
+
+  it('shows the same note after a remove whose follow-up sync could not run', async () => {
+    mockNemis({ removeDeo: vi.fn(async () => ({ data: null, refreshed: false })) });
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Reassign DEO')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Reassign DEO'));
+    fireEvent.click(screen.getByText('Remove from District'));
+    await waitFor(() =>
+      expect(within(drawer()).getByText('Saved — this will appear once this device syncs.')).toBeInTheDocument(),
+    );
+  });
+
   it('offline disables every DEO action', async () => {
     const nemis = mockNemis();
     renderPage(false);
