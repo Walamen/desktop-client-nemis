@@ -3,7 +3,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Wifi, WifiOff, Database, RefreshCw } from 'lucide-react';
+import {
+  Wifi,
+  WifiOff,
+  Database,
+  RefreshCw,
+  CloudUpload,
+  ChevronRight,
+  type LucideIcon,
+} from 'lucide-react';
 import type { DesktopSyncStatus } from '@nemis-desktop/types';
 import {
   selectConnectivityPresentation,
@@ -73,15 +81,72 @@ export function StatusBar() {
           <Database className="w-3.5 h-3.5 text-active" />
           Local database ready
         </span>
-        <Link className="hover:text-blue-700" href={`${portalBase}/sync-pending`}>
-          {pendingLabel(localSync?.pending ?? 0)}
-        </Link>
+        <StatusBarLink
+          href={`${portalBase}/sync-pending`}
+          icon={CloudUpload}
+          count={localSync?.pending ?? 0}
+          label="pending"
+          ariaLabel={pendingLabel(localSync?.pending ?? 0)}
+          tone="pending"
+        />
         <Link className={localSync?.conflicts ? 'font-semibold text-red-700' : ''} href={`${portalBase}/sync-conflicts`}>
           {localSync?.conflicts ?? 0} conflicts
         </Link>
       </div>
       <span>NEMIS Desktop v{version ?? '—'}</span>
     </footer>
+  );
+}
+
+type StatusBarTone = 'pending' | 'error';
+
+const BADGE_TONE: Record<StatusBarTone, string> = {
+  pending: 'bg-pending/20 text-slate-900',
+  error: 'bg-error text-white',
+};
+const ICON_TONE: Record<StatusBarTone, string> = {
+  pending: 'text-pending',
+  error: 'text-error',
+};
+
+/** A status-bar count that opens a page. The icon, badge and chevron make it
+ * read as clickable at rest, not only on hover; the full phrase stays the
+ * accessible name. */
+function StatusBarLink({
+  href,
+  icon: Icon,
+  count,
+  label,
+  ariaLabel,
+  tone,
+}: {
+  href: string;
+  icon: LucideIcon;
+  count: number;
+  label: string;
+  ariaLabel: string;
+  tone: StatusBarTone;
+}) {
+  const active = count > 0;
+  return (
+    <Link
+      href={href}
+      aria-label={ariaLabel}
+      title={ariaLabel}
+      className="inline-flex items-center gap-1.5 rounded-button px-2 py-0.5 hover:bg-slate-200 hover:text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
+    >
+      <Icon aria-hidden="true" className={`w-3.5 h-3.5 ${active ? ICON_TONE[tone] : ''}`} />
+      <span
+        data-tone={active ? tone : 'none'}
+        className={`inline-flex min-w-[1.25rem] justify-center rounded-button px-1.5 text-[10px] font-semibold leading-4 ${
+          active ? BADGE_TONE[tone] : 'bg-slate-200 text-slate-700'
+        }`}
+      >
+        {count}
+      </span>
+      {label}
+      <ChevronRight aria-hidden="true" className="w-3 h-3" />
+    </Link>
   );
 }
 

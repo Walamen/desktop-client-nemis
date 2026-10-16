@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { createStore } from 'zustand/vanilla';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -49,5 +49,21 @@ describe('StatusBar', () => {
     getSyncStatus.mockResolvedValue(status(1));
     render(<StatusBar />);
     expect(await screen.findByRole('link', { name: '1 pending change' })).toBeInTheDocument();
+  });
+
+  it('shows the pending count in an amber badge', async () => {
+    getSyncStatus.mockResolvedValue(status(47));
+    render(<StatusBar />);
+    const link = await screen.findByRole('link', { name: '47 pending changes' });
+    expect(within(link).getByText('47')).toHaveAttribute('data-tone', 'pending');
+    expect(within(link).getByText('pending')).toBeInTheDocument();
+  });
+
+  it('shows a neutral badge when nothing is pending', async () => {
+    getSyncStatus.mockResolvedValue(status(0));
+    render(<StatusBar />);
+    const link = await screen.findByRole('link', { name: '0 pending changes' });
+    expect(within(link).getByText('0')).toHaveAttribute('data-tone', 'none');
+    expect(link).toHaveAttribute('href', '/government/teacher/sync-pending');
   });
 });
