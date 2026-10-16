@@ -2,6 +2,9 @@ import { randomUUID } from 'node:crypto';
 import type {
   DesktopSyncOperation,
   DesktopSyncStatus,
+  ListPendingRecordsRequest,
+  ListPendingRecordsResult,
+  PendingSummary,
   ResolveSyncConflictRequest,
   SyncConflictResult,
 } from '@nemis-desktop/types';
@@ -12,6 +15,8 @@ import { ProvisioningImporter } from '@app/provisioning/ProvisioningImporter';
 import { AssignmentSyncService } from './AssignmentSyncService';
 import { FeeReversalSyncService } from './FeeReversalSyncService';
 import { GradeCompletionSyncService } from './GradeCompletionSyncService';
+import { PendingChangesService } from './pending/PendingChangesService';
+import type { PendingContext } from './pending/types';
 import { FEE_REVERSAL_PENDING, GRADE_COMPLETION_PENDING } from './pendingPredicates';
 import { logger } from '@app/services/logger';
 import { hasRealDisagreement, unwrapLocalPayload } from '@nemis-desktop/shared';
@@ -43,6 +48,7 @@ export class DesktopSyncWorker {
   private readonly assignmentSync: AssignmentSyncService;
   private readonly feeReversalSync: FeeReversalSyncService;
   private readonly gradeCompletionSync: GradeCompletionSyncService;
+  private readonly pendingChanges = new PendingChangesService();
 
   constructor(
     private readonly workspaces: WorkspaceManager,
@@ -518,10 +524,11 @@ export class DesktopSyncWorker {
   }
 
   getStatus(): DesktopSyncStatus {
-    const db = this.workspaces.active.database.connection;
-    const count = (status: string) => (db.prepare(
-      `SELECT COUNT(*) count FROM sync_queue WHERE status=?`,
-    ).get(status) as { count: number }).count;
+    const workspace = this.workspaces.active;
+    const db = workspace.database.connection;
+    const inFlight = (db.prepare(
+      `SELECT COUNT(*) count FROM sync_queue WHERE status='in_flight'`,
+    ).get() as { count: number }).count;
     const metadata = db.prepare(
       `SELECT lastSyncAt,syncStatus FROM sync_metadata WHERE id='singleton'`,
     ).get() as { lastSyncAt: string | null; syncStatus: DesktopSyncStatus['status'] };
@@ -529,12 +536,28 @@ export class DesktopSyncWorker {
       `SELECT COUNT(*) count FROM sync_conflicts WHERE status='unresolved'`,
     ).get() as { count: number }).count;
     return {
-      pending: count('pending'),
-      inFlight: count('in_flight'),
+      pending: this.pendingChanges.countPending(this.#pendingContext(workspace)),
+      inFlight,
       conflicts,
       lastSyncAt: metadata.lastSyncAt,
       status: this.#running ? 'syncing' : metadata.syncStatus,
       isOnline: this.connectivity.isOnline(),
+    };
+  }
+
+  listPending(): PendingSummary {
+    return this.pendingChanges.getSummary(this.#pendingContext(this.workspaces.active));
+  }
+
+  listPendingRecords(request: ListPendingRecordsRequest): ListPendingRecordsResult {
+    return this.pendingChanges.listRecords(this.#pendingContext(this.workspaces.active), request);
+  }
+
+  #pendingContext(workspace: ActiveWorkspace): PendingContext {
+    return {
+      db: workspace.database.connection,
+      institutionId: institutionIdOf(workspace.user),
+      now: new Date().toISOString(),
     };
   }
 

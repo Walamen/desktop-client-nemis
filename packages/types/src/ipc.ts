@@ -97,7 +97,14 @@ import type {
   AttendanceResult,
   RecordAttendanceRequest,
 } from './attendance';
-import type { DesktopSyncStatus, ResolveSyncConflictRequest, SyncConflictResult } from './sync';
+import type {
+  DesktopSyncStatus,
+  ListPendingRecordsRequest,
+  ListPendingRecordsResult,
+  PendingSummary,
+  ResolveSyncConflictRequest,
+  SyncConflictResult,
+} from './sync';
 import type {
   AssignmentResult,
   AssignmentSubmissionResult,
@@ -133,6 +140,11 @@ export interface IpcContract {
   'sync:resolve-conflict': {
     args: [request: ResolveSyncConflictRequest];
     result: SyncConflictResult;
+  };
+  'sync:list-pending': { args: []; result: PendingSummary };
+  'sync:list-pending-records': {
+    args: [request: ListPendingRecordsRequest];
+    result: ListPendingRecordsResult;
   };
   'system:get-version': { args: []; result: string };
   'settings:get': { args: [key: string]; result: unknown };
@@ -317,6 +329,8 @@ export const IpcChannels = {
   SYNC_GET_STATUS: 'sync:get-status',
   SYNC_LIST_CONFLICTS: 'sync:list-conflicts',
   SYNC_RESOLVE_CONFLICT: 'sync:resolve-conflict',
+  SYNC_LIST_PENDING: 'sync:list-pending',
+  SYNC_LIST_PENDING_RECORDS: 'sync:list-pending-records',
   SYSTEM_GET_VERSION: 'system:get-version',
   SETTINGS_GET: 'settings:get',
   DASHBOARD_GET_OVERVIEW: 'dashboard:get-overview',

@@ -10,6 +10,7 @@ import type {
   CreateSubjectRequest,
   CreateTermRequest,
   CurrentUserResult,
+  ListPendingRecordsRequest,
   DashboardOverviewResult,
   DeletedResult,
   DeviceInfoResult,
@@ -75,6 +76,8 @@ export const nemisBridge = {
   listSyncConflicts: () => api().sync.listConflicts(),
   resolveSyncConflict: (conflictId: string, resolution: 'keep_local' | 'accept_remote' | 'retry') =>
     api().sync.resolveConflict({ conflictId, resolution }),
+  listPendingChanges: () => api().sync.listPending(),
+  listPendingRecords: (request: ListPendingRecordsRequest) => api().sync.listPendingRecords(request),
   getDashboardOverview: (): Promise<DashboardOverviewResult> => api().dashboard.getOverview(),
   getSchoolSummary: (): Promise<SchoolSummaryResult | null> => api().school.getSummary(),
   getCurrentAcademicYear: (): Promise<AcademicYearResult | null> => api().academicYear.getCurrent(),

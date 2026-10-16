@@ -662,6 +662,24 @@ export function assertResolveSyncConflictArgs(args: readonly unknown[]): void {
   assertEnumMember(request.resolution, 'resolution', ['keep_local', 'accept_remote', 'retry']);
 }
 
+const PENDING_GROUP_KEY = /^(outbox|assignments|grade_completions|fee_reversals):[a-z_]+$/;
+
+export function assertListPendingRecordsArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [request] = args;
+  if (!isPlainObject(request)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(request, ['groupKey', 'limit', 'offset']);
+  if (
+    typeof request.groupKey !== 'string'
+    || request.groupKey.length > 100
+    || !PENDING_GROUP_KEY.test(request.groupKey)
+  ) {
+    throw new IPCError('Invalid groupKey.');
+  }
+  assertInt(request.limit, 'limit', 1, 200);
+  assertInt(request.offset, 'offset', 0, 1_000_000);
+}
+
 export function assertAttendanceListArgs(args: readonly unknown[]): void {
   assertArity(args, 1);
   const [request] = args;

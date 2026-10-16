@@ -1167,4 +1167,25 @@ describe('DesktopSyncWorker retry policy', () => {
       .prepare(`SELECT lastDeltaAt, lastFullResyncAt FROM sync_metadata WHERE id='singleton'`)
       .get() as { lastDeltaAt: string | null; lastFullResyncAt: string | null };
   }
+
+  it('reports pending work from every source in getStatus and listPending', () => {
+    const db = manager.connection;
+    const now = new Date().toISOString();
+    db.prepare(`UPDATE sync_runtime SET captureEnabled=0`).run();
+    db.prepare(
+      `INSERT INTO sync_queue (id,entityType,entityId,operationType,payload,retryCount,status,createdAt,updatedAt,seq)
+       VALUES ('q1','students','s1','create','{}',0,'pending',?,?,1),('q2','students','s2','create','{}',0,'in_flight',?,?,2)`,
+    ).run(now, now, now, now);
+    db.prepare(
+      `INSERT INTO assignments (id,classId,subjectId,teacherId,title,type,status,dueDate,createdAt,updatedAt)
+       VALUES ('a1','c1',NULL,'t1','Essay','HOMEWORK','PUBLISHED','2026-11-01',?,?)`,
+    ).run(now, now);
+    const worker = new DesktopSyncWorker(workspaces, {} as BackendProvisioningGateway, alwaysOnline());
+
+    expect(worker.getStatus()).toMatchObject({ pending: 3, inFlight: 1 });
+    expect(worker.listPending().total).toBe(3);
+    expect(worker.listPendingRecords({ groupKey: 'outbox:students', limit: 50, offset: 0 }).records.map((r) => r.id))
+      .toEqual(['q1', 'q2']);
+  });
+
 });

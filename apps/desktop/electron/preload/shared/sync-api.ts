@@ -7,4 +7,6 @@ export const syncApi: SyncApi = {
   getStatus: () => invoke(IpcChannels.SYNC_GET_STATUS),
   listConflicts: () => invoke(IpcChannels.SYNC_LIST_CONFLICTS),
   resolveConflict: (request) => invoke(IpcChannels.SYNC_RESOLVE_CONFLICT, request),
+  listPending: () => invoke(IpcChannels.SYNC_LIST_PENDING),
+  listPendingRecords: (request) => invoke(IpcChannels.SYNC_LIST_PENDING_RECORDS, request),
 };

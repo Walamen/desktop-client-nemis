@@ -82,7 +82,14 @@ import type {
   AttendanceResult,
   RecordAttendanceRequest,
 } from './attendance';
-import type { DesktopSyncStatus, ResolveSyncConflictRequest, SyncConflictResult } from './sync';
+import type {
+  DesktopSyncStatus,
+  ListPendingRecordsRequest,
+  ListPendingRecordsResult,
+  PendingSummary,
+  ResolveSyncConflictRequest,
+  SyncConflictResult,
+} from './sync';
 import type {
   AssignmentResult,
   AssignmentSubmissionResult,
@@ -234,6 +241,8 @@ export interface SyncApi {
   getStatus(): Promise<DesktopSyncStatus>;
   listConflicts(): Promise<SyncConflictResult[]>;
   resolveConflict(request: ResolveSyncConflictRequest): Promise<SyncConflictResult>;
+  listPending(): Promise<PendingSummary>;
+  listPendingRecords(request: ListPendingRecordsRequest): Promise<ListPendingRecordsResult>;
 }
 export interface AttendanceApi {
   list(request: AttendanceListRequest): Promise<AttendanceResult[]>;

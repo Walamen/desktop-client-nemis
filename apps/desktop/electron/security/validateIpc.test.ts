@@ -25,6 +25,7 @@ import {
   assertUpdateAssignmentArgs,
   assertGradeSubmissionArgs,
   assertCreateGuardianArgs,
+  assertListPendingRecordsArgs,
 } from './validateIpc';
 
 describe('assertAuthenticateArgs', () => {
@@ -371,5 +372,28 @@ describe('assertCreateGuardianArgs', () => {
         },
       ]),
     ).toThrow();
+  });
+});
+
+describe('assertListPendingRecordsArgs', () => {
+  const ok = { groupKey: 'outbox:attendance', limit: 50, offset: 0 };
+  it('accepts a well-formed request', () => {
+    expect(() => assertListPendingRecordsArgs([ok])).not.toThrow();
+    expect(() => assertListPendingRecordsArgs([{ ...ok, groupKey: 'fee_reversals:fee_payment_reversals', limit: 200 }])).not.toThrow();
+  });
+  it.each([
+    [{ ...ok, groupKey: 'bogus:attendance' }],
+    [{ ...ok, groupKey: 'outbox:' }],
+    [{ ...ok, groupKey: 'outbox:DROP TABLE' }],
+    [{ ...ok, limit: 0 }],
+    [{ ...ok, limit: 201 }],
+    [{ ...ok, limit: 1.5 }],
+    [{ ...ok, offset: -1 }],
+    [{ ...ok, extra: true }],
+  ])('rejects %j', (request) => {
+    expect(() => assertListPendingRecordsArgs([request])).toThrow();
+  });
+  it('rejects the wrong arity', () => {
+    expect(() => assertListPendingRecordsArgs([])).toThrow();
   });
 });
