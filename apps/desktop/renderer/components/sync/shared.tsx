@@ -113,3 +113,13 @@ export function relativeTime(dateStr: string): string {
   if (days < 7) return `${days}d ago`;
   return new Date(dateStr).toLocaleDateString();
 }
+
+/** "in 4 min" for a future retry time; "now" once it has passed. */
+export function retryCountdown(dateStr: string, now = Date.now()): string {
+  const ms = new Date(dateStr).getTime() - now;
+  if (!(ms > 0)) return 'now';
+  if (ms <= 60_000) return 'in under a minute';
+  const mins = Math.round(ms / 60_000);
+  if (mins < 60) return `in ${mins} min`;
+  return `in ${Math.round(mins / 60)} h`;
+}
