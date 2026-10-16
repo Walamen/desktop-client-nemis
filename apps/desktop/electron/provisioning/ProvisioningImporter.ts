@@ -57,11 +57,15 @@ interface TableSpec {
    * the 24h full resync).
    */
   naturalKey?: readonly string[];
+  /** Values for columns the incoming row leaves out (or sends null), e.g.
+   * `isActive` from a server that predates migration 031 — binding NULL
+   * would violate the column's NOT NULL. */
+  defaults?: Readonly<Record<string, string | number>>;
 }
 
 const SPECS: Record<ProvisioningCollection, TableSpec> = {
-  districts: spec('districts', ['id', 'name', 'countyId']),
-  institutions: spec('institutions', ['id','code','name','type','ownership','countyId','districtId','approvalStatus','street','communityTown','latitude','longitude','rejectionReason','profile','version','updatedAt','lastModifiedBy']),
+  districts: spec('districts', ['id', 'name', 'countyId', 'isActive'], undefined, { isActive: 1 }),
+  institutions: spec('institutions', ['id','code','name','type','ownership','countyId','districtId','approvalStatus','street','communityTown','latitude','longitude','rejectionReason','profile','version','updatedAt','lastModifiedBy','isActive'], undefined, { isActive: 1 }),
   users: spec('users', ['id','firstName','middleName','lastName','email','isActive','version','updatedAt','lastModifiedBy']),
   userOrganizations: spec('user_organizations', ['id','userId','role','institutionId','countyId','districtId','isActive']),
   academicYears: spec('academic_years', ['id','institutionId','code','startDate','endDate','isCurrent','status','version','updatedAt','lastModifiedBy']),
@@ -69,7 +73,7 @@ const SPECS: Record<ProvisioningCollection, TableSpec> = {
   classes: spec('classes', ['id','institutionId','academicYearId','name','gradeLevel','capacity','isActive','section','version','updatedAt','lastModifiedBy']),
   subjects: spec('subjects', ['id','institutionId','name','code','description','isActive','version','updatedAt','lastModifiedBy']),
   classSubjects: spec('class_subjects', ['id','classId','subjectId','assignedAt','version','updatedAt','lastModifiedBy']),
-  students: spec('students', ['id','institutionId','firstName','middleName','lastName','nemisId','dateOfBirth','gender','gradeLevel','isActive','admissionDate','phoneNumber','email','address','version','updatedAt','lastModifiedBy']),
+  students: spec('students', ['id','institutionId','firstName','middleName','lastName','nemisId','dateOfBirth','gender','gradeLevel','isActive','admissionDate','phoneNumber','email','address','version','updatedAt','lastModifiedBy','createdAt']),
   guardians: spec('guardians', ['id','firstName','lastName','relationship','phoneNumber','email','address','occupation','isEmergencyContact','version','updatedAt','lastModifiedBy']),
   studentGuardians: spec('student_guardians', ['id','studentId','guardianId','isPrimary','createdAt']),
   enrollments: spec('enrollments', ['id','studentId','classId','academicYearId','termId','enrollmentDate','status','version','updatedAt','lastModifiedBy']),
@@ -102,6 +106,7 @@ const SPECS: Record<ProvisioningCollection, TableSpec> = {
   assignments: spec('assignments', ['id','classId','subjectId','teacherId','title','type','status','description','instructions','dueDate','totalMarks','attachmentUrl','attachmentName','createdAt','updatedAt']),
   assignmentSubmissions: spec('assignment_submissions', ['id','assignmentId','studentId','status','submittedAt','response','fileUrl','fileName','grade','feedback','createdAt','updatedAt']),
   classResources: spec('class_resources', ['id','institutionId','classId','subjectId','staffId','title','description','type','fileUrl','linkUrl','fileSize','fileType','category','isVisible','createdAt','updatedAt']),
+  counties: spec('counties', ['id', 'code', 'name']),
 };
 
 const DELETE_ORDER = [...PROVISIONING_COLLECTIONS].reverse();
@@ -260,8 +265,13 @@ export class ProvisioningImporter {
   }
 }
 
-function spec(table: string, columns: readonly string[], naturalKey?: readonly string[]): TableSpec {
-  return { table, columns, naturalKey };
+function spec(
+  table: string,
+  columns: readonly string[],
+  naturalKey?: readonly string[],
+  defaults?: Readonly<Record<string, string | number>>,
+): TableSpec {
+  return { table, columns, naturalKey, defaults };
 }
 
 /** `remoteId`/`syncedAt` are desktop-only push-tracking columns (migration
@@ -365,7 +375,9 @@ function upsertRows(
     if (typeof row.id !== 'string' || row.id.length === 0) {
       throw new Error(`Provisioning row for ${table.table} has no valid id.`);
     }
-    statement.run(...table.columns.map((column) => sqliteValue(row[column], column)));
+    statement.run(
+      ...table.columns.map((column) => sqliteValue(row[column] ?? table.defaults?.[column], column)),
+    );
   }
 }
 

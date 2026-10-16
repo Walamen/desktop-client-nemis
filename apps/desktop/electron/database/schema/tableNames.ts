@@ -12,6 +12,7 @@ export const TableNames = {
   // Business tables (Phase 8). Created empty; populated by sync/import in later phases.
   institutions: 'institutions',
   districts: 'districts',
+  counties: 'counties',
   users: 'users',
   userOrganizations: 'user_organizations',
   academicYears: 'academic_years',

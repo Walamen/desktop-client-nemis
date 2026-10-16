@@ -443,6 +443,47 @@ describe('ProvisioningImporter', () => {
     expect(countRows('institutions')).toBe(1);
   });
 
+  it('imports the county row and the dashboard columns', () => {
+    const importer = new ProvisioningImporter(manager);
+    importer.import(
+      snapshotOf({
+        ...BASE_DATA,
+        counties: [{ id: 'county-1', code: 'GB', name: 'Grand Bassa', isActive: true }],
+        districts: [{ id: 'district-1', name: 'Sinkor', countyId: 'county-1', isActive: false }],
+        institutions: [{ ...BASE_DATA.institutions![0]!, isActive: false }],
+        students: [{ ...student('s1', 'Ada'), createdAt: '2026-03-15T12:00:00.000Z' }],
+      }),
+      CONTEXT,
+    );
+    const db = manager.connection;
+    expect(db.prepare(`SELECT id, code, name FROM counties`).all()).toEqual([
+      { id: 'county-1', code: 'GB', name: 'Grand Bassa' },
+    ]);
+    expect(db.prepare(`SELECT isActive FROM districts`).get()).toEqual({ isActive: 0 });
+    expect(db.prepare(`SELECT isActive FROM institutions`).get()).toEqual({ isActive: 0 });
+    expect(db.prepare(`SELECT createdAt FROM students`).get()).toEqual({
+      createdAt: '2026-03-15T12:00:00.000Z',
+    });
+  });
+
+  it('stores a school or district with no isActive key as active (older server)', () => {
+    const importer = new ProvisioningImporter(manager);
+    // BASE_DATA's institution row predates isActive, like a pre-031 server.
+    expect(BASE_DATA.institutions![0]).not.toHaveProperty('isActive');
+    importer.import(
+      snapshotOf({
+        ...BASE_DATA,
+        districts: [{ id: 'district-1', name: 'Sinkor', countyId: 'county-1' }],
+        students: [student('s1', 'Ada')],
+      }),
+      CONTEXT,
+    );
+    const db = manager.connection;
+    expect(db.prepare(`SELECT isActive FROM institutions`).get()).toEqual({ isActive: 1 });
+    expect(db.prepare(`SELECT isActive FROM districts`).get()).toEqual({ isActive: 1 });
+    expect(db.prepare(`SELECT createdAt FROM students`).get()).toEqual({ createdAt: null });
+  });
+
   it('does not enforce the institutions.districtId -> districts dependency during a delta merge, per the design spec fallback', () => {
     // The districts table can legitimately be an incomplete subset (or, per
     // the missing-collection fix above, empty) during a delta merge — full

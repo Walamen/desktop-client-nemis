@@ -90,6 +90,7 @@ export const PROVISIONING_COLLECTIONS = [
   'announcements', 'conversations', 'messages', 'userNotifications',
   'reports', 'alerts',
   'assignments', 'assignmentSubmissions', 'classResources',
+  'counties',
 ] as const;
 
 export type ProvisioningCollection = (typeof PROVISIONING_COLLECTIONS)[number];
