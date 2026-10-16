@@ -26,7 +26,9 @@ for the same data, with no network connection.
 | 2 | **Close every data gap properly**: store `students.createdAt`, `institutions.isActive`, `districts.isActive`; add a `counties` table fed by a **server snapshot change**. Server ships first. |
 | 3 | Quick Actions keep all 4 buttons and portal-web's targets. `county/schools/create` and `county/reports/generate` are added as `ComingSoon` placeholders. "Refresh Data" re-reads the local DB (no sync). |
 | 4 | **Full hexagonal path** like the School Admin dashboard: application read-model port + use case + service, presentation ViewModel, SQLite adapter, IPC channel, preload, bridge, IPC facade group. |
-| 5 | (Found during design) County-scope districts = **all active districts in the county**, matching the web's `GET /districts?countyId=`, not only districts that have a school. |
+| 5 | (Found during design) County-scope districts = **every district of the county, active or not, with `isActive`**. The desktop counts/lists only `isActive = 1` ones (matching the web's `GET /districts?countyId=`), while a school in an inactive district still contributes its students under that district's name (matching chart-data). |
+| 6 | (Found during planning) The server builds institution and student snapshot rows **field by field**, so `institutions.isActive` and `students.createdAt` must be added to those mappings — they are not "already sent". |
+| 7 | (Found during planning) The importer binds a missing key as NULL, which would violate the new `isActive NOT NULL` columns if a desktop ever met an older server. Institutions and districts get an importer column default (`isActive` → 1), following the existing `initiatedBy` precedent. |
 
 ## Background: what the web page computes
 
@@ -69,10 +71,12 @@ unmapped grade levels are excluded.
   county row `{ id, code, name, isActive }`; every other scope → `[]`. Always sent
   in full, never `since`-filtered (one tiny row; mirrors how `districts` is never
   delta-filtered). Included in `manifest`/checksum like every other collection.
-- **County-scope districts**: `where: { countyId: scope.countyId, isActive: true }`.
-  Every other scope keeps `where: { institutions: { some: { id: institutionWhere } } }`.
-  Every district row carries `isActive` (already a Prisma column; nothing to add
-  to the select since `findMany` returns all scalars).
+- **County-scope districts**: `where: { countyId: scope.countyId }` (active and
+  inactive). Every other scope keeps `where: { institutions: { some: { id: institutionWhere } } }`.
+  The district row mapping adds `isActive: row.isActive`.
+- The institution row mapping adds `isActive: row.isActive`; the student row
+  mapping adds `createdAt: row.createdAt.toISOString()` (departed-cohort
+  students, whose query selects a minimal projection, send `createdAt: null`).
 - `Nemis/packages/types/src/desktop-provisioning.ts`: `counties: Record<string, unknown>[]`
   on `DesktopProvisioningData`.
 
@@ -89,6 +93,8 @@ unmapped grade levels are excluded.
   Read-only `counties` table: no outbox triggers (like `districts`, migration 021).
 - `ProvisioningImporter` `SPECS`: add `counties: spec('counties', ['id','code','name'])`;
   add `'createdAt'` to `students`, `'isActive'` to `institutions` and `districts`.
+  `TableSpec` gains optional `defaults`; `institutions` and `districts` declare
+  `{ isActive: 1 }`, applied when the incoming row has no value for the column.
 - **Outbox triggers are NOT regenerated.** `installOutboxTriggers` snapshots
   columns at install time, so the students triggers keep excluding `createdAt`
   (server-owned; must not be pushed). Any future migration that regenerates all
@@ -113,26 +119,30 @@ unmapped grade levels are excluded.
   "active teacher" = `staff.isActive = 1` in an active institution.
   ```ts
   getCounty(): { id: string; name: string } | null;
-  listActiveDistricts(): { id: string; name: string; activeSchoolCount: number }[]; // ORDER BY name
+  listActiveDistricts(): { id: string; name: string; activeSchoolCount: number }[]; // isActive = 1, ORDER BY name
   countActiveSchools(): number;
   countActiveStudents(): number;
   countActiveTeachers(): number;
   countActiveStudentsByGender(): { gender: string; count: number }[];
   countActiveStudentsByGradeLevel(): { gradeLevel: string; count: number }[]; // non-null only
-  countActiveStudentsByDistrict(): { districtName: string; count: number }[];
-  listActiveStudentCreations(sinceIso: string): { createdAt: string; gender: string }[];
-  countActiveStudentsCreatedBefore(sinceIso: string): number; // includes NULL createdAt
-  listActiveSchoolsForCoverage(): { districtName: string; totalStudentCount: number }[]; // ALL students, per server
+  countActiveStudentsByDistrict(): { districtName: string; count: number }[]; // GROUP BY name, ORDER BY name
+  listActiveStudentCreations(sinceIso: string): { createdAt: string; gender: string }[]; // createdAt >= since
+  listActiveSchoolsForCoverage(): { districtName: string | null; totalStudentCount: number }[]; // ALL students, per server
   ```
+  The trend's pre-window base is `countActiveStudents() − listActiveStudentCreations(windowStart).length`,
+  exactly the server's `students.length − studentsWithDates.length` (NULL
+  `createdAt` lands in the base). `enrollmentByDistrict` is ordered by district
+  name (the server's order is unspecified Postgres row order).
 - **Use case** `use-cases/county/get-county-dashboard.ts` —
   `GetCountyDashboardUseCase` (`QueryHandler<Record<string, never>, ApplicationResponse<CountyDashboardOutput>>`),
   deps `{ readModel, clock, logger }`, body wrapped in `invokeUseCase('GetCountyDashboard', …)`.
   Implements the trend, coverage, `GRADE_TO_LEVEL` and dropout rules from
   Background exactly, using `clock.now()` for "now". Month bucketing uses the
   same local-time `Date` arithmetic as the server.
-- **DTO** `dto/county/county-dashboard-dto.ts`:
+- **DTO** `dto/county/county-dashboard-dto.ts`: `export type CountyDashboardOutput = CountyDashboardResult`
+  (the wire type, defined once in `@nemis-desktop/types` `county-dashboard.ts`):
   ```ts
-  interface CountyDashboardOutput {
+  interface CountyDashboardResult {
     county: { id: string; name: string } | null;
     districts: { id: string; name: string; activeSchoolCount: number }[];
     stats: { totalSchools: number; totalStudents: number; totalTeachers: number };
@@ -167,15 +177,16 @@ unmapped grade levels are excluded.
 - `data/repositories/sqlite/business/SqliteCountyAnalyticsReadModel.ts` —
   `StatementCache` + `guarded()` per method, plain SQL; wired into the
   application ports where the other business adapters are.
-- `packages/types/src/ipc.ts`: `COUNTY_DASHBOARD_GET: 'county:dashboard-get'`;
-  result type `CountyDashboardResult` in `packages/types/src/county-dashboard.ts`
-  (same shape as `CountyDashboardOutput`), plus the API type in `api.ts`.
-- `ipc/handlers/county/dashboard.ts` — `handle(COUNTY_DASHBOARD_GET, assertNoArgs, …)`
+- `packages/types/src/ipc.ts`: `COUNTY_GET_DASHBOARD: 'county:get-dashboard'`
+  (matching `DASHBOARD_GET_OVERVIEW: 'dashboard:get-overview'`); result type
+  `CountyDashboardResult`; `api.ts` gains `CountyApi { getDashboard() }` and
+  `NemisApi.county`.
+- `ipc/handlers/county/dashboard.ts` — `handle(COUNTY_GET_DASHBOARD, assertNoArgs, …)`
   returning `res.data`; registered from `ipc/handlers/county/index.ts`.
 - `ipc/authorizeChannel.ts`: new `COUNTY_ADMIN_CHANNELS` set containing
-  `COUNTY_DASHBOARD_GET`; any other role → `ForbiddenError('This view requires a county administrator workspace.')`.
-- `preload/county/dashboard-api.ts`: `getDashboard: () => invoke(COUNTY_DASHBOARD_GET)`,
-  exposed from `preload/county/index.ts`.
+  `COUNTY_GET_DASHBOARD`; any other role → `ForbiddenError('This view requires a county administrator workspace.')`.
+- `preload/county/dashboard-api.ts`: `getDashboard: () => invoke(COUNTY_GET_DASHBOARD)`,
+  exposed from `preload/county/index.ts` as `countyApi = { county: … }`.
 
 ### Renderer seam
 
@@ -199,8 +210,11 @@ unmapped grade levels are excluded.
 - `@nemis/types` imports in these files → equivalent types exported from
   `@nemis-desktop/types` (`county-dashboard.ts`): `EnrollmentByDistrictData`,
   `CountyEnrollmentTrendData`, `GenderDistributionData`,
-  `AttendanceComplianceData`, `DropoutTrendData`, `InstitutionLevel`, and minimal
-  `District`/`DashboardStats` shapes covering only the fields the components read.
+  `AttendanceComplianceData`, `DropoutTrendData`, `InstitutionLevel` (already in
+  desktop `enums.ts`), and minimal `CountyDistrict` / `CountyDashboardStats`
+  shapes covering only the fields the components read, imported under
+  portal-web's names (`type CountyDistrict as District`, …) so component bodies
+  stay verbatim.
 - `apps/desktop/package.json`: add `clsx` and `tailwind-merge` as direct deps at
   portal-web's versions.
 
@@ -214,7 +228,10 @@ Deliberate differences only:
    instead of the 5 RTK queries. `idle`/`loading` → the full-page `Spinner size="lg"`;
    `error` → the page renders with the `Alert variant="error"` "Failed to load
    county data" + Retry and zeroed cards / "No … data available" placeholders;
-   `success` → full page.
+   `success` **and `refreshing`** → full page (a reload keeps the data on screen,
+   like RTK's `isFetching`, instead of flashing the spinner). The web's inner
+   per-card spinner branches are dropped: they are unreachable there too,
+   because its page-level `loading` already covers every query.
 2. **User**: `useCurrentUserViewModel()` instead of Redux `auth.user`; Avatar
    gets first/last name (initials — desktop has no photo).
 3. **Hard-coded fallbacks removed**: no "John Doe" (name blank until loaded),
@@ -231,8 +248,10 @@ Deliberate differences only:
 
 - Adapter failures → `guarded()` infra errors → `toIpcError` (mind the
   cause-unwrap behaviour).
-- Use case returns `ApplicationResponse` errors via `invokeUseCase`, never throws;
-  the ViewModel's `trackQuery` maps them to `error` with a `userMessage`.
+- The use case runs inside `invokeUseCase`, which logs and normalizes a failure
+  into an `ApplicationException` and rethrows it; the IPC layer maps it, and the
+  renderer ViewModel's `trackQuery` turns the rejected call into `error` with a
+  `userMessage`.
 - Non-County roles calling `COUNTY_DASHBOARD_GET` → `ForbiddenError`.
 - Empty county (no districts/schools/students) renders zeros and the web's
   "No data available" placeholders — no special empty state.
@@ -240,9 +259,9 @@ Deliberate differences only:
 ## 5. Testing (TDD, red first, co-located tests)
 
 **Nemis server (Jest)** — County snapshot contains the county row; County
-districts include an active district with no schools and exclude an inactive
-one; District and Institution scopes unchanged; `counties` is `[]` for non-County
-scopes.
+districts are queried by `countyId` and carry `isActive`; institution rows carry
+`isActive`; student rows carry `createdAt`; Institution scope keeps the old
+district query and gets `counties: []`.
 
 **Desktop:**
 - Migration 031: table + columns + defaults; existing rows survive; a students
@@ -273,7 +292,9 @@ signed in as a County Admin.
 - The other County pages (schools, students, teachers, districts, reports, users, …).
 - The 10 County chart components not used by this page.
 - Fixing portal-web's own quirks (empty dropout trend, compliance counting
-  inactive students, unmatched `font-['Sora']`); ported as-is for parity.
+  inactive students, unmatched `font-['Sora']`, and the trend window calling
+  `setMonth` before `setDate(1)` — on the 29th–31st that can overflow into the
+  next month and shift the 12-month window forward by one); ported as-is for parity.
 - Real school creation / report generation.
 
 ## Open items
