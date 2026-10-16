@@ -521,6 +521,22 @@ describe('ProvisioningImporter', () => {
     });
   });
 
+  it('stores the school details object as JSON, and NULL when the server sends none', () => {
+    const importer = new ProvisioningImporter(manager);
+    importer.import(
+      snapshotOf({
+        ...BASE_DATA,
+        institutions: [{ ...BASE_DATA.institutions![0]!, details: { establishedYear: 1998, hasLibrary: true } }],
+      }),
+      CONTEXT,
+    );
+    const row = manager.connection.prepare(`SELECT details FROM institutions`).get() as { details: string };
+    expect(JSON.parse(row.details)).toEqual({ establishedYear: 1998, hasLibrary: true });
+
+    importer.import(snapshotOf({ ...BASE_DATA }), CONTEXT);
+    expect(manager.connection.prepare(`SELECT details FROM institutions`).get()).toEqual({ details: null });
+  });
+
   it('a merge flips a removed DEO to inactive', () => {
     const importer = new ProvisioningImporter(manager);
     const deo = {
