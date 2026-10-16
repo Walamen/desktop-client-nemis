@@ -1,3 +1,6 @@
+import type { ICountySchoolsReadModel } from '../interfaces/county/county-schools-read-model';
+import { GetCountySchoolsUseCase } from '../use-cases/county/get-county-schools';
+import { GetCountySchoolDetailUseCase } from '../use-cases/county/get-county-school-detail';
 import type { ICountyDistrictsReadModel } from '../interfaces/county/county-districts-read-model';
 import { GetCountyDistrictsUseCase } from '../use-cases/county/get-county-districts';
 import { GetCountyDistrictDetailUseCase } from '../use-cases/county/get-county-district-detail';
@@ -155,6 +158,8 @@ export interface ApplicationPorts {
   countyAnalytics: ICountyAnalyticsReadModel;
   /** County District pages: districts, DEOs, schools. */
   countyDistricts: ICountyDistrictsReadModel;
+  /** County Schools pages: list and detail. */
+  countySchools: ICountySchoolsReadModel;
   gradingConfigs: IGradingConfigRepository;
   /** The authenticated user's id for this workspace (see GetCurrentUserDeps). */
   currentUserId: string;
@@ -467,6 +472,16 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
     getDistrict: new GetCountyDistrictDetailUseCase({
       readModel: ports.countyDistricts,
       countyReadModel: ports.countyAnalytics,
+      logger,
+    }),
+    listSchools: new GetCountySchoolsUseCase({
+      readModel: ports.countySchools,
+      districtsReadModel: ports.countyDistricts,
+      countyReadModel: ports.countyAnalytics,
+      logger,
+    }),
+    getSchool: new GetCountySchoolDetailUseCase({
+      readModel: ports.countySchools,
       logger,
     }),
   });

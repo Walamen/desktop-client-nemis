@@ -16,3 +16,4 @@ export * from './registry';
 export * from './grade-completions';
 export * from './county-dashboard';
 export * from './county-districts';
+export * from './county-schools';
