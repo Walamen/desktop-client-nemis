@@ -83,6 +83,23 @@ describe('SqliteCountyAnalyticsReadModel', () => {
     ]);
   });
 
+  it("leaves out another county's district that a county school still points at", () => {
+    db.prepare(`INSERT INTO counties (id,code,name) VALUES ('county-1','GB','Grand Bassa')`).run();
+    district('d-1', 'Buchanan');
+    db.prepare(`INSERT INTO districts (id,name,countyId,isActive) VALUES ('d-x','Elsewhere','county-2',1)`).run();
+    school('a', 'd-1');
+    school('drifted', 'd-x');
+    expect(readModel.listActiveDistricts()).toEqual([
+      { id: 'd-1', name: 'Buchanan', activeSchoolCount: 1 },
+    ]);
+  });
+
+  it('lists every active district when no county row has synced (older server)', () => {
+    district('d-1', 'Buchanan');
+    db.prepare(`INSERT INTO districts (id,name,countyId,isActive) VALUES ('d-x','Elsewhere','county-2',1)`).run();
+    expect(readModel.listActiveDistricts().map((d) => d.id)).toEqual(['d-1', 'd-x']);
+  });
+
   it('counts only active students and teachers in active schools', () => {
     district('d-1', 'Buchanan');
     school('open', 'd-1');

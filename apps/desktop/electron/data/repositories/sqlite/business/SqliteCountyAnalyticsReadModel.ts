@@ -40,6 +40,11 @@ export class SqliteCountyAnalyticsReadModel implements ICountyAnalyticsReadModel
              (SELECT COUNT(*) FROM ${institutions} i WHERE i.districtId = d.id AND i.isActive = 1) AS activeSchoolCount
            FROM ${districts} d
            WHERE d.isActive = 1
+             -- The snapshot also carries any other county's district a
+             -- county school points at; only this county's own count here,
+             -- as on the web. No county row (older server): keep them all.
+             AND (NOT EXISTS (SELECT 1 FROM ${counties})
+                  OR d.countyId IN (SELECT id FROM ${counties}))
            ORDER BY d.name ASC`,
         )
         .all() as CountyDistrictRow[];
