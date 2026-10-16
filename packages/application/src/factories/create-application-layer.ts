@@ -1,3 +1,6 @@
+import type { ICountyDistrictsReadModel } from '../interfaces/county/county-districts-read-model';
+import { GetCountyDistrictsUseCase } from '../use-cases/county/get-county-districts';
+import { GetCountyDistrictDetailUseCase } from '../use-cases/county/get-county-district-detail';
 import type { ICountyAnalyticsReadModel } from '../interfaces/county/county-analytics-read-model';
 import { GetCountyDashboardUseCase } from '../use-cases/county/get-county-dashboard';
 import { CountyApplicationService } from '../services/county-application-service';
@@ -150,6 +153,8 @@ export interface ApplicationPorts {
   districts: IDistrictRepository;
   /** County-wide aggregates for the County (CEO) dashboard. */
   countyAnalytics: ICountyAnalyticsReadModel;
+  /** County District pages: districts, DEOs, schools. */
+  countyDistricts: ICountyDistrictsReadModel;
   gradingConfigs: IGradingConfigRepository;
   /** The authenticated user's id for this workspace (see GetCurrentUserDeps). */
   currentUserId: string;
@@ -452,6 +457,16 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
     getDashboard: new GetCountyDashboardUseCase({
       readModel: ports.countyAnalytics,
       clock,
+      logger,
+    }),
+    listDistricts: new GetCountyDistrictsUseCase({
+      readModel: ports.countyDistricts,
+      countyReadModel: ports.countyAnalytics,
+      logger,
+    }),
+    getDistrict: new GetCountyDistrictDetailUseCase({
+      readModel: ports.countyDistricts,
+      countyReadModel: ports.countyAnalytics,
       logger,
     }),
   });
