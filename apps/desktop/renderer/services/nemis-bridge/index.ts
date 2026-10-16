@@ -4,7 +4,8 @@
  *   sharedBridge      — auth, sync, current user, device, attendance, generic records
  *   schoolAdminBridge — school profile, academics, students, staff, timetable
  *   teacherBridge     — teacher's own dashboard (grows as more lands)
- *   countyBridge / deoBridge / ministryPortalBridge — placeholders, no live endpoints yet
+ *   countyBridge      — the County (CEO) dashboard
+ *   deoBridge / ministryPortalBridge — placeholders, no live endpoints yet
  * Error translation happens one layer up, in lib/ipc/. */
 export * from './shared';
 export * from './school-admin';

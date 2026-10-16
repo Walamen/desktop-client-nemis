@@ -1,4 +1,3 @@
-/** County (CEO) portal — no IPC handlers of its own yet. Add county-specific
- * handlers here, the same way school-admin/ and teacher/ are organized,
- * once new channels exist for this portal. */
-export {};
+/** County (CEO) portal IPC handlers, one file per area, organized the same
+ * way as school-admin/ and teacher/. */
+export { registerCountyDashboardHandlers } from './dashboard';

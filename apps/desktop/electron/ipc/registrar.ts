@@ -43,6 +43,8 @@ import { StudentSyncStatusService } from '@app/data/services/StudentSyncStatusSe
 // Teacher portal's own channels — see electron/ipc/handlers/teacher/.
 import { registerTeacherDashboardHandlers } from '@app/ipc/handlers/teacher/dashboard';
 import { registerAssignmentHandlers } from '@app/ipc/handlers/teacher/assignments';
+// County (CEO) portal — see electron/ipc/handlers/county/.
+import { registerCountyDashboardHandlers } from '@app/ipc/handlers/county';
 
 export type IpcValidator = (args: readonly unknown[]) => void;
 
@@ -76,6 +78,7 @@ export function registerIpcHandlers(
   registerInstitutionHandlers(securedHandle, app);
 
   registerDashboardHandlers(securedHandle, app);
+  registerCountyDashboardHandlers(securedHandle, app);
   registerSchoolHandlers(securedHandle, app);
   registerAcademicYearHandlers(securedHandle, app);
   registerTermHandlers(securedHandle, app);

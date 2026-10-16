@@ -52,6 +52,7 @@ import type {
   InstitutionSummaryResult,
   SchoolSummaryResult,
 } from './dashboard';
+import type { CountyDashboardResult } from './county-dashboard';
 import type {
   CreateGuardianRequest,
   CreateStudentRequest,
@@ -149,6 +150,7 @@ export interface IpcContract {
   'system:get-version': { args: []; result: string };
   'settings:get': { args: [key: string]; result: unknown };
   'dashboard:get-overview': { args: []; result: DashboardOverviewResult };
+  'county:get-dashboard': { args: []; result: CountyDashboardResult };
   'school:get-summary': { args: []; result: SchoolSummaryResult | null };
   'institution:list': { args: []; result: InstitutionSummaryResult[] };
   'academic-year:get-current': { args: []; result: AcademicYearResult | null };
@@ -334,6 +336,7 @@ export const IpcChannels = {
   SYSTEM_GET_VERSION: 'system:get-version',
   SETTINGS_GET: 'settings:get',
   DASHBOARD_GET_OVERVIEW: 'dashboard:get-overview',
+  COUNTY_GET_DASHBOARD: 'county:get-dashboard',
   SCHOOL_GET_SUMMARY: 'school:get-summary',
   INSTITUTION_LIST: 'institution:list',
   ACADEMIC_YEAR_GET_CURRENT: 'academic-year:get-current',

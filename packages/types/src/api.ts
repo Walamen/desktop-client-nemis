@@ -29,6 +29,7 @@ import type {
   InstitutionSummaryResult,
   SchoolSummaryResult,
 } from './dashboard';
+import type { CountyDashboardResult } from './county-dashboard';
 import type {
   CreateGuardianRequest,
   CreateStudentRequest,
@@ -145,6 +146,10 @@ export interface SettingsApi {
 
 export interface DashboardApi {
   getOverview(): Promise<DashboardOverviewResult>;
+}
+/** County (CEO) portal reads. */
+export interface CountyApi {
+  getDashboard(): Promise<CountyDashboardResult>;
 }
 export interface SchoolApi {
   getSummary(): Promise<SchoolSummaryResult | null>;
@@ -297,6 +302,7 @@ export interface NemisApi {
   system: SystemApi;
   settings: SettingsApi;
   dashboard: DashboardApi;
+  county: CountyApi;
   school: SchoolApi;
   institution: InstitutionApi;
   academicYear: AcademicYearApi;

@@ -35,6 +35,22 @@ describe('authorizeChannel', () => {
     }
   });
 
+  it('allows the county dashboard only for a county administrator', () => {
+    expect(() =>
+      authorizeChannel(IpcChannels.COUNTY_GET_DASHBOARD, workspace(SystemRole.COUNTY_ADMIN)),
+    ).not.toThrow();
+    for (const role of [
+      SystemRole.INSTITUTION_ADMIN,
+      SystemRole.TEACHER,
+      SystemRole.DEO,
+      SystemRole.MINISTRY_ADMIN,
+    ]) {
+      expect(() => authorizeChannel(IpcChannels.COUNTY_GET_DASHBOARD, workspace(role))).toThrow(
+        /county administrator/,
+      );
+    }
+  });
+
   it('allows teacher attendance but blocks unrelated roles', () => {
     expect(() =>
       authorizeChannel(IpcChannels.ATTENDANCE_RECORD, workspace(SystemRole.TEACHER)),

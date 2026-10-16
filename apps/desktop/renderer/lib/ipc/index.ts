@@ -7,7 +7,7 @@ import { group } from './core';
 import { sharedIpc } from './shared';
 import { schoolAdminIpc } from './school-admin';
 import { teacherIpc, teacherAssessments, assignmentsIpc } from './teacher';
-import './county';
+import { countyIpc } from './county';
 import './deo';
 import './ministry-portal';
 
@@ -18,7 +18,8 @@ import './ministry-portal';
  *   lib/ipc/school-admin.ts — reporting, institution, academics, students,
  *                             timetables, staff-directory (teachers, minus dashboard)
  *   lib/ipc/teacher.ts      — teachers.dashboard, assignments (full), assessments (stub)
- *   lib/ipc/county.ts, deo.ts, ministry-portal.ts — placeholders, no
+ *   lib/ipc/county.ts       — county (the County dashboard)
+ *   lib/ipc/deo.ts, ministry-portal.ts — placeholders, no
  *                             ApplicationLayer keys of their own yet
  * The `teachers` service is the one key genuinely owned by two portals: its
  * admin methods (school-admin.ts) and its `dashboard` method (teacher.ts) are
@@ -29,6 +30,7 @@ export function createIpcApplicationLayer(): ApplicationLayer {
   const facade = {
     ...sharedIpc,
     reporting: schoolAdminIpc.reporting,
+    county: countyIpc.county,
     institution: schoolAdminIpc.institution,
     academics: schoolAdminIpc.academics,
     students: schoolAdminIpc.students,

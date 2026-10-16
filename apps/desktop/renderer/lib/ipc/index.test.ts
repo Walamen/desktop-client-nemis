@@ -31,6 +31,15 @@ describe('createIpcApplicationLayer', () => {
     expect(res.data.totalStudents).toBe(5);
   });
 
+  it('county.getDashboard returns the bridged data as an ApplicationResponse', async () => {
+    (window as unknown as { nemis: unknown }).nemis = fakeNemis({
+      county: { getDashboard: vi.fn(async () => ({ county: { id: 'county-1', name: 'Grand Bassa' } })) },
+    });
+    const app = createIpcApplicationLayer();
+    const res = await app.county.getDashboard();
+    expect(res.data.county).toEqual({ id: 'county-1', name: 'Grand Bassa' });
+  });
+
   it('identity.getCurrentUser maps null through to a null-data response', async () => {
     (window as unknown as { nemis: unknown }).nemis = fakeNemis({
       identity: { getCurrentUser: vi.fn(async () => null) },
