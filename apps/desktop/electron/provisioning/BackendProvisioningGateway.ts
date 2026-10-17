@@ -55,6 +55,8 @@ const DEPARTED_COHORT_FLAG = 'departedCohort';
 export class BackendProvisioningGateway {
   /** Set once an older server rejected the opt-in flag; in memory only. */
   private departedCohortUnsupported = false;
+  /** The in-flight session restore every concurrent request awaits. */
+  private restoring: Promise<AuthenticatedSession> | null = null;
 
   constructor(
     private readonly baseUrl: string,
@@ -344,24 +346,37 @@ export class BackendProvisioningGateway {
     );
   }
 
+  /** Single-flight: the server rotates refresh tokens, so a second refresh
+   * with the token the first one just spent deletes the session. Concurrent
+   * requests share one load → restore → save; the next request after it
+   * settles starts a fresh one. */
+  private restoreSession(): Promise<AuthenticatedSession> {
+    this.restoring ??= (async () => {
+      const stored = await this.sessions.load();
+      if (!stored) throw new UnauthorizedError();
+      try {
+        const restored = await this.authentication.restore(stored.sessionSecret);
+        await this.sessions.save(restored);
+        return restored;
+      } catch (error) {
+        if (!(error instanceof AuthenticationUnavailableError)) {
+          await this.sessions.clear();
+        }
+        throw error;
+      }
+    })().finally(() => {
+      this.restoring = null;
+    });
+    return this.restoring;
+  }
+
   private async authorized<T>(
     path: string,
     init: RequestInit,
     validate: (value: unknown) => T,
     options: { onlineCommand?: boolean; timeoutMs?: number } = {},
   ): Promise<T> {
-    const stored = await this.sessions.load();
-    if (!stored) throw new UnauthorizedError();
-    let restored: AuthenticatedSession;
-    try {
-      restored = await this.authentication.restore(stored.sessionSecret);
-      await this.sessions.save(restored);
-    } catch (error) {
-      if (!(error instanceof AuthenticationUnavailableError)) {
-        await this.sessions.clear();
-      }
-      throw error;
-    }
+    const restored = await this.restoreSession();
     const cookies = unwrapCookies(restored.sessionSecret);
     // FormData bodies must NOT get a hardcoded content-type — fetch derives
     // the correct `multipart/form-data; boundary=...` from the body itself.

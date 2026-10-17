@@ -637,6 +637,65 @@ describe('BackendProvisioningGateway', () => {
     });
   });
 
+  describe('session restore', () => {
+    // The server rotates refresh tokens: a second refresh with the token the
+    // first one just used deletes the session. Concurrent requests must share
+    // one restore, or opening two pages at once signs the device out.
+    function gatewayWithDeferredRestore() {
+      const pending: Array<() => void> = [];
+      const restore = vi.fn(() => new Promise<AuthenticatedSession>((resolve) => {
+        pending.push(() => resolve(session));
+      }));
+      const release = () => pending.splice(0).forEach((resolve) => resolve());
+      const load = vi.fn(async () => session);
+      const gateway = new BackendProvisioningGateway(
+        'https://nemis.example',
+        { authenticate: async () => session, restore, logout: async () => undefined },
+        { load, save: async () => undefined, clear: async () => undefined },
+      );
+      return { gateway, restore, load, release };
+    }
+
+    it('concurrent requests share one restore', async () => {
+      vi.stubGlobal('fetch', vi.fn(async () => response({ years: [], transfers: [] })));
+      const { gateway, restore, release } = gatewayWithDeferredRestore();
+      const first = gateway.getStudentAcademicRecord('c', 's-1');
+      const second = gateway.getStudentAcademicRecord('c', 's-2');
+      await vi.waitFor(() => expect(restore).toHaveBeenCalled());
+      release();
+      await Promise.all([first, second]);
+      expect(restore).toHaveBeenCalledTimes(1);
+    });
+
+    it('a request after the shared restore settles restores again', async () => {
+      vi.stubGlobal('fetch', vi.fn(async () => response({ years: [], transfers: [] })));
+      const { gateway, restore, release } = gatewayWithDeferredRestore();
+      const first = gateway.getStudentAcademicRecord('c', 's-1');
+      await vi.waitFor(() => expect(restore).toHaveBeenCalledTimes(1));
+      release();
+      await first;
+      const second = gateway.getStudentAcademicRecord('c', 's-2');
+      await vi.waitFor(() => expect(restore).toHaveBeenCalledTimes(2));
+      release();
+      await second;
+    });
+
+    it('a failed shared restore rejects every waiting caller', async () => {
+      const restore = vi.fn(async () => { throw new AuthenticationUnavailableError(); });
+      const gateway = new BackendProvisioningGateway(
+        'https://nemis.example',
+        { authenticate: async () => session, restore, logout: async () => undefined },
+        { load: async () => session, save: async () => undefined, clear: async () => undefined },
+      );
+      const results = await Promise.allSettled([
+        gateway.getStudentAcademicRecord('c', 's-1'),
+        gateway.getStudentAcademicRecord('c', 's-2'),
+      ]);
+      expect(results.map((r) => r.status)).toEqual(['rejected', 'rejected']);
+      expect(restore).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('school registrations', () => {
     const payload = {
       name: 'Alpha School', code: 'GB-0042', type: 'SCHOOL' as const, levels: ['PRIMARY'], ownership: 'GOVERNMENT',
