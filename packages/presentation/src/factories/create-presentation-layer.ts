@@ -22,6 +22,7 @@ import { CountyDistrictsViewModel } from '../view-models/county/county-districts
 import { CountyDistrictDetailViewModel } from '../view-models/county/county-district-detail-view-model';
 import { CountySchoolsViewModel } from '../view-models/county/county-schools-view-model';
 import { CountySchoolDetailViewModel } from '../view-models/county/county-school-detail-view-model';
+import { CountySchoolRegistrationViewModel } from '../view-models/county/county-school-registration-view-model';
 import { SettingsViewModel } from '../view-models/settings/settings-view-model';
 import { StudentsViewModel } from '../view-models/students/students-view-model';
 import { StudentStatisticsViewModel } from '../view-models/students/student-statistics-view-model';
@@ -61,6 +62,7 @@ export interface PresentationViewModels {
   readonly countyDistrictDetail: CountyDistrictDetailViewModel;
   readonly countySchools: CountySchoolsViewModel;
   readonly countySchoolDetail: CountySchoolDetailViewModel;
+  readonly countySchoolRegistration: CountySchoolRegistrationViewModel;
   readonly device: DeviceViewModel;
   readonly currentUser: CurrentUserViewModel;
   readonly dashboard: DashboardViewModel;
@@ -135,6 +137,7 @@ export function createPresentationLayer(
     countyDistrictDetail: new CountyDistrictDetailViewModel({ county: app.county }),
     countySchools: new CountySchoolsViewModel({ county: app.county }),
     countySchoolDetail: new CountySchoolDetailViewModel({ county: app.county }),
+    countySchoolRegistration: new CountySchoolRegistrationViewModel({ county: app.county, notifications }),
     device: new DeviceViewModel({ infra: app.infra, notifications, session }),
     currentUser: new CurrentUserViewModel({ identity: app.identity, session }),
     dashboard: new DashboardViewModel({ reporting: app.reporting, notifications }),

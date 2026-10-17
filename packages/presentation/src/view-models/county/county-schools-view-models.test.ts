@@ -26,6 +26,7 @@ describe('CountySchoolsViewModel', () => {
     expect(s.data.schools[0]).toEqual({
       id: 's-1', name: 'Alpha', code: 'A', isActive: true, photoUrl: null,
       district: { name: 'Buchanan' }, levels: [{ level: 'PRIMARY' }], _count: { students: 40 },
+      syncState: null, syncError: null,
     });
   });
 });
@@ -60,5 +61,24 @@ describe('CountySchoolDetailViewModel', () => {
     const vm = new CountySchoolDetailViewModel({ county: app.county });
     await vm.load('nope');
     expect(vm.store.getState().detail.status).toBe('empty');
+  });
+});
+
+describe('registration state in the Schools views', () => {
+  it('list and detail views carry syncState, syncError and registration', async () => {
+    const { app, ports } = createTestApplication();
+    ports.countySchools.schools = [
+      { id: 'r-1', name: 'Alpha', code: 'A', type: 'SCHOOL', isActive: true, districtName: null, levels: [], studentCount: 0, photoUrl: null, syncState: 'rejected', syncError: 'Email taken' },
+    ];
+    const registration = { syncState: 'synced' as const, syncError: null, source: 'form' as const, principalLogin: { email: 'ada@x', password: 'Nemis@123' } };
+    ports.countySchools.schoolById.set('s-1', { ...detail, registration });
+    const list = new CountySchoolsViewModel({ county: app.county });
+    await list.load();
+    const s = list.store.getState().summary;
+    expect(s.status === 'success' && s.data.schools[0]).toMatchObject({ syncState: 'rejected', syncError: 'Email taken' });
+    const vm = new CountySchoolDetailViewModel({ county: app.county });
+    await vm.load('s-1');
+    const d = vm.store.getState().detail;
+    expect(d.status === 'success' && d.data.registration).toEqual(registration);
   });
 });

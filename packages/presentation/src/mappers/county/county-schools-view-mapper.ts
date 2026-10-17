@@ -14,6 +14,8 @@ export function toCountySchoolsView(dto: CountySchoolsResult): CountySchoolsView
       district: school.districtName ? { name: school.districtName } : null,
       levels: school.levels.map((level) => ({ level })),
       _count: { students: school.studentCount },
+      syncState: school.syncState,
+      syncError: school.syncError,
     })),
   };
 }
@@ -38,5 +40,6 @@ export function toSchoolDetailView(dto: CountySchoolDetail): SchoolDetailView {
     county: dto.countyName ? { name: dto.countyName } : null,
     _count: { students: dto.studentCount, staff: dto.staffCount },
     users: dto.principal ? [{ role: 'INSTITUTION_ADMIN', user: dto.principal }] : [],
+    registration: dto.registration,
   };
 }

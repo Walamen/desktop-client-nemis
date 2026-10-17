@@ -1,4 +1,8 @@
-import type { CountySchoolDetails } from '@nemis-desktop/types';
+import type {
+  CountySchoolDetails,
+  CountySchoolRegistrationInfo,
+  SchoolRegistrationSyncState,
+} from '@nemis-desktop/types';
 
 /** portal-web Institution (findAll) as the ported Schools list reads it. */
 export interface SchoolCardView {
@@ -10,6 +14,9 @@ export interface SchoolCardView {
   district: { name: string } | null;
   levels: { level: string }[];
   _count: { students: number };
+  /** Set while the school is only on this device: "Waiting to sync" or "Couldn't be added". */
+  syncState: SchoolRegistrationSyncState | null;
+  syncError: string | null;
 }
 
 export interface CountySchoolsView {
@@ -40,4 +47,6 @@ export interface SchoolDetailView extends CountySchoolDetails {
     role: 'INSTITUTION_ADMIN';
     user: { firstName: string; lastName: string; email: string | null; photoUrl: string | null };
   }[];
+  /** This device registered the school: badge, refusal and principal login. */
+  registration: CountySchoolRegistrationInfo | null;
 }

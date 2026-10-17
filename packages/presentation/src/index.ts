@@ -110,6 +110,7 @@ export * from './queries/county/get-county-school-detail-ui-query';
 export * from './mappers/county/county-schools-view-mapper';
 export * from './view-models/county/county-schools-view-model';
 export * from './view-models/county/county-school-detail-view-model';
+export * from './view-models/county/county-school-registration-view-model';
 export * from './view-models/county/county-schools-views';
 export * from './view-models/teachers/teachers-view-model';
 export * from './view-models/provisioning/provisioning-view-model';
