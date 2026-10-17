@@ -18,6 +18,7 @@ import { useCountySchoolsViewModel } from "@/lib/presentation/hooks/county";
 import { useViewModel } from "@/hooks/use-view-model";
 import { useRevalidateOnSync } from "@/hooks/use-revalidate-on-sync";
 import { SchoolPhoto } from "@/components/county/schools/SchoolPhoto";
+import { SchoolRegistrationBadge } from "@/components/county/schools/registration/SchoolRegistrationBadge";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -330,6 +331,9 @@ export default function SchoolsPage() {
                           <p className="text-xs text-slate-400 mt-0.5">
                             {school.code}
                           </p>
+                          <div className="mt-1">
+                            <SchoolRegistrationBadge syncState={school.syncState} syncError={school.syncError} />
+                          </div>
 
                           <div className="flex items-center  justify-between mt-3">
                             <div>
@@ -422,6 +426,7 @@ export default function SchoolsPage() {
                               <span className="font-medium text-slate-800 max-w-[150px] truncate">
                                 {school.name}
                               </span>
+                              <SchoolRegistrationBadge syncState={school.syncState} syncError={school.syncError} />
                             </div>
                           </td>
                           

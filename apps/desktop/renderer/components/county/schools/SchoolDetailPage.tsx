@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Avatar, Card } from "@nemis-desktop/ui";
+import { Avatar, Button, Card, showConfirm } from "@nemis-desktop/ui";
 import {
   ArrowLeft,
   AlertTriangle,
@@ -11,11 +11,16 @@ import {
   Mail,
   Users,
 } from "lucide-react";
-import { useCountySchoolDetailViewModel } from "@/lib/presentation/hooks/county";
+import {
+  useCountySchoolDetailViewModel,
+  useCountySchoolRegistrationViewModel,
+} from "@/lib/presentation/hooks/county";
 import { useViewModel } from "@/hooks/use-view-model";
 import { useRevalidateOnSync } from "@/hooks/use-revalidate-on-sync";
 import { SchoolPhoto } from "@/components/county/schools/SchoolPhoto";
 import { resolveSchoolDetail } from "@/components/county/schools/school-detail-state";
+import { SchoolRegistrationBadge } from "@/components/county/schools/registration/SchoolRegistrationBadge";
+import { PrincipalLoginCard } from "@/components/county/schools/registration/PrincipalLoginCard";
 
 // ── Ownership ─────────────────────────────────────────────────────────────────
 
@@ -111,6 +116,17 @@ export function SchoolDetailPage() {
   // The view model outlives the page: never show the previously opened
   // school, nor a not-found left over from it.
   const { school, isLoading, isError } = resolveSchoolDetail(schoolId, requestedId, detail);
+  const registrationVm = useCountySchoolRegistrationViewModel();
+  const discard = async () => {
+    if (!school) return;
+    const confirmed = await showConfirm(
+      "Discard this school? It has not been added to NEMIS.",
+      "Discard school",
+      "Discard",
+    );
+    if (!confirmed) return;
+    if (await registrationVm.discard(school.id)) router.push("/government/county/schools");
+  };
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -251,7 +267,12 @@ export function SchoolDetailPage() {
 
             {/* Name + meta */}
             <div className="flex-1 min-w-0">
-              <div className="flex flex-wrap items-center gap-2 mb-2"></div>
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <SchoolRegistrationBadge
+                  syncState={school.registration?.syncState ?? null}
+                  syncError={school.registration?.syncError ?? null}
+                />
+              </div>
 
               <h1 className="text-xl font-bold text-white leading-tight">
                 {school.name}
@@ -302,6 +323,38 @@ export function SchoolDetailPage() {
 
         {/* ── Content ───────────────────────────────────────────────────── */}
         <div className="px-6 py-6 space-y-5 max-w-6xl mx-auto">
+          {/* A school this device registered that the server refused */}
+          {school.registration?.syncState === "rejected" && (
+            <div className="rounded-xl border border-red-200 bg-red-50 p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-red-800">Couldn&apos;t be added</p>
+                <p className="text-sm text-red-700 mt-0.5">
+                  {school.registration.syncError ?? "The server refused this school."}
+                </p>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  onClick={() =>
+                    router.push(
+                      `/government/county/schools/create?registration=${encodeURIComponent(school.id)}`,
+                    )
+                  }
+                >
+                  Fix and resend
+                </Button>
+                <Button type="button" variant="destructive" size="sm" onClick={discard}>
+                  Discard
+                </Button>
+              </div>
+            </div>
+          )}
+          {school.registration?.principalLogin && (
+            <PrincipalLoginCard login={school.registration.principalLogin} />
+          )}
+
           {/* Stat cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard

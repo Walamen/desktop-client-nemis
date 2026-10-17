@@ -45,6 +45,12 @@ afterEach(() => {
 });
 
 describe('County Schools page', () => {
+  it('a school saved on this device shows its sync badge', async () => {
+    renderWith([school(1, { syncState: 'pending' }), school(2, { syncState: 'rejected', syncError: 'Email taken' })]);
+    await waitFor(() => expect(screen.getAllByText('Waiting to sync').length).toBeGreaterThan(0));
+    expect(screen.getAllByText("Couldn't be added").length).toBeGreaterThan(0);
+  });
+
   it('renders the header and stat cards', async () => {
     renderWith([school(1), school(2)]);
     await waitFor(() => expect(screen.getByText('Grand Bassa')).toBeInTheDocument());

@@ -7,6 +7,7 @@ import { Sidebar } from '@/components/shell/Sidebar';
 import { Header } from '@/components/shell/Header';
 import { StatusBar } from '@/components/shell/StatusBar';
 import { ToastHost } from '@/components/shell/ToastHost';
+import { SchoolRegistrationNotices } from '@/components/county/schools/registration/SchoolRegistrationNotices';
 
 export default function Layout({ children }: { children: ReactNode }) {
   return (
@@ -20,6 +21,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         </div>
       </div>
       <ToastHost />
+      <SchoolRegistrationNotices />
     </RouteGuard>
   );
 }

@@ -1,11 +1,16 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { PresentationProvider } from '@/lib/presentation/presentation-provider';
 import { createRendererPresentation } from '@/lib/presentation/create-renderer-presentation';
 import { SchoolDetailPage } from './SchoolDetailPage';
 
 let searchId: string | null = 's-1';
 const push = vi.fn();
+const confirm = vi.hoisted(() => vi.fn(async () => true));
+vi.mock('@nemis-desktop/ui', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@nemis-desktop/ui')>()),
+  showConfirm: confirm,
+}));
 vi.mock('next/navigation', () => ({
   useSearchParams: () => ({ get: () => searchId }),
   useRouter: () => ({ push }),
@@ -101,5 +106,61 @@ describe('County School detail page', () => {
     searchId = 's-2';
     rerender();
     expect(screen.queryByText("School not found or you don't have access.")).not.toBeInTheDocument();
+  });
+});
+
+describe('County School detail page — schools registered on this device', () => {
+  const registration = (syncState: string, extra: Record<string, unknown> = {}) => ({
+    syncState, syncError: null, source: 'form', principalLogin: null, ...extra,
+  });
+
+  it('a refused school shows the reason, Fix and resend, and Discard (after confirming)', async () => {
+    const discardSchoolRegistration = vi.fn(async () => ({ discarded: true }));
+    (window as unknown as { nemis: unknown }).nemis = {
+      county: {
+        getSchool: vi.fn(async () => ({ ...SCHOOL, registration: registration('rejected', { syncError: 'Email taken' }) })),
+        discardSchoolRegistration,
+      },
+    };
+    render(
+      <PresentationProvider layer={createRendererPresentation()}>
+        <SchoolDetailPage />
+      </PresentationProvider>,
+    );
+    await waitFor(() => expect(screen.getAllByText("Couldn't be added")).toHaveLength(2)); // badge + panel
+    expect(screen.getByText('Email taken')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Fix and resend' }));
+    expect(push).toHaveBeenCalledWith('/government/county/schools/create?registration=s-1');
+    fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+    await waitFor(() => expect(discardSchoolRegistration).toHaveBeenCalledWith('s-1'));
+    expect(confirm).toHaveBeenCalledWith('Discard this school? It has not been added to NEMIS.', 'Discard school', 'Discard');
+    expect(push).toHaveBeenLastCalledWith('/government/county/schools');
+  });
+
+  it('a synced school shows the Principal Login card; a waiting one shows the amber badge only', async () => {
+    const login = { email: 'ada@school.lr', password: 'Nemis@123' };
+    (window as unknown as { nemis: unknown }).nemis = {
+      county: { getSchool: vi.fn(async () => ({ ...SCHOOL, registration: registration('synced', { principalLogin: login }) })) },
+    };
+    const { unmount } = render(
+      <PresentationProvider layer={createRendererPresentation()}>
+        <SchoolDetailPage />
+      </PresentationProvider>,
+    );
+    await waitFor(() => expect(screen.getByText('Principal Login')).toBeInTheDocument());
+    expect(screen.getByText('Nemis@123')).toBeInTheDocument();
+    unmount();
+
+    (window as unknown as { nemis: unknown }).nemis = {
+      county: { getSchool: vi.fn(async () => ({ ...SCHOOL, registration: registration('pending') })) },
+    };
+    render(
+      <PresentationProvider layer={createRendererPresentation()}>
+        <SchoolDetailPage />
+      </PresentationProvider>,
+    );
+    await waitFor(() => expect(screen.getByText('Waiting to sync')).toBeInTheDocument());
+    expect(screen.queryByText('Principal Login')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Discard' })).not.toBeInTheDocument();
   });
 });
