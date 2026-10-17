@@ -681,7 +681,7 @@ describe('BackendProvisioningGateway', () => {
     });
 
     it('a failed shared restore rejects every waiting caller', async () => {
-      const restore = vi.fn(async () => { throw new AuthenticationUnavailableError(); });
+      const restore = vi.fn(async () => { throw new AuthenticationUnavailableError('offline'); });
       const gateway = new BackendProvisioningGateway(
         'https://nemis.example',
         { authenticate: async () => session, restore, logout: async () => undefined },
