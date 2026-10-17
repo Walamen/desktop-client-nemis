@@ -83,7 +83,7 @@ export function DistrictDetailsPage() {
 
   return (
     <>
-      <div className="space-y-6">
+      <div className="space-y-6 px-6 py-4">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
             <h1 className="text-h2 font-heading text-slate-700 mb-2">
