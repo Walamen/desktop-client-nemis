@@ -44,6 +44,12 @@ describe('authorizeChannel', () => {
       IpcChannels.COUNTY_REMOVE_DEO,
       IpcChannels.COUNTY_LIST_SCHOOLS,
       IpcChannels.COUNTY_GET_SCHOOL,
+      IpcChannels.COUNTY_GET_REGISTRATION_CONTEXT,
+      IpcChannels.COUNTY_REGISTER_SCHOOLS,
+      IpcChannels.COUNTY_RESUBMIT_SCHOOL_REGISTRATION,
+      IpcChannels.COUNTY_DISCARD_SCHOOL_REGISTRATION,
+      IpcChannels.COUNTY_GET_SCHOOL_REGISTRATIONS,
+      IpcChannels.COUNTY_SETTLE_SCHOOL_REGISTRATIONS,
     ];
     for (const channel of channels) {
       expect(() => authorizeChannel(channel, workspace(SystemRole.COUNTY_ADMIN))).not.toThrow();

@@ -62,6 +62,27 @@ describe('createIpcApplicationLayer', () => {
     expect(getSchool).toHaveBeenCalledWith('s-1');
   });
 
+  it('county school registration methods return bridged data', async () => {
+    const county = {
+      getRegistrationContext: vi.fn(async () => ({ county: null, districts: [] })),
+      registerSchools: vi.fn(async () => ({ status: 'saved', ids: ['r-1'] })),
+      resubmitSchoolRegistration: vi.fn(async () => ({ status: 'not-found' })),
+      discardSchoolRegistration: vi.fn(async () => ({ discarded: true })),
+      getSchoolRegistrations: vi.fn(async () => []),
+    };
+    (window as unknown as { nemis: unknown }).nemis = fakeNemis({ county });
+    const app = createIpcApplicationLayer();
+    expect((await app.county.getRegistrationContext()).data).toEqual({ county: null, districts: [] });
+    const request = { source: 'form' as const, schools: [] };
+    expect((await app.county.registerSchools(request)).data).toEqual({ status: 'saved', ids: ['r-1'] });
+    expect(county.registerSchools).toHaveBeenCalledWith(request);
+    expect((await app.county.resubmitSchoolRegistration({ id: 'r-1', school: {} as never })).data).toEqual({ status: 'not-found' });
+    expect((await app.county.discardSchoolRegistration('r-1')).data).toEqual({ discarded: true });
+    expect(county.discardSchoolRegistration).toHaveBeenCalledWith('r-1');
+    expect((await app.county.getSchoolRegistrations(['r-1'])).data).toEqual([]);
+    expect(county.getSchoolRegistrations).toHaveBeenCalledWith(['r-1']);
+  });
+
   it('identity.getCurrentUser maps null through to a null-data response', async () => {
     (window as unknown as { nemis: unknown }).nemis = fakeNemis({
       identity: { getCurrentUser: vi.fn(async () => null) },

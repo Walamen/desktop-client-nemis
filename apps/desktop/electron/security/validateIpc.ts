@@ -1045,6 +1045,68 @@ export function assertCountyRemoveDeoArgs(args: readonly unknown[]): void {
   assertString(request.userId, 'userId', ID_MAX_LENGTH);
 }
 
+// --- County offline school registration ---------------------------------
+const MAX_SCHOOL_REGISTRATIONS = 500;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function assertRegistrationId(value: unknown, field: string): void {
+  if (typeof value !== 'string' || !UUID.test(value)) throw new IPCError(`Expected ${field} to be a UUID.`);
+}
+
+function assertRegistrationIds(value: unknown): void {
+  if (!Array.isArray(value) || value.length > MAX_SCHOOL_REGISTRATIONS) {
+    throw new IPCError(`Expected at most ${MAX_SCHOOL_REGISTRATIONS} registration ids.`);
+  }
+  for (const id of value) assertRegistrationId(id, 'id');
+}
+
+/** Shape only: the server applies every business rule when the school is sent. */
+function assertRegistrationInput(value: unknown): void {
+  if (!isPlainObject(value)) throw new IPCError('Expected a school object.');
+  assertString(value.name, 'name', DESCRIPTION_MAX_LENGTH);
+  assertString(value.districtId, 'districtId', ID_MAX_LENGTH);
+  if (!Array.isArray(value.levels) || !Array.isArray(value.admins)) {
+    throw new IPCError('Expected levels and admins arrays.');
+  }
+}
+
+export function assertRegisterSchoolsArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [request] = args;
+  if (!isPlainObject(request)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(request, ['source', 'schools']);
+  if (request.source !== 'form' && request.source !== 'bulk') throw new IPCError('Expected source form or bulk.');
+  if (!Array.isArray(request.schools) || request.schools.length > MAX_SCHOOL_REGISTRATIONS) {
+    throw new IPCError(`Expected at most ${MAX_SCHOOL_REGISTRATIONS} schools.`);
+  }
+  for (const school of request.schools) assertRegistrationInput(school);
+}
+
+export function assertResubmitSchoolRegistrationArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [request] = args;
+  if (!isPlainObject(request)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(request, ['id', 'school']);
+  assertRegistrationId(request.id, 'id');
+  assertRegistrationInput(request.school);
+}
+
+export function assertRegistrationIdArg(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  assertRegistrationId(args[0], 'id');
+}
+
+export function assertRegistrationIdsArg(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  assertRegistrationIds(args[0]);
+}
+
+export function assertSettleSchoolRegistrationsArgs(args: readonly unknown[]): void {
+  assertArity(args, 2);
+  assertRegistrationIds(args[0]);
+  if (typeof args[1] !== 'number' || !Number.isFinite(args[1])) throw new IPCError('Expected timeoutMs to be a number.');
+}
+
 export function assertTransferCreateArgs(args: readonly unknown[]): void {
   assertArity(args, 1);
   const [request] = args;

@@ -61,6 +61,13 @@ import type {
 } from './county-districts';
 import type { CountySchoolDetailResult, CountySchoolsResult } from './county-schools';
 import type {
+  RegisterSchoolsRequest,
+  RegisterSchoolsResult,
+  ResubmitSchoolRegistrationRequest,
+  SchoolRegistration,
+  SchoolRegistrationContext,
+} from './county-school-registrations';
+import type {
   CreateGuardianRequest,
   CreateStudentRequest,
   CreateAndEnrollStudentRequest,
@@ -164,6 +171,12 @@ export interface IpcContract {
   'county:remove-deo': { args: [request: CountyRemoveDeoRequest]; result: OnlineCommandResult<null> };
   'county:list-schools': { args: []; result: CountySchoolsResult };
   'county:get-school': { args: [schoolId: string]; result: CountySchoolDetailResult | null };
+  'county:get-registration-context': { args: []; result: SchoolRegistrationContext };
+  'county:register-schools': { args: [request: RegisterSchoolsRequest]; result: RegisterSchoolsResult };
+  'county:resubmit-school-registration': { args: [request: ResubmitSchoolRegistrationRequest]; result: RegisterSchoolsResult };
+  'county:discard-school-registration': { args: [id: string]; result: { discarded: boolean } };
+  'county:get-school-registrations': { args: [ids: string[]]; result: SchoolRegistration[] };
+  'county:settle-school-registrations': { args: [ids: string[], timeoutMs: number]; result: SchoolRegistration[] };
   'school:get-summary': { args: []; result: SchoolSummaryResult | null };
   'institution:list': { args: []; result: InstitutionSummaryResult[] };
   'academic-year:get-current': { args: []; result: AcademicYearResult | null };
@@ -356,6 +369,12 @@ export const IpcChannels = {
   COUNTY_REMOVE_DEO: 'county:remove-deo',
   COUNTY_LIST_SCHOOLS: 'county:list-schools',
   COUNTY_GET_SCHOOL: 'county:get-school',
+  COUNTY_GET_REGISTRATION_CONTEXT: 'county:get-registration-context',
+  COUNTY_REGISTER_SCHOOLS: 'county:register-schools',
+  COUNTY_RESUBMIT_SCHOOL_REGISTRATION: 'county:resubmit-school-registration',
+  COUNTY_DISCARD_SCHOOL_REGISTRATION: 'county:discard-school-registration',
+  COUNTY_GET_SCHOOL_REGISTRATIONS: 'county:get-school-registrations',
+  COUNTY_SETTLE_SCHOOL_REGISTRATIONS: 'county:settle-school-registrations',
   SCHOOL_GET_SUMMARY: 'school:get-summary',
   INSTITUTION_LIST: 'institution:list',
   ACADEMIC_YEAR_GET_CURRENT: 'academic-year:get-current',

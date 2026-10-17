@@ -38,6 +38,13 @@ import type {
 } from './county-districts';
 import type { CountySchoolDetailResult, CountySchoolsResult } from './county-schools';
 import type {
+  RegisterSchoolsRequest,
+  RegisterSchoolsResult,
+  ResubmitSchoolRegistrationRequest,
+  SchoolRegistration,
+  SchoolRegistrationContext,
+} from './county-school-registrations';
+import type {
   CreateGuardianRequest,
   CreateStudentRequest,
   CreateAndEnrollStudentRequest,
@@ -163,6 +170,13 @@ export interface CountyApi {
   removeDeo(request: CountyRemoveDeoRequest): Promise<OnlineCommandResult<null>>;
   listSchools(): Promise<CountySchoolsResult>;
   getSchool(schoolId: string): Promise<CountySchoolDetailResult | null>;
+  getRegistrationContext(): Promise<SchoolRegistrationContext>;
+  registerSchools(request: RegisterSchoolsRequest): Promise<RegisterSchoolsResult>;
+  resubmitSchoolRegistration(request: ResubmitSchoolRegistrationRequest): Promise<RegisterSchoolsResult>;
+  discardSchoolRegistration(id: string): Promise<{ discarded: boolean }>;
+  getSchoolRegistrations(ids: string[]): Promise<SchoolRegistration[]>;
+  /** Runs a sync bounded by timeoutMs, then reads the registrations (the online wait after Save). */
+  settleSchoolRegistrations(ids: string[], timeoutMs: number): Promise<SchoolRegistration[]>;
 }
 export interface SchoolApi {
   getSummary(): Promise<SchoolSummaryResult | null>;

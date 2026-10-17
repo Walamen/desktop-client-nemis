@@ -48,6 +48,7 @@ import {
   registerCountyDashboardHandlers,
   registerCountyDeoHandlers,
   registerCountyDistrictHandlers,
+  registerCountyRegistrationHandlers,
   registerCountySchoolHandlers,
 } from '@app/ipc/handlers/county';
 
@@ -102,6 +103,7 @@ export function registerIpcHandlers(
   registerRegistryHandlers(securedHandle, gateway, refresh);
   registerTransferHandlers(securedHandle, gateway, refresh);
   registerCountyDeoHandlers(securedHandle, gateway, refresh);
+  registerCountyRegistrationHandlers(securedHandle, app, (timeoutMs) => syncWorker.pullNow(timeoutMs));
 
   registerTeacherDashboardHandlers(securedHandle, app);
   registerAssignmentHandlers(securedHandle, app, workspaces);

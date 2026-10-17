@@ -10,5 +10,10 @@ export const countyIpc = {
     getDistrict: (districtId) => query(() => countyBridge.getDistrict(districtId)),
     listSchools: () => query(() => countyBridge.listSchools()),
     getSchool: (schoolId) => query(() => countyBridge.getSchool(schoolId)),
+    getRegistrationContext: () => query(() => countyBridge.getRegistrationContext()),
+    registerSchools: (request) => query(() => countyBridge.registerSchools(request)),
+    resubmitSchoolRegistration: (request) => query(() => countyBridge.resubmitSchoolRegistration(request)),
+    discardSchoolRegistration: (id) => query(() => countyBridge.discardSchoolRegistration(id)),
+    getSchoolRegistrations: (ids) => query(() => countyBridge.getSchoolRegistrations(ids)),
   }),
 };

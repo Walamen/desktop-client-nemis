@@ -5,6 +5,8 @@ import { OfflineError, RateLimitedError, RemoteRejectedError, UnauthorizedError 
 import { migrations } from '@app/database/migrations/registry';
 import { SchoolRegistrationSyncService } from './SchoolRegistrationSyncService';
 
+type CreateInstitution = (id: string, payload: unknown) => Promise<{ principal: { email: string; defaultPassword: string } | null }>;
+
 function db(): SqliteDatabase {
   const connection = new Database(':memory:');
   connection.pragma('foreign_keys = OFF');
@@ -49,7 +51,7 @@ describe('SchoolRegistrationSyncService', () => {
   it('2xx: synced with the principal login, accepted count 1', async () => {
     seed(connection, 'r-1');
     const gateway = {
-      createInstitution: vi.fn(async (_id: string, _payload: unknown) => ({
+      createInstitution: vi.fn<CreateInstitution>(async () => ({
         principal: { email: 'ada@school.lr', defaultPassword: 'Nemis@123' },
       })),
     };
@@ -107,7 +109,7 @@ describe('SchoolRegistrationSyncService', () => {
     seed(connection, 'theirs', { createdBy: 'u-2' });
     seed(connection, 'elsewhere', { countyId: 'c-2' });
     seed(connection, 'done', { state: 'synced' });
-    const gateway = { createInstitution: vi.fn(async (_id: string, _payload: unknown) => ({ principal: null })) };
+    const gateway = { createInstitution: vi.fn<CreateInstitution>(async () => ({ principal: null })) };
     await new SchoolRegistrationSyncService(gateway).pushPending(connection, 'u-1');
     expect(gateway.createInstitution.mock.calls.map((call) => call[0])).toEqual(['mine']);
   });
