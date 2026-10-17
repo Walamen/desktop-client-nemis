@@ -35,7 +35,7 @@ interface BulkCreateResult {
   waiting: number;
   results: {
     created: Array<{ index: number; name: string; adminCredential?: { email: string; defaultPassword: string } }>;
-    failed: Array<{ index: number; name: string; error: string }>;
+    failed: Array<{ index: number; name: string; error: string; rowId: string }>;
   };
 }
 
@@ -119,7 +119,7 @@ export default function BulkImportPage() {
   const router = useRouter();
   const vm = useCountySchoolRegistrationViewModel();
   const context = useViewModel(vm.store, (s) => s.context);
-  const isLoading = useViewModel(vm.store, (s) => s.submitting);
+  const submitting = useViewModel(vm.store, (s) => s.submitting);
   useEffect(() => {
     void vm.loadContext();
   }, [vm]);
@@ -325,11 +325,27 @@ export default function BulkImportPage() {
 
   const validRows = rows.filter((r) => Object.keys(r.errors).length === 0);
 
+  /** Import and the online wait are one action: the Import buttons stay
+   * disabled until the done step shows (a second click must not save again). */
+  const savingRef = useRef(false);
+  const [saving, setSaving] = useState(false);
+  const isLoading = submitting || saving;
   const handleSubmit = async () => {
-    if (validRows.length === 0 || isLoading) return;
+    if (validRows.length === 0 || savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      await importRows();
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
+  };
 
+  const importRows = async () => {
+    const submittedRows = validRows;
     // The web's payload; the device adds the (random) code and the county when it saves.
-    const institutions = validRows.map((row): SchoolRegistrationInput => {
+    const institutions = submittedRows.map((row): SchoolRegistrationInput => {
       const district = districts.find(
         (d) => d.name.toLowerCase() === row.districtName.trim().toLowerCase(),
       )!;
@@ -397,6 +413,7 @@ export default function BulkImportPage() {
       index: indexOf.get(r.id)!,
       name: nameAt(r.id),
       error: r.syncError ?? "The server refused this school.",
+      rowId: submittedRows[indexOf.get(r.id)!]!.id,
     }));
     setResult({
       totalRequested: institutions.length,
@@ -896,19 +913,15 @@ export default function BulkImportPage() {
                   type="button"
                   variant="secondary"
                   onClick={() => {
-                    const failedIndexes = new Set(
-                      result.results.failed.map((f) => f.index),
-                    );
-                    const failedNames = new Set(
-                      result.results.failed.map((f) => f.name.toLowerCase()),
+                    // The desktop knows each refused row: match on it (the
+                    // web's index/name matching could pull a waiting school
+                    // back into review and save it twice).
+                    const failedRowIds = new Set(
+                      result.results.failed.map((f) => f.rowId),
                     );
                     setRows((prev) =>
                       prev
-                        .filter(
-                          (r) =>
-                            failedIndexes.has(prev.indexOf(r)) ||
-                            failedNames.has(r.schoolName.toLowerCase()),
-                        )
+                        .filter((r) => failedRowIds.has(r.id))
                         .map((r) => ({
                           ...r,
                           errors: validateRow(r, districtNames),

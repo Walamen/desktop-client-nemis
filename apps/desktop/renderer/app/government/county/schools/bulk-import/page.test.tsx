@@ -151,6 +151,40 @@ describe('County Bulk Import Schools', () => {
     expect(screen.queryByDisplayValue('Alpha School')).not.toBeInTheDocument();
   });
 
+  it('a second Import click during the online wait does not save the rows twice', async () => {
+    let settle: (value: unknown) => void = () => {};
+    const api = renderWith({ settleSchoolRegistrations: vi.fn(() => new Promise((resolve) => (settle = resolve))) });
+    await screen.findByRole('button', { name: /Download Template/ });
+    await upload(VALID_ROWS);
+    fireEvent.click(screen.getAllByRole('button', { name: /Import 2/ })[0]!);
+    await waitFor(() => expect(api.settleSchoolRegistrations).toHaveBeenCalledTimes(1));
+    for (const button of screen.getAllByRole('button', { name: /Importing/ })) {
+      expect(button).toBeDisabled();
+      fireEvent.click(button);
+    }
+    settle(IDS.map((id) => registration(id, 'pending')));
+    await waitFor(() => expect(screen.getByText(/schools saved/)).toBeInTheDocument());
+    expect(api.registerSchools).toHaveBeenCalledTimes(1);
+  });
+
+  it('Retry Failed Rows brings back only the refused row, even after an invalid row', async () => {
+    renderWith({
+      settleSchoolRegistrations: vi.fn(async () => [
+        registration(IDS[0]!, 'pending'),
+        registration(IDS[1]!, 'rejected', { syncError: 'Email taken' }),
+      ]),
+    });
+    await screen.findByRole('button', { name: /Download Template/ });
+    await upload([
+      ['Gamma School', 'Nowhere', 'PRIMARY', 'Gus Doe', 'gus@school.lr', '', '', '', '', ''],
+      ...VALID_ROWS,
+    ]);
+    fireEvent.click(screen.getAllByRole('button', { name: /Import 2/ })[0]!);
+    fireEvent.click(await screen.findByRole('button', { name: 'Retry Failed Rows' }));
+    await waitFor(() => expect(screen.getByDisplayValue('Beta School')).toBeInTheDocument());
+    expect(screen.queryByDisplayValue('Alpha School')).not.toBeInTheDocument();
+  });
+
   it('ignores a second Import click while saving', async () => {
     let release: (value: unknown) => void = () => {};
     const api = renderWith({ registerSchools: vi.fn(() => new Promise((resolve) => (release = resolve))) });

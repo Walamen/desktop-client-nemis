@@ -194,4 +194,58 @@ describe('Create School page', () => {
     await waitFor(() => expect(screen.getByText('This school code already exists: Old School')).toBeInTheDocument());
     expect(screen.getByPlaceholderText('e.g. LR-MONT-001')).toBeInTheDocument();
   });
+
+  it('an online Fix and resend refused again keeps the school, so the next Save resubmits it', async () => {
+    registrationParam = ID;
+    const api = renderWith({
+      getSchoolRegistrations: vi.fn(async () => [
+        registration('rejected', {
+          syncError: 'Email taken',
+          payload: {
+            name: 'Old Name', code: 'GB-0042', type: 'SCHOOL', levels: ['PRIMARY'], ownership: 'GOVERNMENT',
+            countyId: 'c-1', districtId: 'd-1', isActive: true, principalName: 'Ada Doe',
+            admins: [{ email: 'ada@school.lr', firstName: 'Ada', lastName: 'Doe' }],
+          },
+        }),
+      ]),
+      settleSchoolRegistrations: vi.fn(async () => [registration('rejected', { syncError: 'Email taken' })]),
+    });
+    await waitFor(() => expect(screen.getByPlaceholderText('Enter full school name')).toHaveValue('Old Name'));
+    fireEvent.click(screen.getByRole('button', { name: /^Next/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Submit & Finish' }));
+    await waitFor(() => expect(ui.showError).toHaveBeenCalledWith('Email taken', 'Registration Failed'));
+    expect(api.discardSchoolRegistration).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByPlaceholderText('school@example.com'), { target: { value: 'new@school.lr' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Submit & Finish' }));
+    await waitFor(() => expect(api.resubmitSchoolRegistration).toHaveBeenCalledTimes(2));
+    expect(api.resubmitSchoolRegistration).toHaveBeenLastCalledWith({
+      id: ID,
+      school: expect.objectContaining({ admins: [{ email: 'new@school.lr', firstName: 'Ada', lastName: 'Doe' }] }),
+    });
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it('a second Save click during the online wait does not save the school twice', async () => {
+    let settle: (value: unknown) => void = () => {};
+    const api = renderWith({ settleSchoolRegistrations: vi.fn(() => new Promise((resolve) => (settle = resolve))) });
+    await fillStepsOneAndTwo();
+    fireEvent.click(screen.getByRole('button', { name: 'Submit & Finish' }));
+    await waitFor(() => expect(api.settleSchoolRegistrations).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole('button', { name: /Submitting/ })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: /Submitting/ }));
+    settle([registration('pending')]);
+    await waitFor(() => expect(push).toHaveBeenCalled());
+    expect(api.registerSchools).toHaveBeenCalledTimes(1);
+  });
+
+  it('sends the principal email trimmed, as it was checked', async () => {
+    const api = renderWith();
+    await fillStepsOneAndTwo('Ada Doe', 'ada@school.lr ');
+    fireEvent.click(screen.getByRole('button', { name: 'Submit & Finish' }));
+    await waitFor(() => expect(api.registerSchools).toHaveBeenCalledTimes(1));
+    expect(api.registerSchools).toHaveBeenCalledWith({
+      source: 'form',
+      schools: [expect.objectContaining({ admins: [{ email: 'ada@school.lr', firstName: 'Ada', lastName: 'Doe' }] })],
+    });
+  });
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Button,
@@ -242,7 +242,7 @@ export function CreateSchoolPage() {
   const vm = useCountySchoolRegistrationViewModel();
   const context = useViewModel(vm.store, (s) => s.context);
   const registration = useViewModel(vm.store, (s) => s.registration);
-  const isLoading = useViewModel(vm.store, (s) => s.submitting);
+  const submitting = useViewModel(vm.store, (s) => s.submitting);
   const [currentStep, setCurrentStep] = useState(1);
   const [codeClash, setCodeClash] = useState<string | null>(null);
 
@@ -497,8 +497,24 @@ export function CreateSchoolPage() {
     };
   };
 
+  /** Save and the online wait are one action: the buttons stay disabled until
+   * the page has shown the outcome (a second click must not save again). */
+  const savingRef = useRef(false);
+  const [saving, setSaving] = useState(false);
+  const isLoading = submitting || saving;
   const submitSchool = async () => {
-    if (isLoading || !isStep1Valid || !isStep2Valid || !laterStepsValid) return;
+    if (savingRef.current || !isStep1Valid || !isStep2Valid || !laterStepsValid) return;
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      await saveSchool();
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
+  };
+
+  const saveSchool = async () => {
     setCodeClash(null);
     const result = resubmitting
       ? await vm.resubmit({
@@ -543,8 +559,10 @@ export function CreateSchoolPage() {
       router.push("/government/county/schools");
       return;
     }
-    // Refused at once: the admin fixes it right here, as on the web.
-    await vm.discard(result.ids[0]!);
+    // Refused at once: the admin fixes it right here, as on the web. A new
+    // school is removed so it does not also linger red; a school being fixed
+    // stays (it is rejected again) so the next Save resubmits it.
+    if (!resubmitting) await vm.discard(result.ids[0]!);
     await showError(outcome.message, "Registration Failed");
   };
 
