@@ -7,15 +7,15 @@ const FALLBACK = '/school-fallback.jpg';
 
 /** next/image for school photos: unoptimized (static export, remote Cloudinary
  * URLs) and swapped to the local fallback when the photo cannot load — offline,
- * or a missing image. */
-export function SchoolPhoto({ src, alt, ...rest }: ImageProps) {
+ * or a missing image. Students and others pass their own `fallback`. */
+export function SchoolPhoto({ src, alt, fallback = FALLBACK, ...rest }: ImageProps & { fallback?: string }) {
   const [failedSrc, setFailedSrc] = useState<ImageProps['src'] | null>(null);
   return (
     <Image
       {...rest}
       unoptimized
       alt={alt}
-      src={failedSrc === src ? FALLBACK : src}
+      src={failedSrc === src ? fallback : src}
       onError={() => setFailedSrc(src)}
     />
   );
