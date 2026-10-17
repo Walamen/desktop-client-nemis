@@ -23,6 +23,8 @@ import { CountyDistrictDetailViewModel } from '../view-models/county/county-dist
 import { CountySchoolsViewModel } from '../view-models/county/county-schools-view-model';
 import { CountySchoolDetailViewModel } from '../view-models/county/county-school-detail-view-model';
 import { CountySchoolRegistrationViewModel } from '../view-models/county/county-school-registration-view-model';
+import { CountyStudentsViewModel } from '../view-models/county/county-students-view-model';
+import { CountyStudentDetailViewModel } from '../view-models/county/county-student-detail-view-model';
 import { SettingsViewModel } from '../view-models/settings/settings-view-model';
 import { StudentsViewModel } from '../view-models/students/students-view-model';
 import { StudentStatisticsViewModel } from '../view-models/students/student-statistics-view-model';
@@ -63,6 +65,8 @@ export interface PresentationViewModels {
   readonly countySchools: CountySchoolsViewModel;
   readonly countySchoolDetail: CountySchoolDetailViewModel;
   readonly countySchoolRegistration: CountySchoolRegistrationViewModel;
+  readonly countyStudents: CountyStudentsViewModel;
+  readonly countyStudentDetail: CountyStudentDetailViewModel;
   readonly device: DeviceViewModel;
   readonly currentUser: CurrentUserViewModel;
   readonly dashboard: DashboardViewModel;
@@ -138,6 +142,8 @@ export function createPresentationLayer(
     countySchools: new CountySchoolsViewModel({ county: app.county }),
     countySchoolDetail: new CountySchoolDetailViewModel({ county: app.county }),
     countySchoolRegistration: new CountySchoolRegistrationViewModel({ county: app.county, notifications }),
+    countyStudents: new CountyStudentsViewModel({ county: app.county }),
+    countyStudentDetail: new CountyStudentDetailViewModel({ county: app.county }),
     device: new DeviceViewModel({ infra: app.infra, notifications, session }),
     currentUser: new CurrentUserViewModel({ identity: app.identity, session }),
     dashboard: new DashboardViewModel({ reporting: app.reporting, notifications }),

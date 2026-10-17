@@ -9,3 +9,5 @@ export const useCountyDistrictDetailViewModel = () => usePresentation().viewMode
 export const useCountySchoolsViewModel = () => usePresentation().viewModels.countySchools;
 export const useCountySchoolDetailViewModel = () => usePresentation().viewModels.countySchoolDetail;
 export const useCountySchoolRegistrationViewModel = () => usePresentation().viewModels.countySchoolRegistration;
+export const useCountyStudentsViewModel = () => usePresentation().viewModels.countyStudents;
+export const useCountyStudentDetailViewModel = () => usePresentation().viewModels.countyStudentDetail;
