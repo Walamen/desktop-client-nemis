@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import * as XLSX from "xlsx";
 import { Button, Card, Spinner } from "@nemis-desktop/ui";
@@ -123,10 +123,13 @@ export default function BulkImportPage() {
   useEffect(() => {
     void vm.loadContext();
   }, [vm]);
-  const districts =
-    context.status === "success" || context.status === "refreshing"
-      ? context.data.districts
-      : [];
+  const districts = useMemo(
+    () =>
+      context.status === "success" || context.status === "refreshing"
+        ? context.data.districts
+        : [],
+    [context],
+  );
 
   const [step, setStep] = useState<Step>("upload");
   const [rows, setRows] = useState<BulkRow[]>([]);
