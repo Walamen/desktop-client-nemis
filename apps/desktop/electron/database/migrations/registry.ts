@@ -33,6 +33,7 @@ import { addCountyDashboardColumns } from './031-add-county-dashboard-columns';
 import { addCountyDistrictsColumns } from './032-add-county-districts-columns';
 import { addInstitutionDetails } from './033-add-institution-details';
 import { createSchoolRegistrations } from './034-create-school-registrations';
+import { addCountyStudentsData } from './035-add-county-students-data';
 
 /**
  * Every migration, ascending by version. Append only — never edit or reorder
@@ -73,4 +74,5 @@ export const migrations: readonly Migration[] = [
   addCountyDistrictsColumns,
   addInstitutionDetails,
   createSchoolRegistrations,
+  addCountyStudentsData,
 ];

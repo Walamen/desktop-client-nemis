@@ -443,6 +443,28 @@ describe('ProvisioningImporter', () => {
     expect(countRows('institutions')).toBe(1);
   });
 
+  it('imports term averages and the student photoUrl and nationalId', () => {
+    new ProvisioningImporter(manager).import(
+      snapshotOf({
+        ...BASE_DATA,
+        students: [{ ...student('s1', 'Ada'), nationalId: 'NAT-1', photoUrl: 'https://res.cloudinary.com/x/ada.jpg' }],
+        termAverages: [{
+          id: 'ta-1', studentId: 's1', subjectId: 'sub-1', termId: 't-1', classId: 'c-1', percentage: 71.5,
+          calculatedAt: '2026-03-01T00:00:00.000Z', updatedAt: '2026-03-02T00:00:00.000Z',
+        }],
+      }),
+      CONTEXT,
+    );
+    const db = manager.connection;
+    expect(db.prepare(`SELECT nationalId, photoUrl FROM students`).get()).toEqual({
+      nationalId: 'NAT-1',
+      photoUrl: 'https://res.cloudinary.com/x/ada.jpg',
+    });
+    expect(db.prepare(`SELECT id, studentId, percentage, calculatedAt FROM term_averages`).all()).toEqual([
+      { id: 'ta-1', studentId: 's1', percentage: 71.5, calculatedAt: '2026-03-01T00:00:00.000Z' },
+    ]);
+  });
+
   it('imports the county row and the dashboard columns', () => {
     const importer = new ProvisioningImporter(manager);
     importer.import(
