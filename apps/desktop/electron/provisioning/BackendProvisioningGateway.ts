@@ -31,6 +31,7 @@ import {
   type DesktopSyncOperation,
   type DesktopSyncPushResult,
   type SchoolRegistrationPayload,
+  type StudentAcademicRecord,
 } from '@nemis-desktop/types';
 import {
   ForbiddenError,
@@ -285,6 +286,18 @@ export class BackendProvisioningGateway {
     );
   }
 
+  /** County Students: a student's national record (years at every school,
+   * transfers), read-only. A short timeout: the page shows its local years
+   * meanwhile and treats any failure as "unavailable". */
+  async getStudentAcademicRecord(countyId: string, studentId: string): Promise<StudentAcademicRecord> {
+    return this.authorized(
+      `/counties/${encodeURIComponent(countyId)}/students/${encodeURIComponent(studentId)}/academic-record`,
+      { method: 'GET' },
+      toStudentAcademicRecord,
+      { onlineCommand: true, timeoutMs: 10_000 },
+    );
+  }
+
   /** County offline registration: the web's own create, with the desktop's
    * id so a re-send after a lost answer returns the same school (the server
    * replays it). The principal login comes from the auto-activated admin. */
@@ -335,7 +348,7 @@ export class BackendProvisioningGateway {
     path: string,
     init: RequestInit,
     validate: (value: unknown) => T,
-    options: { onlineCommand?: boolean } = {},
+    options: { onlineCommand?: boolean; timeoutMs?: number } = {},
   ): Promise<T> {
     const stored = await this.sessions.load();
     if (!stored) throw new UnauthorizedError();
@@ -364,7 +377,7 @@ export class BackendProvisioningGateway {
           cookie: cookies,
           ...init.headers,
         },
-        signal: AbortSignal.timeout(120_000),
+        signal: AbortSignal.timeout(options.timeoutMs ?? 120_000),
       });
     } catch (error) {
       throw new OfflineError(undefined, { cause: error });
@@ -408,6 +421,12 @@ async function readRemoteMessage(response: Response): Promise<string | undefined
     // Non-JSON body (proxy error page, empty body).
   }
   return undefined;
+}
+
+function toStudentAcademicRecord(value: unknown): StudentAcademicRecord {
+  const body = asRecord(value);
+  if (!Array.isArray(body.years) || !Array.isArray(body.transfers)) throw new Error('Malformed server response.');
+  return { years: body.years, transfers: body.transfers } as StudentAcademicRecord;
 }
 
 export interface SchoolRegistrationAcceptance {

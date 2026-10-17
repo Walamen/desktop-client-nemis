@@ -141,6 +141,9 @@ const COUNTY_ADMIN_CHANNELS = new Set<IpcChannel>([
   IpcChannels.COUNTY_DISCARD_SCHOOL_REGISTRATION,
   IpcChannels.COUNTY_GET_SCHOOL_REGISTRATIONS,
   IpcChannels.COUNTY_SETTLE_SCHOOL_REGISTRATIONS,
+  IpcChannels.COUNTY_LIST_STUDENTS,
+  IpcChannels.COUNTY_GET_STUDENT,
+  IpcChannels.COUNTY_GET_STUDENT_RECORD,
 ]);
 
 export function authorizeChannel(channel: IpcChannel, workspaces: WorkspaceManager): void {

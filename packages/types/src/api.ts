@@ -45,6 +45,12 @@ import type {
   SchoolRegistrationContext,
 } from './county-school-registrations';
 import type {
+  CountyStudentDetail,
+  CountyStudentsQuery,
+  CountyStudentsResult,
+  StudentAcademicRecordResult,
+} from './county-students';
+import type {
   CreateGuardianRequest,
   CreateStudentRequest,
   CreateAndEnrollStudentRequest,
@@ -177,6 +183,10 @@ export interface CountyApi {
   getSchoolRegistrations(ids: string[]): Promise<SchoolRegistration[]>;
   /** Runs a sync bounded by timeoutMs, then reads the registrations (the online wait after Save). */
   settleSchoolRegistrations(ids: string[], timeoutMs: number): Promise<SchoolRegistration[]>;
+  listStudents(query: CountyStudentsQuery): Promise<CountyStudentsResult>;
+  getStudent(studentId: string): Promise<CountyStudentDetail | null>;
+  /** The student's national record from the server; 'unavailable' offline or on any failure. */
+  getStudentRecord(studentId: string): Promise<StudentAcademicRecordResult>;
 }
 export interface SchoolApi {
   getSummary(): Promise<SchoolSummaryResult | null>;

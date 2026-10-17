@@ -552,6 +552,12 @@ export class DesktopSyncWorker {
       .run(newId, oldId);
   }
 
+  /** Connectivity alone (no database read): for online-only reads that must
+   * answer "unavailable" at once when offline. */
+  isOnline(): boolean {
+    return this.connectivity.isOnline();
+  }
+
   getStatus(): DesktopSyncStatus {
     const workspace = this.workspaces.active;
     const db = workspace.database.connection;

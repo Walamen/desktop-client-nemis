@@ -1108,6 +1108,22 @@ export function assertSettleSchoolRegistrationsArgs(args: readonly unknown[]): v
   if (typeof args[1] !== 'number' || !Number.isFinite(args[1])) throw new IPCError('Expected timeoutMs to be a number.');
 }
 
+// --- County Students ------------------------------------------------------
+export function assertCountyStudentsQueryArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [query] = args;
+  if (!isPlainObject(query)) throw new IPCError('Expected a query object.');
+  assertKnownKeys(query, ['search', 'institutionId', 'districtId', 'gradeLevel', 'performance', 'status', 'page', 'limit']);
+  assertInt(query.page, 'page', 1, 1_000_000);
+  assertInt(query.limit, 'limit', 1, 50);
+  for (const key of ['search', 'institutionId', 'districtId', 'gradeLevel', 'performance'] as const) {
+    if (query[key] !== undefined) assertString(query[key], key, ID_MAX_LENGTH);
+  }
+  if (query.status !== undefined && query.status !== 'active' && query.status !== 'inactive') {
+    throw new IPCError('Expected status active or inactive.');
+  }
+}
+
 export function assertTransferCreateArgs(args: readonly unknown[]): void {
   assertArity(args, 1);
   const [request] = args;

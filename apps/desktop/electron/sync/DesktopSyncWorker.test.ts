@@ -785,6 +785,11 @@ describe('DesktopSyncWorker retry policy', () => {
     ).toBe(0);
   });
 
+  it('isOnline answers from the connectivity source without touching the database', () => {
+    expect(new DesktopSyncWorker(workspaces, {} as BackendProvisioningGateway, { isOnline: () => false }).isOnline()).toBe(false);
+    expect(new DesktopSyncWorker(workspaces, {} as BackendProvisioningGateway, { isOnline: () => true }).isOnline()).toBe(true);
+  });
+
   it('getStatus reports isOnline from the injected connectivity source', () => {
     const worker = new DesktopSyncWorker(workspaces, {} as BackendProvisioningGateway, { isOnline: () => false });
     expect(worker.getStatus().isOnline).toBe(false);

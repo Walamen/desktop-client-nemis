@@ -619,6 +619,24 @@ describe('BackendProvisioningGateway', () => {
     });
   });
 
+  describe('county student record', () => {
+    it('getStudentAcademicRecord GETs the county student record and returns its body', async () => {
+      const record = { years: [], transfers: [] };
+      const fetchMock = vi.fn(async () => response(record));
+      vi.stubGlobal('fetch', fetchMock);
+      expect(await buildGateway().getStudentAcademicRecord('county 1', 's-1')).toEqual(record);
+      const [url, init] = fetchMock.mock.calls[0] as unknown as [URL, RequestInit];
+      expect(url.pathname).toBe('/counties/county%201/students/s-1/academic-record');
+      expect(init.method).toBe('GET');
+      expect(init.signal).toBeInstanceOf(AbortSignal);
+    });
+
+    it('getStudentAcademicRecord refuses a body without years and transfers arrays', async () => {
+      vi.stubGlobal('fetch', vi.fn(async () => response({ years: 'nope' })));
+      await expect(buildGateway().getStudentAcademicRecord('c', 's')).rejects.toThrow('Malformed server response.');
+    });
+  });
+
   describe('school registrations', () => {
     const payload = {
       name: 'Alpha School', code: 'GB-0042', type: 'SCHOOL' as const, levels: ['PRIMARY'], ownership: 'GOVERNMENT',

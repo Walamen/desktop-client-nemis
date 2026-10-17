@@ -49,6 +49,7 @@ import {
   registerCountyDeoHandlers,
   registerCountyDistrictHandlers,
   registerCountyRegistrationHandlers,
+  registerCountyStudentHandlers,
   registerCountySchoolHandlers,
 } from '@app/ipc/handlers/county';
 
@@ -104,6 +105,11 @@ export function registerIpcHandlers(
   registerTransferHandlers(securedHandle, gateway, refresh);
   registerCountyDeoHandlers(securedHandle, gateway, refresh);
   registerCountyRegistrationHandlers(securedHandle, app, (timeoutMs) => syncWorker.pullNow(timeoutMs));
+  registerCountyStudentHandlers(securedHandle, app, {
+    gateway,
+    isOnline: () => syncWorker.isOnline(),
+    countyId: () => workspaces.active.user.scope.scopeId,
+  });
 
   registerTeacherDashboardHandlers(securedHandle, app);
   registerAssignmentHandlers(securedHandle, app, workspaces);
