@@ -5,6 +5,7 @@ import type {
   ICountyAnalyticsReadModel,
   ICountyDistrictsReadModel,
   ICountySchoolsReadModel,
+  ISchoolRegistrationStore,
   IUserRepository,
   IAcademicYearRepository,
   IClassRepository,
@@ -36,6 +37,7 @@ import { SqliteDistrictRepository } from '../repositories/sqlite/business/Sqlite
 import { SqliteCountyAnalyticsReadModel } from '../repositories/sqlite/business/SqliteCountyAnalyticsReadModel';
 import { SqliteCountyDistrictsReadModel } from '../repositories/sqlite/business/SqliteCountyDistrictsReadModel';
 import { SqliteCountySchoolsReadModel } from '../repositories/sqlite/business/SqliteCountySchoolsReadModel';
+import { SqliteSchoolRegistrationStore } from '../repositories/sqlite/business/SqliteSchoolRegistrationStore';
 import { SqliteStudentRepository } from '../repositories/sqlite/business/SqliteStudentRepository';
 import { SqliteUserRepository } from '../repositories/sqlite/business/SqliteUserRepository';
 import { SqliteGuardianRepository } from '../repositories/sqlite/business/SqliteGuardianRepository';
@@ -69,6 +71,7 @@ export interface DataLayer {
     countyAnalytics: ICountyAnalyticsReadModel;
     countyDistricts: ICountyDistrictsReadModel;
     countySchools: ICountySchoolsReadModel;
+    schoolRegistrations: ISchoolRegistrationStore;
     users: IUserRepository;
     academicYears: IAcademicYearRepository;
     classes: IClassRepository;
@@ -135,6 +138,7 @@ export function createDataLayer(manager: DatabaseManager, log: DatabaseLogger): 
   const countyAnalytics = new SqliteCountyAnalyticsReadModel(context);
   const countyDistricts = new SqliteCountyDistrictsReadModel(context);
   const countySchools = new SqliteCountySchoolsReadModel(context);
+  const schoolRegistrations = new SqliteSchoolRegistrationStore(context);
   const users = new SqliteUserRepository(context);
   const academicYears = new SqliteAcademicYearRepository(context);
   const classes = new SqliteClassRepository(context);
@@ -184,6 +188,7 @@ export function createDataLayer(manager: DatabaseManager, log: DatabaseLogger): 
       countyAnalytics,
       countyDistricts,
       countySchools,
+      schoolRegistrations,
       users,
       academicYears,
       classes,
