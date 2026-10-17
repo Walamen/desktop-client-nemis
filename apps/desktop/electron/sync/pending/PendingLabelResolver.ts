@@ -44,6 +44,8 @@ const LOOKUPS: Readonly<Record<string, string>> = {
   fee_payment_reversals: `SELECT r.id, ${STUDENT} || ' · receipt ' || p.receiptNumber AS label
     FROM fee_payment_reversals r JOIN fee_payments p ON p.id = r.paymentId JOIN students s ON s.id = p.studentId
     WHERE r.id IN (__IDS__)`,
+  school_registrations: `SELECT id, json_extract(payload, '$.name') AS label FROM school_registrations
+    WHERE json_valid(payload) AND id IN (__IDS__)`,
   classes: named('classes', 'name'),
   subjects: named('subjects', 'name'),
   academic_years: named('academic_years', 'code'),

@@ -10,6 +10,7 @@ import type { WorkspaceManager, ActiveWorkspace } from '../workspace/WorkspaceMa
 import type { BackendProvisioningGateway } from '../provisioning/BackendProvisioningGateway';
 import { PROVISIONING_COLLECTIONS } from '@nemis-desktop/types';
 import { DesktopSyncWorker } from './DesktopSyncWorker';
+import { RemoteRejectedError } from '@nemis-desktop/shared';
 
 const TEST_DEVICE = { deviceName: 'worker-test', platform: 'win32', osVersion: '10.0', appVersion: '1.0.0' };
 const TEST_USER = {
@@ -1007,6 +1008,53 @@ describe('DesktopSyncWorker retry policy', () => {
       { id: 'gc-2', syncState: 'pending' },
     ]);
     expect(gateway.downloadSnapshot).toHaveBeenCalledTimes(1);
+  });
+
+  describe('school registrations', () => {
+    const seedRegistration = (id: string) => {
+      const at = '2026-10-17T09:00:00.000Z';
+      manager.connection.prepare(`INSERT OR IGNORE INTO counties (id,code,name) VALUES ('c-1','GB','Grand Bassa')`).run();
+      manager.connection.prepare(`
+        INSERT INTO school_registrations (id,countyId,createdBy,source,payload,syncState,createdAt,updatedAt)
+        VALUES (?,'c-1',?,'form','{"name":"Alpha","code":"GB-1"}','pending',?,?)
+      `).run(id, TEST_USER.id, at, at);
+    };
+    const stateOf = (id: string) =>
+      (manager.connection.prepare(`SELECT syncState FROM school_registrations WHERE id=?`).get(id) as { syncState: string })
+        .syncState;
+
+    it('a pending registration keeps an idle cycle alive and is pushed', async () => {
+      const gateway = {
+        pushChanges: vi.fn(),
+        downloadSnapshot: vi.fn().mockResolvedValue(emptySnapshot()),
+        createInstitution: vi.fn().mockRejectedValue(new RemoteRejectedError(409, 'Code taken')),
+      } as unknown as BackendProvisioningGateway;
+      const worker = new DesktopSyncWorker(workspaces, gateway, alwaysOnline());
+      await worker.syncActive();
+      seedRegistration('r-1');
+
+      await worker.syncActive();
+
+      expect(gateway.createInstitution).toHaveBeenCalledWith('r-1', { name: 'Alpha', code: 'GB-1' });
+      expect(stateOf('r-1')).toBe('rejected');
+      expect(gateway.downloadSnapshot).toHaveBeenCalledTimes(1);
+    });
+
+    it('an accepted registration forces a pull in the same cycle', async () => {
+      const gateway = {
+        pushChanges: vi.fn(),
+        downloadSnapshot: vi.fn().mockResolvedValue(emptySnapshot()),
+        createInstitution: vi.fn().mockResolvedValue({ principal: { email: 'ada@school.lr', defaultPassword: 'Nemis@123' } }),
+      } as unknown as BackendProvisioningGateway;
+      const worker = new DesktopSyncWorker(workspaces, gateway, alwaysOnline());
+      await worker.syncActive();
+      seedRegistration('r-1');
+
+      await worker.syncActive();
+
+      expect(stateOf('r-1')).toBe('synced');
+      expect(gateway.downloadSnapshot).toHaveBeenCalledTimes(2);
+    });
   });
 
   it('a delta pull merges the snapshot instead of wiping local rows it omits', async () => {

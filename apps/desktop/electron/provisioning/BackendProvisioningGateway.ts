@@ -30,6 +30,7 @@ import {
   type RegisteredDevice,
   type DesktopSyncOperation,
   type DesktopSyncPushResult,
+  type SchoolRegistrationPayload,
 } from '@nemis-desktop/types';
 import {
   ForbiddenError,
@@ -284,6 +285,18 @@ export class BackendProvisioningGateway {
     );
   }
 
+  /** County offline registration: the web's own create, with the desktop's
+   * id so a re-send after a lost answer returns the same school (the server
+   * replays it). The principal login comes from the auto-activated admin. */
+  async createInstitution(id: string, payload: SchoolRegistrationPayload): Promise<SchoolRegistrationAcceptance> {
+    return this.authorized(
+      '/institutions',
+      { method: 'POST', body: JSON.stringify({ id, ...payload }) },
+      toSchoolRegistrationAcceptance,
+      ONLINE_COMMAND,
+    );
+  }
+
   /** Pushes one (year, grade) group of end-of-year decisions. Stamping is
    * all-or-nothing server-side; a 4xx (including business 403s) surfaces as
    * RemoteRejectedError with the server's message. */
@@ -395,6 +408,24 @@ async function readRemoteMessage(response: Response): Promise<string | undefined
     // Non-JSON body (proxy error page, empty body).
   }
   return undefined;
+}
+
+export interface SchoolRegistrationAcceptance {
+  principal: { email: string; defaultPassword: string } | null;
+}
+
+function toSchoolRegistrationAcceptance(value: unknown): SchoolRegistrationAcceptance {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Malformed server response.');
+  const activations = asRecord(value).adminActivations;
+  const entry = Array.isArray(activations)
+    ? activations.map(asRecord).find((a) => a.autoActivated === true)
+    : undefined;
+  return {
+    principal:
+      entry && typeof entry.email === 'string' && typeof entry.defaultPassword === 'string'
+        ? { email: entry.email, defaultPassword: entry.defaultPassword }
+        : null,
+  };
 }
 
 function toSchoolResults(value: unknown): SchoolSearchResult[] {

@@ -11,6 +11,8 @@ import type {
 export interface PendingContext {
   db: SqliteDatabase;
   institutionId: string;
+  /** The signed-in user: school registrations are per County Admin. */
+  userId: string;
   now: string;
 }
 

@@ -15,9 +15,10 @@ import { ProvisioningImporter } from '@app/provisioning/ProvisioningImporter';
 import { AssignmentSyncService } from './AssignmentSyncService';
 import { FeeReversalSyncService } from './FeeReversalSyncService';
 import { GradeCompletionSyncService } from './GradeCompletionSyncService';
+import { SchoolRegistrationSyncService } from './SchoolRegistrationSyncService';
 import { PendingChangesService } from './pending/PendingChangesService';
 import type { PendingContext } from './pending/types';
-import { FEE_REVERSAL_PENDING, GRADE_COMPLETION_PENDING } from './pendingPredicates';
+import { FEE_REVERSAL_PENDING, GRADE_COMPLETION_PENDING, SCHOOL_REGISTRATION_PENDING } from './pendingPredicates';
 import { logger } from '@app/services/logger';
 import { hasRealDisagreement, unwrapLocalPayload } from '@nemis-desktop/shared';
 
@@ -48,6 +49,7 @@ export class DesktopSyncWorker {
   private readonly assignmentSync: AssignmentSyncService;
   private readonly feeReversalSync: FeeReversalSyncService;
   private readonly gradeCompletionSync: GradeCompletionSyncService;
+  private readonly schoolRegistrationSync: SchoolRegistrationSyncService;
   private readonly pendingChanges = new PendingChangesService();
 
   constructor(
@@ -58,6 +60,7 @@ export class DesktopSyncWorker {
     this.assignmentSync = new AssignmentSyncService(gateway);
     this.feeReversalSync = new FeeReversalSyncService(gateway);
     this.gradeCompletionSync = new GradeCompletionSyncService(gateway);
+    this.schoolRegistrationSync = new SchoolRegistrationSyncService(gateway);
   }
 
   async syncActive(): Promise<void> {
@@ -95,6 +98,7 @@ export class DesktopSyncWorker {
     let pullDue: boolean;
     let reversalPending: { found: number } | undefined;
     let completionPending: { found: number } | undefined;
+    let registrationPending: { found: number } | undefined;
     try {
       // Crash recovery has to run here rather than once at boot: at boot no
       // workspace is unlocked yet (activation happens later over IPC), so the
@@ -132,11 +136,15 @@ export class DesktopSyncWorker {
       completionPending = workspace.database.connection.prepare(
         `SELECT 1 found FROM grade_completions WHERE ${GRADE_COMPLETION_PENDING} LIMIT 1`,
       ).get(institutionIdOf(workspace.user)) as { found: number } | undefined;
+      // Waiting County school registrations: same story, own REST path.
+      registrationPending = workspace.database.connection.prepare(
+        `SELECT 1 found FROM school_registrations WHERE ${SCHOOL_REGISTRATION_PENDING} LIMIT 1`,
+      ).get(workspace.user.id) as { found: number } | undefined;
     } catch (error) {
       this.#running = false;
       throw error;
     }
-    if (claimed.length === 0 && !pullDue && !reversalPending && !completionPending) {
+    if (claimed.length === 0 && !pullDue && !reversalPending && !completionPending && !registrationPending) {
       this.#running = false;
       return;
     }
@@ -274,6 +282,18 @@ export class DesktopSyncWorker {
         logger.error('GradeCompletionSyncService.pushPending failed', error);
       }
 
+      // County offline school registrations: own REST path (the web's POST
+      // /institutions), never a sync_queue row. Never throws.
+      let registrationsAccepted = 0;
+      try {
+        ({ accepted: registrationsAccepted } = await this.schoolRegistrationSync.pushPending(
+          workspace.database.connection,
+          workspace.user.id,
+        ));
+      } catch (error) {
+        logger.error('SchoolRegistrationSyncService.pushPending failed', error);
+      }
+
       const stillPending = workspace.database.connection.prepare(
         `SELECT COUNT(*) count FROM sync_queue WHERE status IN ('pending','in_flight')`,
       ).get() as { count: number };
@@ -281,7 +301,9 @@ export class DesktopSyncWorker {
       // used to guarantee on its own. A cycle kept alive only by a pending
       // reversal has nothing to pull for, and must not turn every retry of a
       // stuck reversal into a full delta download.
-      if (stillPending.count === 0 && (claimed.length > 0 || pullDue)) {
+      // An accepted school also pulls, so its institution row (same id)
+      // replaces the waiting one on this device right away.
+      if (stillPending.count === 0 && (claimed.length > 0 || pullDue || registrationsAccepted > 0)) {
         const meta = workspace.database.connection.prepare(
           `SELECT lastDeltaAt, lastFullResyncAt FROM sync_metadata WHERE id='singleton'`,
         ).get() as { lastDeltaAt: string | null; lastFullResyncAt: string | null };
@@ -562,6 +584,7 @@ export class DesktopSyncWorker {
     return {
       db: workspace.database.connection,
       institutionId: institutionIdOf(workspace.user),
+      userId: workspace.user.id,
       now: new Date().toISOString(),
     };
   }

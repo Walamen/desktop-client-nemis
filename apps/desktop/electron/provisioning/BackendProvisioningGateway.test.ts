@@ -618,6 +618,49 @@ describe('BackendProvisioningGateway', () => {
       await expect(buildGateway().getCompletionGuidance('y1', 'GRADE_7')).rejects.toThrow('Malformed server response.');
     });
   });
+
+  describe('school registrations', () => {
+    const payload = {
+      name: 'Alpha School', code: 'GB-0042', type: 'SCHOOL' as const, levels: ['PRIMARY'], ownership: 'GOVERNMENT',
+      countyId: 'c-1', districtId: 'd-1', isActive: true as const,
+      admins: [{ email: 'ada@school.lr', firstName: 'Ada', lastName: 'Doe' }],
+    };
+
+    it('createInstitution POSTs the id with the payload to /institutions and returns the principal login', async () => {
+      const fetchMock = vi.fn(async () =>
+        response({
+          id: 'r-1',
+          adminActivations: [{ autoActivated: true, email: 'ada@school.lr', name: 'Ada Doe', defaultPassword: 'Nemis@123' }],
+        }),
+      );
+      vi.stubGlobal('fetch', fetchMock);
+      expect(await buildGateway().createInstitution('r-1', payload)).toEqual({
+        principal: { email: 'ada@school.lr', defaultPassword: 'Nemis@123' },
+      });
+      const [url, init] = fetchMock.mock.calls[0] as unknown as [URL, RequestInit];
+      expect(url.pathname).toBe('/institutions');
+      expect(init.method).toBe('POST');
+      expect(JSON.parse(init.body as string)).toEqual({ id: 'r-1', ...payload });
+    });
+
+    it('createInstitution returns no principal without an auto-activated entry, and refuses a non-object body', async () => {
+      vi.stubGlobal('fetch', vi.fn(async () => response({ id: 'r-1', adminActivations: [{ activationToken: 't', email: 'x' }] })));
+      expect(await buildGateway().createInstitution('r-1', payload)).toEqual({ principal: null });
+      vi.stubGlobal('fetch', vi.fn(async () => response('nope')));
+      await expect(buildGateway().createInstitution('r-1', payload)).rejects.toThrow('Malformed server response.');
+    });
+
+    it('createInstitution turns a 409 into RemoteRejectedError with the server message', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () => new Response(JSON.stringify({ message: 'Institution with this code already exists' }), { status: 409 })),
+      );
+      await expect(buildGateway().createInstitution('r-1', payload)).rejects.toMatchObject({
+        status: 409,
+        remoteMessage: 'Institution with this code already exists',
+      });
+    });
+  });
 });
 
 function buildGateway(): BackendProvisioningGateway {

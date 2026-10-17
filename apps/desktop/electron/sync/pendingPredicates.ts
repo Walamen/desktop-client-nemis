@@ -13,6 +13,10 @@ export const SUBMISSION_DIRTY = `(s.grade IS NOT NULL AND (s.syncedAt IS NULL OR
 /** grade_completions queued for this institution. Bind: institutionId. */
 export const GRADE_COMPLETION_PENDING = `syncState='pending' AND institutionId=?`;
 
+/** The signed-in County Admin's school registrations still to send, under the
+ * synced county (the push and the Pending changes count agree). Binds userId. */
+export const SCHOOL_REGISTRATION_PENDING = `syncState='pending' AND createdBy=? AND countyId IN (SELECT id FROM counties)`;
+
 /** Ordering gate for grade completions: the server can only stamp students
  * and enrolments it already has. Waits only on rows that can still go
  * through — dead-lettered ones ('failed') never self-resolve. */

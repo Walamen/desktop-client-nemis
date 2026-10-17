@@ -7,6 +7,7 @@ export const NOW = '2026-10-16T12:00:00.000Z';
 export const PAST = '2026-10-16T11:00:00.000Z';
 export const FUTURE = '2026-10-16T12:05:00.000Z';
 export const SCHOOL = 'school-1';
+export const USER = 'user-1';
 
 export function memoryDb(): SqliteDatabase {
   const db = new Database(':memory:');
@@ -19,7 +20,7 @@ export function memoryDb(): SqliteDatabase {
 }
 
 export function ctx(db: SqliteDatabase, now = NOW): PendingContext {
-  return { db, institutionId: SCHOOL, now };
+  return { db, institutionId: SCHOOL, userId: USER, now };
 }
 
 export interface QueueRowInput {
@@ -123,4 +124,16 @@ export function seedReversal(
        (id,paymentId,institutionId,reason,notes,reversedBy,reversedAt,createdAt,updatedAt,syncedAt)
      VALUES (?,?,?,'wrong amount',NULL,'admin-1',?,?,?,?)`,
   ).run(id, paymentId, SCHOOL, PAST, PAST, opts.updatedAt ?? PAST, opts.syncedAt ?? null);
+}
+
+export function seedSchoolRegistration(
+  db: SqliteDatabase,
+  id: string,
+  opts: { createdBy?: string; state?: string; at?: string } = {},
+): void {
+  db.prepare(`INSERT OR IGNORE INTO counties (id,code,name) VALUES ('c-1','GB','Grand Bassa')`).run();
+  db.prepare(
+    `INSERT INTO school_registrations (id,countyId,createdBy,source,payload,syncState,createdAt,updatedAt)
+     VALUES (?,'c-1',?,'form',?,?,?,?)`,
+  ).run(id, opts.createdBy ?? USER, JSON.stringify({ name: `School ${id}`, code: `GB-${id}` }), opts.state ?? 'pending', opts.at ?? PAST, opts.at ?? PAST);
 }

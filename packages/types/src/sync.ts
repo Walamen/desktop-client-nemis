@@ -60,7 +60,7 @@ export interface DesktopSyncStatus {
 }
 
 /** Where a piece of unsynced work is recorded on this device. */
-export type PendingSource = 'outbox' | 'assignments' | 'grade_completions' | 'fee_reversals';
+export type PendingSource = 'outbox' | 'assignments' | 'grade_completions' | 'fee_reversals' | 'school_registrations';
 
 /** sending = in flight; waiting = goes on the next sync; retrying = backed
  * off until nextAttemptAt; held = waits for an earlier item to sync first. */

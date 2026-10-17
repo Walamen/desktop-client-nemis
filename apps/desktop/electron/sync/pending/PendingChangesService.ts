@@ -7,6 +7,7 @@ import type {
 import { logger } from '@app/services/logger';
 import { AssignmentPendingSource } from './AssignmentPendingSource';
 import { FeeReversalPendingSource } from './FeeReversalPendingSource';
+import { SchoolRegistrationPendingSource } from './SchoolRegistrationPendingSource';
 import { GradeCompletionPendingSource } from './GradeCompletionPendingSource';
 import { parseGroupKey } from './groups';
 import { OutboxPendingSource } from './OutboxPendingSource';
@@ -25,6 +26,7 @@ export class PendingChangesService {
       new AssignmentPendingSource(),
       new GradeCompletionPendingSource(),
       new FeeReversalPendingSource(),
+      new SchoolRegistrationPendingSource(),
     ],
     private readonly labels = new PendingLabelResolver(),
   ) {}

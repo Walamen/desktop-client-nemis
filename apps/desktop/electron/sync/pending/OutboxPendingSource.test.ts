@@ -92,7 +92,7 @@ describe('OutboxPendingSource', () => {
 
       const claimable = data.repositories.syncQueue.nextBatch(10_000).map((item) => item.id).sort();
       const waiting = source
-        .listRecords({ db, institutionId: 'school-1', now: new Date().toISOString() }, 'students', 200, 0)
+        .listRecords({ db, institutionId: 'school-1', userId: 'user-1', now: new Date().toISOString() }, 'students', 200, 0)
         .rows.filter((row) => row.state === 'waiting')
         .map((row) => row.id)
         .sort();

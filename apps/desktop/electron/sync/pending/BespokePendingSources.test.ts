@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { AssignmentPendingSource } from './AssignmentPendingSource';
 import { FeeReversalPendingSource } from './FeeReversalPendingSource';
 import { GradeCompletionPendingSource } from './GradeCompletionPendingSource';
-import { NOW, PAST, ctx, memoryDb, queueRow, seedAssignment, seedGradeCompletion, seedReversal, seedSubmission } from './pending.test-support';
+import { SchoolRegistrationPendingSource } from './SchoolRegistrationPendingSource';
+import { NOW, PAST, ctx, memoryDb, queueRow, seedAssignment, seedGradeCompletion, seedReversal, seedSchoolRegistration, seedSubmission } from './pending.test-support';
 
 describe('AssignmentPendingSource', () => {
   const source = new AssignmentPendingSource();
@@ -85,5 +86,27 @@ describe('FeeReversalPendingSource', () => {
 
   it('returns nothing for an entity type it does not own', () => {
     expect(source.listRecords(ctx(memoryDb()), 'students', 50, 0)).toEqual({ rows: [], total: 0 });
+  });
+});
+
+describe('SchoolRegistrationPendingSource', () => {
+  const source = new SchoolRegistrationPendingSource();
+
+  it('school registrations: pending counted for this user, rejected counted as failed', () => {
+    const db = memoryDb();
+    seedSchoolRegistration(db, 'mine');
+    seedSchoolRegistration(db, 'refused', { state: 'rejected' });
+    seedSchoolRegistration(db, 'done', { state: 'synced' });
+    seedSchoolRegistration(db, 'theirs', { createdBy: 'user-2' });
+    expect(source.summarize(ctx(db))).toEqual([
+      expect.objectContaining({ groupKey: 'school_registrations:school_registrations', label: 'New schools', total: 1, byState: expect.objectContaining({ waiting: 1 }) }),
+    ]);
+    expect(source.countPending(ctx(db))).toBe(1);
+    expect(source.countFailed(ctx(db))).toBe(1);
+    const { rows, total } = source.listRecords(ctx(db), 'school_registrations', 50, 0);
+    expect(total).toBe(1);
+    expect(rows.map((r) => [r.id, r.entityType, r.operationType, r.state])).toEqual([
+      ['mine', 'school_registrations', 'create', 'waiting'],
+    ]);
   });
 });
