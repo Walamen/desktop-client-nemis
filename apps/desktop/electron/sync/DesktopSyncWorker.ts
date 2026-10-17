@@ -284,12 +284,13 @@ export class DesktopSyncWorker {
 
       // County offline school registrations: own REST path (the web's POST
       // /institutions), never a sync_queue row. Never throws.
-      let registrationsAccepted = 0;
+      let registrationsAnswered = 0;
       try {
-        ({ accepted: registrationsAccepted } = await this.schoolRegistrationSync.pushPending(
+        const { accepted, rejected } = await this.schoolRegistrationSync.pushPending(
           workspace.database.connection,
           workspace.user.id,
-        ));
+        );
+        registrationsAnswered = accepted + rejected;
       } catch (error) {
         logger.error('SchoolRegistrationSyncService.pushPending failed', error);
       }
@@ -301,9 +302,10 @@ export class DesktopSyncWorker {
       // used to guarantee on its own. A cycle kept alive only by a pending
       // reversal has nothing to pull for, and must not turn every retry of a
       // stuck reversal into a full delta download.
-      // An accepted school also pulls, so its institution row (same id)
-      // replaces the waiting one on this device right away.
-      if (stillPending.count === 0 && (claimed.length > 0 || pullDue || registrationsAccepted > 0)) {
+      // A school the server answered also pulls: an accepted one's institution
+      // row (same id) replaces the waiting one right away, and a refused one
+      // shows red now (the pull is what tells the open pages to reload).
+      if (stillPending.count === 0 && (claimed.length > 0 || pullDue || registrationsAnswered > 0)) {
         const meta = workspace.database.connection.prepare(
           `SELECT lastDeltaAt, lastFullResyncAt FROM sync_metadata WHERE id='singleton'`,
         ).get() as { lastDeltaAt: string | null; lastFullResyncAt: string | null };

@@ -56,7 +56,7 @@ describe('SchoolRegistrationSyncService', () => {
       })),
     };
     const result = await new SchoolRegistrationSyncService(gateway).pushPending(connection, 'u-1');
-    expect(result).toEqual({ accepted: 1 });
+    expect(result).toEqual({ accepted: 1, rejected: 0 });
     expect(gateway.createInstitution).toHaveBeenCalledWith('r-1', { name: 'School r-1', code: 'GB-r-1' });
     expect(stateOf(connection, 'r-1')).toMatchObject({
       syncState: 'synced',
@@ -76,7 +76,7 @@ describe('SchoolRegistrationSyncService', () => {
         .mockRejectedValueOnce(new RemoteRejectedError(409, 'Principal email already in use'))
         .mockResolvedValueOnce({ principal: null }),
     };
-    expect(await new SchoolRegistrationSyncService(gateway).pushPending(connection, 'u-1')).toEqual({ accepted: 1 });
+    expect(await new SchoolRegistrationSyncService(gateway).pushPending(connection, 'u-1')).toEqual({ accepted: 1, rejected: 1 });
     expect(gateway.createInstitution.mock.calls.map((call) => call[0])).toEqual(['a', 'b']);
     expect(stateOf(connection, 'a')).toMatchObject({ syncState: 'rejected', syncError: 'Principal email already in use' });
     expect(stateOf(connection, 'b')).toMatchObject({ syncState: 'synced', principalEmail: null });
@@ -99,7 +99,7 @@ describe('SchoolRegistrationSyncService', () => {
     ];
     for (const failure of failures) {
       const gateway = { createInstitution: vi.fn().mockRejectedValue(failure) };
-      expect(await new SchoolRegistrationSyncService(gateway).pushPending(connection, 'u-1')).toEqual({ accepted: 0 });
+      expect(await new SchoolRegistrationSyncService(gateway).pushPending(connection, 'u-1')).toEqual({ accepted: 0, rejected: 0 });
       expect(stateOf(connection, 'a')).toMatchObject({ syncState: 'pending', syncError: null });
     }
   });
@@ -126,5 +126,24 @@ describe('SchoolRegistrationSyncService', () => {
     };
     await new SchoolRegistrationSyncService(gateway).pushPending(connection, 'u-1');
     expect(stateOf(connection, 'a')).toMatchObject({ syncState: 'pending' });
+  });
+});
+
+describe('SchoolRegistrationSyncService — stopping on a transport failure', () => {
+  it('stops the batch at the first failure that is not a refusal, so a bad network cannot stall the worker', async () => {
+    const connection = db();
+    seed(connection, 'a', { createdAt: '2026-10-17T09:00:00.000Z' });
+    seed(connection, 'b', { createdAt: '2026-10-17T10:00:00.000Z' });
+    const gateway = { createInstitution: vi.fn<CreateInstitution>().mockRejectedValue(new OfflineError()) };
+    expect(await new SchoolRegistrationSyncService(gateway).pushPending(connection, 'u-1')).toEqual({ accepted: 0, rejected: 0 });
+    expect(gateway.createInstitution).toHaveBeenCalledTimes(1);
+    expect(stateOf(connection, 'b')).toMatchObject({ syncState: 'pending' });
+  });
+
+  it('reports how many it refused, so the worker can pull and show them', async () => {
+    const connection = db();
+    seed(connection, 'a');
+    const gateway = { createInstitution: vi.fn<CreateInstitution>().mockRejectedValue(new RemoteRejectedError(404, 'District not found')) };
+    expect(await new SchoolRegistrationSyncService(gateway).pushPending(connection, 'u-1')).toEqual({ accepted: 0, rejected: 1 });
   });
 });

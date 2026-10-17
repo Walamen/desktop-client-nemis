@@ -1023,7 +1023,7 @@ describe('DesktopSyncWorker retry policy', () => {
       (manager.connection.prepare(`SELECT syncState FROM school_registrations WHERE id=?`).get(id) as { syncState: string })
         .syncState;
 
-    it('a pending registration keeps an idle cycle alive and is pushed', async () => {
+    it('a pending registration keeps an idle cycle alive; a refusal also pulls, so its red badge shows at once', async () => {
       const gateway = {
         pushChanges: vi.fn(),
         downloadSnapshot: vi.fn().mockResolvedValue(emptySnapshot()),
@@ -1037,7 +1037,7 @@ describe('DesktopSyncWorker retry policy', () => {
 
       expect(gateway.createInstitution).toHaveBeenCalledWith('r-1', { name: 'Alpha', code: 'GB-1' });
       expect(stateOf('r-1')).toBe('rejected');
-      expect(gateway.downloadSnapshot).toHaveBeenCalledTimes(1);
+      expect(gateway.downloadSnapshot).toHaveBeenCalledTimes(2);
     });
 
     it('an accepted registration forces a pull in the same cycle', async () => {

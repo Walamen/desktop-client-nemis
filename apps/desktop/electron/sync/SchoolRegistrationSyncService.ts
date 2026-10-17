@@ -17,11 +17,11 @@ const FALLBACK_REFUSAL = 'The server refused this school.';
  * web's POST /institutions, one request per school, oldest first —
  * deliberately outside the generic sync_queue (institutions has no outbox).
  * A 4xx refuses that school only; a network error, an expired session, a rate
- * limit or a 5xx leaves it waiting for the next cycle. Never throws. */
+ * limit or a 5xx leaves it (and the rest) waiting for the next cycle. Never throws. */
 export class SchoolRegistrationSyncService {
   constructor(private readonly gateway: Pick<BackendProvisioningGateway, 'createInstitution'>) {}
 
-  async pushPending(db: SqliteDatabase, userId: string): Promise<{ accepted: number }> {
+  async pushPending(db: SqliteDatabase, userId: string): Promise<{ accepted: number; rejected: number }> {
     let rows: PendingRow[];
     try {
       rows = db
@@ -32,10 +32,11 @@ export class SchoolRegistrationSyncService {
         .all(userId) as PendingRow[];
     } catch (error) {
       logger.error('SchoolRegistrationSyncService: could not read waiting schools', error);
-      return { accepted: 0 };
+      return { accepted: 0, rejected: 0 };
     }
 
     let accepted = 0;
+    let rejected = 0;
     for (const row of rows) {
       try {
         let payload: SchoolRegistrationPayload;
@@ -50,22 +51,26 @@ export class SchoolRegistrationSyncService {
           ({ principal } = await this.gateway.createInstitution(row.id, payload));
         } catch (error) {
           if (error instanceof RemoteRejectedError) {
-            this.#mark(db, row, {
+            const marked = this.#mark(db, row, {
               syncState: 'rejected',
               syncError: error.remoteMessage || FALLBACK_REFUSAL,
               principal: null,
             });
-          } else {
-            logger.error(`SchoolRegistrationSyncService: could not send ${row.id}; left waiting`, error);
+            if (marked) rejected += 1;
+            continue;
           }
-          continue;
+          // Unreachable, expired session, rate limit or 5xx: every later
+          // school would meet the same, each costing a session restore and
+          // up to a 120 s timeout while the worker is held. Stop; next cycle.
+          logger.error(`SchoolRegistrationSyncService: could not send ${row.id}; stopping until the next cycle`, error);
+          break;
         }
         if (this.#mark(db, row, { syncState: 'synced', syncError: null, principal })) accepted += 1;
       } catch (error) {
         logger.error(`SchoolRegistrationSyncService: unexpected failure for ${row.id}`, error);
       }
     }
-    return { accepted };
+    return { accepted, rejected };
   }
 
   /** Only a row still waiting and untouched since it was read: a school
