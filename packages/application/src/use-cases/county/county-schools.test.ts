@@ -102,6 +102,14 @@ describe('registrations merged into the Schools pages', () => {
     expect(data.schools[0]).toMatchObject({ districtName: 'Buchanan', levels: ['PRIMARY'], studentCount: 0, photoUrl: null, isActive: true });
   });
 
+  it('a synced school the server later closed stays hidden, as on the web (its institution row exists, inactive)', async () => {
+    const { registrations, list } = setupMerge();
+    registrations.rows = [registration('closed', 'Closed School', { syncState: 'synced' }), registration('w', 'Waiting')];
+    registrations.institutionIds.add('closed');
+    const { data } = await list.execute({});
+    expect(data.schools.map((s) => s.name)).toEqual(['Waiting']);
+  });
+
   it('detail falls back to the registration and attaches the principal login once synced', async () => {
     const { readModel, registrations, detail } = setupMerge();
     registrations.rows = [registration('r-1', 'Alpha')];

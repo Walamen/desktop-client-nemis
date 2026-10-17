@@ -22,6 +22,9 @@ export interface ISchoolRegistrationStore {
   context(): SchoolRegistrationContext;
   /** Codes already used by a local institution or a non-rejected registration (any user), with that school's name. */
   existingCodes(codes: readonly string[]): Array<{ code: string; name: string }>;
+  /** Which of these ids are local institutions, in any state (a school the
+   * server accepted and later closed must not reappear from its registration). */
+  knownInstitutionIds(ids: readonly string[]): string[];
   /** All rows or none. */
   insertMany(rows: readonly NewSchoolRegistration[]): void;
   getForUser(id: string, userId: string): SchoolRegistration | null;

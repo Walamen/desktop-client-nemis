@@ -97,6 +97,13 @@ export class SqliteSchoolRegistrationStore implements ISchoolRegistrationStore {
     });
   }
 
+  knownInstitutionIds(ids: readonly string[]): string[] {
+    return guarded('SqliteSchoolRegistrationStore.knownInstitutionIds', () => {
+      const exists = this.#statements.get(`SELECT 1 FROM ${institutions} WHERE id = ? LIMIT 1`);
+      return ids.filter((id) => exists.get(id) !== undefined);
+    });
+  }
+
   insertMany(rows: readonly NewSchoolRegistration[]): void {
     guarded('SqliteSchoolRegistrationStore.insertMany', () => {
       const insert = this.#statements.get(

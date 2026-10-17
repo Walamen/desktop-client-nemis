@@ -32,10 +32,15 @@ export class GetCountySchoolsUseCase implements QueryHandler<
   execute(_query: Record<string, never>): Promise<ApplicationResponse<CountySchoolsOutput>> {
     return invokeUseCase('GetCountySchools', this.deps.logger, async () => {
       const institutions = this.deps.readModel.listActiveSchools();
-      const known = new Set(institutions.map((school) => school.id));
+      const registrations = this.deps.registrations.listForUser(this.deps.currentUserId);
+      // An institution row in ANY state wins: a school accepted and later
+      // closed on the server stays hidden, as on the web.
+      const known = new Set([
+        ...institutions.map((school) => school.id),
+        ...this.deps.registrations.knownInstitutionIds(registrations.map((r) => r.id)),
+      ]);
       const districtName = new Map(this.deps.registrations.context().districts.map((d) => [d.id, d.name]));
-      const waiting = this.deps.registrations
-        .listForUser(this.deps.currentUserId)
+      const waiting = registrations
         .filter((r) => !known.has(r.id))
         .map((r) => registrationToListItem(r, districtName.get(r.payload.districtId) ?? null));
       // Binary order, like the read model's ORDER BY name.

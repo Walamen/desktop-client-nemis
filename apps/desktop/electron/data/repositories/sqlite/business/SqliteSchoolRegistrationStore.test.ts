@@ -123,6 +123,15 @@ describe('SqliteSchoolRegistrationStore', () => {
     expect(db.prepare(`SELECT id FROM school_registrations ORDER BY id`).all()).toEqual([{ id: 'other' }, { id: 'p' }]);
   });
 
+  it('knownInstitutionIds finds local institutions in any state', () => {
+    db.prepare(
+      `INSERT INTO institutions (id,code,name,type,ownership,countyId,approvalStatus,version,updatedAt,isActive)
+       VALUES ('closed','GB-1','Closed','SCHOOL','GOVERNMENT','county-1','APPROVED',1,?,0)`,
+    ).run(NOW);
+    expect(store.knownInstitutionIds(['closed', 'missing'])).toEqual(['closed']);
+    expect(store.knownInstitutionIds([])).toEqual([]);
+  });
+
   it('context returns the county with its code and only active districts', () => {
     db.prepare(`INSERT INTO districts (id,name,countyId,isActive) VALUES ('d-2','Owensgrove','county-1',1)`).run();
     db.prepare(`INSERT INTO districts (id,name,countyId,isActive) VALUES ('d-1','Buchanan','county-1',1)`).run();

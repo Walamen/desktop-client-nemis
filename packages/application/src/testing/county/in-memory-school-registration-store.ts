@@ -16,6 +16,12 @@ export class InMemorySchoolRegistrationStore implements ISchoolRegistrationStore
   districts: SchoolRegistrationContext['districts'] = [];
   rows: Row[] = [];
   institutionCodes = new Map<string, string>();
+  /** Institutions present locally in any state (the list read model only returns active ones). */
+  institutionIds = new Set<string>();
+
+  knownInstitutionIds(ids: readonly string[]): string[] {
+    return ids.filter((id) => this.institutionIds.has(id));
+  }
 
   context(): SchoolRegistrationContext {
     return { county: this.county, districts: this.districts };
