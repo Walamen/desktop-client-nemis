@@ -10,6 +10,7 @@ import {
   InMemoryCountyDistrictsReadModel,
   InMemoryCountySchoolsReadModel,
   InMemorySchoolRegistrationStore,
+  InMemoryCountyStudentsReadModel,
   InMemoryDistrictRepository,
   InMemoryEnrollmentRepository,
   InMemoryGradeRepository,
@@ -51,6 +52,7 @@ export interface TestPorts {
   countyDistricts: InMemoryCountyDistrictsReadModel;
   countySchools: InMemoryCountySchoolsReadModel;
   schoolRegistrations: InMemorySchoolRegistrationStore;
+  countyStudents: InMemoryCountyStudentsReadModel;
   gradingConfigs: InMemoryGradingConfigRepository;
   currentUserId: string;
   deviceGateway: InMemoryDeviceGateway;
@@ -92,6 +94,7 @@ export function createTestApplication(): { app: ApplicationLayer; ports: TestPor
     countyDistricts: new InMemoryCountyDistrictsReadModel(),
     countySchools: new InMemoryCountySchoolsReadModel(),
     schoolRegistrations: new InMemorySchoolRegistrationStore(),
+    countyStudents: new InMemoryCountyStudentsReadModel(),
     gradingConfigs: new InMemoryGradingConfigRepository(),
     currentUserId: 'usr-1',
     deviceGateway: new InMemoryDeviceGateway(),

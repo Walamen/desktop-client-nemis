@@ -7,6 +7,9 @@ import { RegisterSchoolsUseCase } from '../use-cases/county/register-schools';
 import { ResubmitSchoolRegistrationUseCase } from '../use-cases/county/resubmit-school-registration';
 import { DiscardSchoolRegistrationUseCase } from '../use-cases/county/discard-school-registration';
 import { GetSchoolRegistrationsUseCase } from '../use-cases/county/get-school-registrations';
+import type { ICountyStudentsReadModel } from '../interfaces/county/county-students-read-model';
+import { GetCountyStudentsUseCase } from '../use-cases/county/get-county-students';
+import { GetCountyStudentDetailUseCase } from '../use-cases/county/get-county-student-detail';
 import type { ICountyDistrictsReadModel } from '../interfaces/county/county-districts-read-model';
 import { GetCountyDistrictsUseCase } from '../use-cases/county/get-county-districts';
 import { GetCountyDistrictDetailUseCase } from '../use-cases/county/get-county-district-detail';
@@ -168,6 +171,8 @@ export interface ApplicationPorts {
   countySchools: ICountySchoolsReadModel;
   /** Schools a County Admin saved on this device, waiting to be sent. */
   schoolRegistrations: ISchoolRegistrationStore;
+  /** County Students pages: list, stats and student detail. */
+  countyStudents: ICountyStudentsReadModel;
   gradingConfigs: IGradingConfigRepository;
   /** The authenticated user's id for this workspace (see GetCurrentUserDeps). */
   currentUserId: string;
@@ -520,6 +525,13 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
       currentUserId: ports.currentUserId,
       logger,
     }),
+    listStudents: new GetCountyStudentsUseCase({
+      readModel: ports.countyStudents,
+      districtsReadModel: ports.countyDistricts,
+      countyReadModel: ports.countyAnalytics,
+      logger,
+    }),
+    getStudent: new GetCountyStudentDetailUseCase({ readModel: ports.countyStudents, logger }),
   });
 
   const teacherDeps = { teachers: ports.teachers, clock, logger };
