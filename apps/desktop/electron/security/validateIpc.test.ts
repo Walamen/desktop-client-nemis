@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { PENDING_SOURCES } from '@app/sync/pending/groups';
 import {
   assertNoArgs,
   assertSettingKeyArg,
@@ -380,6 +381,14 @@ describe('assertListPendingRecordsArgs', () => {
   it('accepts a well-formed request', () => {
     expect(() => assertListPendingRecordsArgs([ok])).not.toThrow();
     expect(() => assertListPendingRecordsArgs([{ ...ok, groupKey: 'fee_reversals:fee_payment_reversals', limit: 200 }])).not.toThrow();
+  });
+  it('accepts every source the Pending changes page lists (it must not drift from groups.ts)', () => {
+    for (const source of PENDING_SOURCES) {
+      expect(() => assertListPendingRecordsArgs([{ ...ok, groupKey: `${source}:${source}` }])).not.toThrow();
+    }
+    expect(() =>
+      assertListPendingRecordsArgs([{ ...ok, groupKey: 'school_registrations:school_registrations' }]),
+    ).not.toThrow();
   });
   it.each([
     [{ ...ok, groupKey: 'bogus:attendance' }],

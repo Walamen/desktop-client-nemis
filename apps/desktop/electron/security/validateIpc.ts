@@ -662,7 +662,8 @@ export function assertResolveSyncConflictArgs(args: readonly unknown[]): void {
   assertEnumMember(request.resolution, 'resolution', ['keep_local', 'accept_remote', 'retry']);
 }
 
-const PENDING_GROUP_KEY = /^(outbox|assignments|grade_completions|fee_reversals):[a-z_]+$/;
+// Must list every source in sync/pending/groups.ts PENDING_SOURCES (a test enforces it).
+const PENDING_GROUP_KEY = /^(outbox|assignments|grade_completions|fee_reversals|school_registrations):[a-z_]+$/;
 
 export function assertListPendingRecordsArgs(args: readonly unknown[]): void {
   assertArity(args, 1);

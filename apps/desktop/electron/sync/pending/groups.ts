@@ -1,7 +1,7 @@
 import { humanizeEntityType } from '@nemis-desktop/shared';
 import type { PendingGroupSummary, PendingItemState, PendingSource } from '@nemis-desktop/types';
 
-const SOURCES: readonly PendingSource[] = ['outbox', 'assignments', 'grade_completions', 'fee_reversals', 'school_registrations'];
+export const PENDING_SOURCES: readonly PendingSource[] = ['outbox', 'assignments', 'grade_completions', 'fee_reversals', 'school_registrations'];
 
 const LABELS: Readonly<Record<string, string>> = {
   'outbox:academic_years': 'Academic years',
@@ -47,7 +47,7 @@ export function parseGroupKey(groupKey: string): { source: PendingSource; entity
   if (at <= 0) return null;
   const source = groupKey.slice(0, at) as PendingSource;
   const entityType = groupKey.slice(at + 1);
-  return SOURCES.includes(source) && entityType ? { source, entityType } : null;
+  return PENDING_SOURCES.includes(source) && entityType ? { source, entityType } : null;
 }
 
 export function buildGroup(

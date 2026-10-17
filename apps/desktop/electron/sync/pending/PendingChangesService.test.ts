@@ -10,6 +10,7 @@ import {
   PAST,
   ctx,
   memoryDb,
+  seedSchoolRegistration,
   queueRow,
   seedAssignment,
   seedGradeCompletion,
@@ -81,6 +82,18 @@ describe('PendingChangesService', () => {
     const service = new PendingChangesService([fake('outbox', [])]);
     expect(service.listRecords(ctx(memoryDb()), { groupKey: 'fee_reversals:fee_payment_reversals', limit: 50, offset: 0 }))
       .toEqual({ records: [], total: 0 });
+  });
+
+  it('lists a waiting school (opened from the New schools group) under its school name', () => {
+    const db = memoryDb();
+    seedSchoolRegistration(db, 'r-1');
+    const { records, total } = new PendingChangesService().listRecords(ctx(db), {
+      groupKey: 'school_registrations:school_registrations',
+      limit: 50,
+      offset: 0,
+    });
+    expect(total).toBe(1);
+    expect(records.map((r) => [r.id, r.label, r.state])).toEqual([['r-1', 'School r-1', 'waiting']]);
   });
 
   it('counts every real source', () => {
