@@ -91,6 +91,8 @@ export class SqliteCountySchoolsReadModel implements ICountySchoolsReadModel {
           levels: levelsOf(parseObject(row.profile)),
           studentCount: row.studentCount,
           photoUrl: typeof details?.photoUrl === 'string' ? details.photoUrl : null,
+          syncState: null,
+          syncError: null,
         };
       });
     });
@@ -141,6 +143,7 @@ export class SqliteCountySchoolsReadModel implements ICountySchoolsReadModel {
         studentCount: row.studentCount,
         staffCount: row.staffCount,
         principal: principal ?? null,
+        registration: null,
       };
     });
   }

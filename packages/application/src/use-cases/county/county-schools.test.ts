@@ -8,7 +8,7 @@ import { GetCountySchoolDetailUseCase } from './get-county-school-detail';
 
 const listItem = {
   id: 's-1', name: 'Alpha', code: 'A', type: 'SCHOOL', isActive: true,
-  districtName: 'Buchanan', levels: ['PRIMARY'], studentCount: 40, photoUrl: null,
+  districtName: 'Buchanan', levels: ['PRIMARY'], studentCount: 40, photoUrl: null, syncState: null, syncError: null,
 };
 
 describe('GetCountySchoolsUseCase', () => {

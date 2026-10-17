@@ -9,13 +9,14 @@ const detail = {
   metadata: { statistics: { maxCapacity: 100 } }, levels: ['PRIMARY'], details: { establishedYear: 1998, hasLibrary: true },
   districtName: 'Buchanan', countyName: 'Grand Bassa', studentCount: 40, staffCount: 3,
   principal: { firstName: 'Ada', lastName: 'Doe', email: 'ada@x', photoUrl: null },
+  registration: null,
 };
 
 describe('CountySchoolsViewModel', () => {
   it('shapes schools like portal-web findAll', async () => {
     const { app, ports } = createTestApplication();
     ports.countySchools.schools = [
-      { id: 's-1', name: 'Alpha', code: 'A', type: 'SCHOOL', isActive: true, districtName: 'Buchanan', levels: ['PRIMARY'], studentCount: 40, photoUrl: null },
+      { id: 's-1', name: 'Alpha', code: 'A', type: 'SCHOOL', isActive: true, districtName: 'Buchanan', levels: ['PRIMARY'], studentCount: 40, photoUrl: null, syncState: null, syncError: null },
     ];
     const vm = new CountySchoolsViewModel({ county: app.county });
     await vm.load();

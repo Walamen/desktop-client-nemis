@@ -21,6 +21,7 @@ const SCHOOL = {
   },
   districtName: 'Buchanan', countyName: 'Grand Bassa', studentCount: 170, staffCount: 9,
   principal: { firstName: 'Ada', lastName: 'Doe', email: 'ada@school.lr', photoUrl: null },
+  registration: null,
 };
 
 function renderWith(getSchool: (id: string) => Promise<unknown>) {

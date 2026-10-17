@@ -32,6 +32,7 @@ import { makeUserEmailNullable } from './030-make-user-email-nullable';
 import { addCountyDashboardColumns } from './031-add-county-dashboard-columns';
 import { addCountyDistrictsColumns } from './032-add-county-districts-columns';
 import { addInstitutionDetails } from './033-add-institution-details';
+import { createSchoolRegistrations } from './034-create-school-registrations';
 
 /**
  * Every migration, ascending by version. Append only — never edit or reorder
@@ -71,4 +72,5 @@ export const migrations: readonly Migration[] = [
   addCountyDashboardColumns,
   addCountyDistrictsColumns,
   addInstitutionDetails,
+  createSchoolRegistrations,
 ];

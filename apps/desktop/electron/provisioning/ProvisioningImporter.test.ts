@@ -537,6 +537,17 @@ describe('ProvisioningImporter', () => {
     expect(manager.connection.prepare(`SELECT details FROM institutions`).get()).toEqual({ details: null });
   });
 
+  it('a full import leaves school_registrations untouched', () => {
+    manager.connection.prepare(
+      `INSERT INTO school_registrations (id,countyId,createdBy,source,payload,syncState,createdAt,updatedAt)
+       VALUES ('r-1','c-1','u-1','form','{"name":"Waiting School"}','pending','2026-10-17T00:00:00.000Z','2026-10-17T00:00:00.000Z')`,
+    ).run();
+    new ProvisioningImporter(manager).import(snapshotOf({ ...BASE_DATA }), CONTEXT);
+    expect(manager.connection.prepare(`SELECT id, syncState FROM school_registrations`).all()).toEqual([
+      { id: 'r-1', syncState: 'pending' },
+    ]);
+  });
+
   it('a merge flips a removed DEO to inactive', () => {
     const importer = new ProvisioningImporter(manager);
     const deo = {

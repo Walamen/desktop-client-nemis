@@ -21,6 +21,8 @@ const school = (i: number, extra: Record<string, unknown> = {}) => ({
   levels: i % 2 ? ['PRIMARY'] : ['SECONDARY'],
   studentCount: 10,
   photoUrl: null,
+  syncState: null,
+  syncError: null,
   ...extra,
 });
 

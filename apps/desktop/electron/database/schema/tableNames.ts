@@ -30,6 +30,7 @@ export const TableNames = {
   // Teacher Management (Phase 11).
   staff: 'staff',
   institutionAdmin: 'institution_admin',
+  schoolRegistrations: 'school_registrations',
   subjectTeachers: 'subject_teachers',
   classTeachers: 'class_teachers',
   classSubjectTeachers: 'class_subject_teachers',

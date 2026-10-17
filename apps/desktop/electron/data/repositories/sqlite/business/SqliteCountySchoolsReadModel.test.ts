@@ -89,10 +89,11 @@ describe('SqliteCountySchoolsReadModel', () => {
     student('s1', 'b');
     student('s2', 'b', 0);
     expect(readModel.listActiveSchools()).toEqual([
-      { id: 'a', name: 'Alpha', code: 'A', type: 'SCHOOL', isActive: true, districtName: null, levels: [], studentCount: 0, photoUrl: null },
+      { id: 'a', name: 'Alpha', code: 'A', type: 'SCHOOL', isActive: true, districtName: null, levels: [], studentCount: 0, photoUrl: null, syncState: null, syncError: null },
       {
         id: 'b', name: 'Beta', code: 'B', type: 'SCHOOL', isActive: true, districtName: 'Buchanan',
         levels: ['PRIMARY', 'SECONDARY'], studentCount: 2, photoUrl: 'https://res.cloudinary.com/x/b.jpg',
+        syncState: null, syncError: null,
       },
     ]);
   });
@@ -121,6 +122,7 @@ describe('SqliteCountySchoolsReadModel', () => {
       details: { establishedYear: 1998, hasLibrary: true },
       districtName: 'Buchanan', countyName: 'Grand Bassa', studentCount: 2, staffCount: 2,
       principal: { firstName: 'First', lastName: 'Doe', email: 'first@school.lr', photoUrl: null },
+      registration: null,
     });
     expect(readModel.getSchool('p')!.metadata).not.toHaveProperty('levels');
   });

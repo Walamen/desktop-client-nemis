@@ -2,6 +2,8 @@
  * (docs/superpowers/specs/2026-10-16-county-schools-design.md). Kept
  * structurally identical to the application-layer DTOs, which alias them. */
 
+import type { CountySchoolRegistrationInfo, SchoolRegistrationSyncState } from './county-school-registrations';
+
 /** The server's per-school `details` object (all optional: absent on older servers). */
 export interface CountySchoolDetails {
   establishedYear?: number | null;
@@ -40,6 +42,9 @@ export interface CountySchoolListItem {
   levels: string[];
   studentCount: number;
   photoUrl: string | null;
+  /** Set for a school still on this device (offline registration); null once it is a synced institution. */
+  syncState: SchoolRegistrationSyncState | null;
+  syncError: string | null;
 }
 
 export interface CountySchoolPrincipal {
@@ -71,6 +76,8 @@ export interface CountySchoolDetail {
   studentCount: number;
   staffCount: number;
   principal: CountySchoolPrincipal | null;
+  /** This device registered the school: its sync state and, once accepted, the principal login. */
+  registration: CountySchoolRegistrationInfo | null;
 }
 
 export interface CountySchoolsResult {
