@@ -1,3 +1,10 @@
+import type {
+  RegisterSchoolsRequest,
+  RegisterSchoolsResult,
+  ResubmitSchoolRegistrationRequest,
+  SchoolRegistration,
+  SchoolRegistrationContext,
+} from '@nemis-desktop/types';
 import type { ApplicationResponse } from '../core/response';
 import type { CountyDashboardOutput } from '../dto/county/county-dashboard-dto';
 import type { CountyDistrictDetailOutput, CountyDistrictsOutput } from '../dto/county/county-districts-dto';
@@ -7,6 +14,11 @@ import type { GetCountyDistrictsUseCase } from '../use-cases/county/get-county-d
 import type { GetCountyDistrictDetailUseCase } from '../use-cases/county/get-county-district-detail';
 import type { GetCountySchoolsUseCase } from '../use-cases/county/get-county-schools';
 import type { GetCountySchoolDetailUseCase } from '../use-cases/county/get-county-school-detail';
+import type { GetSchoolRegistrationContextUseCase } from '../use-cases/county/get-school-registration-context';
+import type { RegisterSchoolsUseCase } from '../use-cases/county/register-schools';
+import type { ResubmitSchoolRegistrationUseCase } from '../use-cases/county/resubmit-school-registration';
+import type { DiscardSchoolRegistrationUseCase } from '../use-cases/county/discard-school-registration';
+import type { GetSchoolRegistrationsUseCase } from '../use-cases/county/get-school-registrations';
 
 export interface CountyApplicationServiceDeps {
   getDashboard: GetCountyDashboardUseCase;
@@ -14,6 +26,11 @@ export interface CountyApplicationServiceDeps {
   getDistrict: GetCountyDistrictDetailUseCase;
   listSchools: GetCountySchoolsUseCase;
   getSchool: GetCountySchoolDetailUseCase;
+  getRegistrationContext: GetSchoolRegistrationContextUseCase;
+  registerSchools: RegisterSchoolsUseCase;
+  resubmitSchoolRegistration: ResubmitSchoolRegistrationUseCase;
+  discardSchoolRegistration: DiscardSchoolRegistrationUseCase;
+  getSchoolRegistrations: GetSchoolRegistrationsUseCase;
 }
 
 /** The County (CEO) portal's application service. */
@@ -33,5 +50,20 @@ export class CountyApplicationService {
   }
   getSchool(schoolId: string): Promise<ApplicationResponse<CountySchoolDetailOutput>> {
     return this.deps.getSchool.execute({ schoolId });
+  }
+  getRegistrationContext(): Promise<ApplicationResponse<SchoolRegistrationContext>> {
+    return this.deps.getRegistrationContext.execute({});
+  }
+  registerSchools(req: RegisterSchoolsRequest): Promise<ApplicationResponse<RegisterSchoolsResult>> {
+    return this.deps.registerSchools.execute(req);
+  }
+  resubmitSchoolRegistration(req: ResubmitSchoolRegistrationRequest): Promise<ApplicationResponse<RegisterSchoolsResult>> {
+    return this.deps.resubmitSchoolRegistration.execute(req);
+  }
+  discardSchoolRegistration(id: string): Promise<ApplicationResponse<{ discarded: boolean }>> {
+    return this.deps.discardSchoolRegistration.execute({ id });
+  }
+  getSchoolRegistrations(ids: string[]): Promise<ApplicationResponse<SchoolRegistration[]>> {
+    return this.deps.getSchoolRegistrations.execute({ ids });
   }
 }

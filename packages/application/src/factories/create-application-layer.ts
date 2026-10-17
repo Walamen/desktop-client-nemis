@@ -1,6 +1,12 @@
 import type { ICountySchoolsReadModel } from '../interfaces/county/county-schools-read-model';
 import { GetCountySchoolsUseCase } from '../use-cases/county/get-county-schools';
 import { GetCountySchoolDetailUseCase } from '../use-cases/county/get-county-school-detail';
+import type { ISchoolRegistrationStore } from '../interfaces/county/school-registration-store';
+import { GetSchoolRegistrationContextUseCase } from '../use-cases/county/get-school-registration-context';
+import { RegisterSchoolsUseCase } from '../use-cases/county/register-schools';
+import { ResubmitSchoolRegistrationUseCase } from '../use-cases/county/resubmit-school-registration';
+import { DiscardSchoolRegistrationUseCase } from '../use-cases/county/discard-school-registration';
+import { GetSchoolRegistrationsUseCase } from '../use-cases/county/get-school-registrations';
 import type { ICountyDistrictsReadModel } from '../interfaces/county/county-districts-read-model';
 import { GetCountyDistrictsUseCase } from '../use-cases/county/get-county-districts';
 import { GetCountyDistrictDetailUseCase } from '../use-cases/county/get-county-district-detail';
@@ -160,6 +166,8 @@ export interface ApplicationPorts {
   countyDistricts: ICountyDistrictsReadModel;
   /** County Schools pages: list and detail. */
   countySchools: ICountySchoolsReadModel;
+  /** Schools a County Admin saved on this device, waiting to be sent. */
+  schoolRegistrations: ISchoolRegistrationStore;
   gradingConfigs: IGradingConfigRepository;
   /** The authenticated user's id for this workspace (see GetCurrentUserDeps). */
   currentUserId: string;
@@ -478,10 +486,38 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
       readModel: ports.countySchools,
       districtsReadModel: ports.countyDistricts,
       countyReadModel: ports.countyAnalytics,
+      registrations: ports.schoolRegistrations,
+      currentUserId: ports.currentUserId,
       logger,
     }),
     getSchool: new GetCountySchoolDetailUseCase({
       readModel: ports.countySchools,
+      registrations: ports.schoolRegistrations,
+      currentUserId: ports.currentUserId,
+      logger,
+    }),
+    getRegistrationContext: new GetSchoolRegistrationContextUseCase({ store: ports.schoolRegistrations, logger }),
+    registerSchools: new RegisterSchoolsUseCase({
+      store: ports.schoolRegistrations,
+      currentUserId: ports.currentUserId,
+      clock,
+      ids,
+      logger,
+    }),
+    resubmitSchoolRegistration: new ResubmitSchoolRegistrationUseCase({
+      store: ports.schoolRegistrations,
+      currentUserId: ports.currentUserId,
+      clock,
+      logger,
+    }),
+    discardSchoolRegistration: new DiscardSchoolRegistrationUseCase({
+      store: ports.schoolRegistrations,
+      currentUserId: ports.currentUserId,
+      logger,
+    }),
+    getSchoolRegistrations: new GetSchoolRegistrationsUseCase({
+      store: ports.schoolRegistrations,
+      currentUserId: ports.currentUserId,
       logger,
     }),
   });
