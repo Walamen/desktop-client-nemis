@@ -25,6 +25,8 @@ import { CountySchoolDetailViewModel } from '../view-models/county/county-school
 import { CountySchoolRegistrationViewModel } from '../view-models/county/county-school-registration-view-model';
 import { CountyStudentsViewModel } from '../view-models/county/county-students-view-model';
 import { CountyStudentDetailViewModel } from '../view-models/county/county-student-detail-view-model';
+import { CountyTeachersViewModel } from '../view-models/county/county-teachers-view-model';
+import { CountyTeacherDetailViewModel } from '../view-models/county/county-teacher-detail-view-model';
 import { SettingsViewModel } from '../view-models/settings/settings-view-model';
 import { StudentsViewModel } from '../view-models/students/students-view-model';
 import { StudentStatisticsViewModel } from '../view-models/students/student-statistics-view-model';
@@ -67,6 +69,8 @@ export interface PresentationViewModels {
   readonly countySchoolRegistration: CountySchoolRegistrationViewModel;
   readonly countyStudents: CountyStudentsViewModel;
   readonly countyStudentDetail: CountyStudentDetailViewModel;
+  readonly countyTeachers: CountyTeachersViewModel;
+  readonly countyTeacherDetail: CountyTeacherDetailViewModel;
   readonly device: DeviceViewModel;
   readonly currentUser: CurrentUserViewModel;
   readonly dashboard: DashboardViewModel;
@@ -144,6 +148,8 @@ export function createPresentationLayer(
     countySchoolRegistration: new CountySchoolRegistrationViewModel({ county: app.county, notifications }),
     countyStudents: new CountyStudentsViewModel({ county: app.county }),
     countyStudentDetail: new CountyStudentDetailViewModel({ county: app.county }),
+    countyTeachers: new CountyTeachersViewModel({ county: app.county }),
+    countyTeacherDetail: new CountyTeacherDetailViewModel({ county: app.county }),
     device: new DeviceViewModel({ infra: app.infra, notifications, session }),
     currentUser: new CurrentUserViewModel({ identity: app.identity, session }),
     dashboard: new DashboardViewModel({ reporting: app.reporting, notifications }),
