@@ -100,6 +100,8 @@ export * from './use-cases/county/discard-school-registration';
 export * from './use-cases/county/get-school-registrations';
 export * from './use-cases/county/get-county-students';
 export * from './use-cases/county/get-county-student-detail';
+export * from './use-cases/county/get-county-guardians';
+export * from './use-cases/county/get-county-guardian-detail';
 export * from './use-cases/county/school-registration-codes';
 export * from './mappers/county/school-registration-mapper';
 export * from './use-cases/academics/get-current-academic-year';

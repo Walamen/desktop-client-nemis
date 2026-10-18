@@ -10,6 +10,9 @@ import { GetSchoolRegistrationsUseCase } from '../use-cases/county/get-school-re
 import type { ICountyStudentsReadModel } from '../interfaces/county/county-students-read-model';
 import { GetCountyStudentsUseCase } from '../use-cases/county/get-county-students';
 import { GetCountyStudentDetailUseCase } from '../use-cases/county/get-county-student-detail';
+import type { ICountyGuardiansReadModel } from '../interfaces/county/county-guardians-read-model';
+import { GetCountyGuardiansUseCase } from '../use-cases/county/get-county-guardians';
+import { GetCountyGuardianDetailUseCase } from '../use-cases/county/get-county-guardian-detail';
 import type { ICountyDistrictsReadModel } from '../interfaces/county/county-districts-read-model';
 import { GetCountyDistrictsUseCase } from '../use-cases/county/get-county-districts';
 import { GetCountyDistrictDetailUseCase } from '../use-cases/county/get-county-district-detail';
@@ -173,6 +176,8 @@ export interface ApplicationPorts {
   schoolRegistrations: ISchoolRegistrationStore;
   /** County Students pages: list, stats and student detail. */
   countyStudents: ICountyStudentsReadModel;
+  /** County Parents & Guardians pages: list, stats and guardian profile. */
+  countyGuardians: ICountyGuardiansReadModel;
   gradingConfigs: IGradingConfigRepository;
   /** The authenticated user's id for this workspace (see GetCurrentUserDeps). */
   currentUserId: string;
@@ -532,6 +537,13 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
       logger,
     }),
     getStudent: new GetCountyStudentDetailUseCase({ readModel: ports.countyStudents, logger }),
+    listGuardians: new GetCountyGuardiansUseCase({
+      readModel: ports.countyGuardians,
+      districtsReadModel: ports.countyDistricts,
+      countyReadModel: ports.countyAnalytics,
+      logger,
+    }),
+    getGuardian: new GetCountyGuardianDetailUseCase({ readModel: ports.countyGuardians, logger }),
   });
 
   const teacherDeps = { teachers: ports.teachers, clock, logger };
