@@ -6,3 +6,4 @@ export { registerCountyDeoHandlers } from './deo';
 export { registerCountySchoolHandlers } from './schools';
 export { registerCountyRegistrationHandlers } from './registrations';
 export { registerCountyStudentHandlers } from './students';
+export { registerCountyGuardianHandlers } from './guardians';

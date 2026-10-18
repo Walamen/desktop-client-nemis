@@ -1124,6 +1124,19 @@ export function assertCountyStudentsQueryArgs(args: readonly unknown[]): void {
   }
 }
 
+// --- County Parents & Guardians ---------------------------------------------
+export function assertCountyGuardiansQueryArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [query] = args;
+  if (!isPlainObject(query)) throw new IPCError('Expected a query object.');
+  assertKnownKeys(query, ['search', 'relationship', 'districtId', 'page', 'limit']);
+  assertInt(query.page, 'page', 1, 1_000_000);
+  assertInt(query.limit, 'limit', 1, 50);
+  for (const key of ['search', 'relationship', 'districtId'] as const) {
+    if (query[key] !== undefined) assertString(query[key], key, ID_MAX_LENGTH);
+  }
+}
+
 export function assertTransferCreateArgs(args: readonly unknown[]): void {
   assertArity(args, 1);
   const [request] = args;

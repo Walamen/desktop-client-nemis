@@ -50,6 +50,7 @@ import {
   registerCountyDistrictHandlers,
   registerCountyRegistrationHandlers,
   registerCountyStudentHandlers,
+  registerCountyGuardianHandlers,
   registerCountySchoolHandlers,
 } from '@app/ipc/handlers/county';
 
@@ -88,6 +89,7 @@ export function registerIpcHandlers(
   registerCountyDashboardHandlers(securedHandle, app);
   registerCountyDistrictHandlers(securedHandle, app);
   registerCountySchoolHandlers(securedHandle, app);
+  registerCountyGuardianHandlers(securedHandle, app);
   registerSchoolHandlers(securedHandle, app);
   registerAcademicYearHandlers(securedHandle, app);
   registerTermHandlers(securedHandle, app);

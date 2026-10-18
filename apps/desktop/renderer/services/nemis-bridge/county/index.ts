@@ -3,6 +3,7 @@ import { districtsBridge } from './districts-bridge';
 import { schoolsBridge } from './schools-bridge';
 import { registrationsBridge } from './registrations-bridge';
 import { studentsBridge } from './students-bridge';
+import { guardiansBridge } from './guardians-bridge';
 
 /** County (CEO) portal callers of window.nemis, one file per area, the same
  * way school-admin/ and teacher/ are organized. */
@@ -12,4 +13,5 @@ export const countyBridge = {
   ...schoolsBridge,
   ...registrationsBridge,
   ...studentsBridge,
+  ...guardiansBridge,
 };
