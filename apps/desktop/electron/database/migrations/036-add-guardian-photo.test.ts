@@ -40,4 +40,14 @@ describe('migration 036 add-guardian-photo', () => {
     expect(parsed.record.firstName).toBe('Marie');
     expect(parsed.record.photoUrl).toBeUndefined();
   });
+
+  it("indexes student_guardians by guardianId so the County list's per-guardian subqueries don't scan every link", () => {
+    const db = new Database(':memory:');
+    for (const migration of migrations.filter((m) => m.version <= 36)) migration.up(db);
+
+    const plan = db
+      .prepare(`EXPLAIN QUERY PLAN SELECT 1 FROM student_guardians sg WHERE sg.guardianId = ?`)
+      .all('g-1') as Array<{ detail: string }>;
+    expect(plan.map((row) => row.detail).join(' ')).toContain('idx_student_guardians_guardian');
+  });
 });
