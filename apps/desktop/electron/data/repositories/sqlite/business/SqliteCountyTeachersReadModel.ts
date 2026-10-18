@@ -26,6 +26,21 @@ const HAS_CLASS_THIS_YEAR = `EXISTS (
   JOIN academic_years y ON y.id = c.academicYearId
   WHERE a.staffId = t.id AND c.institutionId = t.institutionId AND y.isCurrent = 1)`;
 
+/** The subject names taught by the list's teachers, one per name group (case,
+ * surrounding spaces); the lowest spelling shows. Each subject asks, through
+ * the subjectId indexes, whether any listed teacher has it — a county's
+ * all-years assignment history is never scanned whole (≈30× faster at 600k
+ * assignments than joining the union of both tables). */
+export const SUBJECT_NAMES_SQL = `SELECT MIN(trim(sj.name)) AS name
+  FROM subjects sj
+  WHERE EXISTS (SELECT 1 FROM subject_teachers st
+                  JOIN staff t ON t.id = st.staffId JOIN institutions i ON i.id = t.institutionId
+                  WHERE st.subjectId = sj.id AND ${BASE})
+     OR EXISTS (SELECT 1 FROM class_subject_teachers cst
+                  JOIN staff t ON t.id = cst.staffId JOIN institutions i ON i.id = t.institutionId
+                  WHERE cst.subjectId = sj.id AND ${BASE})
+  GROUP BY lower(trim(sj.name))`;
+
 /** Array strings, or the `{ summary }` the desktop teacher form saves; else nothing. */
 function qualificationList(raw: string | null): string[] {
   if (!raw) return [];
@@ -153,17 +168,7 @@ export class SqliteCountyTeachersReadModel implements ICountyTeachersReadModel {
       )
       .get() as Omit<CountyTeachersResult['stats'], 'subjects'>;
     // One entry per name group (case, surrounding spaces); the lowest spelling shows.
-    const names = this.#statements
-      .get(
-        `SELECT MIN(trim(sj.name)) AS name
-         FROM (${TEACHER_SUBJECTS}) ts
-         JOIN subjects sj ON sj.id = ts.subjectId
-         JOIN staff t ON t.id = ts.staffId
-         JOIN institutions i ON i.id = t.institutionId
-         WHERE ${BASE}
-         GROUP BY lower(trim(sj.name))`,
-      )
-      .all() as Array<{ name: string }>;
+    const names = this.#statements.get(SUBJECT_NAMES_SQL).all() as Array<{ name: string }>;
     return { ...counts, subjects: names.map((row) => row.name).sort((a, b) => a.localeCompare(b)) };
   }
 

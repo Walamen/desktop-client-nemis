@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createTestContext, type TestContext } from '../../../testing/createTestContext';
-import { SqliteCountyTeachersReadModel } from './SqliteCountyTeachersReadModel';
+import { SqliteCountyTeachersReadModel, SUBJECT_NAMES_SQL } from './SqliteCountyTeachersReadModel';
 
 const NOW = '2026-01-01T00:00:00.000Z';
 
@@ -211,6 +211,15 @@ describe('SqliteCountyTeachersReadModel', () => {
     expect(page.data).toEqual([]);
     expect(page.stats.total).toBe(0);
     expect(readModel.getTeacher('t-x')).toMatchObject({ id: 't-x', institution: { name: 'Closed School' } });
+  });
+
+  it('builds the subject list from the subject ids without materialising every assignment', () => {
+    // A whole county's all-years assignment history is hundreds of thousands
+    // of rows; the subject list runs on every list call on the main process.
+    const plan = (db.prepare(`EXPLAIN QUERY PLAN ${SUBJECT_NAMES_SQL}`).all() as Array<{ detail: string }>)
+      .map((row) => row.detail)
+      .join('\n');
+    expect(plan).not.toMatch(/AUTOMATIC|MATERIALIZE/);
   });
 
   it('returns null for staff outside the county or not on the device', () => {
