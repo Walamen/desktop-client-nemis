@@ -25,6 +25,8 @@ import { CountySchoolDetailViewModel } from '../view-models/county/county-school
 import { CountySchoolRegistrationViewModel } from '../view-models/county/county-school-registration-view-model';
 import { CountyStudentsViewModel } from '../view-models/county/county-students-view-model';
 import { CountyStudentDetailViewModel } from '../view-models/county/county-student-detail-view-model';
+import { CountyGuardiansViewModel } from '../view-models/county/county-guardians-view-model';
+import { CountyGuardianDetailViewModel } from '../view-models/county/county-guardian-detail-view-model';
 import { SettingsViewModel } from '../view-models/settings/settings-view-model';
 import { StudentsViewModel } from '../view-models/students/students-view-model';
 import { StudentStatisticsViewModel } from '../view-models/students/student-statistics-view-model';
@@ -67,6 +69,8 @@ export interface PresentationViewModels {
   readonly countySchoolRegistration: CountySchoolRegistrationViewModel;
   readonly countyStudents: CountyStudentsViewModel;
   readonly countyStudentDetail: CountyStudentDetailViewModel;
+  readonly countyGuardians: CountyGuardiansViewModel;
+  readonly countyGuardianDetail: CountyGuardianDetailViewModel;
   readonly device: DeviceViewModel;
   readonly currentUser: CurrentUserViewModel;
   readonly dashboard: DashboardViewModel;
@@ -144,6 +148,8 @@ export function createPresentationLayer(
     countySchoolRegistration: new CountySchoolRegistrationViewModel({ county: app.county, notifications }),
     countyStudents: new CountyStudentsViewModel({ county: app.county }),
     countyStudentDetail: new CountyStudentDetailViewModel({ county: app.county }),
+    countyGuardians: new CountyGuardiansViewModel({ county: app.county }),
+    countyGuardianDetail: new CountyGuardianDetailViewModel({ county: app.county }),
     device: new DeviceViewModel({ infra: app.infra, notifications, session }),
     currentUser: new CurrentUserViewModel({ identity: app.identity, session }),
     dashboard: new DashboardViewModel({ reporting: app.reporting, notifications }),

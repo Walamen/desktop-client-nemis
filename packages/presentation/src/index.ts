@@ -113,6 +113,8 @@ export * from './view-models/county/county-school-detail-view-model';
 export * from './view-models/county/county-school-registration-view-model';
 export * from './view-models/county/county-students-view-model';
 export * from './view-models/county/county-student-detail-view-model';
+export * from './view-models/county/county-guardians-view-model';
+export * from './view-models/county/county-guardian-detail-view-model';
 export * from './mappers/county/student-record-merge';
 export * from './view-models/county/county-schools-views';
 export * from './view-models/teachers/teachers-view-model';
