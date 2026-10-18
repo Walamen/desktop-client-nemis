@@ -96,6 +96,23 @@ describe('ProvisioningImporter', () => {
     ).toBe('Central High');
   });
 
+  it("stores each guardian's photoUrl, and imports a guardian row without the field (older server) as null", () => {
+    const guardian = (id: string, extra: Partial<ProvisioningRow> = {}): ProvisioningRow => ({
+      id, firstName: 'Mary', lastName: 'Kollie', relationship: 'Mother', phoneNumber: '0770', email: null,
+      address: null, occupation: null, isEmergencyContact: false, version: 1,
+      updatedAt: '2026-10-01T00:00:00.000Z', lastModifiedBy: null, ...extra,
+    });
+    new ProvisioningImporter(manager).import(
+      snapshotOf({ ...BASE_DATA, guardians: [guardian('g-1', { photoUrl: 'https://x/g.jpg' }), guardian('g-2')] }),
+      CONTEXT,
+    );
+
+    expect(manager.connection.prepare('SELECT id, photoUrl FROM guardians ORDER BY id').all()).toEqual([
+      { id: 'g-1', photoUrl: 'https://x/g.jpg' },
+      { id: 'g-2', photoUrl: null },
+    ]);
+  });
+
   it('merge mode upserts without deleting rows the snapshot omits', () => {
     const importer = new ProvisioningImporter(manager);
     importer.import(snapshotOf({ ...BASE_DATA, students: [student('s1', 'Ada')] }), CONTEXT);

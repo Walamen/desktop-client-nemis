@@ -37,6 +37,15 @@ describe('SqliteGuardianRepository', () => {
     expect(repo.findById('g-2')?.email).toBeUndefined();
   });
 
+  it('saving an edit keeps the synced photoUrl (pull-only column)', () => {
+    repo.save(record('g-3'));
+    test.context.connection.prepare(`UPDATE guardians SET photoUrl = 'https://x/g.jpg' WHERE id = 'g-3'`).run();
+    repo.save(record('g-3', { firstName: 'Marie' }));
+    expect(
+      test.context.connection.prepare(`SELECT firstName, photoUrl FROM guardians WHERE id = 'g-3'`).get(),
+    ).toEqual({ firstName: 'Marie', photoUrl: 'https://x/g.jpg' });
+  });
+
   it('findById returns null for a missing id', () => {
     expect(repo.findById('nope')).toBeNull();
   });

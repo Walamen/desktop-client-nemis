@@ -74,7 +74,7 @@ const SPECS: Record<ProvisioningCollection, TableSpec> = {
   subjects: spec('subjects', ['id','institutionId','name','code','description','isActive','version','updatedAt','lastModifiedBy']),
   classSubjects: spec('class_subjects', ['id','classId','subjectId','assignedAt','version','updatedAt','lastModifiedBy']),
   students: spec('students', ['id','institutionId','firstName','middleName','lastName','nemisId','dateOfBirth','gender','gradeLevel','isActive','admissionDate','phoneNumber','email','address','version','updatedAt','lastModifiedBy','createdAt','nationalId','photoUrl']),
-  guardians: spec('guardians', ['id','firstName','lastName','relationship','phoneNumber','email','address','occupation','isEmergencyContact','version','updatedAt','lastModifiedBy']),
+  guardians: spec('guardians', ['id','firstName','lastName','relationship','phoneNumber','email','address','occupation','isEmergencyContact','version','updatedAt','lastModifiedBy','photoUrl']),
   studentGuardians: spec('student_guardians', ['id','studentId','guardianId','isPrimary','createdAt']),
   enrollments: spec('enrollments', ['id','studentId','classId','academicYearId','termId','enrollmentDate','status','version','updatedAt','lastModifiedBy']),
   attendance: spec('attendance', ['id','studentId','classId','subjectId','date','status','recordedBy','version','updatedAt','lastModifiedBy']),
