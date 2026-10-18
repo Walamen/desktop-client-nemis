@@ -10,6 +10,9 @@ import { GetSchoolRegistrationsUseCase } from '../use-cases/county/get-school-re
 import type { ICountyStudentsReadModel } from '../interfaces/county/county-students-read-model';
 import { GetCountyStudentsUseCase } from '../use-cases/county/get-county-students';
 import { GetCountyStudentDetailUseCase } from '../use-cases/county/get-county-student-detail';
+import type { ICountyTeachersReadModel } from '../interfaces/county/county-teachers-read-model';
+import { GetCountyTeachersUseCase } from '../use-cases/county/get-county-teachers';
+import { GetCountyTeacherDetailUseCase } from '../use-cases/county/get-county-teacher-detail';
 import type { ICountyDistrictsReadModel } from '../interfaces/county/county-districts-read-model';
 import { GetCountyDistrictsUseCase } from '../use-cases/county/get-county-districts';
 import { GetCountyDistrictDetailUseCase } from '../use-cases/county/get-county-district-detail';
@@ -173,6 +176,7 @@ export interface ApplicationPorts {
   schoolRegistrations: ISchoolRegistrationStore;
   /** County Students pages: list, stats and student detail. */
   countyStudents: ICountyStudentsReadModel;
+  countyTeachers: ICountyTeachersReadModel;
   gradingConfigs: IGradingConfigRepository;
   /** The authenticated user's id for this workspace (see GetCurrentUserDeps). */
   currentUserId: string;
@@ -532,6 +536,12 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
       logger,
     }),
     getStudent: new GetCountyStudentDetailUseCase({ readModel: ports.countyStudents, logger }),
+    listTeachers: new GetCountyTeachersUseCase({
+      readModel: ports.countyTeachers,
+      countyReadModel: ports.countyAnalytics,
+      logger,
+    }),
+    getTeacher: new GetCountyTeacherDetailUseCase({ readModel: ports.countyTeachers, logger }),
   });
 
   const teacherDeps = { teachers: ports.teachers, clock, logger };

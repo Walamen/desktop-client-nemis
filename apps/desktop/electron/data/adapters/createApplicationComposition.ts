@@ -51,6 +51,11 @@ export function createApplicationComposition(
     countySchools: dataLayer.repositories.countySchools,
     schoolRegistrations: dataLayer.repositories.schoolRegistrations,
     countyStudents: dataLayer.repositories.countyStudents,
+    // Replaced by the SQLite read model in the next task.
+    countyTeachers: {
+      listTeachers: () => { throw new Error('countyTeachers read model not wired yet'); },
+      getTeacher: () => { throw new Error('countyTeachers read model not wired yet'); },
+    },
     users: dataLayer.repositories.users,
     academicYears: dataLayer.repositories.academicYears,
     classes: dataLayer.repositories.classes,

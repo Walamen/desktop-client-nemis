@@ -7,6 +7,9 @@ import type {
   CountyStudentDetail,
   CountyStudentsQuery,
   CountyStudentsResult,
+  CountyTeacherDetail,
+  CountyTeachersQuery,
+  CountyTeachersResult,
 } from '@nemis-desktop/types';
 import type { ApplicationResponse } from '../core/response';
 import type { CountyDashboardOutput } from '../dto/county/county-dashboard-dto';
@@ -24,6 +27,8 @@ import type { DiscardSchoolRegistrationUseCase } from '../use-cases/county/disca
 import type { GetSchoolRegistrationsUseCase } from '../use-cases/county/get-school-registrations';
 import type { GetCountyStudentsUseCase } from '../use-cases/county/get-county-students';
 import type { GetCountyStudentDetailUseCase } from '../use-cases/county/get-county-student-detail';
+import type { GetCountyTeachersUseCase } from '../use-cases/county/get-county-teachers';
+import type { GetCountyTeacherDetailUseCase } from '../use-cases/county/get-county-teacher-detail';
 
 export interface CountyApplicationServiceDeps {
   getDashboard: GetCountyDashboardUseCase;
@@ -38,6 +43,8 @@ export interface CountyApplicationServiceDeps {
   getSchoolRegistrations: GetSchoolRegistrationsUseCase;
   listStudents: GetCountyStudentsUseCase;
   getStudent: GetCountyStudentDetailUseCase;
+  listTeachers: GetCountyTeachersUseCase;
+  getTeacher: GetCountyTeacherDetailUseCase;
 }
 
 /** The County (CEO) portal's application service. */
@@ -78,5 +85,11 @@ export class CountyApplicationService {
   }
   getStudent(studentId: string): Promise<ApplicationResponse<CountyStudentDetail | null>> {
     return this.deps.getStudent.execute({ studentId });
+  }
+  listTeachers(query: CountyTeachersQuery): Promise<ApplicationResponse<CountyTeachersResult>> {
+    return this.deps.listTeachers.execute(query);
+  }
+  getTeacher(teacherId: string): Promise<ApplicationResponse<CountyTeacherDetail | null>> {
+    return this.deps.getTeacher.execute({ teacherId });
   }
 }
