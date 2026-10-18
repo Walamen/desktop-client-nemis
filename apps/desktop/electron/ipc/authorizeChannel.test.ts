@@ -53,6 +53,8 @@ describe('authorizeChannel', () => {
       IpcChannels.COUNTY_LIST_STUDENTS,
       IpcChannels.COUNTY_GET_STUDENT,
       IpcChannels.COUNTY_GET_STUDENT_RECORD,
+      IpcChannels.COUNTY_LIST_TEACHERS,
+      IpcChannels.COUNTY_GET_TEACHER,
     ];
     for (const channel of channels) {
       expect(() => authorizeChannel(channel, workspace(SystemRole.COUNTY_ADMIN))).not.toThrow();

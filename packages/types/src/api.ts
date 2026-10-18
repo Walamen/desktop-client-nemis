@@ -50,6 +50,7 @@ import type {
   CountyStudentsResult,
   StudentAcademicRecordResult,
 } from './county-students';
+import type { CountyTeacherDetail, CountyTeachersQuery, CountyTeachersResult } from './county-teachers';
 import type {
   CreateGuardianRequest,
   CreateStudentRequest,
@@ -187,6 +188,8 @@ export interface CountyApi {
   getStudent(studentId: string): Promise<CountyStudentDetail | null>;
   /** The student's national record from the server; 'unavailable' offline or on any failure. */
   getStudentRecord(studentId: string): Promise<StudentAcademicRecordResult>;
+  listTeachers(query: CountyTeachersQuery): Promise<CountyTeachersResult>;
+  getTeacher(teacherId: string): Promise<CountyTeacherDetail | null>;
 }
 export interface SchoolApi {
   getSummary(): Promise<SchoolSummaryResult | null>;

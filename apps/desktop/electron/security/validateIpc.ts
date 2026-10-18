@@ -1124,6 +1124,21 @@ export function assertCountyStudentsQueryArgs(args: readonly unknown[]): void {
   }
 }
 
+export function assertCountyTeachersQueryArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [query] = args;
+  if (!isPlainObject(query)) throw new IPCError('Expected a query object.');
+  assertKnownKeys(query, ['search', 'category', 'subject', 'status', 'page', 'limit']);
+  assertInt(query.page, 'page', 1, 1_000_000);
+  assertInt(query.limit, 'limit', 1, 50);
+  for (const key of ['search', 'category', 'subject'] as const) {
+    if (query[key] !== undefined) assertString(query[key], key, ID_MAX_LENGTH);
+  }
+  if (query.status !== undefined && query.status !== 'active' && query.status !== 'inactive') {
+    throw new IPCError('Expected status active or inactive.');
+  }
+}
+
 export function assertTransferCreateArgs(args: readonly unknown[]): void {
   assertArity(args, 1);
   const [request] = args;

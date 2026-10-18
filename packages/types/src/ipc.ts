@@ -73,6 +73,7 @@ import type {
   CountyStudentsResult,
   StudentAcademicRecordResult,
 } from './county-students';
+import type { CountyTeacherDetail, CountyTeachersQuery, CountyTeachersResult } from './county-teachers';
 import type {
   CreateGuardianRequest,
   CreateStudentRequest,
@@ -186,6 +187,8 @@ export interface IpcContract {
   'county:list-students': { args: [query: CountyStudentsQuery]; result: CountyStudentsResult };
   'county:get-student': { args: [studentId: string]; result: CountyStudentDetail | null };
   'county:get-student-record': { args: [studentId: string]; result: StudentAcademicRecordResult };
+  'county:list-teachers': { args: [query: CountyTeachersQuery]; result: CountyTeachersResult };
+  'county:get-teacher': { args: [teacherId: string]; result: CountyTeacherDetail | null };
   'school:get-summary': { args: []; result: SchoolSummaryResult | null };
   'institution:list': { args: []; result: InstitutionSummaryResult[] };
   'academic-year:get-current': { args: []; result: AcademicYearResult | null };
@@ -387,6 +390,8 @@ export const IpcChannels = {
   COUNTY_LIST_STUDENTS: 'county:list-students',
   COUNTY_GET_STUDENT: 'county:get-student',
   COUNTY_GET_STUDENT_RECORD: 'county:get-student-record',
+  COUNTY_LIST_TEACHERS: 'county:list-teachers',
+  COUNTY_GET_TEACHER: 'county:get-teacher',
   SCHOOL_GET_SUMMARY: 'school:get-summary',
   INSTITUTION_LIST: 'institution:list',
   ACADEMIC_YEAR_GET_CURRENT: 'academic-year:get-current',
