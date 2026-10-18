@@ -12,3 +12,7 @@ export function guarded<T>(context: string, fn: () => T): T {
     throw wrapSqliteError(error, context);
   }
 }
+
+/** County read models: this county's own schools (institution alias `i`);
+ * with no county row synced (older server), all. */
+export const OWN_COUNTY = `(NOT EXISTS (SELECT 1 FROM counties) OR i.countyId IN (SELECT id FROM counties))`;

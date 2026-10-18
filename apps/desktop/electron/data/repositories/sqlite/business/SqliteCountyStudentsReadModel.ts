@@ -10,10 +10,8 @@ import type {
 import type { ICountyStudentsReadModel } from '@nemis-desktop/application';
 import { StatementCache } from '../../base/StatementCache';
 import type { RepositoryContext } from '../../base/RepositoryContext';
-import { guarded } from './support';
+import { guarded, OWN_COUNTY } from './support';
 
-/** This county's own schools; with no county row synced (older server), all. */
-const OWN_COUNTY = `(NOT EXISTS (SELECT 1 FROM counties) OR i.countyId IN (SELECT id FROM counties))`;
 /** counties.service getCountyStudents: students at the county's ACTIVE schools. */
 const ACTIVE_SCHOOL = `i.isActive = 1 AND ${OWN_COUNTY}`;
 
