@@ -71,7 +71,7 @@ export class SqliteCountyAnalyticsReadModel implements ICountyAnalyticsReadModel
         .get(
           `SELECT COUNT(*) AS count FROM ${staff} t
            JOIN ${institutions} i ON i.id = t.institutionId
-           WHERE t.isActive = 1 AND i.isActive = 1`,
+           WHERE t.isActive = 1 AND i.isActive = 1 AND t.position IN ('TEACHER','ASSISTANT_TEACHER')`,
         )
         .get() as { count: number }).count;
     });

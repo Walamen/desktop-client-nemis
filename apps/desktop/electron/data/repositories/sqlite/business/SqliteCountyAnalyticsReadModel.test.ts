@@ -39,11 +39,11 @@ describe('SqliteCountyAnalyticsReadModel', () => {
       opts.createdAt ?? null,
     );
   }
-  function teacher(id: string, institutionId: string, isActive = 1) {
+  function teacher(id: string, institutionId: string, isActive = 1, position = 'TEACHER') {
     db.prepare(
       `INSERT INTO staff (id,institutionId,firstName,lastName,dateOfBirth,gender,phoneNumber,employeeNumber,position,employmentType,dateOfJoining,isActive,createdAt,updatedAt)
-       VALUES (?,?,'Tee','Cher','1990-01-01','FEMALE','0770000000',?,'TEACHER','FULL_TIME','2020-01-01',?,?,?)`,
-    ).run(id, institutionId, id, isActive, NOW, NOW);
+       VALUES (?,?,'Tee','Cher','1990-01-01','FEMALE','0770000000',?,?,'FULL_TIME','2020-01-01',?,?,?)`,
+    ).run(id, institutionId, id, position, isActive, NOW, NOW);
   }
 
   beforeEach(() => {
@@ -113,6 +113,16 @@ describe('SqliteCountyAnalyticsReadModel', () => {
     expect(readModel.countActiveSchools()).toBe(1);
     expect(readModel.countActiveStudents()).toBe(1);
     expect(readModel.countActiveTeachers()).toBe(1);
+  });
+
+  it('countActiveTeachers counts active teaching staff only', () => {
+    district('d-1', 'Buchanan');
+    school('open', 'd-1');
+    teacher('t1', 'open');
+    teacher('t2', 'open', 1, 'ASSISTANT_TEACHER');
+    teacher('p1', 'open', 1, 'PRINCIPAL');
+    teacher('l1', 'open', 1, 'LIBRARIAN');
+    expect(readModel.countActiveTeachers()).toBe(2);
   });
 
   it('groups active students by gender, grade level and district name', () => {
