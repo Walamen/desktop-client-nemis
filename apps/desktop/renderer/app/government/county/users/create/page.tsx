@@ -22,6 +22,10 @@ const STEPS = [
 
 const USERS_PATH = "/government/county/users";
 
+// Same wording as the list page: the server took the change, the follow-up
+// pull did not run, so local data catches up on the next sync.
+const SYNC_NOTE = "Saved — this will appear once this device syncs.";
+
 /** getCreatableRoles(COUNTY_ADMIN) on the web, with @nemis/types USER_ROLE_LABELS. */
 const CREATABLE_ROLES: CountyUserRole[] = ["DEO", "INSTITUTION_ADMIN"];
 const ROLE_LABELS: Record<CountyUserRole, string> = {
@@ -142,7 +146,12 @@ function CreateUserWizard() {
   });
   const [errors, setErrors] = useState<FormErrors>({});
   // The activation URL lives only here, while the success panel is shown.
-  const [createdUser, setCreatedUser] = useState<{ activationUrl: string; email: string; name: string } | null>(
+  const [createdUser, setCreatedUser] = useState<{
+    activationUrl: string;
+    email: string;
+    name: string;
+    refreshed: boolean;
+  } | null>(
     null,
   );
 
@@ -227,6 +236,7 @@ function CreateUserWizard() {
         activationUrl: result.data.activationUrl,
         email,
         name: `${firstName} ${lastName}`,
+        refreshed: result.refreshed,
       });
     } catch (error: unknown) {
       const message = parseIpcError(error)?.message;
@@ -240,6 +250,11 @@ function CreateUserWizard() {
     return (
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+          {!createdUser.refreshed && (
+            <div className="flex items-start gap-3 bg-sky-50 border border-sky-200 rounded-xl px-4 py-3 mb-4">
+              <p className="text-sm text-sky-700">{SYNC_NOTE}</p>
+            </div>
+          )}
           <ActivationLinkDisplay
             activationUrl={createdUser.activationUrl}
             email={createdUser.email}

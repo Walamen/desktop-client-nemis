@@ -177,6 +177,23 @@ describe('County Create User wizard', () => {
     expect(push).toHaveBeenCalledWith('/government/county/users');
   });
 
+  it('shows the sync note when the follow-up pull did not run', async () => {
+    mockNemis({
+      createUser: vi.fn(async () => ({
+        data: { userId: 'u-new', activationUrl: 'https://nemis.example/activate?token=xyz' },
+        refreshed: false,
+      })),
+    });
+    roleParam = 'DEO';
+    renderPage();
+    fillBasics();
+    click(/Next/);
+    click(/Next/);
+    click('Create User');
+    await waitFor(() => expect(screen.getByText('User Created Successfully!')).toBeInTheDocument());
+    expect(screen.getByText('Saved — this will appear once this device syncs.')).toBeInTheDocument();
+  });
+
   it('shows the friendly duplicate-email text', async () => {
     mockNemis({
       createUser: vi.fn(async () => {
