@@ -21,7 +21,7 @@ Alvin asked (2026-10-19) to **follow the patterns he chose for the earlier Count
 - the web's broken numbers fixed on both sides, and the endpoints the page uses locked to the county's admin (the
   Teachers precedent).
 
-Decisions marked **[ALVIN]** are still open. Each one shows my recommendation, and the rest of the spec assumes it.
+Decisions D1–D3 (section 3) were approved by Alvin on 2026-10-19.
 
 ## 2. What the web does today (recon, 2026-10-19)
 
@@ -82,12 +82,12 @@ country**, and nothing checks which roles a County Admin may create:
 
 ## 3. Decisions
 
-- **[ALVIN] D1: fix the list on both sides** (recommended). Exact parity would show today's broken page on the
+- **D1: fix the list on both sides** (approved by Alvin, 2026-10-19). Exact parity would show today's broken page on the
   desktop: DEOs only, School Admins = 0. The fix is section 5.1's membership rule and section 5.2's stats.
-- **[ALVIN] D2: lock the endpoints** (recommended). This is the Teachers precedent, extended to the write endpoints
+- **D2: lock the endpoints** (approved by Alvin, 2026-10-19). This is the Teachers precedent, extended to the write endpoints
   (section 5.5). It only changes what a **County Admin** caller may do. Super and ministry admins keep today's
   behaviour, so the ministry portal's users page is unaffected.
-- **[ALVIN] D3: Create User and Bulk Create are online-only** (recommended). The Schools page went offline (your
+- **D3: Create User and Bulk Create are online-only** (approved by Alvin, 2026-10-19). The Schools page went offline (your
   2026-10-17 reversal), but a user is different: the page's whole result is the **activation link**, which only the
   server can issue. An offline queue would leave the admin with nothing to hand over until a sync. The buttons stay
   visible offline and are disabled with the usual offline hint.
