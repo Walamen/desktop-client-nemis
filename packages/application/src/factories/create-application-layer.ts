@@ -16,6 +16,9 @@ import { GetCountyGuardianDetailUseCase } from '../use-cases/county/get-county-g
 import type { ICountyTeachersReadModel } from '../interfaces/county/county-teachers-read-model';
 import { GetCountyTeachersUseCase } from '../use-cases/county/get-county-teachers';
 import { GetCountyTeacherDetailUseCase } from '../use-cases/county/get-county-teacher-detail';
+import type { ICountyUsersReadModel } from '../interfaces/county/county-users-read-model';
+import { GetCountyUsersUseCase } from '../use-cases/county/get-county-users';
+import { GetCountyUserOptionsUseCase } from '../use-cases/county/get-county-user-options';
 import type { ICountyDistrictsReadModel } from '../interfaces/county/county-districts-read-model';
 import { GetCountyDistrictsUseCase } from '../use-cases/county/get-county-districts';
 import { GetCountyDistrictDetailUseCase } from '../use-cases/county/get-county-district-detail';
@@ -182,6 +185,8 @@ export interface ApplicationPorts {
   /** County Parents & Guardians pages: list, stats and guardian profile. */
   countyGuardians: ICountyGuardiansReadModel;
   countyTeachers: ICountyTeachersReadModel;
+  /** County Administrative Users page: list, stats and assignment options. */
+  countyUsers: ICountyUsersReadModel;
   gradingConfigs: IGradingConfigRepository;
   /** The authenticated user's id for this workspace (see GetCurrentUserDeps). */
   currentUserId: string;
@@ -554,6 +559,16 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
       logger,
     }),
     getTeacher: new GetCountyTeacherDetailUseCase({ readModel: ports.countyTeachers, logger }),
+    listUsers: new GetCountyUsersUseCase({
+      readModel: ports.countyUsers,
+      countyReadModel: ports.countyAnalytics,
+      logger,
+    }),
+    getUserOptions: new GetCountyUserOptionsUseCase({
+      readModel: ports.countyUsers,
+      countyReadModel: ports.countyAnalytics,
+      logger,
+    }),
   });
 
   const teacherDeps = { teachers: ports.teachers, clock, logger };

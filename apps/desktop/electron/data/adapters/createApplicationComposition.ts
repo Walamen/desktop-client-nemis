@@ -53,6 +53,8 @@ export function createApplicationComposition(
     countyStudents: dataLayer.repositories.countyStudents,
     countyGuardians: dataLayer.repositories.countyGuardians,
     countyTeachers: dataLayer.repositories.countyTeachers,
+    // Real SQLite read model lands with the County Users read model (Task 8).
+    countyUsers: new Proxy({} as never, { get: () => () => notBuilt('CountyUsers') }),
     users: dataLayer.repositories.users,
     academicYears: dataLayer.repositories.academicYears,
     classes: dataLayer.repositories.classes,

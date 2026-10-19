@@ -104,6 +104,8 @@ export * from './use-cases/county/get-county-teacher-detail';
 export * from './use-cases/county/get-county-student-detail';
 export * from './use-cases/county/get-county-guardians';
 export * from './use-cases/county/get-county-guardian-detail';
+export * from './use-cases/county/get-county-users';
+export * from './use-cases/county/get-county-user-options';
 export * from './use-cases/county/school-registration-codes';
 export * from './mappers/county/school-registration-mapper';
 export * from './use-cases/academics/get-current-academic-year';
