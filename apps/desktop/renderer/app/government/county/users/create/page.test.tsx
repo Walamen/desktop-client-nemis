@@ -118,6 +118,22 @@ describe('County Create User wizard', () => {
     expect((screen.getByPlaceholderText('John') as HTMLInputElement).value).toBe('Musu');
   });
 
+  it('Next on step 2 opens Review without submitting (Next is never reused as the submit button)', () => {
+    const county = mockNemis();
+    roleParam = 'DEO';
+    renderPage();
+    fillBasics();
+    click(/Next/);
+    const next = screen.getByRole('button', { name: /Next/ });
+    fireEvent.click(next);
+    expect(screen.getByRole('heading', { name: 'Review & Submit' })).toBeInTheDocument();
+    // A reused DOM node would flip to type="submit" before the browser's
+    // default action and submit the form from the Next click.
+    expect(screen.getByRole('button', { name: 'Create User' })).not.toBe(next);
+    expect(next.isConnected).toBe(false);
+    expect(county.createUser).not.toHaveBeenCalled();
+  });
+
   it('requires a school for a School Admin', async () => {
     mockNemis();
     renderPage();

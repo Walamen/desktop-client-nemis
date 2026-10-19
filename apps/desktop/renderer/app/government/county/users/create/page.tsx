@@ -524,13 +524,24 @@ function CreateUserWizard() {
                     Cancel
                   </Button>
 
-                  {currentStep < STEPS.length ? (
-                    <Button type="button" variant="primary" size="lg" onClick={handleNext}>
+                  {/* Separate conditionals with keys (as CreateSchoolPage): a shared
+                      slot would let React reuse the Next <button> as the submit
+                      button, so the Next click itself would submit the form. */}
+                  {currentStep < STEPS.length && (
+                    <Button key="next" type="button" variant="primary" size="lg" onClick={handleNext}>
                       Next
                       <ArrowLeft className="w-4 h-4 ml-2 rotate-180" />
                     </Button>
-                  ) : (
-                    <Button type="submit" variant="primary" size="lg" loading={isLoading} disabled={!online}>
+                  )}
+                  {currentStep === STEPS.length && (
+                    <Button
+                      key="submit"
+                      type="submit"
+                      variant="primary"
+                      size="lg"
+                      loading={isLoading}
+                      disabled={!online}
+                    >
                       Create User
                     </Button>
                   )}
