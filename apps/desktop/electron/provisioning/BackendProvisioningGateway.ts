@@ -336,13 +336,16 @@ export class BackendProvisioningGateway {
     );
   }
 
-  /** users.service bulkCreateUsers: each row plus the County Admin's county. */
+  /** users.service bulkCreateUsers: each row plus the County Admin's county.
+   * The server creates rows one at a time (lookup, create, token, email,
+   * audit), so the wait scales with the row count: aborting early would show
+   * an offline error while the server goes on creating users. */
   async bulkCreateCountyUsers(rows: CountyBulkUserRow[], countyId: string): Promise<CountyBulkCreateUsersResult> {
     return this.authorized(
       '/users/bulk-create',
       { method: 'POST', body: JSON.stringify(rows.map((row) => ({ ...row, countyId }))) },
       toBulkCreateUsersResult,
-      ONLINE_COMMAND,
+      { onlineCommand: true, timeoutMs: bulkCreateTimeoutMs(rows.length) },
     );
   }
 
@@ -590,6 +593,17 @@ function toBulkClaimResult(value: unknown): BulkClaimResult {
     registryUnavailableMessage:
       body.registryUnavailable === true && typeof message === 'string' ? message : null,
   };
+}
+
+const BULK_CREATE_MS_PER_ROW = 2_000;
+const BULK_CREATE_MIN_TIMEOUT_MS = 120_000;
+const BULK_CREATE_MAX_TIMEOUT_MS = 15 * 60_000;
+
+function bulkCreateTimeoutMs(rowCount: number): number {
+  return Math.min(
+    BULK_CREATE_MAX_TIMEOUT_MS,
+    Math.max(BULK_CREATE_MIN_TIMEOUT_MS, rowCount * BULK_CREATE_MS_PER_ROW),
+  );
 }
 
 function requireActivationUrl(value: unknown): string {

@@ -766,6 +766,27 @@ describe('BackendProvisioningGateway', () => {
       expect(JSON.parse(String(init.body))).toEqual(rows.map((row) => ({ ...row, countyId: 'c-1' })));
     });
 
+    // The server creates rows one by one (lookup, create, token, email,
+    // audit), so a big batch outlasts the default 120 s abort.
+    it.each([
+      [1, 120_000],
+      [100, 200_000],
+      [300, 600_000],
+      [500, 900_000],
+    ])('bulkCreateCountyUsers with %i rows waits %i ms before giving up', async (count, expected) => {
+      vi.stubGlobal('fetch', vi.fn(async () => response({ success: [], failed: [] })));
+      const timeout = vi.spyOn(AbortSignal, 'timeout');
+      try {
+        const rows = Array.from({ length: count }, (_, i) => ({
+          firstName: 'A', lastName: 'B', email: `a${i}@x.lr`, phoneNumber: '+231770000000', role: 'DEO' as const,
+        }));
+        await buildGateway().bulkCreateCountyUsers(rows, 'c-1');
+        expect(timeout).toHaveBeenCalledWith(expected);
+      } finally {
+        timeout.mockRestore();
+      }
+    });
+
     it('bulkCreateCountyUsers refuses a body without success and failed arrays', async () => {
       vi.stubGlobal('fetch', vi.fn(async () => response({ success: [] })));
       await expect(buildGateway().bulkCreateCountyUsers([], 'c-1')).rejects.toThrow('Malformed server response.');
