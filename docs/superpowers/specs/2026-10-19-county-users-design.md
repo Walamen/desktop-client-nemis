@@ -254,7 +254,7 @@ truth. `refreshed: false` shows the existing SYNC_NOTE. The server's message is 
   - `app/government/county/users/page.tsx` replaces the ComingSoon;
   - `users/create/page.tsx` and `users/create/bulk/page.tsx`;
   - `components/county/users/` for AssignUserModal, DisableUserModal and ActivationLinkDisplay (with copy to
-    clipboard, as `PrincipalLoginCard` does);
+    clipboard via the existing `components/county/schools/registration/CopyButton.tsx`);
   - photos via the existing `SchoolPhoto` with `fallback="/deo-fallback.jpg"` (add the asset if missing);
   - toggle aria-labels "Card view" / "Table view";
   - the web's `alert()` failures become the desktop's toast/error pattern.
