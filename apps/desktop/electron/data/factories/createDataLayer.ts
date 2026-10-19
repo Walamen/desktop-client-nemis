@@ -8,6 +8,7 @@ import type {
   ISchoolRegistrationStore,
   ICountyStudentsReadModel,
   ICountyGuardiansReadModel,
+  ICountyTeachersReadModel,
   IUserRepository,
   IAcademicYearRepository,
   IClassRepository,
@@ -42,6 +43,7 @@ import { SqliteCountySchoolsReadModel } from '../repositories/sqlite/business/Sq
 import { SqliteSchoolRegistrationStore } from '../repositories/sqlite/business/SqliteSchoolRegistrationStore';
 import { SqliteCountyStudentsReadModel } from '../repositories/sqlite/business/SqliteCountyStudentsReadModel';
 import { SqliteCountyGuardiansReadModel } from '../repositories/sqlite/business/SqliteCountyGuardiansReadModel';
+import { SqliteCountyTeachersReadModel } from '../repositories/sqlite/business/SqliteCountyTeachersReadModel';
 import { SqliteStudentRepository } from '../repositories/sqlite/business/SqliteStudentRepository';
 import { SqliteUserRepository } from '../repositories/sqlite/business/SqliteUserRepository';
 import { SqliteGuardianRepository } from '../repositories/sqlite/business/SqliteGuardianRepository';
@@ -78,6 +80,7 @@ export interface DataLayer {
     schoolRegistrations: ISchoolRegistrationStore;
     countyStudents: ICountyStudentsReadModel;
     countyGuardians: ICountyGuardiansReadModel;
+    countyTeachers: ICountyTeachersReadModel;
     users: IUserRepository;
     academicYears: IAcademicYearRepository;
     classes: IClassRepository;
@@ -147,6 +150,7 @@ export function createDataLayer(manager: DatabaseManager, log: DatabaseLogger): 
   const schoolRegistrations = new SqliteSchoolRegistrationStore(context);
   const countyStudents = new SqliteCountyStudentsReadModel(context);
   const countyGuardians = new SqliteCountyGuardiansReadModel(context);
+  const countyTeachers = new SqliteCountyTeachersReadModel(context);
   const users = new SqliteUserRepository(context);
   const academicYears = new SqliteAcademicYearRepository(context);
   const classes = new SqliteClassRepository(context);
@@ -199,6 +203,7 @@ export function createDataLayer(manager: DatabaseManager, log: DatabaseLogger): 
       schoolRegistrations,
       countyStudents,
       countyGuardians,
+      countyTeachers,
       users,
       academicYears,
       classes,

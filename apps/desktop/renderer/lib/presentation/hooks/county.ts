@@ -13,3 +13,5 @@ export const useCountyStudentsViewModel = () => usePresentation().viewModels.cou
 export const useCountyStudentDetailViewModel = () => usePresentation().viewModels.countyStudentDetail;
 export const useCountyGuardiansViewModel = () => usePresentation().viewModels.countyGuardians;
 export const useCountyGuardianDetailViewModel = () => usePresentation().viewModels.countyGuardianDetail;
+export const useCountyTeachersViewModel = () => usePresentation().viewModels.countyTeachers;
+export const useCountyTeacherDetailViewModel = () => usePresentation().viewModels.countyTeacherDetail;

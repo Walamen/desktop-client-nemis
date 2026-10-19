@@ -51,6 +51,7 @@ import {
   registerCountyRegistrationHandlers,
   registerCountyStudentHandlers,
   registerCountyGuardianHandlers,
+  registerCountyTeacherHandlers,
   registerCountySchoolHandlers,
 } from '@app/ipc/handlers/county';
 
@@ -112,6 +113,8 @@ export function registerIpcHandlers(
     isOnline: () => syncWorker.isOnline(),
     countyId: () => workspaces.active.user.scope.scopeId,
   });
+
+  registerCountyTeacherHandlers(securedHandle, app);
 
   registerTeacherDashboardHandlers(securedHandle, app);
   registerAssignmentHandlers(securedHandle, app, workspaces);

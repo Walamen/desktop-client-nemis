@@ -51,6 +51,7 @@ import type {
   StudentAcademicRecordResult,
 } from './county-students';
 import type { CountyGuardianDetail, CountyGuardiansQuery, CountyGuardiansResult } from './county-guardians';
+import type { CountyTeacherDetail, CountyTeachersQuery, CountyTeachersResult } from './county-teachers';
 import type {
   CreateGuardianRequest,
   CreateStudentRequest,
@@ -190,6 +191,8 @@ export interface CountyApi {
   getStudentRecord(studentId: string): Promise<StudentAcademicRecordResult>;
   listGuardians(query: CountyGuardiansQuery): Promise<CountyGuardiansResult>;
   getGuardian(guardianId: string): Promise<CountyGuardianDetail | null>;
+  listTeachers(query: CountyTeachersQuery): Promise<CountyTeachersResult>;
+  getTeacher(teacherId: string): Promise<CountyTeacherDetail | null>;
 }
 export interface SchoolApi {
   getSummary(): Promise<SchoolSummaryResult | null>;

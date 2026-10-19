@@ -4,3 +4,4 @@ export * from './county-schools-read-model';
 export * from './school-registration-store';
 export * from './county-students-read-model';
 export * from './county-guardians-read-model';
+export * from './county-teachers-read-model';

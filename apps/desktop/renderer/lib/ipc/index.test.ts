@@ -90,6 +90,20 @@ describe('createIpcApplicationLayer', () => {
     expect(county.getGuardian).toHaveBeenCalledWith('g-1');
   });
 
+  it('county.listTeachers and county.getTeacher return bridged data', async () => {
+    const county = {
+      listTeachers: vi.fn(async () => ({ total: 0 })),
+      getTeacher: vi.fn(async () => null),
+    };
+    (window as unknown as { nemis: unknown }).nemis = fakeNemis({ county });
+    const app = createIpcApplicationLayer();
+    const query = { subject: 'English', page: 1, limit: 12 };
+    expect((await app.county.listTeachers(query)).data).toEqual({ total: 0 });
+    expect(county.listTeachers).toHaveBeenCalledWith(query);
+    expect((await app.county.getTeacher('t-1')).data).toBeNull();
+    expect(county.getTeacher).toHaveBeenCalledWith('t-1');
+  });
+
   it('county school registration methods return bridged data', async () => {
     const county = {
       getRegistrationContext: vi.fn(async () => ({ county: null, districts: [] })),

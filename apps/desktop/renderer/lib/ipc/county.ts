@@ -19,5 +19,7 @@ export const countyIpc = {
     getStudent: (studentId) => query(() => countyBridge.getStudent(studentId)),
     listGuardians: (guardiansQuery) => query(() => countyBridge.listGuardians(guardiansQuery)),
     getGuardian: (guardianId) => query(() => countyBridge.getGuardian(guardianId)),
+    listTeachers: (teachersQuery) => query(() => countyBridge.listTeachers(teachersQuery)),
+    getTeacher: (teacherId) => query(() => countyBridge.getTeacher(teacherId)),
   }),
 };

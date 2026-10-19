@@ -20,3 +20,4 @@ export * from './county-schools';
 export * from './county-school-registrations';
 export * from './county-students';
 export * from './county-guardians';
+export * from './county-teachers';
