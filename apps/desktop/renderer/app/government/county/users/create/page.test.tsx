@@ -210,6 +210,28 @@ describe('County Create User wizard', () => {
     expect(screen.getByText('Saved — this will appear once this device syncs.')).toBeInTheDocument();
   });
 
+  it('an older server with no activation link: created, with the list-page hint instead of a link', async () => {
+    mockNemis({
+      createUser: vi.fn(async () => ({ data: { userId: 'u-new', activationUrl: null }, refreshed: true })),
+    });
+    roleParam = 'DEO';
+    renderPage();
+    fillBasics();
+    click(/Next/);
+    click(/Next/);
+    click('Create User');
+    await waitFor(() => expect(screen.getByText('User Created Successfully!')).toBeInTheDocument());
+    expect(
+      screen.getByText(
+        "User created. The activation link isn't available from this server — use Activation URL on the users list once it is.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Activation URL')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /copy/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    expect(push).toHaveBeenCalledWith('/government/county/users');
+  });
+
   it('shows the friendly duplicate-email text', async () => {
     mockNemis({
       createUser: vi.fn(async () => {

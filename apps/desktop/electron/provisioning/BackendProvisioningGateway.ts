@@ -317,7 +317,10 @@ export class BackendProvisioningGateway {
     );
   }
 
-  /** users.service createUserWithActivation. Maps only the new id and link. */
+  /** users.service createUserWithActivation. Maps only the new id and link.
+   * The user exists once an id comes back, so a missing link (an older
+   * server) degrades to null instead of failing: a retry would only hit
+   * "Email already registered". */
   async createCountyUser(request: CountyCreateUserRequest & { countyId: string }): Promise<CountyCreateUserResult> {
     const body = {
       firstName: request.firstName,
@@ -331,7 +334,7 @@ export class BackendProvisioningGateway {
     return this.authorized(
       '/users/with-activation',
       { method: 'POST', body: JSON.stringify(body) },
-      (value) => ({ userId: requireId(value), activationUrl: requireActivationUrl(value) }),
+      (value) => ({ userId: requireId(value), activationUrl: optionalActivationUrl(value) }),
       ONLINE_COMMAND,
     );
   }
@@ -604,6 +607,11 @@ function bulkCreateTimeoutMs(rowCount: number): number {
     BULK_CREATE_MAX_TIMEOUT_MS,
     Math.max(BULK_CREATE_MIN_TIMEOUT_MS, rowCount * BULK_CREATE_MS_PER_ROW),
   );
+}
+
+function optionalActivationUrl(value: unknown): string | null {
+  const url = asRecord(value).activationUrl;
+  return typeof url === 'string' && url.length > 0 ? url : null;
 }
 
 function requireActivationUrl(value: unknown): string {

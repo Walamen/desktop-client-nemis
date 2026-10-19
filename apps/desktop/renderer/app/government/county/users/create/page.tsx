@@ -147,7 +147,7 @@ function CreateUserWizard() {
   const [errors, setErrors] = useState<FormErrors>({});
   // The activation URL lives only here, while the success panel is shown.
   const [createdUser, setCreatedUser] = useState<{
-    activationUrl: string;
+    activationUrl: string | null;
     email: string;
     name: string;
     refreshed: boolean;

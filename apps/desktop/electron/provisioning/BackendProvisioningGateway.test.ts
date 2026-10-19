@@ -731,7 +731,21 @@ describe('BackendProvisioningGateway', () => {
       expect(JSON.parse(String(call(fetchMock)[1].body))).not.toHaveProperty('institutionId');
     });
 
-    it.each([{ activationUrl: 'u' }, { id: 'new-1' }])('createCountyUser refuses a malformed body (%j)', async (body) => {
+    // An older server returns the created user without a link: the user
+    // exists, so failing here would make the admin's retry a duplicate.
+    it.each([{ id: 'new-1' }, { id: 'new-1', activationUrl: '' }, { id: 'new-1', activationToken: TOKEN }])(
+      'createCountyUser with a user id but no activationUrl returns a null link (%j)',
+      async (body) => {
+        vi.stubGlobal('fetch', vi.fn(async () => response(body)));
+        const result = await buildGateway().createCountyUser({
+          firstName: 'A', lastName: 'B', email: 'a@b.lr', phoneNumber: '+231770000000', role: 'DEO', countyId: 'c-1',
+        });
+        expect(result).toEqual({ userId: 'new-1', activationUrl: null });
+        expect(JSON.stringify(result)).not.toContain(TOKEN);
+      },
+    );
+
+    it.each([{ activationUrl: 'u' }, {}])('createCountyUser refuses a body without a user id (%j)', async (body) => {
       vi.stubGlobal('fetch', vi.fn(async () => response(body)));
       await expect(buildGateway().createCountyUser({
         firstName: 'A', lastName: 'B', email: 'a@b.lr', phoneNumber: '+231770000000', role: 'DEO', countyId: 'c-1',

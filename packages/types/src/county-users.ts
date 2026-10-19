@@ -76,7 +76,9 @@ export interface CountyCreateUserRequest {
 
 export interface CountyCreateUserResult {
   userId: string;
-  activationUrl: string;
+  /** Null when the server created the user but sent no link (an older
+   * server): the admin uses Activation URL on the users list instead. */
+  activationUrl: string | null;
 }
 
 export interface CountyBulkUserRow {
