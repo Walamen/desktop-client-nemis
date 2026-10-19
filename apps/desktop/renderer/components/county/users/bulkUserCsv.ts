@@ -84,6 +84,8 @@ export function checkUserRows(
     const add = (message: string) => problems.push({ row, message: `Row ${row}: ${message}` });
 
     if (!(BULK_ROLES as readonly string[]).includes(user.role)) add('role must be DEO or INSTITUTION_ADMIN');
+    // As the Create wizard: a School Admin needs a school (the web would make a county-scoped link).
+    if (user.role === 'INSTITUTION_ADMIN' && !user.institutionId) add('School Admin needs an institutionId');
     if (user.institutionId && !schoolIds.has(user.institutionId)) add('school is not in this county');
     if (user.districtId && !districtIds.has(user.districtId)) add('district is not in this county');
 

@@ -119,6 +119,15 @@ describe('checkUserRows (desktop-only offline checks)', () => {
     ]);
   });
 
+  it('refuses a School Admin row without an institutionId', () => {
+    const { rows } = parseUserCsv(
+      'firstName,lastName,email,phoneNumber,role,districtId,institutionId\nJane,Smith,jane@x.lr,+231770234567,INSTITUTION_ADMIN,,',
+    );
+    expect(checkUserRows(rows, options)).toEqual([
+      { row: 2, message: 'Row 2: School Admin needs an institutionId' },
+    ]);
+  });
+
   it('refuses an invalid email', () => {
     expect(checkUserRows([row({ email: 'not-an-email' })], options)).toEqual([
       { row: 2, message: 'Row 2: invalid email' },
