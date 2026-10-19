@@ -1228,3 +1228,80 @@ export function assertSaveGradeCompletionsArgs(args: readonly unknown[]): void {
     assertCompletionDecisionShape(decision as unknown as CompletionDecision);
   }
 }
+
+// --- County Administrative Users ---------------------------------------------
+const COUNTY_USER_ROLES: readonly string[] = ['DEO', 'INSTITUTION_ADMIN'];
+const COUNTY_ASSIGNABLE_ROLES: readonly string[] = ['DEO', 'INSTITUTION_ADMIN', 'DATA_OFFICER'];
+const COUNTY_USER_NAME_MAX_LENGTH = 100;
+const COUNTY_USER_EMAIL_MAX_LENGTH = 255;
+/** The server's phone rule (E.164-like). */
+const COUNTY_USER_PHONE = /^\+?[1-9]\d{1,14}$/;
+const MAX_COUNTY_BULK_USERS = 500;
+
+export function assertCountyUsersQueryArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [query] = args;
+  if (!isPlainObject(query)) throw new IPCError('Expected a query object.');
+  assertKnownKeys(query, ['search', 'role', 'page', 'limit']);
+  assertInt(query.page, 'page', 1, 1_000_000);
+  assertInt(query.limit, 'limit', 1, 50);
+  assertOptionalString(query.search, 'search', ID_MAX_LENGTH);
+  assertOptionalEnumMember(query.role, 'role', COUNTY_USER_ROLES);
+}
+
+export function assertCountySetUserActiveArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [request] = args;
+  if (!isPlainObject(request)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(request, ['userId', 'isActive']);
+  assertString(request.userId, 'userId', ID_MAX_LENGTH);
+  assertBoolean(request.isActive, 'isActive');
+}
+
+export function assertCountyAssignUserArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [request] = args;
+  if (!isPlainObject(request)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(request, ['userId', 'role', 'districtId', 'institutionId']);
+  assertString(request.userId, 'userId', ID_MAX_LENGTH);
+  assertEnumMember(request.role, 'role', COUNTY_ASSIGNABLE_ROLES);
+  if ((request.districtId === undefined) === (request.institutionId === undefined)) {
+    throw new IPCError('Expected exactly one of districtId or institutionId.');
+  }
+  assertOptionalString(request.districtId, 'districtId', ID_MAX_LENGTH);
+  assertOptionalString(request.institutionId, 'institutionId', ID_MAX_LENGTH);
+}
+
+/** Shape and limits of one new user; the server applies the business rules. */
+function assertCountyNewUser(value: unknown, allowed: readonly string[]): void {
+  if (!isPlainObject(value)) throw new IPCError('Expected a user object.');
+  assertKnownKeys(value, allowed);
+  assertString(value.firstName, 'firstName', COUNTY_USER_NAME_MAX_LENGTH);
+  assertString(value.lastName, 'lastName', COUNTY_USER_NAME_MAX_LENGTH);
+  assertString(value.email, 'email', COUNTY_USER_EMAIL_MAX_LENGTH);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.email as string)) {
+    throw new IPCError('Expected a valid email address.');
+  }
+  if (typeof value.phoneNumber !== 'string' || !COUNTY_USER_PHONE.test(value.phoneNumber)) {
+    throw new IPCError('Expected a valid phone number.');
+  }
+  assertEnumMember(value.role, 'role', COUNTY_USER_ROLES);
+  assertOptionalString(value.districtId, 'districtId', ID_MAX_LENGTH);
+  assertOptionalString(value.institutionId, 'institutionId', ID_MAX_LENGTH);
+}
+
+export function assertCountyCreateUserArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  assertCountyNewUser(args[0], ['firstName', 'lastName', 'email', 'phoneNumber', 'role', 'institutionId']);
+}
+
+export function assertCountyBulkCreateUsersArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [rows] = args;
+  if (!Array.isArray(rows) || rows.length < 1 || rows.length > MAX_COUNTY_BULK_USERS) {
+    throw new IPCError(`Expected 1 to ${MAX_COUNTY_BULK_USERS} user rows.`);
+  }
+  for (const row of rows as unknown[]) {
+    assertCountyNewUser(row, ['firstName', 'lastName', 'email', 'phoneNumber', 'role', 'districtId', 'institutionId']);
+  }
+}

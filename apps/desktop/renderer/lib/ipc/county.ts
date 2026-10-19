@@ -21,5 +21,7 @@ export const countyIpc = {
     getGuardian: (guardianId) => query(() => countyBridge.getGuardian(guardianId)),
     listTeachers: (teachersQuery) => query(() => countyBridge.listTeachers(teachersQuery)),
     getTeacher: (teacherId) => query(() => countyBridge.getTeacher(teacherId)),
+    listUsers: (usersQuery) => query(() => countyBridge.listUsers(usersQuery)),
+    getUserOptions: () => query(() => countyBridge.getUserOptions()),
   }),
 };

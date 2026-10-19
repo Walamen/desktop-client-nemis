@@ -76,6 +76,18 @@ import type {
 import type { CountyGuardianDetail, CountyGuardiansQuery, CountyGuardiansResult } from './county-guardians';
 import type { CountyTeacherDetail, CountyTeachersQuery, CountyTeachersResult } from './county-teachers';
 import type {
+  CountyActivationLink,
+  CountyAssignUserRequest,
+  CountyBulkCreateUsersResult,
+  CountyBulkUserRow,
+  CountyCreateUserRequest,
+  CountyCreateUserResult,
+  CountySetUserActiveRequest,
+  CountyUserOptions,
+  CountyUsersQuery,
+  CountyUsersResult,
+} from './county-users';
+import type {
   CreateGuardianRequest,
   CreateStudentRequest,
   CreateAndEnrollStudentRequest,
@@ -192,6 +204,16 @@ export interface IpcContract {
   'county:get-guardian': { args: [guardianId: string]; result: CountyGuardianDetail | null };
   'county:list-teachers': { args: [query: CountyTeachersQuery]; result: CountyTeachersResult };
   'county:get-teacher': { args: [teacherId: string]; result: CountyTeacherDetail | null };
+  'county:list-users': { args: [query: CountyUsersQuery]; result: CountyUsersResult };
+  'county:get-user-options': { args: []; result: CountyUserOptions };
+  'county:set-user-active': { args: [request: CountySetUserActiveRequest]; result: OnlineCommandResult<null> };
+  'county:assign-user': { args: [request: CountyAssignUserRequest]; result: OnlineCommandResult<null> };
+  'county:get-activation-link': { args: [userId: string]; result: OnlineCommandResult<CountyActivationLink> };
+  'county:create-user': { args: [request: CountyCreateUserRequest]; result: OnlineCommandResult<CountyCreateUserResult> };
+  'county:bulk-create-users': {
+    args: [rows: CountyBulkUserRow[]];
+    result: OnlineCommandResult<CountyBulkCreateUsersResult>;
+  };
   'school:get-summary': { args: []; result: SchoolSummaryResult | null };
   'institution:list': { args: []; result: InstitutionSummaryResult[] };
   'academic-year:get-current': { args: []; result: AcademicYearResult | null };
@@ -397,6 +419,13 @@ export const IpcChannels = {
   COUNTY_GET_GUARDIAN: 'county:get-guardian',
   COUNTY_LIST_TEACHERS: 'county:list-teachers',
   COUNTY_GET_TEACHER: 'county:get-teacher',
+  COUNTY_LIST_USERS: 'county:list-users',
+  COUNTY_GET_USER_OPTIONS: 'county:get-user-options',
+  COUNTY_SET_USER_ACTIVE: 'county:set-user-active',
+  COUNTY_ASSIGN_USER: 'county:assign-user',
+  COUNTY_GET_ACTIVATION_LINK: 'county:get-activation-link',
+  COUNTY_CREATE_USER: 'county:create-user',
+  COUNTY_BULK_CREATE_USERS: 'county:bulk-create-users',
   SCHOOL_GET_SUMMARY: 'school:get-summary',
   INSTITUTION_LIST: 'institution:list',
   ACADEMIC_YEAR_GET_CURRENT: 'academic-year:get-current',

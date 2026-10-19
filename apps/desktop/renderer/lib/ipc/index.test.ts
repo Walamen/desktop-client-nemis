@@ -104,6 +104,20 @@ describe('createIpcApplicationLayer', () => {
     expect(county.getTeacher).toHaveBeenCalledWith('t-1');
   });
 
+  it('county.listUsers and county.getUserOptions return bridged data', async () => {
+    const county = {
+      listUsers: vi.fn(async () => ({ total: 0 })),
+      getUserOptions: vi.fn(async () => ({ county: null, districts: [], schools: [] })),
+    };
+    (window as unknown as { nemis: unknown }).nemis = fakeNemis({ county });
+    const app = createIpcApplicationLayer();
+    const query = { search: 'ada', role: 'DEO' as const, page: 1, limit: 12 };
+    expect((await app.county.listUsers(query)).data).toEqual({ total: 0 });
+    expect(county.listUsers).toHaveBeenCalledWith(query);
+    expect((await app.county.getUserOptions()).data).toEqual({ county: null, districts: [], schools: [] });
+    expect(county.getUserOptions).toHaveBeenCalledWith();
+  });
+
   it('county school registration methods return bridged data', async () => {
     const county = {
       getRegistrationContext: vi.fn(async () => ({ county: null, districts: [] })),

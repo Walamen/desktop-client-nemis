@@ -53,6 +53,18 @@ import type {
 import type { CountyGuardianDetail, CountyGuardiansQuery, CountyGuardiansResult } from './county-guardians';
 import type { CountyTeacherDetail, CountyTeachersQuery, CountyTeachersResult } from './county-teachers';
 import type {
+  CountyActivationLink,
+  CountyAssignUserRequest,
+  CountyBulkCreateUsersResult,
+  CountyBulkUserRow,
+  CountyCreateUserRequest,
+  CountyCreateUserResult,
+  CountySetUserActiveRequest,
+  CountyUserOptions,
+  CountyUsersQuery,
+  CountyUsersResult,
+} from './county-users';
+import type {
   CreateGuardianRequest,
   CreateStudentRequest,
   CreateAndEnrollStudentRequest,
@@ -193,6 +205,15 @@ export interface CountyApi {
   getGuardian(guardianId: string): Promise<CountyGuardianDetail | null>;
   listTeachers(query: CountyTeachersQuery): Promise<CountyTeachersResult>;
   getTeacher(teacherId: string): Promise<CountyTeacherDetail | null>;
+  listUsers(query: CountyUsersQuery): Promise<CountyUsersResult>;
+  getUserOptions(): Promise<CountyUserOptions>;
+  /** Online-only user commands; each forces a pull afterwards. */
+  setUserActive(request: CountySetUserActiveRequest): Promise<OnlineCommandResult<null>>;
+  assignUser(request: CountyAssignUserRequest): Promise<OnlineCommandResult<null>>;
+  /** Only the URL crosses IPC; the activation token never does. */
+  getActivationLink(userId: string): Promise<OnlineCommandResult<CountyActivationLink>>;
+  createUser(request: CountyCreateUserRequest): Promise<OnlineCommandResult<CountyCreateUserResult>>;
+  bulkCreateUsers(rows: CountyBulkUserRow[]): Promise<OnlineCommandResult<CountyBulkCreateUsersResult>>;
 }
 export interface SchoolApi {
   getSummary(): Promise<SchoolSummaryResult | null>;

@@ -52,6 +52,8 @@ import {
   registerCountyStudentHandlers,
   registerCountyGuardianHandlers,
   registerCountyTeacherHandlers,
+  registerCountyUserHandlers,
+  registerCountyUserCommandHandlers,
   registerCountySchoolHandlers,
 } from '@app/ipc/handlers/county';
 
@@ -91,6 +93,7 @@ export function registerIpcHandlers(
   registerCountyDistrictHandlers(securedHandle, app);
   registerCountySchoolHandlers(securedHandle, app);
   registerCountyGuardianHandlers(securedHandle, app);
+  registerCountyUserHandlers(securedHandle, app);
   registerSchoolHandlers(securedHandle, app);
   registerAcademicYearHandlers(securedHandle, app);
   registerTermHandlers(securedHandle, app);
@@ -107,6 +110,7 @@ export function registerIpcHandlers(
   registerRegistryHandlers(securedHandle, gateway, refresh);
   registerTransferHandlers(securedHandle, gateway, refresh);
   registerCountyDeoHandlers(securedHandle, gateway, refresh);
+  registerCountyUserCommandHandlers(securedHandle, gateway, refresh, () => workspaces.active.user.scope.scopeId);
   registerCountyRegistrationHandlers(securedHandle, app, (timeoutMs) => syncWorker.pullNow(timeoutMs));
   registerCountyStudentHandlers(securedHandle, app, {
     gateway,

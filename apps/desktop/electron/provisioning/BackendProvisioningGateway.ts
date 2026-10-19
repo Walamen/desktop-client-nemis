@@ -23,6 +23,13 @@ import {
   type SchoolSearchResult,
   type CountyAssignDeoRequest,
   type CountyRemoveDeoRequest,
+  type CountyActivationLink,
+  type CountyAssignUserRequest,
+  type CountyBulkCreateUsersResult,
+  type CountyBulkUserRow,
+  type CountyCreateUserRequest,
+  type CountyCreateUserResult,
+  type CountySetUserActiveRequest,
   type TransferCreateRequest,
   type TransferReviewRequest,
   type DeviceIdentity,
@@ -276,6 +283,69 @@ export class BackendProvisioningGateway {
     return null;
   }
 
+  /** County Administrative Users: activate / deactivate. The response is not
+   * used — the forced pull that follows writes local truth. */
+  async setUserActive(request: CountySetUserActiveRequest): Promise<null> {
+    await this.authorized(
+      `/users/${encodeURIComponent(request.userId)}`,
+      { method: 'PATCH', body: JSON.stringify({ isActive: request.isActive }) },
+      () => undefined,
+      ONLINE_COMMAND,
+    );
+    return null;
+  }
+
+  /** County Administrative Users: assign to a district or to a school. */
+  async assignCountyUser(request: CountyAssignUserRequest): Promise<null> {
+    const userPath = `/users/${encodeURIComponent(request.userId)}`;
+    const [path, body] =
+      request.districtId !== undefined
+        ? [`${userPath}/assign-district`, { districtId: request.districtId, role: request.role }]
+        : [`${userPath}/assign-institution`, { institutionId: request.institutionId, role: request.role }];
+    await this.authorized(path, { method: 'POST', body: JSON.stringify(body) }, () => undefined, ONLINE_COMMAND);
+    return null;
+  }
+
+  /** The server sends the token and the link built from it; only the link is
+   * kept, so the token never crosses IPC or reaches a log. */
+  async getActivationLink(userId: string): Promise<CountyActivationLink> {
+    return this.authorized(
+      `/users/${encodeURIComponent(userId)}/activation-token`,
+      { method: 'GET' },
+      (value) => ({ activationUrl: requireActivationUrl(value) }),
+      ONLINE_COMMAND,
+    );
+  }
+
+  /** users.service createUserWithActivation. Maps only the new id and link. */
+  async createCountyUser(request: CountyCreateUserRequest & { countyId: string }): Promise<CountyCreateUserResult> {
+    const body = {
+      firstName: request.firstName,
+      lastName: request.lastName,
+      email: request.email,
+      phoneNumber: request.phoneNumber,
+      role: request.role,
+      countyId: request.countyId,
+      ...(request.institutionId !== undefined ? { institutionId: request.institutionId } : {}),
+    };
+    return this.authorized(
+      '/users/with-activation',
+      { method: 'POST', body: JSON.stringify(body) },
+      (value) => ({ userId: requireId(value), activationUrl: requireActivationUrl(value) }),
+      ONLINE_COMMAND,
+    );
+  }
+
+  /** users.service bulkCreateUsers: each row plus the County Admin's county. */
+  async bulkCreateCountyUsers(rows: CountyBulkUserRow[], countyId: string): Promise<CountyBulkCreateUsersResult> {
+    return this.authorized(
+      '/users/bulk-create',
+      { method: 'POST', body: JSON.stringify(rows.map((row) => ({ ...row, countyId }))) },
+      toBulkCreateUsersResult,
+      ONLINE_COMMAND,
+    );
+  }
+
   /** Destination-school search for "New transfer" — the desktop only stores
    * its own institution. Dedicated server endpoint (the generic institutions list is caller-scoped). Read-only. */
   async searchSchools(query: string): Promise<SchoolSearchResult[]> {
@@ -520,6 +590,37 @@ function toBulkClaimResult(value: unknown): BulkClaimResult {
     registryUnavailableMessage:
       body.registryUnavailable === true && typeof message === 'string' ? message : null,
   };
+}
+
+function requireActivationUrl(value: unknown): string {
+  const url = asRecord(value).activationUrl;
+  if (typeof url !== 'string' || url.length === 0) throw new Error('Malformed server response.');
+  return url;
+}
+
+/** Maps email, display name and link only: each created user also carries
+ * its activation token, which must never cross into the result. */
+function toBulkCreateUsersResult(value: unknown): CountyBulkCreateUsersResult {
+  const body = asRecord(value);
+  if (!Array.isArray(body.success) || !Array.isArray(body.failed)) throw new Error('Malformed server response.');
+  const succeeded = body.success.map((item) => {
+    const entry = asRecord(item);
+    const user = asRecord(entry.user);
+    const name = [user.firstName, user.lastName].filter((part) => typeof part === 'string' && part).join(' ');
+    return {
+      email: typeof entry.email === 'string' ? entry.email : '',
+      name,
+      activationUrl: typeof user.activationUrl === 'string' && user.activationUrl ? user.activationUrl : null,
+    };
+  });
+  const failed = body.failed.map((item) => {
+    const entry = asRecord(item);
+    return {
+      email: typeof entry.email === 'string' ? entry.email : '',
+      error: typeof entry.error === 'string' ? entry.error : 'Failed to create user.',
+    };
+  });
+  return { succeeded, failed };
 }
 
 function requireId(value: unknown): string {

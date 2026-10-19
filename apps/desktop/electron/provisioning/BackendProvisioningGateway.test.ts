@@ -637,6 +637,141 @@ describe('BackendProvisioningGateway', () => {
     });
   });
 
+  describe('county users', () => {
+    const TOKEN = 'secret-token-abc';
+    const URL_FOR = (token: string) => `https://portal.example/activate?token=${token}`;
+    const call = (fetchMock: { mock: { calls: unknown[][] } }) =>
+      fetchMock.mock.calls[0] as unknown as [URL, RequestInit];
+
+    it('setUserActive PATCHes isActive on the user', async () => {
+      const fetchMock = vi.fn(async () => response({ id: 'u 1', isActive: false }));
+      vi.stubGlobal('fetch', fetchMock);
+      expect(await buildGateway().setUserActive({ userId: 'u 1', isActive: false })).toBeNull();
+      const [url, init] = call(fetchMock);
+      expect(url).toEqual(new URL('https://nemis.example/users/u%201'));
+      expect(init.method).toBe('PATCH');
+      expect(JSON.parse(String(init.body))).toEqual({ isActive: false });
+    });
+
+    it('assignCountyUser POSTs a district assignment', async () => {
+      const fetchMock = vi.fn(async () => response({ id: 'org-1' }));
+      vi.stubGlobal('fetch', fetchMock);
+      expect(await buildGateway().assignCountyUser({ userId: 'u-1', role: 'DEO', districtId: 'd-1' })).toBeNull();
+      const [url, init] = call(fetchMock);
+      expect(url).toEqual(new URL('https://nemis.example/users/u-1/assign-district'));
+      expect(init.method).toBe('POST');
+      expect(JSON.parse(String(init.body))).toEqual({ districtId: 'd-1', role: 'DEO' });
+    });
+
+    it('assignCountyUser POSTs an institution assignment', async () => {
+      const fetchMock = vi.fn(async () => response({ id: 'org-1' }));
+      vi.stubGlobal('fetch', fetchMock);
+      expect(
+        await buildGateway().assignCountyUser({ userId: 'u-1', role: 'DATA_OFFICER', institutionId: 'i-1' }),
+      ).toBeNull();
+      const [url, init] = call(fetchMock);
+      expect(url).toEqual(new URL('https://nemis.example/users/u-1/assign-institution'));
+      expect(init.method).toBe('POST');
+      expect(JSON.parse(String(init.body))).toEqual({ institutionId: 'i-1', role: 'DATA_OFFICER' });
+    });
+
+    it('assignCountyUser surfaces the server refusal message', async () => {
+      vi.stubGlobal('fetch', vi.fn(async () => new Response(
+        JSON.stringify({ message: 'You can only manage users in your county.' }),
+        { status: 403, headers: { 'content-type': 'application/json' } },
+      )));
+      await expect(buildGateway().assignCountyUser({ userId: 'u-1', role: 'DEO', districtId: 'd-9' }))
+        .rejects.toMatchObject({ status: 403, remoteMessage: 'You can only manage users in your county.' });
+    });
+
+    it('getActivationLink GETs the activation token and maps only the URL', async () => {
+      const fetchMock = vi.fn(async () => response({ activationToken: TOKEN, activationUrl: URL_FOR(TOKEN) }));
+      vi.stubGlobal('fetch', fetchMock);
+      const result = await buildGateway().getActivationLink('u 1');
+      expect(result).toEqual({ activationUrl: URL_FOR(TOKEN) });
+      expect(result).not.toHaveProperty('activationToken');
+      const [url, init] = call(fetchMock);
+      expect(url).toEqual(new URL('https://nemis.example/users/u%201/activation-token'));
+      expect(init.method).toBe('GET');
+    });
+
+    it('getActivationLink refuses a response without an activationUrl', async () => {
+      vi.stubGlobal('fetch', vi.fn(async () => response({ activationToken: TOKEN })));
+      await expect(buildGateway().getActivationLink('u-1')).rejects.toThrow('Malformed server response.');
+    });
+
+    it('createCountyUser POSTs with-activation and maps userId + activationUrl only', async () => {
+      const fetchMock = vi.fn(async () => response({
+        id: 'new-1', firstName: 'Ada', email: 'ada@x.lr', activationToken: TOKEN, activationUrl: URL_FOR(TOKEN),
+        message: 'User created successfully. Activation email sent.',
+      }));
+      vi.stubGlobal('fetch', fetchMock);
+      const result = await buildGateway().createCountyUser({
+        firstName: 'Ada', lastName: 'Doe', email: 'ada@x.lr', phoneNumber: '+231770000000',
+        role: 'INSTITUTION_ADMIN', institutionId: 'i-1', countyId: 'c-1',
+      });
+      expect(result).toEqual({ userId: 'new-1', activationUrl: URL_FOR(TOKEN) });
+      expect(result).not.toHaveProperty('activationToken');
+      expect(JSON.stringify(result)).not.toContain(`"${TOKEN}"`);
+      const [url, init] = call(fetchMock);
+      expect(url).toEqual(new URL('https://nemis.example/users/with-activation'));
+      expect(init.method).toBe('POST');
+      expect(JSON.parse(String(init.body))).toEqual({
+        firstName: 'Ada', lastName: 'Doe', email: 'ada@x.lr', phoneNumber: '+231770000000',
+        role: 'INSTITUTION_ADMIN', countyId: 'c-1', institutionId: 'i-1',
+      });
+    });
+
+    it('createCountyUser sends no institutionId for a DEO', async () => {
+      const fetchMock = vi.fn(async () => response({ id: 'new-2', activationUrl: URL_FOR(TOKEN) }));
+      vi.stubGlobal('fetch', fetchMock);
+      await buildGateway().createCountyUser({
+        firstName: 'Ada', lastName: 'Doe', email: 'ada@x.lr', phoneNumber: '+231770000000', role: 'DEO', countyId: 'c-1',
+      });
+      expect(JSON.parse(String(call(fetchMock)[1].body))).not.toHaveProperty('institutionId');
+    });
+
+    it.each([{ activationUrl: 'u' }, { id: 'new-1' }])('createCountyUser refuses a malformed body (%j)', async (body) => {
+      vi.stubGlobal('fetch', vi.fn(async () => response(body)));
+      await expect(buildGateway().createCountyUser({
+        firstName: 'A', lastName: 'B', email: 'a@b.lr', phoneNumber: '+231770000000', role: 'DEO', countyId: 'c-1',
+      })).rejects.toThrow('Malformed server response.');
+    });
+
+    it('bulkCreateCountyUsers POSTs each row with countyId and maps success/failed without tokens', async () => {
+      const fetchMock = vi.fn(async () => response({
+        success: [
+          { email: 'a@x.lr', user: { id: 'u-a', firstName: 'Ada', lastName: 'Doe', activationToken: TOKEN, activationUrl: URL_FOR(TOKEN) } },
+          { email: 'b@x.lr', user: { id: 'u-b', firstName: 'Ben', lastName: 'Roe', activationToken: TOKEN } },
+        ],
+        failed: [{ email: 'c@x.lr', error: 'Email already exists' }],
+      }));
+      vi.stubGlobal('fetch', fetchMock);
+      const rows = [
+        { firstName: 'Ada', lastName: 'Doe', email: 'a@x.lr', phoneNumber: '+231770000001', role: 'DEO' as const, districtId: 'd-1' },
+        { firstName: 'Ben', lastName: 'Roe', email: 'b@x.lr', phoneNumber: '+231770000002', role: 'INSTITUTION_ADMIN' as const, institutionId: 'i-1' },
+      ];
+      const result = await buildGateway().bulkCreateCountyUsers(rows, 'c-1');
+      expect(result).toEqual({
+        succeeded: [
+          { email: 'a@x.lr', name: 'Ada Doe', activationUrl: URL_FOR(TOKEN) },
+          { email: 'b@x.lr', name: 'Ben Roe', activationUrl: null },
+        ],
+        failed: [{ email: 'c@x.lr', error: 'Email already exists' }],
+      });
+      expect(JSON.stringify(result)).not.toContain('activationToken');
+      const [url, init] = call(fetchMock);
+      expect(url).toEqual(new URL('https://nemis.example/users/bulk-create'));
+      expect(init.method).toBe('POST');
+      expect(JSON.parse(String(init.body))).toEqual(rows.map((row) => ({ ...row, countyId: 'c-1' })));
+    });
+
+    it('bulkCreateCountyUsers refuses a body without success and failed arrays', async () => {
+      vi.stubGlobal('fetch', vi.fn(async () => response({ success: [] })));
+      await expect(buildGateway().bulkCreateCountyUsers([], 'c-1')).rejects.toThrow('Malformed server response.');
+    });
+  });
+
   describe('session restore', () => {
     // The server rotates refresh tokens: a second refresh with the token the
     // first one just used deletes the session. Concurrent requests must share
