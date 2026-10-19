@@ -27,6 +27,8 @@ import { CountyStudentsViewModel } from '../view-models/county/county-students-v
 import { CountyStudentDetailViewModel } from '../view-models/county/county-student-detail-view-model';
 import { CountyGuardiansViewModel } from '../view-models/county/county-guardians-view-model';
 import { CountyGuardianDetailViewModel } from '../view-models/county/county-guardian-detail-view-model';
+import { CountyUsersViewModel } from '../view-models/county/county-users-view-model';
+import { CountyUserOptionsViewModel } from '../view-models/county/county-user-options-view-model';
 import { CountyTeachersViewModel } from '../view-models/county/county-teachers-view-model';
 import { CountyTeacherDetailViewModel } from '../view-models/county/county-teacher-detail-view-model';
 import { SettingsViewModel } from '../view-models/settings/settings-view-model';
@@ -73,6 +75,8 @@ export interface PresentationViewModels {
   readonly countyStudentDetail: CountyStudentDetailViewModel;
   readonly countyGuardians: CountyGuardiansViewModel;
   readonly countyGuardianDetail: CountyGuardianDetailViewModel;
+  readonly countyUsers: CountyUsersViewModel;
+  readonly countyUserOptions: CountyUserOptionsViewModel;
   readonly countyTeachers: CountyTeachersViewModel;
   readonly countyTeacherDetail: CountyTeacherDetailViewModel;
   readonly device: DeviceViewModel;
@@ -154,6 +158,8 @@ export function createPresentationLayer(
     countyStudentDetail: new CountyStudentDetailViewModel({ county: app.county }),
     countyGuardians: new CountyGuardiansViewModel({ county: app.county }),
     countyGuardianDetail: new CountyGuardianDetailViewModel({ county: app.county }),
+    countyUsers: new CountyUsersViewModel({ county: app.county }),
+    countyUserOptions: new CountyUserOptionsViewModel({ county: app.county }),
     countyTeachers: new CountyTeachersViewModel({ county: app.county }),
     countyTeacherDetail: new CountyTeacherDetailViewModel({ county: app.county }),
     device: new DeviceViewModel({ infra: app.infra, notifications, session }),
