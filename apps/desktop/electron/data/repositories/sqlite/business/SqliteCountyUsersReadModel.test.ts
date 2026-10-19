@@ -109,6 +109,21 @@ describe('SqliteCountyUsersReadModel', () => {
     expect(row).toMatchObject({ id: 'u-pool', role: 'DEO', districtId: null, districtName: null, institutionId: null, schoolName: null });
   });
 
+  it('a DEO just assigned from the pool shows the district, not a stale pool link, counted once', () => {
+    // The server closed the pool link, but the county snapshot only ships
+    // active pool links and merge never deletes, so the device keeps it.
+    user('u-moved');
+    link('o-a-pool', 'u-moved', 'DEO');
+    link('o-z-district', 'u-moved', 'DEO', { countyId: 'county-1', districtId: 'd-1' });
+
+    const result = list();
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0]).toMatchObject({ id: 'u-moved', role: 'DEO', districtId: 'd-1', districtName: 'Buchanan' });
+    expect(result.total).toBe(1);
+    expect(result.stats.totalUsers).toBe(1);
+    expect(list({ role: 'DEO' }).total).toBe(1);
+  });
+
   it("excludes inactive links, TEACHER/COUNTY_ADMIN roles and another county's users", () => {
     user('u-ok');
     link('o-ok', 'u-ok', 'DEO', { countyId: 'county-1', districtId: 'd-1' });

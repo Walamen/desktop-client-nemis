@@ -31,13 +31,20 @@ const QUALIFYING = `o.isActive = 1 AND o.role IN ('DEO', 'INSTITUTION_ADMIN') AN
      OR (o.role = 'DEO' AND o.countyId IS NULL AND o.districtId IS NULL))`;
 
 /** One row per listed user with the link that describes them: DEO first, then
- * by link id. Materialized so the correlated pick runs once per user, and a
- * user with several qualifying links is still one row. */
+ * a placed link before a pool one, then by link id. Placed-first matters after
+ * an assignment from the pool: the server closes the pool link, but the
+ * county snapshot ships pool links only while active and merge never
+ * deletes, so the device can still hold it as active. Materialized so the
+ * correlated pick runs once per user, and a user with several qualifying
+ * links is still one row. */
 const CHOSEN = `WITH chosen AS MATERIALIZED (
   SELECT u.id AS userId,
          (SELECT o.id FROM ${userOrganizations} o
           WHERE o.userId = u.id AND ${QUALIFYING}
-          ORDER BY (o.role = 'DEO') DESC, o.id LIMIT 1) AS linkId
+          ORDER BY (o.role = 'DEO') DESC,
+                   (o.countyId IS NOT NULL OR o.districtId IS NOT NULL OR o.institutionId IS NOT NULL) DESC,
+                   o.id
+          LIMIT 1) AS linkId
   FROM ${users} u
 )`;
 /** Listed users (alias `u`) joined to their chosen link (alias `l`). */
