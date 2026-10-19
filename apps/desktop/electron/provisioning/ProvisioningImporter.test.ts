@@ -113,6 +113,29 @@ describe('ProvisioningImporter', () => {
     ]);
   });
 
+  it('stores users.emailVerified, NULL when absent', () => {
+    const user = (id: string, extra: Partial<ProvisioningRow> = {}): ProvisioningRow => ({
+      id, firstName: 'A', middleName: null, lastName: 'B', email: `${id}@x.org`, isActive: true, version: 1,
+      updatedAt: '2026-10-01T00:00:00.000Z', lastModifiedBy: null, ...extra,
+    });
+    new ProvisioningImporter(manager).import(
+      snapshotOf({
+        ...BASE_DATA,
+        users: [
+          ...(BASE_DATA.users ?? []),
+          user('v-1', { emailVerified: true }), user('v-2', { emailVerified: false }), user('v-3')],
+      }),
+      CONTEXT,
+    );
+    expect(
+      manager.connection.prepare(`SELECT id, emailVerified FROM users WHERE id LIKE 'v-%' ORDER BY id`).all(),
+    ).toEqual([
+      { id: 'v-1', emailVerified: 1 },
+      { id: 'v-2', emailVerified: 0 },
+      { id: 'v-3', emailVerified: null },
+    ]);
+  });
+
   it('merge mode upserts without deleting rows the snapshot omits', () => {
     const importer = new ProvisioningImporter(manager);
     importer.import(snapshotOf({ ...BASE_DATA, students: [student('s1', 'Ada')] }), CONTEXT);
