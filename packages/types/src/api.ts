@@ -61,6 +61,10 @@ import type {
   CountySchoolFinanceRow,
 } from './county-finance';
 import type {
+  CountyAcademicReport,
+  CountyAttendanceReport,
+  CountyAttendanceReportQuery,
+  CountyStaffComplianceReport,
   CountyEnrollmentReport,
   CountyEnrollmentReportQuery,
   CountyReportOptions,
@@ -228,6 +232,9 @@ export interface CountyApi {
   getReportOptions(): Promise<CountyReportOptions>;
   listReportSchools(districtId: string): Promise<CountyReportSchool[]>;
   getEnrollmentReport(query: CountyEnrollmentReportQuery): Promise<CountyEnrollmentReport>;
+  getAttendanceReport(query: CountyAttendanceReportQuery): Promise<CountyAttendanceReport>;
+  getAcademicReport(query: CountyEnrollmentReportQuery): Promise<CountyAcademicReport>;
+  getStaffComplianceReport(query: CountyEnrollmentReportQuery): Promise<CountyStaffComplianceReport>;
   listUsers(query: CountyUsersQuery): Promise<CountyUsersResult>;
   getUserOptions(): Promise<CountyUserOptions>;
   /** Online-only user commands; each forces a pull afterwards. */

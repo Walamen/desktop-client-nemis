@@ -17,6 +17,9 @@ import type { ICountyTeachersReadModel } from '../interfaces/county/county-teach
 import type { ICountyFinanceReadModel } from '../interfaces/county/county-finance-read-model';
 import type { ICountyReportsReadModel } from '../interfaces/county/county-reports-read-model';
 import {
+  GetCountyAcademicReportUseCase,
+  GetCountyAttendanceReportUseCase,
+  GetCountyStaffComplianceReportUseCase,
   GetCountyEnrollmentReportUseCase,
   GetCountyReportOptionsUseCase,
   GetCountyReportSchoolsUseCase,
@@ -502,6 +505,12 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
     }),
   });
 
+  const reportDeps = {
+    readModel: ports.countyReports,
+    countyReadModel: ports.countyAnalytics,
+    clock,
+    logger,
+  };
   const county = new CountyApplicationService({
     getDashboard: new GetCountyDashboardUseCase({
       readModel: ports.countyAnalytics,
@@ -590,12 +599,10 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
       logger,
     }),
     listReportSchools: new GetCountyReportSchoolsUseCase({ readModel: ports.countyReports, logger }),
-    getEnrollmentReport: new GetCountyEnrollmentReportUseCase({
-      readModel: ports.countyReports,
-      countyReadModel: ports.countyAnalytics,
-      clock,
-      logger,
-    }),
+    getEnrollmentReport: new GetCountyEnrollmentReportUseCase(reportDeps),
+    getAttendanceReport: new GetCountyAttendanceReportUseCase(reportDeps),
+    getAcademicReport: new GetCountyAcademicReportUseCase(reportDeps),
+    getStaffComplianceReport: new GetCountyStaffComplianceReportUseCase(reportDeps),
     listUsers: new GetCountyUsersUseCase({
       readModel: ports.countyUsers,
       countyReadModel: ports.countyAnalytics,

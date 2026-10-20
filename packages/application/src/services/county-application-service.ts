@@ -23,6 +23,10 @@ import type {
   CountyEnrollmentReportQuery,
   CountyReportOptions,
   CountyReportSchool,
+  CountyAcademicReport,
+  CountyAttendanceReport,
+  CountyAttendanceReportQuery,
+  CountyStaffComplianceReport,
   CountyUserOptions,
   CountyUsersQuery,
   CountyUsersResult,
@@ -54,6 +58,9 @@ import type {
   GetCountyFinanceSchoolsUseCase,
 } from '../use-cases/county/get-county-finance';
 import type {
+  GetCountyAcademicReportUseCase,
+  GetCountyAttendanceReportUseCase,
+  GetCountyStaffComplianceReportUseCase,
   GetCountyEnrollmentReportUseCase,
   GetCountyReportOptionsUseCase,
   GetCountyReportSchoolsUseCase,
@@ -85,6 +92,9 @@ export interface CountyApplicationServiceDeps {
   getReportOptions: GetCountyReportOptionsUseCase;
   listReportSchools: GetCountyReportSchoolsUseCase;
   getEnrollmentReport: GetCountyEnrollmentReportUseCase;
+  getAttendanceReport: GetCountyAttendanceReportUseCase;
+  getAcademicReport: GetCountyAcademicReportUseCase;
+  getStaffComplianceReport: GetCountyStaffComplianceReportUseCase;
   listUsers: GetCountyUsersUseCase;
   getUserOptions: GetCountyUserOptionsUseCase;
 }
@@ -160,6 +170,17 @@ export class CountyApplicationService {
   }
   getEnrollmentReport(query: CountyEnrollmentReportQuery): Promise<ApplicationResponse<CountyEnrollmentReport>> {
     return this.deps.getEnrollmentReport.execute(query);
+  }
+  getAttendanceReport(query: CountyAttendanceReportQuery): Promise<ApplicationResponse<CountyAttendanceReport>> {
+    return this.deps.getAttendanceReport.execute(query);
+  }
+  getAcademicReport(query: CountyEnrollmentReportQuery): Promise<ApplicationResponse<CountyAcademicReport>> {
+    return this.deps.getAcademicReport.execute(query);
+  }
+  getStaffComplianceReport(
+    query: CountyEnrollmentReportQuery,
+  ): Promise<ApplicationResponse<CountyStaffComplianceReport>> {
+    return this.deps.getStaffComplianceReport.execute(query);
   }
   listUsers(query: CountyUsersQuery): Promise<ApplicationResponse<CountyUsersResult>> {
     return this.deps.listUsers.execute(query);

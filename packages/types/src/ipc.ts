@@ -84,6 +84,10 @@ import type {
   CountySchoolFinanceRow,
 } from './county-finance';
 import type {
+  CountyAcademicReport,
+  CountyAttendanceReport,
+  CountyAttendanceReportQuery,
+  CountyStaffComplianceReport,
   CountyEnrollmentReport,
   CountyEnrollmentReportQuery,
   CountyReportOptions,
@@ -225,6 +229,9 @@ export interface IpcContract {
   'county:report-options': { args: []; result: CountyReportOptions };
   'county:report-schools': { args: [districtId: string]; result: CountyReportSchool[] };
   'county:enrollment-report': { args: [query: CountyEnrollmentReportQuery]; result: CountyEnrollmentReport };
+  'county:attendance-report': { args: [query: CountyAttendanceReportQuery]; result: CountyAttendanceReport };
+  'county:academic-report': { args: [query: CountyEnrollmentReportQuery]; result: CountyAcademicReport };
+  'county:staff-report': { args: [query: CountyEnrollmentReportQuery]; result: CountyStaffComplianceReport };
   'county:list-users': { args: [query: CountyUsersQuery]; result: CountyUsersResult };
   'county:get-user-options': { args: []; result: CountyUserOptions };
   'county:set-user-active': { args: [request: CountySetUserActiveRequest]; result: OnlineCommandResult<null> };
@@ -447,6 +454,9 @@ export const IpcChannels = {
   COUNTY_REPORT_OPTIONS: 'county:report-options',
   COUNTY_REPORT_SCHOOLS: 'county:report-schools',
   COUNTY_ENROLLMENT_REPORT: 'county:enrollment-report',
+  COUNTY_ATTENDANCE_REPORT: 'county:attendance-report',
+  COUNTY_ACADEMIC_REPORT: 'county:academic-report',
+  COUNTY_STAFF_REPORT: 'county:staff-report',
   COUNTY_LIST_USERS: 'county:list-users',
   COUNTY_GET_USER_OPTIONS: 'county:get-user-options',
   COUNTY_SET_USER_ACTIVE: 'county:set-user-active',

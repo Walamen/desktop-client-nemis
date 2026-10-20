@@ -1,13 +1,17 @@
 import type {
+  CountyAcademicReport,
+  CountyAttendanceReport,
+  CountyAttendanceReportQuery,
   CountyEnrollmentReport,
   CountyEnrollmentReportQuery,
   CountyReportOptions,
   CountyReportSchool,
+  CountyStaffComplianceReport,
 } from '@nemis-desktop/types';
 import type { QueryHandler } from '../../core/query';
 import { ok, type ApplicationResponse } from '../../core/response';
 import type { ICountyAnalyticsReadModel } from '../../interfaces/county/county-analytics-read-model';
-import type { ICountyReportsReadModel } from '../../interfaces/county/county-reports-read-model';
+import type { CountyReportData, ICountyReportsReadModel } from '../../interfaces/county/county-reports-read-model';
 import type { IClock } from '../../interfaces/clock';
 import type { IAppLogger } from '../../interfaces/app-logger';
 import { invokeUseCase } from '../../pipeline/use-case-invoker';
@@ -23,8 +27,26 @@ export interface GetCountyReportSchoolsDeps {
   logger: IAppLogger;
 }
 
-export interface GetCountyEnrollmentReportDeps extends GetCountyReportOptionsDeps {
+export interface GetCountyReportDeps extends GetCountyReportOptionsDeps {
   clock: IClock;
+}
+
+/** Kept for the part 1 name. */
+export type GetCountyEnrollmentReportDeps = GetCountyReportDeps;
+
+/** Adds `generatedAt` and `district`: the chosen district, else the county itself. */
+function stampReport<T>(
+  data: CountyReportData<T>,
+  query: CountyEnrollmentReportQuery,
+  deps: GetCountyReportOptionsDeps,
+  generatedAt: string,
+): T {
+  const { scopeName, ...report } = data;
+  const county = deps.countyReadModel.getCounty();
+  const district = query.districtId
+    ? { id: query.districtId, name: scopeName ?? 'Unknown District' }
+    : { id: county?.id ?? '', name: county?.name ?? '' };
+  return { ...report, generatedAt, district } as T;
 }
 
 /** Generate Reports header and District filter. */
@@ -62,17 +84,63 @@ export class GetCountyEnrollmentReportUseCase implements QueryHandler<
   CountyEnrollmentReportQuery,
   ApplicationResponse<CountyEnrollmentReport>
 > {
-  constructor(private readonly deps: GetCountyEnrollmentReportDeps) {}
+  constructor(private readonly deps: GetCountyReportDeps) {}
 
   execute(query: CountyEnrollmentReportQuery): Promise<ApplicationResponse<CountyEnrollmentReport>> {
     return invokeUseCase('GetCountyEnrollmentReport', this.deps.logger, async () => {
-      const generatedAt = this.deps.clock.now();
-      const { scopeName, ...report } = this.deps.readModel.getEnrollmentReport(query, generatedAt);
-      const county = this.deps.countyReadModel.getCounty();
-      const district = query.districtId
-        ? { id: query.districtId, name: scopeName ?? 'Unknown District' }
-        : { id: county?.id ?? '', name: county?.name ?? '' };
-      return ok({ ...report, generatedAt, district });
+      const now = this.deps.clock.now();
+      return ok(stampReport<CountyEnrollmentReport>(this.deps.readModel.getEnrollmentReport(query, now), query, this.deps, now));
     });
+  }
+}
+
+/** Attendance report; the period defaults to WEEKLY (last 28 days). */
+export class GetCountyAttendanceReportUseCase implements QueryHandler<
+  CountyAttendanceReportQuery,
+  ApplicationResponse<CountyAttendanceReport>
+> {
+  constructor(private readonly deps: GetCountyReportDeps) {}
+
+  execute(query: CountyAttendanceReportQuery): Promise<ApplicationResponse<CountyAttendanceReport>> {
+    return invokeUseCase('GetCountyAttendanceReport', this.deps.logger, async () => {
+      const now = this.deps.clock.now();
+      const data = this.deps.readModel.getAttendanceReport({ ...query, period: query.period ?? 'WEEKLY' }, now);
+      return ok(stampReport<CountyAttendanceReport>(data, query, this.deps, now));
+    });
+  }
+}
+
+/** Academic report: published grades in each school's current academic year. */
+export class GetCountyAcademicReportUseCase implements QueryHandler<
+  CountyEnrollmentReportQuery,
+  ApplicationResponse<CountyAcademicReport>
+> {
+  constructor(private readonly deps: GetCountyReportDeps) {}
+
+  execute(query: CountyEnrollmentReportQuery): Promise<ApplicationResponse<CountyAcademicReport>> {
+    return invokeUseCase('GetCountyAcademicReport', this.deps.logger, async () =>
+      ok(stampReport<CountyAcademicReport>(this.deps.readModel.getAcademicReport(query), query, this.deps, this.deps.clock.now())),
+    );
+  }
+}
+
+/** Staff & Compliance report. */
+export class GetCountyStaffComplianceReportUseCase implements QueryHandler<
+  CountyEnrollmentReportQuery,
+  ApplicationResponse<CountyStaffComplianceReport>
+> {
+  constructor(private readonly deps: GetCountyReportDeps) {}
+
+  execute(query: CountyEnrollmentReportQuery): Promise<ApplicationResponse<CountyStaffComplianceReport>> {
+    return invokeUseCase('GetCountyStaffComplianceReport', this.deps.logger, async () =>
+      ok(
+        stampReport<CountyStaffComplianceReport>(
+          this.deps.readModel.getStaffComplianceReport(query),
+          query,
+          this.deps,
+          this.deps.clock.now(),
+        ),
+      ),
+    );
   }
 }
