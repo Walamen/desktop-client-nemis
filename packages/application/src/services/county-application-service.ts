@@ -13,6 +13,12 @@ import type {
   CountyTeacherDetail,
   CountyTeachersQuery,
   CountyTeachersResult,
+  CountyFeeCollectionsQuery,
+  CountyFeeCollectionsResult,
+  CountyFeeRulesQuery,
+  CountyFeeRulesResult,
+  CountyFinanceDashboard,
+  CountySchoolFinanceRow,
   CountyUserOptions,
   CountyUsersQuery,
   CountyUsersResult,
@@ -37,6 +43,12 @@ import type { GetCountyGuardiansUseCase } from '../use-cases/county/get-county-g
 import type { GetCountyGuardianDetailUseCase } from '../use-cases/county/get-county-guardian-detail';
 import type { GetCountyTeachersUseCase } from '../use-cases/county/get-county-teachers';
 import type { GetCountyTeacherDetailUseCase } from '../use-cases/county/get-county-teacher-detail';
+import type {
+  GetCountyFeeCollectionsUseCase,
+  GetCountyFeeRulesUseCase,
+  GetCountyFinanceDashboardUseCase,
+  GetCountyFinanceSchoolsUseCase,
+} from '../use-cases/county/get-county-finance';
 import type { GetCountyUsersUseCase } from '../use-cases/county/get-county-users';
 import type { GetCountyUserOptionsUseCase } from '../use-cases/county/get-county-user-options';
 
@@ -57,6 +69,10 @@ export interface CountyApplicationServiceDeps {
   getGuardian: GetCountyGuardianDetailUseCase;
   listTeachers: GetCountyTeachersUseCase;
   getTeacher: GetCountyTeacherDetailUseCase;
+  getFinanceDashboard: GetCountyFinanceDashboardUseCase;
+  listFinanceSchools: GetCountyFinanceSchoolsUseCase;
+  listFeeCollections: GetCountyFeeCollectionsUseCase;
+  listFeeRules: GetCountyFeeRulesUseCase;
   listUsers: GetCountyUsersUseCase;
   getUserOptions: GetCountyUserOptionsUseCase;
 }
@@ -111,6 +127,18 @@ export class CountyApplicationService {
   }
   getTeacher(teacherId: string): Promise<ApplicationResponse<CountyTeacherDetail | null>> {
     return this.deps.getTeacher.execute({ teacherId });
+  }
+  getFinanceDashboard(): Promise<ApplicationResponse<CountyFinanceDashboard>> {
+    return this.deps.getFinanceDashboard.execute({});
+  }
+  listFinanceSchools(): Promise<ApplicationResponse<CountySchoolFinanceRow[]>> {
+    return this.deps.listFinanceSchools.execute({});
+  }
+  listFeeCollections(query: CountyFeeCollectionsQuery): Promise<ApplicationResponse<CountyFeeCollectionsResult>> {
+    return this.deps.listFeeCollections.execute(query);
+  }
+  listFeeRules(query: CountyFeeRulesQuery): Promise<ApplicationResponse<CountyFeeRulesResult>> {
+    return this.deps.listFeeRules.execute(query);
   }
   listUsers(query: CountyUsersQuery): Promise<ApplicationResponse<CountyUsersResult>> {
     return this.deps.listUsers.execute(query);

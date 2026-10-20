@@ -14,6 +14,13 @@ import type { ICountyGuardiansReadModel } from '../interfaces/county/county-guar
 import { GetCountyGuardiansUseCase } from '../use-cases/county/get-county-guardians';
 import { GetCountyGuardianDetailUseCase } from '../use-cases/county/get-county-guardian-detail';
 import type { ICountyTeachersReadModel } from '../interfaces/county/county-teachers-read-model';
+import type { ICountyFinanceReadModel } from '../interfaces/county/county-finance-read-model';
+import {
+  GetCountyFeeCollectionsUseCase,
+  GetCountyFeeRulesUseCase,
+  GetCountyFinanceDashboardUseCase,
+  GetCountyFinanceSchoolsUseCase,
+} from '../use-cases/county/get-county-finance';
 import { GetCountyTeachersUseCase } from '../use-cases/county/get-county-teachers';
 import { GetCountyTeacherDetailUseCase } from '../use-cases/county/get-county-teacher-detail';
 import type { ICountyUsersReadModel } from '../interfaces/county/county-users-read-model';
@@ -185,6 +192,8 @@ export interface ApplicationPorts {
   /** County Parents & Guardians pages: list, stats and guardian profile. */
   countyGuardians: ICountyGuardiansReadModel;
   countyTeachers: ICountyTeachersReadModel;
+  /** County Finance overview and Fee Rules pages. */
+  countyFinance: ICountyFinanceReadModel;
   /** County Administrative Users page: list, stats and assignment options. */
   countyUsers: ICountyUsersReadModel;
   gradingConfigs: IGradingConfigRepository;
@@ -559,6 +568,14 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
       logger,
     }),
     getTeacher: new GetCountyTeacherDetailUseCase({ readModel: ports.countyTeachers, logger }),
+    getFinanceDashboard: new GetCountyFinanceDashboardUseCase({
+      readModel: ports.countyFinance,
+      countyReadModel: ports.countyAnalytics,
+      logger,
+    }),
+    listFinanceSchools: new GetCountyFinanceSchoolsUseCase({ readModel: ports.countyFinance, logger }),
+    listFeeCollections: new GetCountyFeeCollectionsUseCase({ readModel: ports.countyFinance, logger }),
+    listFeeRules: new GetCountyFeeRulesUseCase({ readModel: ports.countyFinance, logger }),
     listUsers: new GetCountyUsersUseCase({
       readModel: ports.countyUsers,
       countyReadModel: ports.countyAnalytics,

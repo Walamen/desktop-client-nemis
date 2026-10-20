@@ -53,6 +53,14 @@ import type {
 import type { CountyGuardianDetail, CountyGuardiansQuery, CountyGuardiansResult } from './county-guardians';
 import type { CountyTeacherDetail, CountyTeachersQuery, CountyTeachersResult } from './county-teachers';
 import type {
+  CountyFeeCollectionsQuery,
+  CountyFeeCollectionsResult,
+  CountyFeeRulesQuery,
+  CountyFeeRulesResult,
+  CountyFinanceDashboard,
+  CountySchoolFinanceRow,
+} from './county-finance';
+import type {
   CountyActivationLink,
   CountyAssignUserRequest,
   CountyBulkCreateUsersResult,
@@ -205,6 +213,11 @@ export interface CountyApi {
   getGuardian(guardianId: string): Promise<CountyGuardianDetail | null>;
   listTeachers(query: CountyTeachersQuery): Promise<CountyTeachersResult>;
   getTeacher(teacherId: string): Promise<CountyTeacherDetail | null>;
+  /** Finance overview and Fee Rules, from this device's synced fee ledger. */
+  getFinanceDashboard(): Promise<CountyFinanceDashboard>;
+  listFinanceSchools(): Promise<CountySchoolFinanceRow[]>;
+  listFeeCollections(query: CountyFeeCollectionsQuery): Promise<CountyFeeCollectionsResult>;
+  listFeeRules(query: CountyFeeRulesQuery): Promise<CountyFeeRulesResult>;
   listUsers(query: CountyUsersQuery): Promise<CountyUsersResult>;
   getUserOptions(): Promise<CountyUserOptions>;
   /** Online-only user commands; each forces a pull afterwards. */

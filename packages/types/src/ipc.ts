@@ -76,6 +76,14 @@ import type {
 import type { CountyGuardianDetail, CountyGuardiansQuery, CountyGuardiansResult } from './county-guardians';
 import type { CountyTeacherDetail, CountyTeachersQuery, CountyTeachersResult } from './county-teachers';
 import type {
+  CountyFeeCollectionsQuery,
+  CountyFeeCollectionsResult,
+  CountyFeeRulesQuery,
+  CountyFeeRulesResult,
+  CountyFinanceDashboard,
+  CountySchoolFinanceRow,
+} from './county-finance';
+import type {
   CountyActivationLink,
   CountyAssignUserRequest,
   CountyBulkCreateUsersResult,
@@ -204,6 +212,10 @@ export interface IpcContract {
   'county:get-guardian': { args: [guardianId: string]; result: CountyGuardianDetail | null };
   'county:list-teachers': { args: [query: CountyTeachersQuery]; result: CountyTeachersResult };
   'county:get-teacher': { args: [teacherId: string]; result: CountyTeacherDetail | null };
+  'county:finance-dashboard': { args: []; result: CountyFinanceDashboard };
+  'county:finance-schools': { args: []; result: CountySchoolFinanceRow[] };
+  'county:finance-payments': { args: [query: CountyFeeCollectionsQuery]; result: CountyFeeCollectionsResult };
+  'county:finance-fee-rules': { args: [query: CountyFeeRulesQuery]; result: CountyFeeRulesResult };
   'county:list-users': { args: [query: CountyUsersQuery]; result: CountyUsersResult };
   'county:get-user-options': { args: []; result: CountyUserOptions };
   'county:set-user-active': { args: [request: CountySetUserActiveRequest]; result: OnlineCommandResult<null> };
@@ -419,6 +431,10 @@ export const IpcChannels = {
   COUNTY_GET_GUARDIAN: 'county:get-guardian',
   COUNTY_LIST_TEACHERS: 'county:list-teachers',
   COUNTY_GET_TEACHER: 'county:get-teacher',
+  COUNTY_FINANCE_DASHBOARD: 'county:finance-dashboard',
+  COUNTY_FINANCE_SCHOOLS: 'county:finance-schools',
+  COUNTY_FINANCE_PAYMENTS: 'county:finance-payments',
+  COUNTY_FINANCE_FEE_RULES: 'county:finance-fee-rules',
   COUNTY_LIST_USERS: 'county:list-users',
   COUNTY_GET_USER_OPTIONS: 'county:get-user-options',
   COUNTY_SET_USER_ACTIVE: 'county:set-user-active',
