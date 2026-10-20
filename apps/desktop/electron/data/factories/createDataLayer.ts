@@ -9,6 +9,7 @@ import type {
   ICountyStudentsReadModel,
   ICountyGuardiansReadModel,
   ICountyTeachersReadModel,
+  ICountyFinanceReadModel,
   IUserRepository,
   IAcademicYearRepository,
   IClassRepository,
@@ -45,6 +46,7 @@ import { SqliteSchoolRegistrationStore } from '../repositories/sqlite/business/S
 import { SqliteCountyStudentsReadModel } from '../repositories/sqlite/business/SqliteCountyStudentsReadModel';
 import { SqliteCountyGuardiansReadModel } from '../repositories/sqlite/business/SqliteCountyGuardiansReadModel';
 import { SqliteCountyTeachersReadModel } from '../repositories/sqlite/business/SqliteCountyTeachersReadModel';
+import { SqliteCountyFinanceReadModel } from '../repositories/sqlite/business/SqliteCountyFinanceReadModel';
 import { SqliteStudentRepository } from '../repositories/sqlite/business/SqliteStudentRepository';
 import { SqliteUserRepository } from '../repositories/sqlite/business/SqliteUserRepository';
 import { SqliteGuardianRepository } from '../repositories/sqlite/business/SqliteGuardianRepository';
@@ -83,6 +85,7 @@ export interface DataLayer {
     countyStudents: ICountyStudentsReadModel;
     countyGuardians: ICountyGuardiansReadModel;
     countyTeachers: ICountyTeachersReadModel;
+    countyFinance: ICountyFinanceReadModel;
     users: IUserRepository;
     academicYears: IAcademicYearRepository;
     classes: IClassRepository;
@@ -154,6 +157,7 @@ export function createDataLayer(manager: DatabaseManager, log: DatabaseLogger): 
   const countyStudents = new SqliteCountyStudentsReadModel(context);
   const countyGuardians = new SqliteCountyGuardiansReadModel(context);
   const countyTeachers = new SqliteCountyTeachersReadModel(context);
+  const countyFinance = new SqliteCountyFinanceReadModel(context);
   const users = new SqliteUserRepository(context);
   const academicYears = new SqliteAcademicYearRepository(context);
   const classes = new SqliteClassRepository(context);
@@ -208,6 +212,7 @@ export function createDataLayer(manager: DatabaseManager, log: DatabaseLogger): 
       countyStudents,
       countyGuardians,
       countyTeachers,
+      countyFinance,
       users,
       academicYears,
       classes,
