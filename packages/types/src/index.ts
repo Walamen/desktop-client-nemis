@@ -22,4 +22,5 @@ export * from './county-students';
 export * from './county-guardians';
 export * from './county-teachers';
 export * from './county-finance';
+export * from './county-reports';
 export * from './county-users';

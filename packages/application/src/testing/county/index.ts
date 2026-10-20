@@ -6,4 +6,5 @@ export * from './in-memory-county-students-read-model';
 export * from './in-memory-county-guardians-read-model';
 export * from './in-memory-county-teachers-read-model';
 export * from './in-memory-county-finance-read-model';
+export * from './in-memory-county-reports-read-model';
 export * from './in-memory-county-users-read-model';

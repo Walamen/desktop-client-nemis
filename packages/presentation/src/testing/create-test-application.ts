@@ -14,6 +14,7 @@ import {
   InMemoryCountyGuardiansReadModel,
   InMemoryCountyTeachersReadModel,
   InMemoryCountyFinanceReadModel,
+  InMemoryCountyReportsReadModel,
   InMemoryCountyUsersReadModel,
   InMemoryDistrictRepository,
   InMemoryEnrollmentRepository,
@@ -60,6 +61,7 @@ export interface TestPorts {
   countyGuardians: InMemoryCountyGuardiansReadModel;
   countyTeachers: InMemoryCountyTeachersReadModel;
   countyFinance: InMemoryCountyFinanceReadModel;
+  countyReports: InMemoryCountyReportsReadModel;
   countyUsers: InMemoryCountyUsersReadModel;
   gradingConfigs: InMemoryGradingConfigRepository;
   currentUserId: string;
@@ -106,6 +108,7 @@ export function createTestApplication(): { app: ApplicationLayer; ports: TestPor
     countyGuardians: new InMemoryCountyGuardiansReadModel(),
     countyTeachers: new InMemoryCountyTeachersReadModel(),
     countyFinance: new InMemoryCountyFinanceReadModel(),
+    countyReports: new InMemoryCountyReportsReadModel(),
     countyUsers: new InMemoryCountyUsersReadModel(),
     gradingConfigs: new InMemoryGradingConfigRepository(),
     currentUserId: 'usr-1',

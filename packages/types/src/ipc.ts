@@ -84,6 +84,12 @@ import type {
   CountySchoolFinanceRow,
 } from './county-finance';
 import type {
+  CountyEnrollmentReport,
+  CountyEnrollmentReportQuery,
+  CountyReportOptions,
+  CountyReportSchool,
+} from './county-reports';
+import type {
   CountyActivationLink,
   CountyAssignUserRequest,
   CountyBulkCreateUsersResult,
@@ -216,6 +222,9 @@ export interface IpcContract {
   'county:finance-schools': { args: []; result: CountySchoolFinanceRow[] };
   'county:finance-payments': { args: [query: CountyFeeCollectionsQuery]; result: CountyFeeCollectionsResult };
   'county:finance-fee-rules': { args: [query: CountyFeeRulesQuery]; result: CountyFeeRulesResult };
+  'county:report-options': { args: []; result: CountyReportOptions };
+  'county:report-schools': { args: [districtId: string]; result: CountyReportSchool[] };
+  'county:enrollment-report': { args: [query: CountyEnrollmentReportQuery]; result: CountyEnrollmentReport };
   'county:list-users': { args: [query: CountyUsersQuery]; result: CountyUsersResult };
   'county:get-user-options': { args: []; result: CountyUserOptions };
   'county:set-user-active': { args: [request: CountySetUserActiveRequest]; result: OnlineCommandResult<null> };
@@ -435,6 +444,9 @@ export const IpcChannels = {
   COUNTY_FINANCE_SCHOOLS: 'county:finance-schools',
   COUNTY_FINANCE_PAYMENTS: 'county:finance-payments',
   COUNTY_FINANCE_FEE_RULES: 'county:finance-fee-rules',
+  COUNTY_REPORT_OPTIONS: 'county:report-options',
+  COUNTY_REPORT_SCHOOLS: 'county:report-schools',
+  COUNTY_ENROLLMENT_REPORT: 'county:enrollment-report',
   COUNTY_LIST_USERS: 'county:list-users',
   COUNTY_GET_USER_OPTIONS: 'county:get-user-options',
   COUNTY_SET_USER_ACTIVE: 'county:set-user-active',

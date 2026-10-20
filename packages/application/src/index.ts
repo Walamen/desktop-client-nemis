@@ -102,6 +102,7 @@ export * from './use-cases/county/get-county-students';
 export * from './use-cases/county/get-county-teachers';
 export * from './use-cases/county/get-county-teacher-detail';
 export * from './use-cases/county/get-county-finance';
+export * from './use-cases/county/get-county-reports';
 export * from './use-cases/county/get-county-student-detail';
 export * from './use-cases/county/get-county-guardians';
 export * from './use-cases/county/get-county-guardian-detail';

@@ -19,6 +19,10 @@ import type {
   CountyFeeRulesResult,
   CountyFinanceDashboard,
   CountySchoolFinanceRow,
+  CountyEnrollmentReport,
+  CountyEnrollmentReportQuery,
+  CountyReportOptions,
+  CountyReportSchool,
   CountyUserOptions,
   CountyUsersQuery,
   CountyUsersResult,
@@ -49,6 +53,11 @@ import type {
   GetCountyFinanceDashboardUseCase,
   GetCountyFinanceSchoolsUseCase,
 } from '../use-cases/county/get-county-finance';
+import type {
+  GetCountyEnrollmentReportUseCase,
+  GetCountyReportOptionsUseCase,
+  GetCountyReportSchoolsUseCase,
+} from '../use-cases/county/get-county-reports';
 import type { GetCountyUsersUseCase } from '../use-cases/county/get-county-users';
 import type { GetCountyUserOptionsUseCase } from '../use-cases/county/get-county-user-options';
 
@@ -73,6 +82,9 @@ export interface CountyApplicationServiceDeps {
   listFinanceSchools: GetCountyFinanceSchoolsUseCase;
   listFeeCollections: GetCountyFeeCollectionsUseCase;
   listFeeRules: GetCountyFeeRulesUseCase;
+  getReportOptions: GetCountyReportOptionsUseCase;
+  listReportSchools: GetCountyReportSchoolsUseCase;
+  getEnrollmentReport: GetCountyEnrollmentReportUseCase;
   listUsers: GetCountyUsersUseCase;
   getUserOptions: GetCountyUserOptionsUseCase;
 }
@@ -139,6 +151,15 @@ export class CountyApplicationService {
   }
   listFeeRules(query: CountyFeeRulesQuery): Promise<ApplicationResponse<CountyFeeRulesResult>> {
     return this.deps.listFeeRules.execute(query);
+  }
+  getReportOptions(): Promise<ApplicationResponse<CountyReportOptions>> {
+    return this.deps.getReportOptions.execute({});
+  }
+  listReportSchools(districtId: string): Promise<ApplicationResponse<CountyReportSchool[]>> {
+    return this.deps.listReportSchools.execute({ districtId });
+  }
+  getEnrollmentReport(query: CountyEnrollmentReportQuery): Promise<ApplicationResponse<CountyEnrollmentReport>> {
+    return this.deps.getEnrollmentReport.execute(query);
   }
   listUsers(query: CountyUsersQuery): Promise<ApplicationResponse<CountyUsersResult>> {
     return this.deps.listUsers.execute(query);

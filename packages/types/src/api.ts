@@ -61,6 +61,12 @@ import type {
   CountySchoolFinanceRow,
 } from './county-finance';
 import type {
+  CountyEnrollmentReport,
+  CountyEnrollmentReportQuery,
+  CountyReportOptions,
+  CountyReportSchool,
+} from './county-reports';
+import type {
   CountyActivationLink,
   CountyAssignUserRequest,
   CountyBulkCreateUsersResult,
@@ -218,6 +224,10 @@ export interface CountyApi {
   listFinanceSchools(): Promise<CountySchoolFinanceRow[]>;
   listFeeCollections(query: CountyFeeCollectionsQuery): Promise<CountyFeeCollectionsResult>;
   listFeeRules(query: CountyFeeRulesQuery): Promise<CountyFeeRulesResult>;
+  /** Generate Reports page, from this device. */
+  getReportOptions(): Promise<CountyReportOptions>;
+  listReportSchools(districtId: string): Promise<CountyReportSchool[]>;
+  getEnrollmentReport(query: CountyEnrollmentReportQuery): Promise<CountyEnrollmentReport>;
   listUsers(query: CountyUsersQuery): Promise<CountyUsersResult>;
   getUserOptions(): Promise<CountyUserOptions>;
   /** Online-only user commands; each forces a pull afterwards. */

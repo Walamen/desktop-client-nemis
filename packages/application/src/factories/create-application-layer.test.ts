@@ -30,6 +30,7 @@ import { InMemoryCountyStudentsReadModel } from '../testing/county/in-memory-cou
 import { InMemoryCountyGuardiansReadModel } from '../testing/county/in-memory-county-guardians-read-model';
 import { InMemoryCountyTeachersReadModel } from '../testing/county/in-memory-county-teachers-read-model';
 import { InMemoryCountyFinanceReadModel } from '../testing/county/in-memory-county-finance-read-model';
+import { InMemoryCountyReportsReadModel } from '../testing/county/in-memory-county-reports-read-model';
 import { InMemoryCountyUsersReadModel } from '../testing/county/in-memory-county-users-read-model';
 import { InMemoryGradingConfigRepository } from '../testing/institution/in-memory-grading-config-repository';
 import { InMemoryDeviceGateway } from '../testing/infra/in-memory-device-gateway';
@@ -65,6 +66,7 @@ function buildLayer() {
     countyGuardians: new InMemoryCountyGuardiansReadModel(),
     countyTeachers: new InMemoryCountyTeachersReadModel(),
     countyFinance: new InMemoryCountyFinanceReadModel(),
+    countyReports: new InMemoryCountyReportsReadModel(),
     countyUsers: new InMemoryCountyUsersReadModel(),
     gradingConfigs: new InMemoryGradingConfigRepository(),
     currentUserId: 'test-user',
