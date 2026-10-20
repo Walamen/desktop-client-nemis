@@ -97,7 +97,7 @@ All figures cover the county's **active** schools (`institutions.countyId = coun
   - argument asserts in `validateIpc`
   - the COUNTY_ADMIN allow-list in `authorizeChannel`
   - registered in `registrar.ts`
-  - **the `deferredApplication` key list in `electron/main/main.ts`** (see the gotcha: a missing key is `undefined` at runtime)
+  - no `electron/main/main.ts` change: the finance methods live on the existing `county` application service, whose key `deferredApplication` already lists
   - `preload/county/finance-api.ts`
   - `renderer/services/nemis-bridge/county/finance-bridge.ts`
 - **Pages:** `app/government/county/finance/page.tsx` and `…/fee-rules/page.tsx` are a markup-for-markup port of the web pages with the fixes above. They read from their ViewModels, never from the bridge directly. They use:
