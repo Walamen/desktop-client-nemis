@@ -10,6 +10,7 @@ import type {
   ICountyGuardiansReadModel,
   ICountyTeachersReadModel,
   ICountyFinanceReadModel,
+  ICountyReportsReadModel,
   IUserRepository,
   IAcademicYearRepository,
   IClassRepository,
@@ -47,6 +48,7 @@ import { SqliteCountyStudentsReadModel } from '../repositories/sqlite/business/S
 import { SqliteCountyGuardiansReadModel } from '../repositories/sqlite/business/SqliteCountyGuardiansReadModel';
 import { SqliteCountyTeachersReadModel } from '../repositories/sqlite/business/SqliteCountyTeachersReadModel';
 import { SqliteCountyFinanceReadModel } from '../repositories/sqlite/business/SqliteCountyFinanceReadModel';
+import { SqliteCountyReportsReadModel } from '../repositories/sqlite/business/SqliteCountyReportsReadModel';
 import { SqliteStudentRepository } from '../repositories/sqlite/business/SqliteStudentRepository';
 import { SqliteUserRepository } from '../repositories/sqlite/business/SqliteUserRepository';
 import { SqliteGuardianRepository } from '../repositories/sqlite/business/SqliteGuardianRepository';
@@ -86,6 +88,7 @@ export interface DataLayer {
     countyGuardians: ICountyGuardiansReadModel;
     countyTeachers: ICountyTeachersReadModel;
     countyFinance: ICountyFinanceReadModel;
+    countyReports: ICountyReportsReadModel;
     users: IUserRepository;
     academicYears: IAcademicYearRepository;
     classes: IClassRepository;
@@ -158,6 +161,7 @@ export function createDataLayer(manager: DatabaseManager, log: DatabaseLogger): 
   const countyGuardians = new SqliteCountyGuardiansReadModel(context);
   const countyTeachers = new SqliteCountyTeachersReadModel(context);
   const countyFinance = new SqliteCountyFinanceReadModel(context);
+  const countyReports = new SqliteCountyReportsReadModel(context);
   const users = new SqliteUserRepository(context);
   const academicYears = new SqliteAcademicYearRepository(context);
   const classes = new SqliteClassRepository(context);
@@ -213,6 +217,7 @@ export function createDataLayer(manager: DatabaseManager, log: DatabaseLogger): 
       countyGuardians,
       countyTeachers,
       countyFinance,
+      countyReports,
       users,
       academicYears,
       classes,
