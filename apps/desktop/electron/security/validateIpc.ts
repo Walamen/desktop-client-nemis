@@ -1178,6 +1178,17 @@ export function assertCountyFeeRulesQueryArgs(args: readonly unknown[]): void {
   assertCountyFinancePageQuery(args, []);
 }
 
+/** County Generate Reports: no districtId = county-wide. */
+export function assertCountyEnrollmentReportQueryArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [query] = args;
+  if (!isPlainObject(query)) throw new IPCError('Expected a query object.');
+  assertKnownKeys(query, ['districtId', 'schoolId']);
+  for (const key of ['districtId', 'schoolId'] as const) {
+    if (query[key] !== undefined) assertString(query[key], key, ID_MAX_LENGTH);
+  }
+}
+
 export function assertTransferCreateArgs(args: readonly unknown[]): void {
   assertArity(args, 1);
   const [request] = args;

@@ -9,4 +9,5 @@ export { registerCountyStudentHandlers } from './students';
 export { registerCountyGuardianHandlers } from './guardians';
 export { registerCountyTeacherHandlers } from './teachers';
 export { registerCountyFinanceHandlers } from './finance';
+export { registerCountyReportHandlers } from './reports';
 export { registerCountyUserHandlers, registerCountyUserCommandHandlers } from './users';

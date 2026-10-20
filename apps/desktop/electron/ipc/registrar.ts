@@ -53,6 +53,7 @@ import {
   registerCountyGuardianHandlers,
   registerCountyTeacherHandlers,
   registerCountyFinanceHandlers,
+  registerCountyReportHandlers,
   registerCountyUserHandlers,
   registerCountyUserCommandHandlers,
   registerCountySchoolHandlers,
@@ -121,6 +122,7 @@ export function registerIpcHandlers(
 
   registerCountyTeacherHandlers(securedHandle, app);
   registerCountyFinanceHandlers(securedHandle, app);
+  registerCountyReportHandlers(securedHandle, app);
 
   registerTeacherDashboardHandlers(securedHandle, app);
   registerAssignmentHandlers(securedHandle, app, workspaces);
