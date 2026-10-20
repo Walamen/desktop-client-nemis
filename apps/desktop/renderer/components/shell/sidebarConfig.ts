@@ -171,7 +171,7 @@ export const sidebarConfigs: Record<DesktopPortalRole, SidebarConfig> = {
       },
       {
         label: 'REPORTS',
-        items: [{ name: 'Reports', href: '/government/county/reports', icon: ClipboardCheck }],
+        items: [{ name: 'Reports', href: '/government/county/reports/generate', icon: ClipboardCheck }],
       },
       {
         label: 'COMMUNICATION',

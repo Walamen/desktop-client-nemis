@@ -1,5 +1,5 @@
-import { ComingSoon } from '@/components/shell/ComingSoon';
+import { GenerateReportsPage } from '@/components/county/reports/GenerateReportsPage';
 
 export default function Page() {
-  return <ComingSoon title="Generate Report" />;
+  return <GenerateReportsPage />;
 }

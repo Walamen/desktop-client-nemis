@@ -1,6 +1,14 @@
-import { SchoolAdminCollectionPage } from '@/components/school-admin/SchoolAdminModulePages';
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+
+/** The web's Reports entry is Generate Reports (its /reports/enhanced
+ * redirects there too); a static export has no server redirects. */
 export default function Page() {
-  return <SchoolAdminCollectionPage title="County reports" description="Reports submitted by schools in the authorized county." sections={[
-    { collection: 'reports', label: 'Reports', columns: ['schoolId', 'title', 'type', 'status', 'submittedAt', 'reviewedAt'] },
-  ]} />;
+  const router = useRouter();
+  useEffect(() => {
+    router.replace('/government/county/reports/generate');
+  }, [router]);
+  return null;
 }
