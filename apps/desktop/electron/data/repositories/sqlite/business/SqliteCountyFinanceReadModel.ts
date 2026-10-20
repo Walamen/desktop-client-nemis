@@ -149,7 +149,9 @@ export class SqliteCountyFinanceReadModel implements ICountyFinanceReadModel {
         JOIN fee_obligations o ON o.id = p.obligationId
         JOIN academic_years y ON y.id = o.academicYearId AND y.isCurrent = 1
         JOIN institutions i ON i.id = p.institutionId
-        JOIN students s ON s.id = p.studentId
+        -- LEFT: a child who moved to another county is no longer synced here,
+        -- but the payment made at this county's school still counts (server parity).
+        LEFT JOIN students s ON s.id = p.studentId
         WHERE ${where.join(' AND ')}`;
       const db = this.#repository.connection;
       const summary = db
@@ -160,7 +162,7 @@ export class SqliteCountyFinanceReadModel implements ICountyFinanceReadModel {
         .get(...params) as CountyFeeCollectionsResult['summary'];
       const records = db
         .prepare(
-          `SELECT p.id, s.firstName || ' ' || s.lastName AS studentName, s.nemisId, i.name AS schoolName,
+          `SELECT p.id, COALESCE(s.firstName || ' ' || s.lastName, '') AS studentName, s.nemisId, i.name AS schoolName,
                   i.ownership AS schoolOwnership,
                   (SELECT d.name FROM districts d WHERE d.id = i.districtId) AS districtName,
                   COALESCE((SELECT r.name FROM fee_rules r WHERE r.id = o.feeRuleId), '') AS feeRuleName,

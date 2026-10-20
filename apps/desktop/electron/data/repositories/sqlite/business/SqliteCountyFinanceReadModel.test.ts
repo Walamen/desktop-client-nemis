@@ -241,6 +241,16 @@ describe('SqliteCountyFinanceReadModel', () => {
       expect(result.total).toBe(4);
     });
 
+    it('a payment whose student is not on this device still counts', () => {
+      // The child moved to another county, so their student row is gone, but
+      // the payment was made at this county's school (server includes it).
+      run(`DELETE FROM students WHERE id = 'st-06'`);
+      const result = payments();
+      expect(result.summary).toEqual({ totalCollected: 350, totalTransactions: 4, schoolsWithPayments: 2 });
+      expect(result.records[0]).toMatchObject({ id: 'p-06', studentName: '', nemisId: null, schoolName: 'Beta School' });
+      expect(payments({ search: 'beta' }).records.map((r) => r.id)).toEqual(['p-06']);
+    });
+
     it('records carry the student, school and rule', () => {
       expect(payments().records[0]).toEqual({
         id: 'p-06',
