@@ -1152,6 +1152,32 @@ export function assertCountyTeachersQueryArgs(args: readonly unknown[]): void {
   }
 }
 
+/** institutions.ownership values (the server's OwnershipType). */
+const OWNERSHIP_VALUES = ['GOVERNMENT', 'PRIVATE', 'NGO', 'COMMUNITY', 'MISSION'] as const;
+
+function assertCountyFinancePageQuery(args: readonly unknown[], keys: readonly string[]): Record<string, unknown> {
+  assertArity(args, 1);
+  const [query] = args;
+  if (!isPlainObject(query)) throw new IPCError('Expected a query object.');
+  assertKnownKeys(query, [...keys, 'search', 'ownership', 'page', 'limit']);
+  assertInt(query.page, 'page', 1, 1_000_000);
+  assertInt(query.limit, 'limit', 1, 50);
+  if (query.search !== undefined) assertString(query.search, 'search', ID_MAX_LENGTH);
+  assertOptionalEnumMember(query.ownership, 'ownership', OWNERSHIP_VALUES);
+  return query;
+}
+
+/** County Finance Payments tab. */
+export function assertCountyFeeCollectionsQueryArgs(args: readonly unknown[]): void {
+  const query = assertCountyFinancePageQuery(args, ['districtId']);
+  if (query.districtId !== undefined) assertString(query.districtId, 'districtId', ID_MAX_LENGTH);
+}
+
+/** County Fee Rules page. */
+export function assertCountyFeeRulesQueryArgs(args: readonly unknown[]): void {
+  assertCountyFinancePageQuery(args, []);
+}
+
 export function assertTransferCreateArgs(args: readonly unknown[]): void {
   assertArity(args, 1);
   const [request] = args;
