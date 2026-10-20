@@ -9,7 +9,7 @@ Port the County Admin **Finance** page (`portal-web/src/app/government/county/fi
 ## How it gets made (Alvin's choices for this page)
 
 - **Native inline build** in the main checkouts. No worktrees, no subagents.
-- **No hexagonal path.** On the desktop this is a main-process service reading SQLite (`electron/data/services/CountyFinanceService.ts`), IPC handlers, preload, and a renderer bridge called straight from the pages. There's no application port, use case or ViewModel. This follows the `GradeCompletionService` precedent.
+- **Full hexagonal path, no layer bypassed** (Alvin, 2026-10-20, after first choosing a plain main-process service and then reversing it). The chain is: application read-model port + use cases → presentation ViewModels → SQLite read-model adapter → IPC/preload/bridge. This is the same wiring as County Teachers.
 - **Offline compute.** County devices already receive every fee rule, obligation and payment for the county's schools, so there's no snapshot change and no online call.
 - **Fix every web quirk on both sides** (list below).
 
@@ -78,18 +78,29 @@ All figures cover the county's **active** schools (`institutions.countyId = coun
   - `county:finance-schools`
   - `county:finance-payments`
   - `county:finance-fee-rules`
-- **Service:** `CountyFinanceService(workspaces)` takes the county from `workspaces.active.user.scope.scopeId`. It throws Forbidden unless the user is a COUNTY_ADMIN on a COUNTY scope.
+- **Application layer** (`packages/application`):
+  - Port: `interfaces/county/county-finance-read-model.ts` (`getDashboard(countyId)`, `listSchools(countyId)`, `listFeeCollections(countyId, query)`, `listFeeRules(countyId, query)`).
+  - Use cases: `use-cases/county/get-county-finance-dashboard.ts`, `get-county-finance-schools.ts`, `get-county-fee-collections.ts`, `get-county-fee-rules.ts`. These normalise the query (page bounds, trimmed search) and call the port.
+  - Exposed through `county-application-service.ts` and `create-application-layer.ts`.
+  - An in-memory read model in `testing/county/` for tests.
+- **Presentation layer** (`packages/presentation`):
+  - `view-models/county/county-finance-view-model.ts` holds the dashboard, the schools list (loaded lazily) and the payments page and filters, with loading and error state per part.
+  - `county-fee-rules-view-model.ts` holds the rules page and filters.
+  - Both are registered in `create-presentation-layer.ts` and `testing/create-test-application.ts`, with hooks in `renderer/lib/presentation/hooks/county.ts`.
+- **Adapter:** `electron/data/repositories/sqlite/business/SqliteCountyFinanceReadModel.ts`.
   - Plain SQL over `institutions`, `districts`, `students`, `academic_years`, `fee_obligations`, `fee_payments`, `fee_payment_reversals` and `fee_rules`.
   - `applicableLevels` is parsed from its JSON text.
   - LIKE wildcards in search terms are escaped.
+  - Wired in `createDataLayer.ts` and `createApplicationComposition.ts`.
 - **IPC:**
-  - handlers in `electron/ipc/handlers/county/finance.ts`
+  - handlers in `electron/ipc/handlers/county/finance.ts`; the county comes from the workspace scope id, as the other county handlers do
   - argument asserts in `validateIpc`
   - the COUNTY_ADMIN allow-list in `authorizeChannel`
   - registered in `registrar.ts`
-  - a preload county API
+  - **the `deferredApplication` key list in `electron/main/main.ts`** (see the gotcha: a missing key is `undefined` at runtime)
+  - `preload/county/finance-api.ts`
   - `renderer/services/nemis-bridge/county/finance-bridge.ts`
-- **Pages:** `app/government/county/finance/page.tsx` and `…/fee-rules/page.tsx` are a markup-for-markup port of the web pages with the fixes above. They use:
+- **Pages:** `app/government/county/finance/page.tsx` and `…/fee-rules/page.tsx` are a markup-for-markup port of the web pages with the fixes above. They read from their ViewModels, never from the bridge directly. They use:
   - `Spinner`, `Alert` and `Card` from `@nemis-desktop/ui`, and lucide icons
   - `formatCurrency` from `@/components/finance/shared`
   - `formatNemisId` from `@nemis-desktop/shared`
@@ -97,7 +108,12 @@ All figures cover the county's **active** schools (`institutions.countyId = coun
   - **County name for the header:** the source the county dashboard already uses
   - **Data loading:** `useRevalidateOnSync`, so the pages refresh after each sync. Tabs load lazily like on the web.
   - **Errors:** shown in the same red `Alert` the web uses.
-- **Tests:** service tests on an in-memory migrated SQLite (fixtures across two years, two districts, a reversed payment, an inactive school), handler tests, and light page render tests.
+- **Tests:**
+  - adapter tests on an in-memory migrated SQLite (fixtures across two years, two districts, a reversed payment, an inactive school)
+  - use-case tests against the in-memory read model
+  - ViewModel tests
+  - handler tests
+  - light page render tests
 
 ## Non-goals
 
