@@ -1,4 +1,5 @@
-import { ComingSoon } from '@/components/shell/ComingSoon';
+import { CountySettingsPage } from '@/components/county/settings/CountySettingsPage';
+
 export default function Page() {
-  return <ComingSoon title="County Settings" />;
+  return <CountySettingsPage />;
 }
