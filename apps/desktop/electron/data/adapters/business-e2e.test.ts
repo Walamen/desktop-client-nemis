@@ -130,6 +130,28 @@ describe('business application layer end-to-end against real SQLite', () => {
     expect(listedInst2).toMatchObject({ districtName: undefined, studentCount: 1 });
   });
 
+  it('resolves the current user for a County Admin whose only membership is county-scoped', async () => {
+    manager.connection
+      .prepare(
+        `INSERT INTO users (id, firstName, lastName, email, isActive, version, updatedAt)
+         VALUES ('ceo-1', 'Musu', 'Kollie', 'ceo@moe.gov.lr', 1, 1, ?)`,
+      )
+      .run(new Date().toISOString());
+    manager.connection
+      .prepare(
+        `INSERT INTO user_organizations (id, userId, role, institutionId, countyId, districtId, isActive)
+         VALUES ('org-ceo', 'ceo-1', 'COUNTY_ADMIN', NULL, 'county-1', NULL, 1)`,
+      )
+      .run();
+
+    const app = createApplicationComposition(dataLayer, 'ceo-1', silent);
+    expect((await app.identity.getCurrentUser()).data).toMatchObject({
+      id: 'ceo-1',
+      fullName: 'Musu Kollie',
+      roles: ['COUNTY_ADMIN'],
+    });
+  });
+
   it('academic foundation: year -> term -> class -> subject -> assignment, real SQLite joins', async () => {
     seedInstitution();
     const app = createApplicationComposition(dataLayer, 'test-user', silent);
