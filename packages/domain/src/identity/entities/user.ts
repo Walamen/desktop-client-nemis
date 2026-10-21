@@ -12,6 +12,7 @@ interface UserState {
   name: PersonName;
   email: EmailAddress | null;
   isActive: boolean;
+  photoUrl: string | null;
   organizations: UserOrganization[];
 }
 
@@ -32,6 +33,7 @@ export interface ReconstituteUserInput {
   lastName: string;
   email: string | null;
   isActive: boolean;
+  photoUrl?: string | null;
   organizations: UserOrganization[];
   version: number;
   updatedAt: string;
@@ -67,6 +69,7 @@ export class User extends AggregateRoot<UserId> {
         }),
         email,
         isActive: true,
+        photoUrl: null,
         organizations: [...input.organizations],
       },
       { version: 1, updatedAt: input.occurredAt },
@@ -94,6 +97,7 @@ export class User extends AggregateRoot<UserId> {
         // a present email is still validated.
         email: input.email === null ? null : EmailAddress.create(input.email),
         isActive: input.isActive,
+        photoUrl: input.photoUrl ?? null,
         organizations: [...input.organizations],
       },
       { version: input.version, updatedAt: input.updatedAt, lastModifiedBy: input.lastModifiedBy },
@@ -108,6 +112,9 @@ export class User extends AggregateRoot<UserId> {
   }
   get isActive(): boolean {
     return this.#state.isActive;
+  }
+  get photoUrl(): string | null {
+    return this.#state.photoUrl;
   }
   get organizations(): readonly UserOrganization[] {
     return this.#state.organizations;

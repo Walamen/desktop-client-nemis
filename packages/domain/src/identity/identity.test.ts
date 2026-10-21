@@ -81,6 +81,30 @@ describe('User', () => {
     expect(user.pullDomainEvents()).toHaveLength(0);
   });
 
+  it('reconstitute carries photoUrl, defaulting to null', () => {
+    const base = {
+      id: 'user-1',
+      firstName: 'Ama',
+      lastName: 'Kollie',
+      email: 'ama@moe.gov.lr',
+      isActive: true,
+      organizations: [
+        UserOrganization.reconstitute({
+          id: 'org-1',
+          role: SystemRole.TEACHER,
+          institutionId: 'inst-1',
+          isActive: true,
+        }),
+      ],
+      version: 1,
+      updatedAt: ISO,
+    };
+    const url = 'https://res.cloudinary.com/x/a.jpg';
+    expect(User.reconstitute({ ...base, photoUrl: url }).photoUrl).toBe(url);
+    expect(User.reconstitute(base).photoUrl).toBeNull();
+    expect(User.reconstitute({ ...base, photoUrl: null }).photoUrl).toBeNull();
+  });
+
   it('deactivate is idempotent on an already-inactive user', () => {
     const user = newUser();
 

@@ -13,6 +13,7 @@ interface UserRow {
   lastName: string;
   email: string | null;
   isActive: number;
+  photoUrl: string | null;
   version: number;
   updatedAt: string;
   lastModifiedBy: string | null;
@@ -28,7 +29,7 @@ interface OrgRow {
 }
 
 const USER_COLUMNS =
-  'id, firstName, middleName, lastName, email, isActive, version, updatedAt, lastModifiedBy';
+  'id, firstName, middleName, lastName, email, isActive, photoUrl, version, updatedAt, lastModifiedBy';
 
 /** Read-only SQLite adapter for IUserRepository. Loads the user plus its
  * user_organizations rows and reconstitutes the aggregate. */
@@ -72,6 +73,7 @@ export class SqliteUserRepository implements IUserRepository {
       lastName: row.lastName,
       email: row.email,
       isActive: row.isActive === 1,
+      photoUrl: row.photoUrl,
       organizations,
       version: row.version,
       updatedAt: row.updatedAt,

@@ -43,6 +43,39 @@ describe('GetCurrentUserUseCase', () => {
     expect(res.data?.email).toBe('teacher@example.com');
   });
 
+  it('carries photo, first/last name and only the active roles', async () => {
+    const users = new InMemoryUserRepository();
+    users.store.set(
+      'usr-musu',
+      User.reconstitute({
+        id: 'usr-musu',
+        firstName: 'Musu',
+        lastName: 'Kollie',
+        email: 'musu@example.com',
+        isActive: true,
+        photoUrl: 'https://res.cloudinary.com/x/a.jpg',
+        organizations: [
+          UserOrganization.reconstitute({ id: 'o1', role: SystemRole.DEO, isActive: false }),
+          UserOrganization.reconstitute({ id: 'o2', role: SystemRole.COUNTY_ADMIN, isActive: true }),
+        ],
+        version: 1,
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      }),
+    );
+    const useCase = new GetCurrentUserUseCase({
+      users,
+      logger: new RecordingLogger(),
+      currentUserId: 'usr-musu',
+    });
+    const res = await useCase.execute({});
+    expect(res.data).toMatchObject({
+      photoUrl: 'https://res.cloudinary.com/x/a.jpg',
+      firstName: 'Musu',
+      lastName: 'Kollie',
+      roles: ['COUNTY_ADMIN'],
+    });
+  });
+
   it('returns null when the authenticated user has no local row yet', async () => {
     const useCase = new GetCurrentUserUseCase({
       users: new InMemoryUserRepository(),

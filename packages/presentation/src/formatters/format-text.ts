@@ -14,10 +14,13 @@ export function humanizeEnum(value: string): string {
  * jargon to end users. Roles not listed here fall back to humanizeEnum. */
 const ROLE_LABEL_OVERRIDES: Partial<Record<SystemRole, string>> = {
   INSTITUTION_ADMIN: 'Principal',
+  COUNTY_ADMIN: 'County Education Officer',
+  DEO: 'DEO',
+  MINISTRY_ADMIN: 'Ministry Admin',
 };
 
 /** SystemRole → display label, e.g. 'INSTITUTION_ADMIN' → 'Principal',
- * 'DEO' → 'Deo' (via humanizeEnum fallback). */
+ * 'TEACHER' → 'Teacher' (via humanizeEnum fallback). */
 export function humanizeRole(role: SystemRole): string {
   return ROLE_LABEL_OVERRIDES[role] ?? humanizeEnum(role);
 }

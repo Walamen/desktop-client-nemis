@@ -3,6 +3,7 @@ import { User, UserOrganization } from '@nemis-desktop/domain';
 import { SystemRole } from '@nemis-desktop/types';
 import { SessionStore } from '../../stores/session-store';
 import { createTestApplication } from '../../testing/create-test-application';
+import { toUserView } from '../../mappers/identity/user-view-mapper';
 import { CurrentUserViewModel } from './current-user-view-model';
 
 function build() {
@@ -15,6 +16,7 @@ function build() {
       lastName: 'Boakai',
       email: 'joseph@example.com',
       isActive: true,
+      photoUrl: "https://res.cloudinary.com/x/a.jpg",
       organizations: [
         UserOrganization.reconstitute({
           id: 'org-1',
@@ -32,6 +34,16 @@ function build() {
   return { vm, session };
 }
 
+describe('toUserView role labels', () => {
+  it('labels COUNTY_ADMIN as County Education Officer', () => {
+    const view = toUserView({
+      id: 'u', fullName: 'A B', firstName: 'A', lastName: 'B', photoUrl: null,
+      email: null, isActive: true, roles: [SystemRole.COUNTY_ADMIN],
+    });
+    expect(view.roleLabels).toEqual(['County Education Officer']);
+  });
+});
+
 describe('CurrentUserViewModel', () => {
   it('loads the user view and records the session user', async () => {
     const { vm, session } = build();
@@ -40,6 +52,9 @@ describe('CurrentUserViewModel', () => {
     expect(user.status).toBe('success');
     if (user.status === 'success') {
       expect(user.data.fullName).toBe('Joseph Boakai');
+      expect(user.data.firstName).toBe('Joseph');
+      expect(user.data.lastName).toBe('Boakai');
+      expect(user.data.photoUrl).toBe('https://res.cloudinary.com/x/a.jpg');
       expect(user.data.roleLabels).toEqual(['Principal']);
       expect(user.data.status.label).toBe('Active');
     }

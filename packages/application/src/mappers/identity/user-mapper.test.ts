@@ -13,7 +13,7 @@ describe('toUserOutput', () => {
       version: 1, updatedAt: '2026-01-01T00:00:00.000Z',
     });
     expect(toUserOutput(user)).toEqual({
-      id: 'user-2', fullName: 'Musu Kollie', email: null, isActive: true, roles: [SystemRole.STUDENT],
+      id: 'user-2', fullName: 'Musu Kollie', firstName: 'Musu', lastName: 'Kollie', photoUrl: null, email: null, isActive: true, roles: [SystemRole.STUDENT],
     });
   });
 

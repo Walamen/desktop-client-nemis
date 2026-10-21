@@ -7,6 +7,9 @@ export function toUserView(dto: UserOutput): UserView {
   return {
     id: dto.id,
     fullName: dto.fullName,
+    firstName: dto.firstName,
+    lastName: dto.lastName,
+    photoUrl: dto.photoUrl,
     email: dto.email,
     roleLabels: dto.roles.map(humanizeRole),
     status: presentActive(dto.isActive),
