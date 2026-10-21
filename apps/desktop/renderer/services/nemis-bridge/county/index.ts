@@ -8,6 +8,7 @@ import { teachersBridge } from './teachers-bridge';
 import { financeBridge } from './finance-bridge';
 import { reportsBridge } from './reports-bridge';
 import { messagingBridge } from './messaging-bridge';
+import { auditBridge } from './audit-bridge';
 import { usersBridge } from './users-bridge';
 
 /** County (CEO) portal callers of window.nemis, one file per area, the same
@@ -23,5 +24,6 @@ export const countyBridge = {
   ...financeBridge,
   ...reportsBridge,
   ...messagingBridge,
+  ...auditBridge,
   ...usersBridge,
 };

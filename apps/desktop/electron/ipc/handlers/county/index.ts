@@ -12,4 +12,5 @@ export { registerCountyFinanceHandlers } from './finance';
 export { registerCountyReportHandlers } from './reports';
 export { registerCountyMessagingHandlers, type PresenceSource } from './messaging';
 export { registerCountyNotificationHandlers } from './notifications';
+export { registerCountyAuditHandlers } from './audit';
 export { registerCountyUserHandlers, registerCountyUserCommandHandlers } from './users';

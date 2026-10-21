@@ -8,6 +8,7 @@ import { countyTeachersApi } from './teachers-api';
 import { countyFinanceApi } from './finance-api';
 import { countyReportsApi } from './reports-api';
 import { countyMessagingApi } from './messaging-api';
+import { countyAuditApi } from './audit-api';
 import { countyUsersApi } from './users-api';
 
 export * from './dashboard-api';
@@ -20,5 +21,5 @@ export * from './users-api';
 
 /** The NemisApi slice the County (CEO) portal owns. */
 export const countyApi = {
-  county: { ...countyDashboardApi, ...countyDistrictsApi, ...countySchoolsApi, ...countyRegistrationsApi, ...countyStudentsApi, ...countyGuardiansApi, ...countyTeachersApi, ...countyFinanceApi, ...countyReportsApi, ...countyMessagingApi, ...countyUsersApi },
+  county: { ...countyDashboardApi, ...countyDistrictsApi, ...countySchoolsApi, ...countyRegistrationsApi, ...countyStudentsApi, ...countyGuardiansApi, ...countyTeachersApi, ...countyFinanceApi, ...countyReportsApi, ...countyMessagingApi, ...countyAuditApi, ...countyUsersApi },
 };

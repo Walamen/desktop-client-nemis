@@ -1226,6 +1226,19 @@ export function assertCountyNotificationsQueryArgs(args: readonly unknown[]): vo
   assertInt(query.limit, 'limit', 1, 50);
 }
 
+/** county:audit-list — page/limit bounded, optional strings capped. */
+export function assertCountyAuditQueryArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [query] = args;
+  if (!isPlainObject(query)) throw new IPCError('Expected a query object.');
+  assertKnownKeys(query, ['search', 'action', 'entityType', 'page', 'limit']);
+  assertOptionalString(query.search, 'search', 200);
+  assertOptionalString(query.action, 'action', 50);
+  assertOptionalString(query.entityType, 'entityType', 100);
+  assertInt(query.page, 'page', 1, 1_000_000);
+  assertInt(query.limit, 'limit', 1, 100);
+}
+
 /** A bare file name (no folders, drives or "..") of a report export type. */
 const SAVE_FILE_NAME = /^[^\\/:*?"<>|]+\.(pdf|xlsx|docx)$/i;
 const SAVE_FILE_MAX_BYTES = 50 * 1024 * 1024;
