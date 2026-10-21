@@ -19,6 +19,9 @@ function setup() {
     getReportOptions: vi.fn(async () => ({ data: { districts: [] } })),
     listReportSchools: vi.fn(async () => ({ data: [{ id: 's-1', name: 'Alpha' }] })),
     getEnrollmentReport: vi.fn(async () => ({ data: { reportType: 'ENROLLMENT' } })),
+    getAttendanceReport: vi.fn(async () => ({ data: { reportType: 'ATTENDANCE' } })),
+    getAcademicReport: vi.fn(async () => ({ data: { reportType: 'ACADEMIC' } })),
+    getStaffComplianceReport: vi.fn(async () => ({ data: { reportType: 'STAFF_COMPLIANCE' } })),
   };
   registerCountyReportHandlers(handle, { county } as unknown as ApplicationLayer);
   const call = (channel: string, ...args: unknown[]) => {
@@ -39,6 +42,24 @@ describe('county reports channels', () => {
     expect(await call('county:enrollment-report', query)).toEqual({ reportType: 'ENROLLMENT' });
     expect(county.getEnrollmentReport).toHaveBeenCalledWith(query);
     expect(await call('county:enrollment-report', {})).toEqual({ reportType: 'ENROLLMENT' });
+  });
+
+  it('attendance, academic and staff channels forward and return .data', async () => {
+    const { county, call } = setup();
+    const attendance = { districtId: 'd-1', period: 'MONTHLY' };
+    expect(await call('county:attendance-report', attendance)).toEqual({ reportType: 'ATTENDANCE' });
+    expect(county.getAttendanceReport).toHaveBeenCalledWith(attendance);
+    expect(await call('county:academic-report', { schoolId: 's-1' })).toEqual({ reportType: 'ACADEMIC' });
+    expect(county.getAcademicReport).toHaveBeenCalledWith({ schoolId: 's-1' });
+    expect(await call('county:staff-report', {})).toEqual({ reportType: 'STAFF_COMPLIANCE' });
+    expect(county.getStaffComplianceReport).toHaveBeenCalledWith({});
+  });
+
+  it('attendance refuses an unknown period; academic and staff refuse a period', () => {
+    const { call } = setup();
+    expect(() => call('county:attendance-report', { period: 'YEARLY' })).toThrow(IPCError);
+    expect(() => call('county:academic-report', { period: 'DAILY' })).toThrow(IPCError);
+    expect(() => call('county:staff-report', 'x')).toThrow(IPCError);
   });
 
   it('refuses bad arguments', () => {

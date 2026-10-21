@@ -1178,15 +1178,26 @@ export function assertCountyFeeRulesQueryArgs(args: readonly unknown[]): void {
   assertCountyFinancePageQuery(args, []);
 }
 
-/** County Generate Reports: no districtId = county-wide. */
-export function assertCountyEnrollmentReportQueryArgs(args: readonly unknown[]): void {
+function assertCountyReportScope(args: readonly unknown[], extraKeys: readonly string[]): Record<string, unknown> {
   assertArity(args, 1);
   const [query] = args;
   if (!isPlainObject(query)) throw new IPCError('Expected a query object.');
-  assertKnownKeys(query, ['districtId', 'schoolId']);
+  assertKnownKeys(query, ['districtId', 'schoolId', ...extraKeys]);
   for (const key of ['districtId', 'schoolId'] as const) {
     if (query[key] !== undefined) assertString(query[key], key, ID_MAX_LENGTH);
   }
+  return query;
+}
+
+/** County Generate Reports: no districtId = county-wide. */
+export function assertCountyEnrollmentReportQueryArgs(args: readonly unknown[]): void {
+  assertCountyReportScope(args, []);
+}
+
+/** The Attendance report adds its time period. */
+export function assertCountyAttendanceReportQueryArgs(args: readonly unknown[]): void {
+  const query = assertCountyReportScope(args, ['period']);
+  assertOptionalEnumMember(query.period, 'period', ['DAILY', 'WEEKLY', 'MONTHLY']);
 }
 
 export function assertTransferCreateArgs(args: readonly unknown[]): void {
