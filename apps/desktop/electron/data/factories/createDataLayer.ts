@@ -11,6 +11,8 @@ import type {
   ICountyTeachersReadModel,
   ICountyFinanceReadModel,
   ICountyReportsReadModel,
+  ICountyMessagingReadModel,
+  ICountyNotificationsRepository,
   IUserRepository,
   IAcademicYearRepository,
   IClassRepository,
@@ -49,6 +51,8 @@ import { SqliteCountyGuardiansReadModel } from '../repositories/sqlite/business/
 import { SqliteCountyTeachersReadModel } from '../repositories/sqlite/business/SqliteCountyTeachersReadModel';
 import { SqliteCountyFinanceReadModel } from '../repositories/sqlite/business/SqliteCountyFinanceReadModel';
 import { SqliteCountyReportsReadModel } from '../repositories/sqlite/business/SqliteCountyReportsReadModel';
+import { SqliteCountyMessagingReadModel } from '../repositories/sqlite/business/SqliteCountyMessagingReadModel';
+import { SqliteCountyNotificationsRepository } from '../repositories/sqlite/business/SqliteCountyNotificationsRepository';
 import { SqliteStudentRepository } from '../repositories/sqlite/business/SqliteStudentRepository';
 import { SqliteUserRepository } from '../repositories/sqlite/business/SqliteUserRepository';
 import { SqliteGuardianRepository } from '../repositories/sqlite/business/SqliteGuardianRepository';
@@ -89,6 +93,8 @@ export interface DataLayer {
     countyTeachers: ICountyTeachersReadModel;
     countyFinance: ICountyFinanceReadModel;
     countyReports: ICountyReportsReadModel;
+    countyMessaging: ICountyMessagingReadModel;
+    countyNotifications: ICountyNotificationsRepository;
     users: IUserRepository;
     academicYears: IAcademicYearRepository;
     classes: IClassRepository;
@@ -162,6 +168,8 @@ export function createDataLayer(manager: DatabaseManager, log: DatabaseLogger): 
   const countyTeachers = new SqliteCountyTeachersReadModel(context);
   const countyFinance = new SqliteCountyFinanceReadModel(context);
   const countyReports = new SqliteCountyReportsReadModel(context);
+  const countyMessaging = new SqliteCountyMessagingReadModel(context);
+  const countyNotifications = new SqliteCountyNotificationsRepository(context);
   const users = new SqliteUserRepository(context);
   const academicYears = new SqliteAcademicYearRepository(context);
   const classes = new SqliteClassRepository(context);
@@ -218,6 +226,8 @@ export function createDataLayer(manager: DatabaseManager, log: DatabaseLogger): 
       countyTeachers,
       countyFinance,
       countyReports,
+      countyMessaging,
+      countyNotifications,
       users,
       academicYears,
       classes,
