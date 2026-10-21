@@ -84,12 +84,13 @@ describe('Header', () => {
   });
 
   it('still routes to sign-in when sign-out rejects', async () => {
-    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.mocked(sharedBridge.logout).mockRejectedValue(new Error('boom'));
     render(<Header role={SystemRole.INSTITUTION_ADMIN} />);
     fireEvent.click(screen.getByText('Joseph Boakai'));
     fireEvent.click(screen.getByText('Sign Out'));
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/'));
+    expect(errorSpy).toHaveBeenCalled();
   });
 
   it('writes nothing to the console', () => {

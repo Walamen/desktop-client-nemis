@@ -49,6 +49,9 @@ export interface AcademicYearResult {
 export interface CurrentUserResult {
   id: string;
   fullName: string;
+  firstName: string;
+  lastName: string;
+  photoUrl: string | null;
   /** null for an account that signs in by NEMIS ID (a student) rather than email. */
   email: string | null;
   isActive: boolean;

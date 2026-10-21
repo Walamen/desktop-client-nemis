@@ -74,9 +74,9 @@ export function Header({ role }: { role: DesktopPortalRole }) {
             onOpenChange={setMenuOpen}
             trigger={
               <>
-                {/* avatarRole picks the per-role fallback image, but it's only reached when there's
-                    no src AND no computable initials; since fullName always yields initials here,
-                    this plumbing is correct but currently dormant — the initials branch always wins. */}
+                {/* avatarRole picks the per-role fallback image. Avatar uses it only when there is no photo and
+                    no initials: i.e. before the user has loaded (first/last undefined). A photo that fails to
+                    load falls back to initials. */}
                 <Avatar src={user?.photoUrl ?? undefined} firstName={user?.firstName} lastName={user?.lastName} role={headerConfigs[role].avatarRole} size="md" className="border border-gray-200" alt={fullName} />
                 <div className="hidden sm:flex flex-col items-start leading-tight">
                   <span className="text-sm font-semibold text-gray-900">{fullName}</span>
