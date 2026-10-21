@@ -7,6 +7,17 @@ import { GenerateReportsPage } from './GenerateReportsPage';
 const replace = vi.fn();
 vi.mock('next/navigation', () => ({ useRouter: () => ({ replace, push: vi.fn() }) }));
 
+const exportFile = { fileName: 'Grand-Bassa-enrollment-report-county-2026-10-20.pdf', bytes: new Uint8Array([37, 80, 68, 70]) };
+const exportsLib = vi.hoisted(() => ({
+  exportToPDF: vi.fn(),
+  exportToExcel: vi.fn(),
+  exportToWord: vi.fn(),
+  exportFinancialToPDF: vi.fn(),
+  exportFinancialToExcel: vi.fn(),
+  exportFinancialToWord: vi.fn(),
+}));
+vi.mock('@/lib/reports/automatedReportExport', () => exportsLib);
+
 const options = {
   county: { id: 'county-1', name: 'Grand Bassa', code: 'GB' },
   districts: [
@@ -102,7 +113,9 @@ function renderWith(overrides: Record<string, unknown> = {}) {
     listFinanceSchools: vi.fn(async () => [financeSchool('a', 'Alpha School', 72), financeSchool('b', 'Beta School', 45), financeSchool('c', 'Gamma School', 30)]),
     ...overrides,
   };
-  (window as unknown as { nemis: unknown }).nemis = { county };
+  const system = { saveFile: vi.fn(async () => ({ saved: true, path: 'D:\\Reports\\enrollment.pdf' })), ...(overrides.system as object) };
+  (window as unknown as { nemis: unknown }).nemis = { county, system };
+  for (const build of Object.values(exportsLib)) build.mockReset().mockResolvedValue(exportFile);
   render(
     <PresentationProvider layer={createRendererPresentation()}>
       <GenerateReportsPage />
@@ -119,6 +132,57 @@ const card = (label: string) => screen.getByText(label, { selector: 'p' }).close
 const districtSelect = () => screen.getByDisplayValue(/All Districts|— Choose district —|Buchanan|Owensgrove/);
 
 describe('County Generate Reports page', () => {
+  it('PDF export saves through the app and shows where', async () => {
+    renderWith();
+    await waitFor(() => expect(screen.getByText('Alpha School')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'PDF' }));
+    await waitFor(() => expect(screen.getByText(/Saved to D:\\Reports\\enrollment\.pdf/)).toBeInTheDocument());
+    expect(exportsLib.exportToPDF).toHaveBeenCalledWith(
+      expect.objectContaining({ reportType: 'ENROLLMENT' }),
+      expect.objectContaining({ countyName: 'Grand Bassa', countyCode: 'GB', countyWide: true, generatedBy: 'County CEO' }),
+    );
+    const nemis = (window as unknown as { nemis: { system: { saveFile: ReturnType<typeof vi.fn> } } }).nemis;
+    expect(nemis.system.saveFile).toHaveBeenCalledWith(exportFile);
+  });
+
+  it('Excel and Word use their builders; Financial uses the financial builders', async () => {
+    renderWith();
+    await waitFor(() => expect(screen.getByText('Alpha School')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Excel' }));
+    await waitFor(() => expect(exportsLib.exportToExcel).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Word' })).not.toBeDisabled());
+    fireEvent.click(screen.getByRole('button', { name: 'Word' }));
+    await waitFor(() => expect(exportsLib.exportToWord).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole('button', { name: /Financial/ }));
+    await waitFor(() => expect(screen.getByText('Total Expected')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'PDF' }));
+    await waitFor(() => expect(exportsLib.exportFinancialToPDF).toHaveBeenCalled());
+    expect(exportsLib.exportFinancialToPDF.mock.calls[0]![0]).toMatchObject({ dashboard: expect.objectContaining({ totalExpected: 1000 }) });
+  });
+
+  it('a cancelled save shows nothing', async () => {
+    renderWith({ system: { saveFile: vi.fn(async () => ({ saved: false })) } });
+    await waitFor(() => expect(screen.getByText('Alpha School')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'PDF' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'PDF' })).not.toBeDisabled());
+    expect(screen.queryByText(/Saved to/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Export failed. Please try again.')).not.toBeInTheDocument();
+  });
+
+  it('a failed export says so', async () => {
+    renderWith({ system: { saveFile: vi.fn(async () => Promise.reject(new Error('disk full'))) } });
+    await waitFor(() => expect(screen.getByText('Alpha School')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'PDF' }));
+    await waitFor(() => expect(screen.getByText('Export failed. Please try again.')).toBeInTheDocument());
+  });
+
+  it('export buttons wait for the report', async () => {
+    renderWith({ getEnrollmentReport: vi.fn(() => new Promise(() => {})) });
+    await waitFor(() => expect(screen.getByText(/Generating enrollment report/)).toBeInTheDocument());
+    for (const name of ['PDF', 'Excel', 'Word']) expect(screen.getByRole('button', { name })).toBeDisabled();
+  });
+
+
   it('header shows the county name, code and title', async () => {
     renderWith();
     await waitFor(() => expect(screen.getByText('GB')).toBeInTheDocument());

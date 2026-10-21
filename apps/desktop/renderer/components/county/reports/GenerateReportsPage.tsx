@@ -8,7 +8,10 @@ import {
   Calendar,
   ClipboardCheck,
   DollarSign,
+  Download,
+  FileSpreadsheet,
   FileText,
+  FileType,
   GraduationCap,
   MapPin,
   RefreshCw,
@@ -16,6 +19,9 @@ import {
   Users,
 } from "lucide-react";
 import { useCountyReportsViewModel } from "@/lib/presentation/hooks/county";
+import { useCurrentUserViewModel } from "@/lib/presentation/hooks/shared";
+import { systemBridge } from "@/services/nemis-bridge/shared/system-bridge";
+import type { ExportedFile, ExportOptions } from "@/lib/reports/automatedReportExport";
 import { useViewModel } from "@/hooks/use-view-model";
 import { useRevalidateOnSync } from "@/hooks/use-revalidate-on-sync";
 import { AcademicReportView } from "./AcademicReportView";
@@ -39,6 +45,9 @@ const reportTypes = [
   { id: "FINANCIAL" as ReportType, name: "Financial", icon: DollarSign, desc: "Fee collection and revenue report" },
 ];
 
+type ExportFormat = "pdf" | "excel" | "word";
+type ExportState = { kind: "idle" } | { kind: "exporting" } | { kind: "saved"; path: string } | { kind: "failed" };
+
 const periodLabels: Record<CountyAttendancePeriod, string> = {
   DAILY: "Last 7 Days",
   WEEKLY: "Last 4 Weeks",
@@ -55,6 +64,7 @@ export function GenerateReportsPage() {
   const [selectedReport, setSelectedReport] = useState<ReportType>("ENROLLMENT");
   const [selectedSchoolId, setSelectedSchoolId] = useState<string>("");
   const [attendancePeriod, setAttendancePeriod] = useState<CountyAttendancePeriod>("WEEKLY");
+  const [exportState, setExportState] = useState<ExportState>({ kind: "idle" });
 
   const vm = useCountyReportsViewModel();
   const optionsState = useViewModel(vm.store, (s) => s.options);
@@ -66,6 +76,8 @@ export function GenerateReportsPage() {
   const financeDashboardState = useViewModel(vm.store, (s) => s.financeDashboard);
   const financeSchoolsState = useViewModel(vm.store, (s) => s.financeSchools);
   const financeLoadedAt = useViewModel(vm.store, (s) => s.financeLoadedAt);
+  const currentUser = useCurrentUserViewModel();
+  const userState = useViewModel(currentUser.store, (s) => s.user);
 
   const isAllDistricts = selectedDistrictId === "ALL";
   const singleDistrictId = selectedDistrictId && !isAllDistricts ? selectedDistrictId : "";
@@ -123,6 +135,51 @@ export function GenerateReportsPage() {
   const handleRefresh = () => {
     if (selectedReport === "FINANCIAL") void vm.loadFinance();
     else loadReport();
+  };
+
+  const financeReady = isReady(financeDashboardState) && isReady(financeSchoolsState);
+  const isExporting = exportState.kind === "exporting";
+  const canExport = !isExporting && (selectedReport === "FINANCIAL" ? financeReady : !!reportData && !isLoading);
+
+  /** Builds the letterhead file in the renderer, then saves it through the app. */
+  const handleExport = async (format: ExportFormat) => {
+    setExportState({ kind: "exporting" });
+    try {
+      const exports = await import("@/lib/reports/automatedReportExport");
+      const user = isReady(userState) ? userState.data : null;
+      const options: ExportOptions = {
+        countyName: county?.name,
+        countyCode: county?.code ?? undefined,
+        generatedBy: user?.fullName || user?.email || "County CEO",
+        countyWide: isAllDistricts,
+      };
+      let file: ExportedFile;
+      if (selectedReport === "FINANCIAL") {
+        if (!isReady(financeDashboardState) || !isReady(financeSchoolsState)) return;
+        const fin = { dashboard: financeDashboardState.data, schools: financeSchoolsState.data };
+        file =
+          format === "pdf"
+            ? await exports.exportFinancialToPDF(fin, options)
+            : format === "excel"
+              ? exports.exportFinancialToExcel(fin, options)
+              : await exports.exportFinancialToWord(fin, options);
+      } else {
+        if (!reportData) return;
+        file =
+          format === "pdf"
+            ? await exports.exportToPDF(reportData, options)
+            : format === "excel"
+              ? exports.exportToExcel(reportData, options)
+              : await exports.exportToWord(reportData, options);
+      }
+      const result = await systemBridge.saveFile(file);
+      // A cancelled save dialog says nothing.
+      setExportState(result.saved ? { kind: "saved", path: result.path } : { kind: "idle" });
+    } catch {
+      setExportState({ kind: "failed" });
+    } finally {
+      setExportState((state) => (state.kind === "exporting" ? { kind: "idle" } : state));
+    }
   };
 
   const selectedDistrictName = isAllDistricts
@@ -249,6 +306,29 @@ export function GenerateReportsPage() {
                 </div>
               )}
 
+              {/* Export */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-widest text-slate-400 mb-2">Export</label>
+                <div className="space-y-1.5">
+                  {(
+                    [
+                      { format: "pdf", label: "PDF", Icon: Download },
+                      { format: "excel", label: "Excel", Icon: FileSpreadsheet },
+                      { format: "word", label: "Word", Icon: FileType },
+                    ] as const
+                  ).map(({ format, label, Icon }) => (
+                    <button
+                      key={format}
+                      onClick={() => void handleExport(format)}
+                      disabled={!canExport}
+                      className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-slate-600 border border-slate-200 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <Icon className="w-3.5 h-3.5" /> {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Refresh */}
               <button
                 onClick={handleRefresh}
@@ -282,6 +362,18 @@ export function GenerateReportsPage() {
                   <span className="text-xs text-slate-400">&middot; {new Date(reportTime).toLocaleString()}</span>
                 )}
               </div>
+              {exportState.kind === "exporting" && (
+                <div className="flex items-center gap-2 text-xs text-secondary font-medium">
+                  <Spinner size="sm" />
+                  Preparing export with official letterhead…
+                </div>
+              )}
+              {exportState.kind === "saved" && (
+                <p className="text-xs font-medium text-active break-all">Saved to {exportState.path}</p>
+              )}
+              {exportState.kind === "failed" && (
+                <p className="text-xs font-medium text-error">Export failed. Please try again.</p>
+              )}
             </div>
 
             {/* Financial report — county-wide, no district filter needed */}
