@@ -49,6 +49,7 @@
     "react-icons": "^5.7.0",
     "react-phone-number-input": "^3.4.18",
     "recharts": "^3.10.1",
+    "socket.io-client": "4.8.3",
     "tailwind-merge": "^3.7.0",
     "update-electron-app": "^3.3.0",
     "validator": "13.15.26",

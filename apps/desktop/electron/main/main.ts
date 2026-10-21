@@ -1,5 +1,8 @@
 import os from 'node:os';
 import { app, BrowserWindow, dialog } from 'electron';
+import { io } from 'socket.io-client';
+import { REALTIME_EVENT_CHANNEL, SystemRole } from '@nemis-desktop/types';
+import { RealtimeClient, type SocketLike } from '@app/realtime/RealtimeClient';
 import started from 'electron-squirrel-startup';
 import { loadConfig } from '@app/config/env';
 import { DatabaseError } from '@app/database/errors/errors';
@@ -50,6 +53,7 @@ function bootstrap(): void {
   let mainWindow: BrowserWindow | null = null;
   let workspaces: WorkspaceManager | null = null;
   let networkMonitor: NetworkMonitor | null = null;
+  let realtime: RealtimeClient | undefined;
   let syncWorker: DesktopSyncWorker | null = null;
   let quitHandled = false;
   const allowedOrigins = config.isDev ? [config.rendererDevUrl] : [RENDERER_ORIGIN];
@@ -124,6 +128,7 @@ function bootstrap(): void {
         // future, so claimBatch would skip them.
         syncWorker?.releaseBackoff();
         void syncWorker?.syncActive().catch((error) => logger.warn(`Reconnect sync deferred: ${String(error)}`));
+        void realtime?.tick();
       });
       syncWorker = new DesktopSyncWorker(workspaces, backendProvisioning, networkMonitor);
       // Un-stick anything a previous process left mid-flight, before the timer,
@@ -134,6 +139,26 @@ function bootstrap(): void {
       // unlock. See the fix-wave report's I2 note.
       syncWorker.recoverStaleInFlight();
       const schoolAdmin = new SchoolAdminModuleService(workspaces);
+      // County Messages + Notifications: the server's live socket. Runs only
+      // while a County workspace is open and the network is up; driven by the
+      // sync timer and the reconnect callback (tick is idempotent).
+      realtime = new RealtimeClient(config.apiBaseUrl, {
+        connect: (url, options) => io(url, options) as unknown as SocketLike,
+        getCookie: () => backendProvisioning.sessionCookie(),
+        pullNow: () => syncWorker!.pullNow(),
+        emit: (event) => {
+          for (const window of BrowserWindow.getAllWindows()) window.webContents.send(REALTIME_EVENT_CHANNEL, event);
+        },
+        shouldRun: () => {
+          try {
+            return !!networkMonitor?.isOnline() && workspaces!.active.user.role === SystemRole.COUNTY_ADMIN;
+          } catch {
+            return false;
+          }
+        },
+        setTimer: (fn, ms) => setTimeout(fn, ms),
+        clearTimer: (handle) => clearTimeout(handle as NodeJS.Timeout),
+      });
       let syncTimerStopped = false;
       let syncTimer: NodeJS.Timeout | undefined;
       const scheduleSync = () => {
@@ -142,6 +167,7 @@ function bootstrap(): void {
             ?.syncActive()
             .catch((error) => logger.warn(`Background sync deferred: ${String(error)}`))
             .finally(() => {
+              void realtime?.tick();
               if (!syncTimerStopped) scheduleSync();
             });
         }, 20_000);
@@ -157,7 +183,7 @@ function bootstrap(): void {
       }
 
       registerIpcHandlers(services, application, provisioning, syncWorker, schoolAdmin, workspaces, backendProvisioning, {
-        onlineUsers: async () => [],
+        onlineUsers: (userIds) => realtime?.onlineUsers(userIds) ?? Promise.resolve([]),
       });
 
       mainWindow = createHardenedWindow();
@@ -172,6 +198,7 @@ function bootstrap(): void {
         syncTimerStopped = true;
         clearTimeout(syncTimer);
         networkMonitor?.stop();
+        realtime?.stop();
       });
     })
     .catch((error: unknown) => {
