@@ -107,16 +107,20 @@ const SPECS: Record<ProvisioningCollection, TableSpec> = {
   assignments: spec('assignments', ['id','classId','subjectId','teacherId','title','type','status','description','instructions','dueDate','totalMarks','attachmentUrl','attachmentName','createdAt','updatedAt']),
   assignmentSubmissions: spec('assignment_submissions', ['id','assignmentId','studentId','status','submittedAt','response','fileUrl','fileName','grade','feedback','createdAt','updatedAt']),
   classResources: spec('class_resources', ['id','institutionId','classId','subjectId','staffId','title','description','type','fileUrl','linkUrl','fileSize','fileType','category','isVisible','createdAt','updatedAt']),
-  counties: spec('counties', ['id', 'code', 'name']),
+  counties: spec('counties', ['id', 'code', 'name', 'isActive', 'createdAt', 'updatedAt']),
   // County Messages: pull-only (no outbox triggers), the County Admin's own threads.
   directConversations: spec('direct_conversations', ['id','initiatorId','recipientId','lastMessageAt','createdAt','updatedAt','counterpartUserId','counterpartFirstName','counterpartLastName','counterpartPhotoUrl','counterpartRole','counterpartInstitutionName']),
   directMessages: spec('direct_messages', ['id','conversationId','senderId','content','isRead','readAt','createdAt','updatedAt']),
+  auditLogs: spec('audit_logs', ['id','userId','action','entityType','entityId','timestamp','actorName','actorScope']),
 };
 
 const DELETE_ORDER = [...PROVISIONING_COLLECTIONS].reverse();
 
 export class ProvisioningImporter {
-  constructor(private readonly managerSource: DatabaseManager | (() => DatabaseManager)) {}
+  constructor(
+    private readonly managerSource: DatabaseManager | (() => DatabaseManager),
+    private readonly now: () => Date = () => new Date(),
+  ) {}
 
   private get manager(): DatabaseManager {
     return typeof this.managerSource === 'function' ? this.managerSource() : this.managerSource;
@@ -215,6 +219,8 @@ export class ProvisioningImporter {
           snapshot.data.students ?? [],
         );
         verifyDatabase(db, snapshot, { skipCounts: options.merge ?? false });
+        // After the count check: the device keeps 12 months of audit history.
+        pruneAuditLogs(db, this.now());
         if (options.preserveConflicts) {
           db.prepare(`DELETE FROM sync_queue WHERE status='completed'`).run();
         } else {
@@ -428,6 +434,12 @@ function sqliteValue(value: unknown, column: string): string | number | null {
   if (typeof value === 'string' || typeof value === 'number') return value;
   if (column === 'applicableLevels' && Array.isArray(value)) return value.join(',');
   return JSON.stringify(value);
+}
+
+/** The county audit trail is kept to the last 365 days on this device. */
+export function pruneAuditLogs(db: SqliteDatabase, now: Date): void {
+  const cutoff = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000).toISOString();
+  db.prepare(`DELETE FROM audit_logs WHERE timestamp < ?`).run(cutoff);
 }
 
 function verifyDatabase(

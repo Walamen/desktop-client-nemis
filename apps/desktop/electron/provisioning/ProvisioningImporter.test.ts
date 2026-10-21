@@ -532,12 +532,35 @@ describe('ProvisioningImporter', () => {
     expect(countRows('sync_queue')).toBe(0);
   });
 
+  it('imports the county audit trail and prunes rows older than 365 days after verification', () => {
+    const day = 24 * 60 * 60 * 1000;
+    const audit = (id: string, ageDays: number) => ({
+      id, userId: 'deo-1', action: 'CREATE', entityType: 'Student', entityId: 's1',
+      timestamp: new Date(Date.now() - ageDays * day).toISOString(), actorName: 'James Doe', actorScope: 'District',
+    });
+    const importer = new ProvisioningImporter(manager);
+    // A row just inside the window: the full import's manifest count still matches.
+    importer.import(snapshotOf({ ...BASE_DATA, auditLogs: [audit('a-recent', 364)] }), CONTEXT);
+    const db = manager.connection;
+    expect(db.prepare(`SELECT id, actorName, actorScope FROM audit_logs`).all()).toEqual([
+      { id: 'a-recent', actorName: 'James Doe', actorScope: 'District' },
+    ]);
+    expect(countRows('sync_queue')).toBe(0);
+    // A row that has aged out locally is removed by the next import; recent ones stay.
+    db.prepare(`UPDATE audit_logs SET timestamp=? WHERE id='a-recent'`).run(new Date(Date.now() - 366 * day).toISOString());
+    importer.import(snapshotOf({ ...BASE_DATA, auditLogs: [audit('a-new', 1)] }), CONTEXT, { merge: true });
+    expect(db.prepare(`SELECT id FROM audit_logs ORDER BY id`).all()).toEqual([{ id: 'a-new' }]);
+  });
+
   it('imports the county row and the dashboard columns', () => {
     const importer = new ProvisioningImporter(manager);
     importer.import(
       snapshotOf({
         ...BASE_DATA,
-        counties: [{ id: 'county-1', code: 'GB', name: 'Grand Bassa', isActive: true }],
+        counties: [{
+          id: 'county-1', code: 'GB', name: 'Grand Bassa', isActive: false,
+          createdAt: '2020-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
+        }],
         districts: [{ id: 'district-1', name: 'Sinkor', countyId: 'county-1', isActive: false }],
         institutions: [{ ...BASE_DATA.institutions![0]!, isActive: false }],
         students: [{ ...student('s1', 'Ada'), createdAt: '2026-03-15T12:00:00.000Z' }],
@@ -545,8 +568,8 @@ describe('ProvisioningImporter', () => {
       CONTEXT,
     );
     const db = manager.connection;
-    expect(db.prepare(`SELECT id, code, name FROM counties`).all()).toEqual([
-      { id: 'county-1', code: 'GB', name: 'Grand Bassa' },
+    expect(db.prepare(`SELECT id, code, name, isActive, createdAt, updatedAt FROM counties`).all()).toEqual([
+      { id: 'county-1', code: 'GB', name: 'Grand Bassa', isActive: 0, createdAt: '2020-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' },
     ]);
     expect(db.prepare(`SELECT isActive FROM districts`).get()).toEqual({ isActive: 0 });
     expect(db.prepare(`SELECT isActive FROM institutions`).get()).toEqual({ isActive: 0 });

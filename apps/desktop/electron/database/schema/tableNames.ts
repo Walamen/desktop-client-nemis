@@ -34,6 +34,7 @@ export const TableNames = {
   termAverages: 'term_averages',
   directConversations: 'direct_conversations',
   directMessages: 'direct_messages',
+  auditLogs: 'audit_logs',
   subjectTeachers: 'subject_teachers',
   classTeachers: 'class_teachers',
   classSubjectTeachers: 'class_subject_teachers',
