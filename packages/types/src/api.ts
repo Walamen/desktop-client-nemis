@@ -70,6 +70,7 @@ import type {
   CountyReportOptions,
   CountyReportSchool,
 } from './county-reports';
+import type { SaveFileRequest, SaveFileResult } from './file-save';
 import type {
   CountyActivationLink,
   CountyAssignUserRequest,
@@ -189,6 +190,8 @@ export interface ProvisioningApi {
 
 export interface SystemApi {
   getVersion(): Promise<string>;
+  /** Native save dialog, then writes the bytes; { saved: false } when cancelled. */
+  saveFile(request: SaveFileRequest): Promise<SaveFileResult>;
 }
 
 export interface SettingsApi {

@@ -1178,6 +1178,29 @@ export function assertCountyFeeRulesQueryArgs(args: readonly unknown[]): void {
   assertCountyFinancePageQuery(args, []);
 }
 
+/** A bare file name (no folders, drives or "..") of a report export type. */
+const SAVE_FILE_NAME = /^[^\\/:*?"<>|]+\.(pdf|xlsx|docx)$/i;
+const SAVE_FILE_MAX_BYTES = 50 * 1024 * 1024;
+
+/** system:save-file — checked before any dialog opens. */
+export function assertSaveFileArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [request] = args;
+  if (!isPlainObject(request)) throw new IPCError('Expected a save request.');
+  assertKnownKeys(request, ['fileName', 'bytes']);
+  const { fileName, bytes } = request;
+  if (
+    typeof fileName !== 'string' ||
+    fileName.length > 200 ||
+    fileName.includes('..') ||
+    !SAVE_FILE_NAME.test(fileName)
+  ) {
+    throw new IPCError('Expected a .pdf, .xlsx or .docx file name without folders.');
+  }
+  if (!(bytes instanceof Uint8Array)) throw new IPCError('Expected file bytes.');
+  if (bytes.byteLength > SAVE_FILE_MAX_BYTES) throw new IPCError('The file is too large to save.');
+}
+
 function assertCountyReportScope(args: readonly unknown[], extraKeys: readonly string[]): Record<string, unknown> {
   assertArity(args, 1);
   const [query] = args;

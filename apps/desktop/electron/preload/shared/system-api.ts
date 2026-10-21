@@ -4,4 +4,5 @@ import { invoke } from '../invoke';
 
 export const systemApi: SystemApi = {
   getVersion: () => invoke(IpcChannels.SYSTEM_GET_VERSION),
+  saveFile: (request) => invoke(IpcChannels.SYSTEM_SAVE_FILE, request),
 };

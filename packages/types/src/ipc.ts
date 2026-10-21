@@ -93,6 +93,7 @@ import type {
   CountyReportOptions,
   CountyReportSchool,
 } from './county-reports';
+import type { SaveFileRequest, SaveFileResult } from './file-save';
 import type {
   CountyActivationLink,
   CountyAssignUserRequest,
@@ -200,6 +201,7 @@ export interface IpcContract {
     result: ListPendingRecordsResult;
   };
   'system:get-version': { args: []; result: string };
+  'system:save-file': { args: [request: SaveFileRequest]; result: SaveFileResult };
   'settings:get': { args: [key: string]; result: unknown };
   'dashboard:get-overview': { args: []; result: DashboardOverviewResult };
   'county:get-dashboard': { args: []; result: CountyDashboardResult };
@@ -425,6 +427,7 @@ export const IpcChannels = {
   SYNC_LIST_PENDING: 'sync:list-pending',
   SYNC_LIST_PENDING_RECORDS: 'sync:list-pending-records',
   SYSTEM_GET_VERSION: 'system:get-version',
+  SYSTEM_SAVE_FILE: 'system:save-file',
   SETTINGS_GET: 'settings:get',
   DASHBOARD_GET_OVERVIEW: 'dashboard:get-overview',
   COUNTY_GET_DASHBOARD: 'county:get-dashboard',
