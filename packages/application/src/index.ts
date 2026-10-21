@@ -104,6 +104,7 @@ export * from './use-cases/county/get-county-teacher-detail';
 export * from './use-cases/county/get-county-finance';
 export * from './use-cases/county/get-county-reports';
 export * from './use-cases/county/get-county-messaging';
+export * from './use-cases/county/get-county-audit';
 export * from './use-cases/county/get-county-student-detail';
 export * from './use-cases/county/get-county-guardians';
 export * from './use-cases/county/get-county-guardian-detail';

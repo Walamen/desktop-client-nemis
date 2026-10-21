@@ -101,6 +101,7 @@ import type {
   CountyStartConversationRequest,
 } from './county-messaging';
 import type { CountyNotificationsPage, CountyNotificationsQuery } from './county-notifications';
+import type { CountyAuditPage, CountyAuditQuery, CountyAuditStats, CountySettings } from './county-audit';
 import type {
   CountyActivationLink,
   CountyAssignUserRequest,
@@ -248,6 +249,9 @@ export interface IpcContract {
   'county:messaging-mark-read': { args: [conversationId: string]; result: OnlineCommandResult<null> };
   'messaging:online-users': { args: [userIds: string[]]; result: string[] };
   'county:notifications-list': { args: [query: CountyNotificationsQuery]; result: CountyNotificationsPage };
+  'county:audit-stats': { args: []; result: CountyAuditStats };
+  'county:audit-list': { args: [query: CountyAuditQuery]; result: CountyAuditPage };
+  'county:settings': { args: []; result: CountySettings };
   'county:notifications-mark-read': { args: [notificationId: string]; result: boolean };
   'county:notifications-mark-all-read': { args: []; result: number };
   'county:list-users': { args: [query: CountyUsersQuery]; result: CountyUsersResult };
@@ -485,6 +489,9 @@ export const IpcChannels = {
   COUNTY_NOTIFICATIONS_LIST: 'county:notifications-list',
   COUNTY_NOTIFICATIONS_MARK_READ: 'county:notifications-mark-read',
   COUNTY_NOTIFICATIONS_MARK_ALL_READ: 'county:notifications-mark-all-read',
+  COUNTY_AUDIT_STATS: 'county:audit-stats',
+  COUNTY_AUDIT_LIST: 'county:audit-list',
+  COUNTY_SETTINGS: 'county:settings',
   COUNTY_LIST_USERS: 'county:list-users',
   COUNTY_GET_USER_OPTIONS: 'county:get-user-options',
   COUNTY_SET_USER_ACTIVE: 'county:set-user-active',

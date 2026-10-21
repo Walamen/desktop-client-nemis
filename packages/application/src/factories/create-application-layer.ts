@@ -27,6 +27,15 @@ import {
   MarkAllCountyNotificationsReadUseCase,
   MarkCountyNotificationReadUseCase,
 } from '../use-cases/county/get-county-messaging';
+import type {
+  ICountyAuditReadModel,
+  ICountySettingsReadModel,
+} from '../interfaces/county/county-audit-read-model';
+import {
+  GetCountyAuditLogsUseCase,
+  GetCountyAuditStatsUseCase,
+  GetCountySettingsUseCase,
+} from '../use-cases/county/get-county-audit';
 import {
   GetCountyAcademicReportUseCase,
   GetCountyAttendanceReportUseCase,
@@ -219,6 +228,8 @@ export interface ApplicationPorts {
   /** County Messages page (read side) and Notifications page. */
   countyMessaging: ICountyMessagingReadModel;
   countyNotifications: ICountyNotificationsRepository;
+  countyAudit: ICountyAuditReadModel;
+  countySettings: ICountySettingsReadModel;
   /** County Administrative Users page: list, stats and assignment options. */
   countyUsers: ICountyUsersReadModel;
   gradingConfigs: IGradingConfigRepository;
@@ -624,6 +635,9 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
     listNotifications: new GetCountyNotificationsUseCase(notificationDeps),
     markNotificationRead: new MarkCountyNotificationReadUseCase(notificationDeps),
     markAllNotificationsRead: new MarkAllCountyNotificationsReadUseCase(notificationDeps),
+    getAuditStats: new GetCountyAuditStatsUseCase({ readModel: ports.countyAudit, logger }),
+    listAuditLogs: new GetCountyAuditLogsUseCase({ readModel: ports.countyAudit, logger }),
+    getCountySettings: new GetCountySettingsUseCase({ readModel: ports.countySettings, logger }),
     listUsers: new GetCountyUsersUseCase({
       readModel: ports.countyUsers,
       countyReadModel: ports.countyAnalytics,

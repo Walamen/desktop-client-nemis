@@ -30,6 +30,10 @@ import type {
   CountyDirectMessage,
   CountyMessagingOverview,
   CountyNotificationsPage,
+  CountyAuditPage,
+  CountyAuditQuery,
+  CountyAuditStats,
+  CountySettings,
   CountyNotificationsQuery,
   CountyUserOptions,
   CountyUsersQuery,
@@ -76,6 +80,11 @@ import type {
   MarkAllCountyNotificationsReadUseCase,
   MarkCountyNotificationReadUseCase,
 } from '../use-cases/county/get-county-messaging';
+import type {
+  GetCountyAuditLogsUseCase,
+  GetCountyAuditStatsUseCase,
+  GetCountySettingsUseCase,
+} from '../use-cases/county/get-county-audit';
 import type { GetCountyUsersUseCase } from '../use-cases/county/get-county-users';
 import type { GetCountyUserOptionsUseCase } from '../use-cases/county/get-county-user-options';
 
@@ -111,6 +120,9 @@ export interface CountyApplicationServiceDeps {
   listNotifications: GetCountyNotificationsUseCase;
   markNotificationRead: MarkCountyNotificationReadUseCase;
   markAllNotificationsRead: MarkAllCountyNotificationsReadUseCase;
+  getAuditStats: GetCountyAuditStatsUseCase;
+  listAuditLogs: GetCountyAuditLogsUseCase;
+  getCountySettings: GetCountySettingsUseCase;
   listUsers: GetCountyUsersUseCase;
   getUserOptions: GetCountyUserOptionsUseCase;
 }
@@ -212,6 +224,15 @@ export class CountyApplicationService {
   }
   markAllNotificationsRead(): Promise<ApplicationResponse<number>> {
     return this.deps.markAllNotificationsRead.execute({});
+  }
+  getAuditStats(): Promise<ApplicationResponse<CountyAuditStats>> {
+    return this.deps.getAuditStats.execute({});
+  }
+  listAuditLogs(query: CountyAuditQuery): Promise<ApplicationResponse<CountyAuditPage>> {
+    return this.deps.listAuditLogs.execute(query);
+  }
+  getCountySettings(): Promise<ApplicationResponse<CountySettings>> {
+    return this.deps.getCountySettings.execute({});
   }
   listUsers(query: CountyUsersQuery): Promise<ApplicationResponse<CountyUsersResult>> {
     return this.deps.listUsers.execute(query);

@@ -26,5 +26,6 @@ export * from './county-reports';
 export * from './file-save';
 export * from './county-messaging';
 export * from './county-notifications';
+export * from './county-audit';
 export * from './realtime';
 export * from './county-users';

@@ -78,6 +78,7 @@ import type {
   CountyStartConversationRequest,
 } from './county-messaging';
 import type { CountyNotificationsPage, CountyNotificationsQuery } from './county-notifications';
+import type { CountyAuditPage, CountyAuditQuery, CountyAuditStats, CountySettings } from './county-audit';
 import type { EventsApi } from './realtime';
 import type {
   CountyActivationLink,
@@ -257,6 +258,11 @@ export interface CountyApi {
   listNotifications(query: CountyNotificationsQuery): Promise<CountyNotificationsPage>;
   markNotificationRead(notificationId: string): Promise<boolean>;
   markAllNotificationsRead(): Promise<number>;
+  /** Audit Trail (offline): the county's last 12 months. */
+  getAuditStats(): Promise<CountyAuditStats>;
+  listAuditLogs(query: CountyAuditQuery): Promise<CountyAuditPage>;
+  /** Settings: the county row and its counts, from this device. */
+  getCountySettings(): Promise<CountySettings>;
   listUsers(query: CountyUsersQuery): Promise<CountyUsersResult>;
   getUserOptions(): Promise<CountyUserOptions>;
   /** Online-only user commands; each forces a pull afterwards. */
