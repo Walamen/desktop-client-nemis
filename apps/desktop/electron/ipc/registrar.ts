@@ -54,6 +54,9 @@ import {
   registerCountyTeacherHandlers,
   registerCountyFinanceHandlers,
   registerCountyReportHandlers,
+  registerCountyMessagingHandlers,
+  registerCountyNotificationHandlers,
+  type PresenceSource,
   registerCountyUserHandlers,
   registerCountyUserCommandHandlers,
   registerCountySchoolHandlers,
@@ -69,6 +72,7 @@ export function registerIpcHandlers(
   schoolAdmin: SchoolAdminModuleService,
   workspaces: WorkspaceManager,
   gateway: BackendProvisioningGateway,
+  presence: PresenceSource,
 ): void {
   const securedHandle: IpcHandle = (channel, validate, handler) =>
     bind(
@@ -112,6 +116,7 @@ export function registerIpcHandlers(
   registerRegistryHandlers(securedHandle, gateway, refresh);
   registerTransferHandlers(securedHandle, gateway, refresh);
   registerCountyDeoHandlers(securedHandle, gateway, refresh);
+  registerCountyMessagingHandlers(securedHandle, app, gateway, refresh, presence);
   registerCountyUserCommandHandlers(securedHandle, gateway, refresh, () => workspaces.active.user.scope.scopeId);
   registerCountyRegistrationHandlers(securedHandle, app, (timeoutMs) => syncWorker.pullNow(timeoutMs));
   registerCountyStudentHandlers(securedHandle, app, {
@@ -123,6 +128,7 @@ export function registerIpcHandlers(
   registerCountyTeacherHandlers(securedHandle, app);
   registerCountyFinanceHandlers(securedHandle, app);
   registerCountyReportHandlers(securedHandle, app);
+  registerCountyNotificationHandlers(securedHandle, app);
 
   registerTeacherDashboardHandlers(securedHandle, app);
   registerAssignmentHandlers(securedHandle, app, workspaces);

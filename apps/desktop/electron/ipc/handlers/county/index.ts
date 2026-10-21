@@ -10,4 +10,6 @@ export { registerCountyGuardianHandlers } from './guardians';
 export { registerCountyTeacherHandlers } from './teachers';
 export { registerCountyFinanceHandlers } from './finance';
 export { registerCountyReportHandlers } from './reports';
+export { registerCountyMessagingHandlers, type PresenceSource } from './messaging';
+export { registerCountyNotificationHandlers } from './notifications';
 export { registerCountyUserHandlers, registerCountyUserCommandHandlers } from './users';

@@ -1178,6 +1178,54 @@ export function assertCountyFeeRulesQueryArgs(args: readonly unknown[]): void {
   assertCountyFinancePageQuery(args, []);
 }
 
+const MESSAGE_MAX_LENGTH = 5000;
+
+function assertMessageText(value: unknown, field: string): void {
+  if (typeof value !== 'string' || !value.trim() || value.length > MESSAGE_MAX_LENGTH) {
+    throw new IPCError(`Expected ${field} of 1 to ${MESSAGE_MAX_LENGTH} characters.`);
+  }
+}
+
+/** county:messaging-start. */
+export function assertCountyStartConversationArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [request] = args;
+  if (!isPlainObject(request)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(request, ['targetUserId', 'initialMessage']);
+  assertString(request.targetUserId, 'targetUserId', ID_MAX_LENGTH);
+  assertMessageText(request.initialMessage, 'initialMessage');
+}
+
+/** county:messaging-send. */
+export function assertCountySendMessageArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [request] = args;
+  if (!isPlainObject(request)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(request, ['conversationId', 'content']);
+  assertString(request.conversationId, 'conversationId', ID_MAX_LENGTH);
+  assertMessageText(request.content, 'content');
+}
+
+/** messaging:online-users — at most 500 user ids. */
+export function assertOnlineUsersArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [ids] = args;
+  if (!Array.isArray(ids) || ids.length > 500 || ids.some((id) => typeof id !== 'string' || !id || id.length > ID_MAX_LENGTH)) {
+    throw new IPCError('Expected a list of at most 500 user ids.');
+  }
+}
+
+/** county:notifications-list. */
+export function assertCountyNotificationsQueryArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [query] = args;
+  if (!isPlainObject(query)) throw new IPCError('Expected a query object.');
+  assertKnownKeys(query, ['filter', 'page', 'limit']);
+  assertEnumMember(query.filter, 'filter', ['ALL', 'UNREAD', 'READ']);
+  assertInt(query.page, 'page', 1, 1_000_000);
+  assertInt(query.limit, 'limit', 1, 50);
+}
+
 /** A bare file name (no folders, drives or "..") of a report export type. */
 const SAVE_FILE_NAME = /^[^\\/:*?"<>|]+\.(pdf|xlsx|docx)$/i;
 const SAVE_FILE_MAX_BYTES = 50 * 1024 * 1024;

@@ -23,6 +23,8 @@ import {
   type SchoolSearchResult,
   type CountyAssignDeoRequest,
   type CountyRemoveDeoRequest,
+  type CountySendMessageRequest,
+  type CountyStartConversationRequest,
   type CountyActivationLink,
   type CountyAssignUserRequest,
   type CountyBulkCreateUsersResult,
@@ -270,6 +272,47 @@ export class BackendProvisioningGateway {
       ONLINE_COMMAND,
     );
     return null;
+  }
+
+  /** County Messages: direct-messages getOrCreateConversation + first message. */
+  async startDirectConversation(request: CountyStartConversationRequest): Promise<null> {
+    await this.authorized(
+      '/direct-messages/conversations',
+      { method: 'POST', body: JSON.stringify({ targetUserId: request.targetUserId, initialMessage: request.initialMessage }) },
+      () => undefined,
+      ONLINE_COMMAND,
+    );
+    return null;
+  }
+
+  /** County Messages: direct-messages sendMessage. */
+  async sendDirectMessage(request: CountySendMessageRequest): Promise<null> {
+    await this.authorized(
+      `/direct-messages/conversations/${encodeURIComponent(request.conversationId)}/messages`,
+      { method: 'POST', body: JSON.stringify({ content: request.content }) },
+      () => undefined,
+      ONLINE_COMMAND,
+    );
+    return null;
+  }
+
+  /** County Messages: direct-messages markConversationRead. */
+  async markDirectConversationRead(conversationId: string): Promise<null> {
+    await this.authorized(
+      `/direct-messages/conversations/${encodeURIComponent(conversationId)}/read`,
+      { method: 'PATCH' },
+      () => undefined,
+      ONLINE_COMMAND,
+    );
+    return null;
+  }
+
+  /** The session's cookie header for the live socket (RealtimeClient). Main
+   * process only: it never crosses IPC or reaches a log. Single-flight like
+   * every request, so it never races a refresh. */
+  async sessionCookie(): Promise<string> {
+    const restored = await this.restoreSession();
+    return unwrapCookies(restored.sessionSecret);
   }
 
   /** County (CEO) Manage DEO: districts.service removeOfficer. */

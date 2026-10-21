@@ -488,6 +488,40 @@ describe('BackendProvisioningGateway', () => {
       expect(JSON.parse(String(init.body))).toEqual({ replaceExisting: true });
     });
 
+    it('startDirectConversation POSTs the target and first message', async () => {
+      const fetchMock = vi.fn(async () => response({ conversation: { id: 'c-1' }, message: { id: 'm-1' } }));
+      vi.stubGlobal('fetch', fetchMock);
+      expect(await buildGateway().startDirectConversation({ targetUserId: 'deo-1', initialMessage: 'Hello' })).toBeNull();
+      const [url, init] = fetchMock.mock.calls[0] as unknown as [URL, RequestInit];
+      expect(url).toEqual(new URL('https://nemis.example/direct-messages/conversations'));
+      expect(init.method).toBe('POST');
+      expect(JSON.parse(String(init.body))).toEqual({ targetUserId: 'deo-1', initialMessage: 'Hello' });
+    });
+
+    it('sendDirectMessage POSTs the content to the conversation', async () => {
+      const fetchMock = vi.fn(async () => response({ id: 'm-2' }));
+      vi.stubGlobal('fetch', fetchMock);
+      expect(await buildGateway().sendDirectMessage({ conversationId: 'c 1', content: 'Thanks' })).toBeNull();
+      const [url, init] = fetchMock.mock.calls[0] as unknown as [URL, RequestInit];
+      expect(url).toEqual(new URL('https://nemis.example/direct-messages/conversations/c%201/messages'));
+      expect(init.method).toBe('POST');
+      expect(JSON.parse(String(init.body))).toEqual({ content: 'Thanks' });
+    });
+
+    it('markDirectConversationRead PATCHes the read endpoint', async () => {
+      const fetchMock = vi.fn(async () => response({ count: 2 }));
+      vi.stubGlobal('fetch', fetchMock);
+      expect(await buildGateway().markDirectConversationRead('c-1')).toBeNull();
+      const [url, init] = fetchMock.mock.calls[0] as unknown as [URL, RequestInit];
+      expect(url).toEqual(new URL('https://nemis.example/direct-messages/conversations/c-1/read'));
+      expect(init.method).toBe('PATCH');
+    });
+
+    it('sessionCookie restores the session and returns its cookie header', async () => {
+      const cookie = await buildGateway().sessionCookie();
+      expect(cookie).toContain('access_token=');
+    });
+
     it('removeDistrictOfficer DELETEs the assignment', async () => {
       const fetchMock = vi.fn(async () => response({ id: 'org-1', isActive: false }));
       vi.stubGlobal('fetch', fetchMock);
