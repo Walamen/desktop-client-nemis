@@ -1,4 +1,5 @@
-import { ComingSoon } from '@/components/shell/ComingSoon';
+import { CountyAuditPage } from '@/components/county/audit/CountyAuditPage';
+
 export default function Page() {
-  return <ComingSoon title="Audit Trail" />;
+  return <CountyAuditPage />;
 }
