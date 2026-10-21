@@ -37,13 +37,11 @@ export default function CountyDashboard() {
     year: 'numeric',
   });
 
-  // Desktop has the user's full name only (no photo): the avatar shows the
-  // initials of its first and last words, as the Header does.
-  const fullName =
-    userState.status === 'success' || userState.status === 'refreshing' ? userState.data.fullName : '';
-  const nameParts = fullName.split(' ').filter(Boolean);
-  const firstName = nameParts[0];
-  const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : undefined;
+  const user =
+    userState.status === 'success' || userState.status === 'refreshing' ? userState.data : null;
+  const fullName = user?.fullName ?? '';
+  const firstName = user?.firstName;
+  const lastName = user?.lastName;
 
   // `refreshing` keeps the dashboard on screen during a reload, like RTK
   // Query's isFetching on the web.

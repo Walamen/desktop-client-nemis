@@ -20,9 +20,19 @@ export function Header({ role }: { role: DesktopPortalRole }) {
 
   const currentUser = useCurrentUserViewModel();
   const userState = useViewModel(currentUser.store, (s) => s.user);
-  const fullName = userState.status === 'success' ? userState.data.fullName : 'User';
-  const roleLabel = userState.status === 'success' ? (userState.data.roleLabels[0] ?? '—') : '—';
-  console.log(`roleLabel: ${roleLabel}, fullName: ${fullName}`);
+  const user = userState.status === 'success' || userState.status === 'refreshing' ? userState.data : null;
+  const fullName = user?.fullName ?? 'User';
+  const roleLabel = user ? (user.roleLabels[0] ?? '—') : '—';
+  const [signingOut, setSigningOut] = useState(false);
+
+  const handleSignOut = () => {
+    if (signingOut) return;
+    setSigningOut(true);
+    void sharedBridge
+      .logout()
+      .catch((err: unknown) => console.error('Sign out failed', err))
+      .finally(() => router.replace('/'));
+  };
 
   const notifications = useNotificationStore();
   const unread = useViewModel(notifications.store, (s) => s.notifications.length);
@@ -67,7 +77,7 @@ export function Header({ role }: { role: DesktopPortalRole }) {
                 {/* avatarRole picks the per-role fallback image, but it's only reached when there's
                     no src AND no computable initials; since fullName always yields initials here,
                     this plumbing is correct but currently dormant — the initials branch always wins. */}
-                <Avatar firstName={fullName.split(' ')[0]} lastName={fullName.split(' ')[1]} role={headerConfigs[role].avatarRole} size="md" className="border border-gray-200" alt={fullName} />
+                <Avatar src={user?.photoUrl ?? undefined} firstName={user?.firstName} lastName={user?.lastName} role={headerConfigs[role].avatarRole} size="md" className="border border-gray-200" alt={fullName} />
                 <div className="hidden sm:flex flex-col items-start leading-tight">
                   <span className="text-sm font-semibold text-gray-900">{fullName}</span>
                   <span className="text-sm font-semibold text-gray-600">{roleLabel}</span>
@@ -83,11 +93,8 @@ export function Header({ role }: { role: DesktopPortalRole }) {
               Settings (coming soon)
             </DropdownItem>
             <div className="h-px bg-gray-200" />
-            <DropdownItem icon={<LogOut className="w-4 h-4 text-gray-600" />} onSelect={() => {
-              setMenuOpen(false);
-              void sharedBridge.logout().finally(() => router.replace('/'));
-            }}>
-              Sign Out
+            <DropdownItem icon={<LogOut className="w-4 h-4 text-gray-600" />} onSelect={handleSignOut} disabled={signingOut}>
+              {signingOut ? 'Signing out…' : 'Sign Out'}
             </DropdownItem>
           </Dropdown>
         </div>
