@@ -95,6 +95,13 @@ import type {
 } from './county-reports';
 import type { SaveFileRequest, SaveFileResult } from './file-save';
 import type {
+  CountyMessagingOverview,
+  CountyDirectMessage,
+  CountySendMessageRequest,
+  CountyStartConversationRequest,
+} from './county-messaging';
+import type { CountyNotificationsPage, CountyNotificationsQuery } from './county-notifications';
+import type {
   CountyActivationLink,
   CountyAssignUserRequest,
   CountyBulkCreateUsersResult,
@@ -234,6 +241,15 @@ export interface IpcContract {
   'county:attendance-report': { args: [query: CountyAttendanceReportQuery]; result: CountyAttendanceReport };
   'county:academic-report': { args: [query: CountyEnrollmentReportQuery]; result: CountyAcademicReport };
   'county:staff-report': { args: [query: CountyEnrollmentReportQuery]; result: CountyStaffComplianceReport };
+  'county:messaging-overview': { args: []; result: CountyMessagingOverview };
+  'county:messaging-messages': { args: [conversationId: string]; result: CountyDirectMessage[] | null };
+  'county:messaging-start': { args: [request: CountyStartConversationRequest]; result: OnlineCommandResult<null> };
+  'county:messaging-send': { args: [request: CountySendMessageRequest]; result: OnlineCommandResult<null> };
+  'county:messaging-mark-read': { args: [conversationId: string]; result: OnlineCommandResult<null> };
+  'messaging:online-users': { args: [userIds: string[]]; result: string[] };
+  'county:notifications-list': { args: [query: CountyNotificationsQuery]; result: CountyNotificationsPage };
+  'county:notifications-mark-read': { args: [notificationId: string]; result: boolean };
+  'county:notifications-mark-all-read': { args: []; result: number };
   'county:list-users': { args: [query: CountyUsersQuery]; result: CountyUsersResult };
   'county:get-user-options': { args: []; result: CountyUserOptions };
   'county:set-user-active': { args: [request: CountySetUserActiveRequest]; result: OnlineCommandResult<null> };
@@ -460,6 +476,15 @@ export const IpcChannels = {
   COUNTY_ATTENDANCE_REPORT: 'county:attendance-report',
   COUNTY_ACADEMIC_REPORT: 'county:academic-report',
   COUNTY_STAFF_REPORT: 'county:staff-report',
+  COUNTY_MESSAGING_OVERVIEW: 'county:messaging-overview',
+  COUNTY_MESSAGING_MESSAGES: 'county:messaging-messages',
+  COUNTY_MESSAGING_START: 'county:messaging-start',
+  COUNTY_MESSAGING_SEND: 'county:messaging-send',
+  COUNTY_MESSAGING_MARK_READ: 'county:messaging-mark-read',
+  MESSAGING_ONLINE_USERS: 'messaging:online-users',
+  COUNTY_NOTIFICATIONS_LIST: 'county:notifications-list',
+  COUNTY_NOTIFICATIONS_MARK_READ: 'county:notifications-mark-read',
+  COUNTY_NOTIFICATIONS_MARK_ALL_READ: 'county:notifications-mark-all-read',
   COUNTY_LIST_USERS: 'county:list-users',
   COUNTY_GET_USER_OPTIONS: 'county:get-user-options',
   COUNTY_SET_USER_ACTIVE: 'county:set-user-active',

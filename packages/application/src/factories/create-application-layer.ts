@@ -16,6 +16,17 @@ import { GetCountyGuardianDetailUseCase } from '../use-cases/county/get-county-g
 import type { ICountyTeachersReadModel } from '../interfaces/county/county-teachers-read-model';
 import type { ICountyFinanceReadModel } from '../interfaces/county/county-finance-read-model';
 import type { ICountyReportsReadModel } from '../interfaces/county/county-reports-read-model';
+import type {
+  ICountyMessagingReadModel,
+  ICountyNotificationsRepository,
+} from '../interfaces/county/county-messaging-read-model';
+import {
+  GetCountyMessagesUseCase,
+  GetCountyMessagingOverviewUseCase,
+  GetCountyNotificationsUseCase,
+  MarkAllCountyNotificationsReadUseCase,
+  MarkCountyNotificationReadUseCase,
+} from '../use-cases/county/get-county-messaging';
 import {
   GetCountyAcademicReportUseCase,
   GetCountyAttendanceReportUseCase,
@@ -205,6 +216,9 @@ export interface ApplicationPorts {
   countyFinance: ICountyFinanceReadModel;
   /** County Generate Reports page. */
   countyReports: ICountyReportsReadModel;
+  /** County Messages page (read side) and Notifications page. */
+  countyMessaging: ICountyMessagingReadModel;
+  countyNotifications: ICountyNotificationsRepository;
   /** County Administrative Users page: list, stats and assignment options. */
   countyUsers: ICountyUsersReadModel;
   gradingConfigs: IGradingConfigRepository;
@@ -511,6 +525,8 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
     clock,
     logger,
   };
+  const messagingDeps = { readModel: ports.countyMessaging, currentUserId: ports.currentUserId, logger };
+  const notificationDeps = { repository: ports.countyNotifications, currentUserId: ports.currentUserId, logger };
   const county = new CountyApplicationService({
     getDashboard: new GetCountyDashboardUseCase({
       readModel: ports.countyAnalytics,
@@ -603,6 +619,11 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
     getAttendanceReport: new GetCountyAttendanceReportUseCase(reportDeps),
     getAcademicReport: new GetCountyAcademicReportUseCase(reportDeps),
     getStaffComplianceReport: new GetCountyStaffComplianceReportUseCase(reportDeps),
+    getMessagingOverview: new GetCountyMessagingOverviewUseCase(messagingDeps),
+    listDirectMessages: new GetCountyMessagesUseCase(messagingDeps),
+    listNotifications: new GetCountyNotificationsUseCase(notificationDeps),
+    markNotificationRead: new MarkCountyNotificationReadUseCase(notificationDeps),
+    markAllNotificationsRead: new MarkAllCountyNotificationsReadUseCase(notificationDeps),
     listUsers: new GetCountyUsersUseCase({
       readModel: ports.countyUsers,
       countyReadModel: ports.countyAnalytics,

@@ -27,6 +27,10 @@ import type {
   CountyAttendanceReport,
   CountyAttendanceReportQuery,
   CountyStaffComplianceReport,
+  CountyDirectMessage,
+  CountyMessagingOverview,
+  CountyNotificationsPage,
+  CountyNotificationsQuery,
   CountyUserOptions,
   CountyUsersQuery,
   CountyUsersResult,
@@ -65,6 +69,13 @@ import type {
   GetCountyReportOptionsUseCase,
   GetCountyReportSchoolsUseCase,
 } from '../use-cases/county/get-county-reports';
+import type {
+  GetCountyMessagesUseCase,
+  GetCountyMessagingOverviewUseCase,
+  GetCountyNotificationsUseCase,
+  MarkAllCountyNotificationsReadUseCase,
+  MarkCountyNotificationReadUseCase,
+} from '../use-cases/county/get-county-messaging';
 import type { GetCountyUsersUseCase } from '../use-cases/county/get-county-users';
 import type { GetCountyUserOptionsUseCase } from '../use-cases/county/get-county-user-options';
 
@@ -95,6 +106,11 @@ export interface CountyApplicationServiceDeps {
   getAttendanceReport: GetCountyAttendanceReportUseCase;
   getAcademicReport: GetCountyAcademicReportUseCase;
   getStaffComplianceReport: GetCountyStaffComplianceReportUseCase;
+  getMessagingOverview: GetCountyMessagingOverviewUseCase;
+  listDirectMessages: GetCountyMessagesUseCase;
+  listNotifications: GetCountyNotificationsUseCase;
+  markNotificationRead: MarkCountyNotificationReadUseCase;
+  markAllNotificationsRead: MarkAllCountyNotificationsReadUseCase;
   listUsers: GetCountyUsersUseCase;
   getUserOptions: GetCountyUserOptionsUseCase;
 }
@@ -181,6 +197,21 @@ export class CountyApplicationService {
     query: CountyEnrollmentReportQuery,
   ): Promise<ApplicationResponse<CountyStaffComplianceReport>> {
     return this.deps.getStaffComplianceReport.execute(query);
+  }
+  getMessagingOverview(): Promise<ApplicationResponse<CountyMessagingOverview>> {
+    return this.deps.getMessagingOverview.execute({});
+  }
+  listDirectMessages(conversationId: string): Promise<ApplicationResponse<CountyDirectMessage[] | null>> {
+    return this.deps.listDirectMessages.execute({ conversationId });
+  }
+  listNotifications(query: CountyNotificationsQuery): Promise<ApplicationResponse<CountyNotificationsPage>> {
+    return this.deps.listNotifications.execute(query);
+  }
+  markNotificationRead(notificationId: string): Promise<ApplicationResponse<boolean>> {
+    return this.deps.markNotificationRead.execute({ notificationId });
+  }
+  markAllNotificationsRead(): Promise<ApplicationResponse<number>> {
+    return this.deps.markAllNotificationsRead.execute({});
   }
   listUsers(query: CountyUsersQuery): Promise<ApplicationResponse<CountyUsersResult>> {
     return this.deps.listUsers.execute(query);

@@ -72,6 +72,14 @@ import type {
 } from './county-reports';
 import type { SaveFileRequest, SaveFileResult } from './file-save';
 import type {
+  CountyMessagingOverview,
+  CountyDirectMessage,
+  CountySendMessageRequest,
+  CountyStartConversationRequest,
+} from './county-messaging';
+import type { CountyNotificationsPage, CountyNotificationsQuery } from './county-notifications';
+import type { EventsApi } from './realtime';
+import type {
   CountyActivationLink,
   CountyAssignUserRequest,
   CountyBulkCreateUsersResult,
@@ -238,6 +246,17 @@ export interface CountyApi {
   getAttendanceReport(query: CountyAttendanceReportQuery): Promise<CountyAttendanceReport>;
   getAcademicReport(query: CountyEnrollmentReportQuery): Promise<CountyAcademicReport>;
   getStaffComplianceReport(query: CountyEnrollmentReportQuery): Promise<CountyStaffComplianceReport>;
+  /** Messages: read from this device; start/send/mark-read are online-only. */
+  getMessagingOverview(): Promise<CountyMessagingOverview>;
+  listDirectMessages(conversationId: string): Promise<CountyDirectMessage[] | null>;
+  startConversation(request: CountyStartConversationRequest): Promise<OnlineCommandResult<null>>;
+  sendDirectMessage(request: CountySendMessageRequest): Promise<OnlineCommandResult<null>>;
+  markConversationRead(conversationId: string): Promise<OnlineCommandResult<null>>;
+  /** Of these users, the ones the live socket says are online now. */
+  getOnlineUsers(userIds: string[]): Promise<string[]>;
+  listNotifications(query: CountyNotificationsQuery): Promise<CountyNotificationsPage>;
+  markNotificationRead(notificationId: string): Promise<boolean>;
+  markAllNotificationsRead(): Promise<number>;
   listUsers(query: CountyUsersQuery): Promise<CountyUsersResult>;
   getUserOptions(): Promise<CountyUserOptions>;
   /** Online-only user commands; each forces a pull afterwards. */
@@ -397,6 +416,7 @@ export interface NemisApi {
   provisioning: ProvisioningApi;
   sync: SyncApi;
   system: SystemApi;
+  events: EventsApi;
   settings: SettingsApi;
   dashboard: DashboardApi;
   county: CountyApi;

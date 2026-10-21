@@ -7,4 +7,5 @@ export * from './county-guardians-read-model';
 export * from './county-teachers-read-model';
 export * from './county-finance-read-model';
 export * from './county-reports-read-model';
+export * from './county-messaging-read-model';
 export * from './county-users-read-model';
