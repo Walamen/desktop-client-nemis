@@ -1,5 +1,9 @@
 import type { CountyApplicationService } from '@nemis-desktop/application';
 import type {
+  CountyAcademicReport,
+  CountyAttendanceReport,
+  CountyAttendanceReportQuery,
+  CountyStaffComplianceReport,
   CountyEnrollmentReport,
   CountyEnrollmentReportQuery,
   CountyFinanceDashboard,
@@ -17,6 +21,9 @@ export interface CountyReportsState {
   /** The School filter for the chosen district. */
   readonly schools: AsyncState<CountyReportSchool[]>;
   readonly enrollment: AsyncState<CountyEnrollmentReport>;
+  readonly attendance: AsyncState<CountyAttendanceReport>;
+  readonly academic: AsyncState<CountyAcademicReport>;
+  readonly staff: AsyncState<CountyStaffComplianceReport>;
   /** The Financial report reuses the County Finance figures (current year). */
   readonly financeDashboard: AsyncState<CountyFinanceDashboard>;
   readonly financeSchools: AsyncState<CountySchoolFinanceRow[]>;
@@ -35,6 +42,9 @@ export class CountyReportsViewModel {
     options: idleState(),
     schools: idleState(),
     enrollment: idleState(),
+    attendance: idleState(),
+    academic: idleState(),
+    staff: idleState(),
     financeDashboard: idleState(),
     financeSchools: idleState(),
     financeLoadedAt: null,
@@ -67,6 +77,30 @@ export class CountyReportsViewModel {
     await trackQuery({
       access: { get: () => this.store.getState().enrollment, set: (enrollment) => this.store.setState({ enrollment }) },
       fetch: () => this.deps.county.getEnrollmentReport(query),
+      map: (result) => result,
+    });
+  }
+
+  async loadAttendance(query: CountyAttendanceReportQuery): Promise<void> {
+    await trackQuery({
+      access: { get: () => this.store.getState().attendance, set: (attendance) => this.store.setState({ attendance }) },
+      fetch: () => this.deps.county.getAttendanceReport(query),
+      map: (result) => result,
+    });
+  }
+
+  async loadAcademic(query: CountyEnrollmentReportQuery): Promise<void> {
+    await trackQuery({
+      access: { get: () => this.store.getState().academic, set: (academic) => this.store.setState({ academic }) },
+      fetch: () => this.deps.county.getAcademicReport(query),
+      map: (result) => result,
+    });
+  }
+
+  async loadStaff(query: CountyEnrollmentReportQuery): Promise<void> {
+    await trackQuery({
+      access: { get: () => this.store.getState().staff, set: (staff) => this.store.setState({ staff }) },
+      fetch: () => this.deps.county.getStaffComplianceReport(query),
       map: (result) => result,
     });
   }

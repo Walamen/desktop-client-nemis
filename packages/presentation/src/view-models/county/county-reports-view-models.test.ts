@@ -51,6 +51,27 @@ describe('CountyReportsViewModel', () => {
     expect(state.financeLoadedAt).not.toBeNull();
   });
 
+  it('each remaining loader passes its query and fills its state', async () => {
+    const { app, ports } = createTestApplication();
+    const vm = new CountyReportsViewModel({ county: app.county });
+    await vm.loadAttendance({ districtId: 'd-1', period: 'DAILY' });
+    expect(ports.countyReports.lastAttendanceQuery).toEqual({ districtId: 'd-1', period: 'DAILY' });
+    await vm.loadAcademic({ schoolId: 's-1' });
+    expect(ports.countyReports.lastAcademicQuery).toEqual({ schoolId: 's-1' });
+    await vm.loadStaff({});
+    expect(ports.countyReports.lastStaffQuery).toEqual({});
+    const state = vm.store.getState();
+    expect([state.attendance.status, state.academic.status, state.staff.status]).toEqual(['success', 'success', 'success']);
+  });
+
+  it('a failed academic load is an error state', async () => {
+    const { app, ports } = createTestApplication();
+    ports.countyReports.academicError = new Error('database locked');
+    const vm = new CountyReportsViewModel({ county: app.county });
+    await vm.loadAcademic({});
+    expect(vm.store.getState().academic.status).toBe('error');
+  });
+
   it('a failed enrollment load is an error state', async () => {
     const { app, ports } = createTestApplication();
     ports.countyReports.enrollmentError = new Error('database locked');
