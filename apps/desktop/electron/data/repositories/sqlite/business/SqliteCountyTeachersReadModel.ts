@@ -42,7 +42,7 @@ export const SUBJECT_NAMES_SQL = `SELECT MIN(trim(sj.name)) AS name
   GROUP BY lower(trim(sj.name))`;
 
 /** Array strings, or the `{ summary }` the desktop teacher form saves; else nothing. */
-function qualificationList(raw: string | null): string[] {
+export function qualificationList(raw: string | null): string[] {
   if (!raw) return [];
   let parsed: unknown;
   try {
