@@ -1,7 +1,19 @@
-// TODO(county Messages port): honour ?institutionId= — preselect that school's School Admin (docs/superpowers/specs/2026-10-18-county-parents-design.md §5.5).
-import { SchoolAdminCollectionPage } from '@/components/school-admin/SchoolAdminModulePages';
+'use client';
+
+import { Suspense } from 'react';
+import { CountyMessagesPanel } from '@/components/county/messaging/CountyMessagesPanel';
+
+/** Port of portal-web government/county/messages/page.tsx. */
 export default function Page() {
-  return <SchoolAdminCollectionPage title="County messages" description="Message threads visible to this county workspace." sections={[
-    { collection: 'messages', label: 'Messages', columns: ['conversationId', 'senderRole', 'content', 'isRead', 'createdAt'] },
-  ]} />;
+  return (
+    <div className="space-y-6">
+      <div className="bg-slate-900 text-white px-6 py-5 ">
+        <h1 className="text-xl font-bold text-white">Messages</h1>
+        <p className="text-body text-slate-300">Direct messages with DEOs and school administrators in your county.</p>
+      </div>
+      <Suspense>
+        <CountyMessagesPanel />
+      </Suspense>
+    </div>
+  );
 }
