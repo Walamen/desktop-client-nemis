@@ -108,6 +108,9 @@ const SPECS: Record<ProvisioningCollection, TableSpec> = {
   assignmentSubmissions: spec('assignment_submissions', ['id','assignmentId','studentId','status','submittedAt','response','fileUrl','fileName','grade','feedback','createdAt','updatedAt']),
   classResources: spec('class_resources', ['id','institutionId','classId','subjectId','staffId','title','description','type','fileUrl','linkUrl','fileSize','fileType','category','isVisible','createdAt','updatedAt']),
   counties: spec('counties', ['id', 'code', 'name']),
+  // County Messages: pull-only (no outbox triggers), the County Admin's own threads.
+  directConversations: spec('direct_conversations', ['id','initiatorId','recipientId','lastMessageAt','createdAt','updatedAt','counterpartUserId','counterpartFirstName','counterpartLastName','counterpartPhotoUrl','counterpartRole','counterpartInstitutionName']),
+  directMessages: spec('direct_messages', ['id','conversationId','senderId','content','isRead','readAt','createdAt','updatedAt']),
 };
 
 const DELETE_ORDER = [...PROVISIONING_COLLECTIONS].reverse();

@@ -505,6 +505,33 @@ describe('ProvisioningImporter', () => {
     ]);
   });
 
+  it('imports direct conversations (with the counterpart) and their messages', () => {
+    new ProvisioningImporter(manager).import(
+      snapshotOf({
+        ...BASE_DATA,
+        directConversations: [{
+          id: 'conv-1', initiatorId: 'user-1', recipientId: 'deo-1', lastMessageAt: '2026-10-20T10:00:00.000Z',
+          createdAt: '2026-10-01T09:00:00.000Z', updatedAt: '2026-10-20T10:00:00.000Z',
+          counterpartUserId: 'deo-1', counterpartFirstName: 'James', counterpartLastName: 'Doe',
+          counterpartPhotoUrl: null, counterpartRole: 'DEO', counterpartInstitutionName: null,
+        }],
+        directMessages: [{
+          id: 'msg-1', conversationId: 'conv-1', senderId: 'deo-1', content: 'Report is ready', isRead: false,
+          readAt: null, createdAt: '2026-10-20T10:00:00.000Z', updatedAt: '2026-10-20T10:00:00.000Z',
+        }],
+      }),
+      CONTEXT,
+    );
+    const db = manager.connection;
+    expect(db.prepare(`SELECT id, counterpartFirstName, counterpartRole FROM direct_conversations`).all()).toEqual([
+      { id: 'conv-1', counterpartFirstName: 'James', counterpartRole: 'DEO' },
+    ]);
+    expect(db.prepare(`SELECT id, content, isRead FROM direct_messages`).all()).toEqual([
+      { id: 'msg-1', content: 'Report is ready', isRead: 0 },
+    ]);
+    expect(countRows('sync_queue')).toBe(0);
+  });
+
   it('imports the county row and the dashboard columns', () => {
     const importer = new ProvisioningImporter(manager);
     importer.import(

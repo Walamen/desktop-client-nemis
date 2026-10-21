@@ -32,6 +32,8 @@ export const TableNames = {
   institutionAdmin: 'institution_admin',
   schoolRegistrations: 'school_registrations',
   termAverages: 'term_averages',
+  directConversations: 'direct_conversations',
+  directMessages: 'direct_messages',
   subjectTeachers: 'subject_teachers',
   classTeachers: 'class_teachers',
   classSubjectTeachers: 'class_subject_teachers',
