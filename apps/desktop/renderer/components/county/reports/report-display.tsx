@@ -85,6 +85,22 @@ export function DistrictDivider({ name }: { name: string }) {
   );
 }
 
+/** A district header row inside a county-wide school table. */
+export function DistrictHeaderRow({ name, colSpan }: { name: string; colSpan: number }) {
+  return (
+    <tr className="bg-slate-50 border-t-2 border-slate-300">
+      <td colSpan={colSpan} className="px-4 py-2">
+        <span className="text-xs font-bold uppercase tracking-widest text-slate-500">{name}</span>
+      </td>
+    </tr>
+  );
+}
+
+/** Teacher:student as the web prints it ("1:32.5"); no teachers is "N/A", not "1:N/A". */
+export function teacherStudentRatio(ratio: string): string {
+  return ratio === "N/A" ? ratio : `1:${ratio}`;
+}
+
 /** Rows grouped by district in first-seen order; no district → "Unknown District". */
 export function groupByDistrict<T extends { districtId?: string | null; districtName?: string | null }>(
   items: T[],

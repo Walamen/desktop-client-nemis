@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Spinner } from "@nemis-desktop/ui";
-import type { CountyEnrollmentReportQuery } from "@nemis-desktop/types";
+import type { CountyAttendancePeriod, CountyEnrollmentReportQuery } from "@nemis-desktop/types";
 import {
   AlertTriangle,
   Calendar,
@@ -15,11 +15,13 @@ import {
   Search,
   Users,
 } from "lucide-react";
-import { ComingSoon } from "@/components/shell/ComingSoon";
 import { useCountyReportsViewModel } from "@/lib/presentation/hooks/county";
 import { useViewModel } from "@/hooks/use-view-model";
 import { useRevalidateOnSync } from "@/hooks/use-revalidate-on-sync";
+import { AcademicReportView } from "./AcademicReportView";
+import { AttendanceReportView } from "./AttendanceReportView";
 import { EnrollmentReportView } from "./EnrollmentReportView";
+import { StaffComplianceReportView } from "./StaffComplianceReportView";
 import { FinancialReportSection } from "./FinancialReportSection";
 
 type ReportType = "ENROLLMENT" | "ATTENDANCE" | "ACADEMIC" | "STAFF_COMPLIANCE" | "FINANCIAL";
@@ -37,24 +39,30 @@ const reportTypes = [
   { id: "FINANCIAL" as ReportType, name: "Financial", icon: DollarSign, desc: "Fee collection and revenue report" },
 ];
 
-/** Reports whose content is built on the desktop so far; the others show ComingSoon. */
-const BUILT: ReadonlySet<ReportType> = new Set(["ENROLLMENT", "FINANCIAL"]);
+const periodLabels: Record<CountyAttendancePeriod, string> = {
+  DAILY: "Last 7 Days",
+  WEEKLY: "Last 4 Weeks",
+  MONTHLY: "Last 3 Months",
+};
 
 const isReady = <T,>(state: { status: string; data?: T }): state is { status: "success" | "refreshing"; data: T } =>
   state.status === "success" || state.status === "refreshing";
 
 /** Port of portal-web government/county/reports/generate/page.tsx, read from
- * this device. Part 1: the shell, Enrollment and Financial; Time Period and
- * Export arrive with their parts. */
+ * this device. */
 export function GenerateReportsPage() {
   const [selectedDistrictId, setSelectedDistrictId] = useState<string>("ALL");
   const [selectedReport, setSelectedReport] = useState<ReportType>("ENROLLMENT");
   const [selectedSchoolId, setSelectedSchoolId] = useState<string>("");
+  const [attendancePeriod, setAttendancePeriod] = useState<CountyAttendancePeriod>("WEEKLY");
 
   const vm = useCountyReportsViewModel();
   const optionsState = useViewModel(vm.store, (s) => s.options);
   const schoolsState = useViewModel(vm.store, (s) => s.schools);
   const enrollmentState = useViewModel(vm.store, (s) => s.enrollment);
+  const attendanceState = useViewModel(vm.store, (s) => s.attendance);
+  const academicState = useViewModel(vm.store, (s) => s.academic);
+  const staffState = useViewModel(vm.store, (s) => s.staff);
   const financeDashboardState = useViewModel(vm.store, (s) => s.financeDashboard);
   const financeSchoolsState = useViewModel(vm.store, (s) => s.financeSchools);
   const financeLoadedAt = useViewModel(vm.store, (s) => s.financeLoadedAt);
@@ -62,7 +70,7 @@ export function GenerateReportsPage() {
   const isAllDistricts = selectedDistrictId === "ALL";
   const singleDistrictId = selectedDistrictId && !isAllDistricts ? selectedDistrictId : "";
 
-  const enrollmentQuery = (): CountyEnrollmentReportQuery => {
+  const scopeQuery = (): CountyEnrollmentReportQuery => {
     const query: CountyEnrollmentReportQuery = {};
     if (singleDistrictId) query.districtId = singleDistrictId;
     if (singleDistrictId && selectedSchoolId) query.schoolId = selectedSchoolId;
@@ -75,10 +83,18 @@ export function GenerateReportsPage() {
   useRevalidateOnSync(() => {
     void vm.loadSchools(singleDistrictId);
   }, [singleDistrictId]);
+  /** The chosen district-scoped report; Financial loads on its own. */
+  const loadReport = () => {
+    if (selectedReport === "FINANCIAL" || !selectedDistrictId) return;
+    const query = scopeQuery();
+    if (selectedReport === "ENROLLMENT") void vm.loadEnrollment(query);
+    else if (selectedReport === "ATTENDANCE") void vm.loadAttendance({ ...query, period: attendancePeriod });
+    else if (selectedReport === "ACADEMIC") void vm.loadAcademic(query);
+    else void vm.loadStaff(query);
+  };
+
   // Each report loads only while it is the chosen one, as the web skips its queries.
-  useRevalidateOnSync(() => {
-    if (selectedReport === "ENROLLMENT" && selectedDistrictId) void vm.loadEnrollment(enrollmentQuery());
-  }, [selectedReport, selectedDistrictId, selectedSchoolId]);
+  useRevalidateOnSync(loadReport, [selectedReport, selectedDistrictId, selectedSchoolId, attendancePeriod]);
   useRevalidateOnSync(() => {
     if (selectedReport === "FINANCIAL") void vm.loadFinance();
   }, [selectedReport]);
@@ -86,18 +102,27 @@ export function GenerateReportsPage() {
   const county = isReady(optionsState) ? optionsState.data.county : null;
   const districts = isReady(optionsState) ? optionsState.data.districts : [];
   const schools = isReady(schoolsState) ? schoolsState.data : [];
-  const reportData = isReady(enrollmentState) ? enrollmentState.data : undefined;
-  const isLoading = enrollmentState.status === "idle" || enrollmentState.status === "loading";
+  const reportState =
+    selectedReport === "ATTENDANCE"
+      ? attendanceState
+      : selectedReport === "ACADEMIC"
+        ? academicState
+        : selectedReport === "STAFF_COMPLIANCE"
+          ? staffState
+          : enrollmentState;
+  const reportData =
+    reportState.status === "success" || reportState.status === "refreshing" ? reportState.data : undefined;
+  const isLoading = reportState.status === "idle" || reportState.status === "loading";
+  const isDistrictScoped = selectedReport !== "FINANCIAL";
   const financeLoading =
     financeDashboardState.status === "idle" ||
     financeDashboardState.status === "loading" ||
     financeSchoolsState.status === "idle" ||
     financeSchoolsState.status === "loading";
-  const isBuilt = BUILT.has(selectedReport);
 
   const handleRefresh = () => {
     if (selectedReport === "FINANCIAL") void vm.loadFinance();
-    else if (selectedReport === "ENROLLMENT" && selectedDistrictId) void vm.loadEnrollment(enrollmentQuery());
+    else loadReport();
   };
 
   const selectedDistrictName = isAllDistricts
@@ -105,8 +130,7 @@ export function GenerateReportsPage() {
     : districts.find((d) => d.id === selectedDistrictId)?.name;
   // When the shown report was produced: the report's stamp, or for Financial
   // the time its figures arrived.
-  const reportTime =
-    selectedReport === "FINANCIAL" ? financeLoadedAt : selectedReport === "ENROLLMENT" ? reportData?.generatedAt : null;
+  const reportTime = selectedReport === "FINANCIAL" ? financeLoadedAt : reportData?.generatedAt;
   const reportName = reportTypes.find((t) => t.id === selectedReport)?.name;
 
   return (
@@ -203,19 +227,40 @@ export function GenerateReportsPage() {
                 </div>
               )}
 
+              {/* Period (Attendance only) */}
+              {selectedReport === "ATTENDANCE" && (
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-widest text-slate-400 mb-2">
+                    Time Period
+                  </label>
+                  <div className="space-y-1">
+                    {(["DAILY", "WEEKLY", "MONTHLY"] as CountyAttendancePeriod[]).map((period) => (
+                      <button
+                        key={period}
+                        onClick={() => setAttendancePeriod(period)}
+                        className={`w-full text-left px-3 py-1.5 text-sm transition-colors ${
+                          attendancePeriod === period ? "bg-secondary text-white font-medium" : "text-slate-600 hover:bg-slate-50"
+                        }`}
+                      >
+                        {periodLabels[period]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Refresh */}
               <button
                 onClick={handleRefresh}
                 disabled={
-                  !isBuilt ||
                   (selectedReport === "FINANCIAL" ? financeLoading : isLoading && !!selectedDistrictId) ||
-                  (selectedReport !== "FINANCIAL" && !selectedDistrictId)
+                  (isDistrictScoped && !selectedDistrictId)
                 }
                 className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-slate-600 border border-slate-200 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 <RefreshCw
                   className={`w-3.5 h-3.5 ${
-                    (selectedReport === "FINANCIAL" ? financeLoading : isLoading && isBuilt) ? "animate-spin" : ""
+                    (selectedReport === "FINANCIAL" ? financeLoading : isLoading && !!selectedDistrictId) ? "animate-spin" : ""
                   }`}
                 />
                 Refresh
@@ -239,13 +284,6 @@ export function GenerateReportsPage() {
               </div>
             </div>
 
-            {/* Reports not yet on the desktop */}
-            {!isBuilt && (
-              <div className="bg-white border border-slate-300">
-                <ComingSoon title={`${reportName} Report`} />
-              </div>
-            )}
-
             {/* Financial report — county-wide, no district filter needed */}
             {selectedReport === "FINANCIAL" &&
               (financeDashboardState.status === "error" || financeSchoolsState.status === "error" ? (
@@ -266,7 +304,7 @@ export function GenerateReportsPage() {
               ))}
 
             {/* Empty prompt — only for district-scoped reports */}
-            {selectedReport === "ENROLLMENT" && !selectedDistrictId && (
+            {isDistrictScoped && !selectedDistrictId && (
               <div className="bg-white border border-slate-300 p-12 text-center">
                 <MapPin className="w-10 h-10 text-slate-200 mx-auto mb-3" />
                 <p className="text-sm font-semibold text-slate-500 mb-1">Select a District</p>
@@ -278,7 +316,7 @@ export function GenerateReportsPage() {
             )}
 
             {/* Loading */}
-            {selectedReport === "ENROLLMENT" && selectedDistrictId && isLoading && (
+            {isDistrictScoped && selectedDistrictId && isLoading && (
               <div className="bg-white rounded-lg border border-slate-300 py-12 flex items-center justify-center gap-3">
                 <Spinner size="lg" />
                 <span className="text-sm text-slate-500">Generating {reportName?.toLowerCase()} report…</span>
@@ -286,7 +324,7 @@ export function GenerateReportsPage() {
             )}
 
             {/* Error */}
-            {selectedReport === "ENROLLMENT" && selectedDistrictId && enrollmentState.status === "error" && (
+            {isDistrictScoped && selectedDistrictId && reportState.status === "error" && (
               <div className="bg-red-50 border border-red-100 px-5 py-4 flex items-start gap-3">
                 <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
                 <div>
@@ -297,9 +335,20 @@ export function GenerateReportsPage() {
             )}
 
             {/* Report content */}
-            {selectedReport === "ENROLLMENT" && selectedDistrictId && reportData && !isLoading && (
+            {isDistrictScoped && selectedDistrictId && reportData && !isLoading && (
               <div className="space-y-5">
-                <EnrollmentReportView data={reportData} isCountyWide={isAllDistricts} />
+                {reportData.reportType === "ENROLLMENT" && (
+                  <EnrollmentReportView data={reportData} isCountyWide={isAllDistricts} />
+                )}
+                {reportData.reportType === "ATTENDANCE" && (
+                  <AttendanceReportView data={reportData} isCountyWide={isAllDistricts} />
+                )}
+                {reportData.reportType === "ACADEMIC" && (
+                  <AcademicReportView data={reportData} isCountyWide={isAllDistricts} />
+                )}
+                {reportData.reportType === "STAFF_COMPLIANCE" && (
+                  <StaffComplianceReportView data={reportData} isCountyWide={isAllDistricts} />
+                )}
               </div>
             )}
           </div>

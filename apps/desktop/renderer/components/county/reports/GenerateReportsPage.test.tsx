@@ -59,6 +59,34 @@ const financeSchool = (id: string, name: string, collectionRate: number) => ({
   studentCount: 10, paidCount: 5, partialCount: 3, unpaidCount: 2, currency: 'LRD',
 });
 
+const attendanceReport = {
+  reportType: 'ATTENDANCE', generatedAt: '2026-10-20T12:00:00.000Z', district: { id: 'county-1', name: 'Grand Bassa' },
+  period: { start: '2026-09-22T12:00:00.000Z', end: '2026-10-20T12:00:00.000Z', type: 'WEEKLY' },
+  summary: { totalSchools: 1, totalRecords: 40, presentCount: 30, absentCount: 6, lateCount: 4, overallAttendanceRate: 85 },
+  bySchool: [{ schoolId: 'sch-a', schoolName: 'Alpha School', schoolCode: 'A', totalStudents: 10, recordsCount: 40, present: 30,
+    absent: 6, late: 4, attendanceRate: 85, districtId: 'd-1', districtName: 'Buchanan' }],
+  trendData: [{ date: '2026-10-19', rate: 85, present: 30, absent: 6 }],
+};
+const academicReport = {
+  reportType: 'ACADEMIC', generatedAt: '2026-10-20T12:00:00.000Z', district: { id: 'county-1', name: 'Grand Bassa' },
+  summary: { totalSchools: 1, totalGrades: 20, averageScore: 71, passRate: 65, passCount: 13, failCount: 7 },
+  bySubject: [{ subjectId: 'm', subjectName: 'Mathematics', totalGrades: 20, averageScore: 71, passRate: 65 }],
+  bySchool: [{ schoolId: 'sch-a', schoolName: 'Alpha School', schoolCode: 'A', totalGrades: 20, averageScore: 71, passRate: 65,
+    districtId: 'd-1', districtName: 'Buchanan' }],
+};
+const staffReport = {
+  reportType: 'STAFF_COMPLIANCE', generatedAt: '2026-10-20T12:00:00.000Z', district: { id: 'county-1', name: 'Grand Bassa' },
+  summary: { totalSchools: 2, totalStudents: 90, totalStaff: 6, totalTeachers: 3, qualifiedTeachers: 2, qualificationRate: 67,
+    overallTeacherStudentRatio: '30.0' },
+  complianceStatus: { compliant: 1, nonCompliant: 1, total: 2, complianceRate: 50 },
+  bySchool: [
+    { schoolId: 'sch-a', schoolName: 'Alpha School', schoolCode: 'A', totalStudents: 90, totalStaff: 5, totalTeachers: 3,
+      qualifiedTeachers: 2, teacherStudentRatio: '30.0', isCompliant: true, districtId: 'd-1', districtName: 'Buchanan' },
+    { schoolId: 'sch-b', schoolName: 'Beta School', schoolCode: 'B', totalStudents: 0, totalStaff: 1, totalTeachers: 0,
+      qualifiedTeachers: 0, teacherStudentRatio: 'N/A', isCompliant: false, districtId: 'd-1', districtName: 'Buchanan' },
+  ],
+};
+
 function renderWith(overrides: Record<string, unknown> = {}) {
   const county = {
     getReportOptions: vi.fn(async () => options),
@@ -68,6 +96,9 @@ function renderWith(overrides: Record<string, unknown> = {}) {
     ]),
     getEnrollmentReport: vi.fn(async (query: { districtId?: string }) => (query.districtId ? districtReport : countyReport)),
     getFinanceDashboard: vi.fn(async () => financeDashboard),
+    getAttendanceReport: vi.fn(async () => attendanceReport),
+    getAcademicReport: vi.fn(async () => academicReport),
+    getStaffComplianceReport: vi.fn(async () => staffReport),
     listFinanceSchools: vi.fn(async () => [financeSchool('a', 'Alpha School', 72), financeSchool('b', 'Beta School', 45), financeSchool('c', 'Gamma School', 30)]),
     ...overrides,
   };
@@ -165,14 +196,52 @@ describe('County Generate Reports page', () => {
     await waitFor(() => expect(county.getFinanceDashboard).toHaveBeenCalledTimes(1));
   });
 
-  it('an unbuilt type shows Coming Soon and never calls the enrollment channel', async () => {
+  it('attendance shows six cards and the school table, and switching period reloads with it', async () => {
     const county = renderWith();
     await waitFor(() => expect(screen.getByText('Alpha School')).toBeInTheDocument());
-    county.getEnrollmentReport.mockClear();
     fireEvent.click(screen.getByRole('button', { name: /Attendance/ }));
-    await waitFor(() => expect(screen.getByText('Attendance Report', { selector: 'h3, h2, p' })).toBeInTheDocument());
-    expect(screen.getByText(/has not been migrated/)).toBeInTheDocument();
-    expect(county.getEnrollmentReport).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.getByText('Attendance by School')).toBeInTheDocument());
+    expect(county.getAttendanceReport).toHaveBeenLastCalledWith({ period: 'WEEKLY' });
+    for (const label of ['Total Records', 'Present', 'Absent', 'Late', 'Attendance Rate']) {
+      expect(screen.getByText(label, { selector: 'p' })).toBeInTheDocument();
+    }
+    expect(screen.getByText('85%', { selector: 'span' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Last 3 Months' }));
+    await waitFor(() => expect(county.getAttendanceReport).toHaveBeenLastCalledWith({ period: 'MONTHLY' }));
+    expect(county.getEnrollmentReport).toHaveBeenCalledTimes(1);
+  });
+
+  it('academic shows pass and fail and by-school rows', async () => {
+    const county = renderWith();
+    await waitFor(() => expect(screen.getByText('Alpha School')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /Academic/ }));
+    await waitFor(() => expect(screen.getByText('Performance by School')).toBeInTheDocument());
+    expect(county.getAcademicReport).toHaveBeenLastCalledWith({});
+    expect(screen.getByText('Passed', { selector: 'p' })).toBeInTheDocument();
+    expect(screen.getByText('Avg Score', { selector: 'p' }).parentElement!.parentElement!.querySelector('p.text-2xl')!.className).toContain('text-secondary');
+    expect(screen.getByText('65%', { selector: 'span' })).toBeInTheDocument();
+  });
+
+  it('staff shows compliance and the school table, with N/A instead of 1:N/A', async () => {
+    renderWith();
+    await waitFor(() => expect(screen.getByText('Alpha School')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /Staff & Compliance/ }));
+    await waitFor(() => expect(screen.getByText('Staff Details by School')).toBeInTheDocument());
+    expect(screen.getByText('Compliant', { selector: 'span' })).toBeInTheDocument();
+    expect(screen.getByText('Non-Compliant', { selector: 'span' })).toBeInTheDocument();
+    expect(screen.getByText('1:30.0', { selector: 'td' })).toBeInTheDocument();
+    expect(screen.getByText('Beta School').closest('tr')!.textContent).toContain('N/A');
+    expect(screen.getByText('Beta School').closest('tr')!.textContent).not.toContain('1:N/A');
+  });
+
+  it('the period filter shows only for Attendance', async () => {
+    renderWith();
+    await waitFor(() => expect(screen.getByText('Alpha School')).toBeInTheDocument());
+    expect(screen.queryByText('Time Period')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Attendance/ }));
+    await waitFor(() => expect(screen.getByText('Time Period')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /Academic/ }));
+    await waitFor(() => expect(screen.queryByText('Time Period')).not.toBeInTheDocument());
   });
 
   it('an enrollment error shows the Failed to load report panel', async () => {

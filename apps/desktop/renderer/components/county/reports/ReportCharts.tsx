@@ -16,8 +16,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-/** Port of portal-web components/reports/ReportCharts.tsx (the charts the
- * Enrollment and Financial reports use; the rest arrive with their reports). */
+/** Port of portal-web components/reports/ReportCharts.tsx (all thirteen charts). */
 const C = {
   primary: "#000e21", // dark navy  — totals / trend lines
   secondary: "#0367A0", // brand blue — male / primary metric
@@ -209,6 +208,311 @@ export function CollectionByDistrictChart({ data, currency = "LRD", className }:
           <Legend />
           <Bar dataKey="totalExpected" name="Expected" fill={C.slate} />
           <Bar dataKey="totalCollected" name="Collected" fill={C.active} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+// ─── Attendance Charts ─────────────────────────────────────────────────────
+
+interface AttendanceStatusChartProps extends ChartProps {
+  present: number;
+  absent: number;
+  late: number;
+}
+
+export function AttendanceStatusChart({
+  present,
+  absent,
+  late,
+  className,
+}: AttendanceStatusChartProps) {
+  const data = [
+    { name: "Present", value: present, color: C.active },
+    { name: "Absent", value: absent, color: C.error },
+    { name: "Late", value: late, color: C.pending },
+  ];
+  return (
+    <div className={className}>
+      <ResponsiveContainer width="100%" height={200}>
+        <PieChart>
+          <Pie
+            data={data}
+            cx="50%"
+            cy="50%"
+            outerRadius={80}
+            dataKey="value"
+            label={({ name, percent }) =>
+              `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
+            }
+          >
+            {data.map((entry, i) => (
+              <Cell key={i} fill={entry.color} />
+            ))}
+          </Pie>
+          <Tooltip formatter={(v) => (v as number).toLocaleString()} />
+        </PieChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+interface AttendanceTrendChartProps extends ChartProps {
+  data: Array<{ date: string; rate: number; present: number; absent: number }>;
+}
+
+export function AttendanceTrendChart({
+  data,
+  className,
+}: AttendanceTrendChartProps) {
+  return (
+    <div className={className}>
+      <ResponsiveContainer width="100%" height={200}>
+        <LineChart
+          data={data}
+          margin={{ top: 5, right: 20, left: 0, bottom: 0 }}
+        >
+          <CartesianGrid
+            strokeDasharray="3 3"
+            stroke="#E5E7EB"
+            vertical={false}
+          />
+          <XAxis
+            dataKey="date"
+            tick={{ fontSize: 9 }}
+            angle={-45}
+            textAnchor="end"
+            height={60}
+          />
+          <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} unit="%" />
+          <Tooltip formatter={(v) => `${v as number}%`} />
+          <Line
+            type="monotone"
+            dataKey="rate"
+            name="Attendance Rate"
+            stroke={C.active}
+            strokeWidth={2}
+            dot={{ fill: C.active, r: 3 }}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+// ─── Academic Charts ──────────────────────────────────────────────────────
+
+interface PassFailChartProps extends ChartProps {
+  passCount: number;
+  failCount: number;
+}
+
+export function PassFailChart({
+  passCount,
+  failCount,
+  className,
+}: PassFailChartProps) {
+  const data = [
+    { name: "Pass", value: passCount, color: C.active },
+    { name: "Fail", value: failCount, color: C.error },
+  ];
+  return (
+    <div className={className}>
+      <ResponsiveContainer width="100%" height={200}>
+        <PieChart>
+          <Pie
+            data={data}
+            cx="50%"
+            cy="50%"
+            innerRadius={50}
+            outerRadius={80}
+            paddingAngle={5}
+            dataKey="value"
+            label={({ name, percent }) =>
+              `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
+            }
+          >
+            {data.map((entry, i) => (
+              <Cell key={i} fill={entry.color} />
+            ))}
+          </Pie>
+          <Tooltip formatter={(v) => (v as number).toLocaleString()} />
+        </PieChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+interface SubjectPerformanceChartProps extends ChartProps {
+  data: Array<{ subjectName: string; averageScore: number; passRate: number }>;
+}
+
+export function SubjectPerformanceChart({
+  data,
+  className,
+}: SubjectPerformanceChartProps) {
+  return (
+    <div className={className}>
+      <ResponsiveContainer width="100%" height={250}>
+        <BarChart
+          data={data}
+          layout="vertical"
+          margin={{ top: 5, right: 30, left: 80, bottom: 0 }}
+        >
+          <CartesianGrid
+            strokeDasharray="3 3"
+            stroke="#E5E7EB"
+            horizontal={false}
+          />
+          <XAxis
+            type="number"
+            domain={[0, 100]}
+            tick={{ fontSize: 11 }}
+            unit="%"
+          />
+          <YAxis
+            type="category"
+            dataKey="subjectName"
+            tick={{ fontSize: 10 }}
+            width={70}
+          />
+          <Tooltip />
+          <Legend />
+          <Bar dataKey="averageScore" name="Avg Score %" fill={C.secondary} />
+          <Bar dataKey="passRate" name="Pass Rate %" fill={C.accent} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+// ─── Staff Compliance Charts ───────────────────────────────────────────────
+
+interface ComplianceStatusChartProps extends ChartProps {
+  compliant: number;
+  nonCompliant: number;
+}
+
+export function ComplianceStatusChart({
+  compliant,
+  nonCompliant,
+  className,
+}: ComplianceStatusChartProps) {
+  const data = [
+    { name: "Compliant", value: compliant, color: C.active },
+    { name: "Non-Compliant", value: nonCompliant, color: C.error },
+  ];
+  return (
+    <div className={className}>
+      <ResponsiveContainer width="100%" height={200}>
+        <PieChart>
+          <Pie
+            data={data}
+            cx="50%"
+            cy="50%"
+            innerRadius={50}
+            outerRadius={80}
+            paddingAngle={5}
+            dataKey="value"
+            label={({ name, value }) => `${name}: ${value}`}
+          >
+            {data.map((entry, i) => (
+              <Cell key={i} fill={entry.color} />
+            ))}
+          </Pie>
+          <Tooltip />
+        </PieChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+interface TeacherQualificationChartProps extends ChartProps {
+  qualified: number;
+  unqualified: number;
+}
+
+export function TeacherQualificationChart({
+  qualified,
+  unqualified,
+  className,
+}: TeacherQualificationChartProps) {
+  const data = [
+    { name: "Qualified", value: qualified, color: C.secondary },
+    { name: "Unqualified", value: unqualified, color: C.pending },
+  ];
+  return (
+    <div className={className}>
+      <ResponsiveContainer width="100%" height={200}>
+        <PieChart>
+          <Pie
+            data={data}
+            cx="50%"
+            cy="50%"
+            outerRadius={80}
+            dataKey="value"
+            label={({ name, percent }) =>
+              `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
+            }
+          >
+            {data.map((entry, i) => (
+              <Cell key={i} fill={entry.color} />
+            ))}
+          </Pie>
+          <Tooltip formatter={(v) => (v as number).toLocaleString()} />
+        </PieChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+interface SchoolComplianceBarChartProps extends ChartProps {
+  data: Array<{
+    schoolName: string;
+    teacherStudentRatio: string;
+    isCompliant: boolean;
+  }>;
+}
+
+export function SchoolComplianceBarChart({
+  data,
+  className,
+}: SchoolComplianceBarChartProps) {
+  const chartData = data.slice(0, 10).map((s) => ({
+    name:
+      s.schoolName.length > 15
+        ? s.schoolName.substring(0, 15) + "…"
+        : s.schoolName,
+    ratio: parseFloat(s.teacherStudentRatio) || 0,
+    compliant: s.isCompliant,
+  }));
+  return (
+    <div className={className}>
+      <ResponsiveContainer width="100%" height={250}>
+        <BarChart
+          data={chartData}
+          margin={{ top: 5, right: 20, left: 0, bottom: 60 }}
+        >
+          <CartesianGrid
+            strokeDasharray="3 3"
+            stroke="#E5E7EB"
+            vertical={false}
+          />
+          <XAxis
+            dataKey="name"
+            tick={{ fontSize: 9 }}
+            angle={-45}
+            textAnchor="end"
+            interval={0}
+          />
+          <YAxis tick={{ fontSize: 11 }} />
+          <Tooltip />
+          <Bar dataKey="ratio" name="Teacher:Student Ratio">
+            {chartData.map((entry, i) => (
+              <Cell key={i} fill={entry.compliant ? C.active : C.error} />
+            ))}
+          </Bar>
         </BarChart>
       </ResponsiveContainer>
     </div>
