@@ -72,7 +72,9 @@ export const Avatar: React.FC<AvatarProps> = ({
   className = "",
   alt,
 }) => {
-  const [errored, setErrored] = useState(false);
+  // Remember which src failed so a new src gets a fresh attempt.
+  const [erroredSrc, setErroredSrc] = useState<string | null>(null);
+  const errored = !!src && erroredSrc === src;
 
   const sizeStyle =
     !fill && typeof size === "number"
@@ -116,7 +118,7 @@ export const Avatar: React.FC<AvatarProps> = ({
     <img
       src={src}
       alt={alt ?? (`${firstName ?? ""} ${lastName ?? ""}`.trim() || "Profile")}
-      onError={() => setErrored(true)}
+      onError={() => setErroredSrc(src)}
       style={sizeStyle}
       className={`${sizeClass} ${imgShapeClass} ${className}`}
     />
