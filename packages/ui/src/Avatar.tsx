@@ -86,7 +86,8 @@ export const Avatar: React.FC<AvatarProps> = ({
     ? "absolute inset-0 w-full h-full"
     : "rounded-full flex-shrink-0";
 
-  if (!src) {
+  // A failed photo is treated like no photo: initials first, then role image.
+  if (!src || errored) {
     const initials = getInitials(firstName, lastName);
     if (!initials) {
       return (
@@ -113,7 +114,7 @@ export const Avatar: React.FC<AvatarProps> = ({
 
   return (
     <img
-      src={errored ? ROLE_FALLBACKS[role] : src}
+      src={src}
       alt={alt ?? (`${firstName ?? ""} ${lastName ?? ""}`.trim() || "Profile")}
       onError={() => setErrored(true)}
       style={sizeStyle}
