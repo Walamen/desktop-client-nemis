@@ -1,6 +1,5 @@
-import { SchoolAdminCollectionPage } from '@/components/school-admin/SchoolAdminModulePages';
+import { CountyNotificationsPage } from '@/components/county/notifications/CountyNotificationsPage';
+
 export default function Page() {
-  return <SchoolAdminCollectionPage title="County notifications" description="Notifications addressed to this county workspace." sections={[
-    { collection: 'user_notifications', label: 'Notifications', columns: ['type', 'title', 'message', 'isRead', 'createdAt'] },
-  ]} />;
+  return <CountyNotificationsPage />;
 }
