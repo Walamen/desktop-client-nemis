@@ -72,6 +72,7 @@ import type { IAttendanceRepository } from '../interfaces/attendance/attendance-
 import type { IAssessmentRepository } from '../interfaces/assessments/assessment-repository';
 import type { IGradeRepository } from '../interfaces/assessments/grade-repository';
 import type { IUserRepository } from '../interfaces/identity/user-repository';
+import type { IHeaderNotificationsReadModel } from '../interfaces/identity/header-notifications-read-model';
 import type { IInstitutionRepository } from '../interfaces/institution/institution-repository';
 import type { IGradingConfigRepository } from '../interfaces/institution/grading-config-repository';
 import type { IDistrictRepository } from '../interfaces/institution/district-repository';
@@ -140,6 +141,7 @@ import { AssessmentsApplicationService } from '../services/assessments-applicati
 
 import { GetUserByIdUseCase } from '../use-cases/identity/get-user-by-id';
 import { GetCurrentUserUseCase } from '../use-cases/identity/get-current-user';
+import { GetHeaderNotificationsUseCase } from '../use-cases/identity/get-header-notifications';
 import { IdentityApplicationService } from '../services/identity-application-service';
 
 import { GetInstitutionProfileUseCase } from '../use-cases/institution/get-institution-profile';
@@ -206,6 +208,7 @@ export interface ApplicationPorts {
   assessments: IAssessmentRepository;
   grades: IGradeRepository;
   users: IUserRepository;
+  headerNotifications: IHeaderNotificationsReadModel;
   institutions: IInstitutionRepository;
   districts: IDistrictRepository;
   /** County-wide aggregates for the County (CEO) dashboard. */
@@ -479,6 +482,11 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
       users: ports.users,
       logger,
       currentUserId: ports.currentUserId,
+    }),
+    getHeaderNotifications: new GetHeaderNotificationsUseCase({
+      readModel: ports.headerNotifications,
+      currentUserId: ports.currentUserId,
+      logger,
     }),
   });
 

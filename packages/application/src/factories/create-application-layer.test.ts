@@ -43,6 +43,7 @@ import { InMemorySettingsGateway } from '../testing/infra/in-memory-settings-gat
 import { InMemoryTeacherRepository } from '../testing/teachers/in-memory-teacher-repository';
 import { InMemoryAssignmentRepository } from '../testing/assignments/in-memory-assignment-repository';
 import { InMemoryAssignmentSubmissionRepository } from '../testing/assignments/in-memory-assignment-submission-repository';
+import { InMemoryHeaderNotificationsReadModel } from '../testing/identity/in-memory-header-notifications';
 
 function buildLayer() {
   const subjects = new InMemorySubjectRepository();
@@ -61,6 +62,7 @@ function buildLayer() {
     assessments: new InMemoryAssessmentRepository(),
     grades: new InMemoryGradeRepository(),
     users: new InMemoryUserRepository(),
+    headerNotifications: new InMemoryHeaderNotificationsReadModel(),
     institutions: new InMemoryInstitutionRepository(),
     districts: new InMemoryDistrictRepository(),
     countyAnalytics: new InMemoryCountyAnalyticsReadModel(),

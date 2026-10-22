@@ -140,3 +140,4 @@ export * from './use-cases/assignments/delete-assignment';
 export * from './use-cases/assignments/list-submissions';
 export * from './use-cases/assignments/grade-submission';
 export * from './services/assignments-application-service';
+export * from './use-cases/identity/get-header-notifications';

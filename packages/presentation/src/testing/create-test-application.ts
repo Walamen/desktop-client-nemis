@@ -17,6 +17,7 @@ import {
   InMemoryCountyReportsReadModel,
   InMemoryCountyMessagingReadModel,
   InMemoryCountyNotificationsRepository,
+  InMemoryHeaderNotificationsReadModel,
   InMemoryCountyAuditReadModel,
   InMemoryCountySettingsReadModel,
   InMemoryCountyUsersReadModel,
@@ -68,6 +69,7 @@ export interface TestPorts {
   countyReports: InMemoryCountyReportsReadModel;
   countyMessaging: InMemoryCountyMessagingReadModel;
   countyNotifications: InMemoryCountyNotificationsRepository;
+  headerNotifications: InMemoryHeaderNotificationsReadModel;
   countyAudit: InMemoryCountyAuditReadModel;
   countySettings: InMemoryCountySettingsReadModel;
   countyUsers: InMemoryCountyUsersReadModel;
@@ -119,6 +121,7 @@ export function createTestApplication(): { app: ApplicationLayer; ports: TestPor
     countyReports: new InMemoryCountyReportsReadModel(),
     countyMessaging: new InMemoryCountyMessagingReadModel(),
     countyNotifications: new InMemoryCountyNotificationsRepository(),
+    headerNotifications: new InMemoryHeaderNotificationsReadModel(),
     countyAudit: new InMemoryCountyAuditReadModel(),
     countySettings: new InMemoryCountySettingsReadModel(),
     countyUsers: new InMemoryCountyUsersReadModel(),
