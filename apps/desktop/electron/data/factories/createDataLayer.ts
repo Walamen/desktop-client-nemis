@@ -13,6 +13,7 @@ import type {
   ICountyReportsReadModel,
   ICountyMessagingReadModel,
   ICountyNotificationsRepository,
+  IHeaderNotificationsReadModel,
   ICountyAuditReadModel,
   ICountySettingsReadModel,
   IUserRepository,
@@ -54,6 +55,7 @@ import { SqliteCountyTeachersReadModel } from '../repositories/sqlite/business/S
 import { SqliteCountyFinanceReadModel } from '../repositories/sqlite/business/SqliteCountyFinanceReadModel';
 import { SqliteCountyReportsReadModel } from '../repositories/sqlite/business/SqliteCountyReportsReadModel';
 import { SqliteCountyMessagingReadModel } from '../repositories/sqlite/business/SqliteCountyMessagingReadModel';
+import { SqliteHeaderNotificationsReadModel } from '../repositories/sqlite/business/SqliteHeaderNotificationsReadModel';
 import { SqliteCountyNotificationsRepository } from '../repositories/sqlite/business/SqliteCountyNotificationsRepository';
 import { SqliteCountyAuditReadModel } from '../repositories/sqlite/business/SqliteCountyAuditReadModel';
 import { SqliteCountySettingsReadModel } from '../repositories/sqlite/business/SqliteCountySettingsReadModel';
@@ -99,6 +101,7 @@ export interface DataLayer {
     countyReports: ICountyReportsReadModel;
     countyMessaging: ICountyMessagingReadModel;
     countyNotifications: ICountyNotificationsRepository;
+    headerNotifications: IHeaderNotificationsReadModel;
     countyAudit: ICountyAuditReadModel;
     countySettings: ICountySettingsReadModel;
     users: IUserRepository;
@@ -176,6 +179,7 @@ export function createDataLayer(manager: DatabaseManager, log: DatabaseLogger): 
   const countyReports = new SqliteCountyReportsReadModel(context);
   const countyMessaging = new SqliteCountyMessagingReadModel(context);
   const countyNotifications = new SqliteCountyNotificationsRepository(context);
+  const headerNotifications = new SqliteHeaderNotificationsReadModel(context);
   const countyAudit = new SqliteCountyAuditReadModel(context);
   const countySettings = new SqliteCountySettingsReadModel(context);
   const users = new SqliteUserRepository(context);
@@ -236,6 +240,7 @@ export function createDataLayer(manager: DatabaseManager, log: DatabaseLogger): 
       countyReports,
       countyMessaging,
       countyNotifications,
+      headerNotifications,
       countyAudit,
       countySettings,
       users,

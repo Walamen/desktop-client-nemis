@@ -1,3 +1,4 @@
+import type { HeaderNotificationsSummary } from './header-notifications';
 import type {
   AcademicYearListItemResult,
   ClassListRequest,
@@ -318,6 +319,7 @@ export interface SubjectApi {
 }
 export interface IdentityApi {
   getCurrentUser(): Promise<CurrentUserResult | null>;
+  getHeaderNotifications(): Promise<HeaderNotificationsSummary>;
 }
 export interface DeviceApi {
   getInfo(): Promise<DeviceInfoResult | null>;

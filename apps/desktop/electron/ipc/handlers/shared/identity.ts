@@ -8,4 +8,8 @@ export function registerIdentityHandlers(handle: IpcHandle, app: ApplicationLaye
     const res = await app.identity.getCurrentUser();
     return res.data;
   });
+  handle(IpcChannels.IDENTITY_HEADER_NOTIFICATIONS, assertNoArgs, async () => {
+    const res = await app.identity.getHeaderNotifications();
+    return res.data;
+  });
 }

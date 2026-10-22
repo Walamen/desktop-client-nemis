@@ -26,7 +26,7 @@ const app = {
   reporting: { getDashboardOverview: async () => ({ data: { totalStudents: 3, totalClasses: 2, totalSubjects: 1, attendanceToday: { present: 1, total: 3 }, studentsByGrade: [], recentlyEnrolled: [] } }) },
   institution: { getCurrentSchool: async () => ({ data: null }) },
   academics: { getCurrentAcademicYear: async () => ({ data: null }) },
-  identity: { getCurrentUser: async () => ({ data: { id: 'u1', fullName: 'Local Admin', email: 'a@b', isActive: true, roles: [] } }) },
+  identity: { getCurrentUser: async () => ({ data: { id: 'u1', fullName: 'Local Admin', email: 'a@b', isActive: true, roles: [] } }), getHeaderNotifications: async () => ({ data: { unread: 0, recent: [] } }) },
   infra: { getDeviceInfo: async () => ({ data: null }) },
 } as unknown as ApplicationLayer;
 
@@ -47,7 +47,7 @@ describe('dashboard/bootstrap IPC handlers', () => {
     registerAcademicYearHandlers(handle, app);
     registerIdentityHandlers(handle, app);
     registerDeviceHandlers(handle, app);
-    for (const channel of ['school:get-summary', 'academic-year:get-current', 'identity:get-current-user', 'device:get-info']) {
+    for (const channel of ['school:get-summary', 'academic-year:get-current', 'identity:get-current-user', 'identity:header-notifications', 'device:get-info']) {
       expect(calls.get(channel)).toBeDefined();
     }
   });

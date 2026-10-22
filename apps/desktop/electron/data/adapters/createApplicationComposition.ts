@@ -57,6 +57,7 @@ export function createApplicationComposition(
     countyReports: dataLayer.repositories.countyReports,
     countyMessaging: dataLayer.repositories.countyMessaging,
     countyNotifications: dataLayer.repositories.countyNotifications,
+    headerNotifications: dataLayer.repositories.headerNotifications,
     countyAudit: dataLayer.repositories.countyAudit,
     countySettings: dataLayer.repositories.countySettings,
     countyUsers: dataLayer.repositories.countyUsers,
