@@ -10,6 +10,7 @@ import { group, query } from './core';
 export const sharedIpc = {
   identity: group('identity', {
     getCurrentUser: () => query(() => sharedBridge.getCurrentUser()),
+    getHeaderNotifications: () => query(() => sharedBridge.getHeaderNotifications()),
   }),
   infra: group('infra', {
     getDeviceInfo: () => query(() => sharedBridge.getDeviceInfo()),

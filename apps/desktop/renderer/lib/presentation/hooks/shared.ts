@@ -8,6 +8,7 @@ import { usePresentation } from '../presentation-provider';
  * services/nemis-bridge/shared/attendance-bridge.ts). */
 export const useDeviceViewModel = () => usePresentation().viewModels.device;
 export const useCurrentUserViewModel = () => usePresentation().viewModels.currentUser;
+export const useHeaderNotificationsViewModel = () => usePresentation().viewModels.headerNotifications;
 export const useSyncViewModel = () => usePresentation().viewModels.sync;
 export const useConnectivityStore = () => usePresentation().stores.connectivity;
 export const useNotificationStore = () => usePresentation().stores.notifications;

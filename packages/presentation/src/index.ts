@@ -90,6 +90,7 @@ export * from './view-models/device/device-views';
 export * from './view-models/device/device-view-model';
 export * from './view-models/current-user/current-user-views';
 export * from './view-models/current-user/current-user-view-model';
+export * from './view-models/notifications/header-notifications-view-model';
 export * from './view-models/academic-year/academic-year-views';
 export * from './view-models/academic-year/academic-year-view-model';
 export * from './view-models/academic-foundation/academic-foundation-view-model';

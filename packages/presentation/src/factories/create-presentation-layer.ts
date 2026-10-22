@@ -13,6 +13,7 @@ import { AssessmentsViewModel } from '../view-models/assessments/assessments-vie
 import { AssignmentsViewModel } from '../view-models/assignments/assignments-view-model';
 import { AttendanceViewModel } from '../view-models/attendance/attendance-view-model';
 import { ClassRosterViewModel } from '../view-models/class-roster/class-roster-view-model';
+import { HeaderNotificationsViewModel } from '../view-models/notifications/header-notifications-view-model';
 import { CurrentUserViewModel } from '../view-models/current-user/current-user-view-model';
 import { DashboardViewModel } from '../view-models/dashboard/dashboard-view-model';
 import { DeviceViewModel } from '../view-models/device/device-view-model';
@@ -95,6 +96,7 @@ export interface PresentationViewModels {
   readonly countySettings: CountySettingsViewModel;
   readonly device: DeviceViewModel;
   readonly currentUser: CurrentUserViewModel;
+  readonly headerNotifications: HeaderNotificationsViewModel;
   readonly dashboard: DashboardViewModel;
   readonly studentStatistics: StudentStatisticsViewModel;
   readonly teachers: TeachersViewModel;
@@ -185,6 +187,7 @@ export function createPresentationLayer(
     countySettings: new CountySettingsViewModel({ county: app.county }),
     device: new DeviceViewModel({ infra: app.infra, notifications, session }),
     currentUser: new CurrentUserViewModel({ identity: app.identity, session }),
+    headerNotifications: new HeaderNotificationsViewModel({ identity: app.identity }),
     dashboard: new DashboardViewModel({ reporting: app.reporting, notifications }),
     studentStatistics: new StudentStatisticsViewModel({ reporting: app.reporting, notifications }),
     teachers,
