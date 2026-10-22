@@ -21,19 +21,26 @@ export class HeaderNotificationsViewModel {
     recent: [],
   }));
 
+  #latestRequest = 0;
+
   constructor(private readonly deps: HeaderNotificationsViewModelDeps) {}
 
   async load(): Promise<void> {
+    const requestId = ++this.#latestRequest;
     if (this.store.getState().status === 'idle') this.store.setState({ status: 'loading' });
     try {
       const res = await this.deps.identity.getHeaderNotifications();
+      if (requestId !== this.#latestRequest) return; // a newer load superseded this one
       const data = res.data;
       if (!data) {
+        console.error('Header notifications failed to load', res.warnings ?? 'no data returned');
         this.store.setState({ status: 'error' });
         return;
       }
       this.store.setState({ status: 'ready', unread: data.unread, recent: data.recent });
-    } catch {
+    } catch (error) {
+      if (requestId !== this.#latestRequest) return;
+      console.error('Header notifications failed to load', error);
       this.store.setState({ status: 'error' });
     }
   }
