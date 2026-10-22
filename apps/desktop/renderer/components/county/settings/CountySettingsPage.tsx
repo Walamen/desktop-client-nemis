@@ -32,7 +32,7 @@ export function CountySettingsPage() {
   const county = data?.county ?? null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 px-6 py-4">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-h2 font-heading text-neutral-dark mb-2">Settings</h1>
