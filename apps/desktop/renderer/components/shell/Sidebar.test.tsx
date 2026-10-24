@@ -46,6 +46,7 @@ const transfersLink = () => screen.getByText('Student Transfers').closest('a') a
 beforeEach(() => {
   vi.mocked(usePathname).mockReturnValue('/government/school-admin');
   window.localStorage.clear();
+  vi.mocked(sharedBridge.logout).mockResolvedValue(undefined as never);
   listMock.mockReset();
   stubRows([]);
 });
