@@ -11,14 +11,13 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('@/services/nemis-bridge/shared', () => ({ sharedBridge: { logout: vi.fn() } }));
 
-const notificationStore = createStore(() => ({ notifications: [{ id: 'n1', kind: 'info', message: 'x', autoDismissMs: null, createdAt: 0 }] }));
+vi.mock('./NotificationBell', () => ({ NotificationBell: () => <span aria-label="2 unread notifications" /> }));
 const baseUser = { fullName: 'Joseph Boakai', firstName: 'Joseph', lastName: 'Boakai', photoUrl: null, roleLabels: ['Principal'] };
 const currentUserStore = createStore<{ user: unknown }>(() => ({ user: { status: 'success', data: baseUser } }));
 const setUser = (user: unknown) => currentUserStore.setState({ user });
 
 vi.mock('../../lib/presentation/hooks/shared', () => ({
   useCurrentUserViewModel: () => ({ store: currentUserStore, loadUser: vi.fn() }),
-  useNotificationStore: () => ({ store: notificationStore }),
 }));
 
 import { Header } from './Header';
@@ -33,12 +32,27 @@ describe('Header', () => {
   });
   afterEach(() => vi.restoreAllMocks());
 
-  it('shows the resolved title, breadcrumb, user, and notification count', () => {
+  it('shows the resolved title, breadcrumb, user', () => {
     render(<Header role={SystemRole.INSTITUTION_ADMIN} />);
     expect(screen.getByText('Students')).toBeInTheDocument();
     expect(screen.getByText(/Home \/ School Admin \/ Students/)).toBeInTheDocument();
     expect(screen.getByText('Joseph Boakai')).toBeInTheDocument();
-    expect(screen.getByLabelText(/1 unread notification/i)).toBeInTheDocument();
+  });
+
+  it('shows no bell for DEO or Ministry', () => {
+    for (const role of [SystemRole.DEO, SystemRole.MINISTRY_ADMIN]) {
+      const { unmount } = render(<Header role={role} />);
+      expect(screen.queryByLabelText(/unread notifications/)).toBeNull();
+      unmount();
+    }
+  });
+
+  it('shows the bell for County, School Admin and Teacher', () => {
+    for (const role of [SystemRole.COUNTY_ADMIN, SystemRole.INSTITUTION_ADMIN, SystemRole.TEACHER]) {
+      const { unmount } = render(<Header role={role} />);
+      expect(screen.getByLabelText(/unread notifications/)).toBeInTheDocument();
+      unmount();
+    }
   });
 
   it('renders for a role with a non-generic avatarRole (DEO) without throwing', () => {

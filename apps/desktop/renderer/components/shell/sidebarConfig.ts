@@ -44,6 +44,8 @@ export interface SidebarConfig {
 export interface HeaderConfig {
   /** Base route for the role; breadcrumb segments are computed relative to it. */
   basePath: string;
+  /** Whether the header shows the notification bell. */
+  showNotificationBell: boolean;
   avatarRole: AvatarRole;
   /** Label used as the first breadcrumb segment (after "Home /"). */
   breadcrumbRoot: string;
@@ -329,27 +331,32 @@ const SCHOOL_ADMIN_PAGE_TITLES: Record<string, string> = {
 export const headerConfigs: Record<DesktopPortalRole, HeaderConfig> = {
   [SystemRole.INSTITUTION_ADMIN]: {
     basePath: DESKTOP_PORTALS[SystemRole.INSTITUTION_ADMIN].route,
+    showNotificationBell: true,
     avatarRole: 'generic',
     breadcrumbRoot: 'School Admin',
     pageTitles: SCHOOL_ADMIN_PAGE_TITLES,
   },
   [SystemRole.COUNTY_ADMIN]: {
     basePath: DESKTOP_PORTALS[SystemRole.COUNTY_ADMIN].route,
+    showNotificationBell: true,
     avatarRole: 'generic',
     breadcrumbRoot: 'County',
   },
   [SystemRole.DEO]: {
     basePath: DESKTOP_PORTALS[SystemRole.DEO].route,
+    showNotificationBell: false,
     avatarRole: 'deo',
     breadcrumbRoot: 'DEO',
   },
   [SystemRole.MINISTRY_ADMIN]: {
     basePath: DESKTOP_PORTALS[SystemRole.MINISTRY_ADMIN].route,
+    showNotificationBell: false,
     avatarRole: 'generic',
     breadcrumbRoot: 'Ministry',
   },
   [SystemRole.TEACHER]: {
     basePath: DESKTOP_PORTALS[SystemRole.TEACHER].route,
+    showNotificationBell: true,
     avatarRole: 'teacher',
     breadcrumbRoot: 'Teacher',
   },

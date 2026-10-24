@@ -8,9 +8,13 @@ export interface DropdownProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   align?: 'left' | 'right';
+  /** Accessible name for the trigger button. */
+  triggerLabel?: string;
+  /** Replaces the default panel width (`w-56`). */
+  panelClassName?: string;
 }
 
-export const Dropdown: React.FC<DropdownProps> = ({ trigger, children, open, onOpenChange, align = 'right' }) => {
+export const Dropdown: React.FC<DropdownProps> = ({ trigger, children, open, onOpenChange, align = 'right', triggerLabel, panelClassName = 'w-56' }) => {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
@@ -35,6 +39,7 @@ export const Dropdown: React.FC<DropdownProps> = ({ trigger, children, open, onO
         onClick={() => onOpenChange(!open)}
         aria-haspopup="menu"
         aria-expanded={open}
+        aria-label={triggerLabel}
         className="flex items-center gap-3 pl-2 pr-3 py-2 rounded-md hover:bg-gray-50 border border-transparent hover:border-gray-200 transition-colors"
       >
         {trigger}
@@ -42,7 +47,7 @@ export const Dropdown: React.FC<DropdownProps> = ({ trigger, children, open, onO
       {open && (
         <div
           role="menu"
-          className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} mt-2 w-56 bg-white border border-gray-200 rounded-md overflow-hidden z-50`}
+          className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} mt-2 ${panelClassName} bg-white border border-gray-200 rounded-md overflow-hidden z-50`}
         >
           {children}
         </div>
