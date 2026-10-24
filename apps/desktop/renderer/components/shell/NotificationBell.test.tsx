@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { createStore } from 'zustand/vanilla';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -12,9 +12,12 @@ vi.mock('@/hooks/use-realtime', () => ({ useRealtime: vi.fn() }));
 
 type Item = { id: string; type: string; title: string; message: string; link: string | null; createdAt: string };
 const load = vi.fn(() => Promise.resolve());
+const reset = vi.fn(() => store.setState({ status: 'idle', unread: 0, recent: [] }));
+const userStore = createStore<{ user: { status: string; data?: { id: string } } }>(() => ({ user: { status: 'success', data: { id: 'u1' } } }));
 const store = createStore<{ status: string; unread: number; recent: Item[] }>(() => ({ status: 'ready', unread: 0, recent: [] }));
 vi.mock('../../lib/presentation/hooks/shared', () => ({
-  useHeaderNotificationsViewModel: () => ({ store, load }),
+  useHeaderNotificationsViewModel: () => ({ store, load, reset }),
+  useCurrentUserViewModel: () => ({ store: userStore }),
 }));
 
 import { NotificationBell } from './NotificationBell';
@@ -31,6 +34,8 @@ describe('NotificationBell', () => {
   beforeEach(() => {
     push.mockClear();
     load.mockClear();
+    reset.mockClear();
+    userStore.setState({ user: { status: 'success', data: { id: 'u1' } } });
     setState(0);
   });
 
@@ -68,12 +73,38 @@ describe('NotificationBell', () => {
     expect(screen.getByText('No notifications')).toBeInTheDocument();
   });
 
+  it('says so when the first load failed instead of claiming an empty inbox', () => {
+    store.setState({ status: 'error', unread: 0, recent: [] });
+    render(<NotificationBell basePath={BASE} />);
+    fireEvent.click(screen.getByLabelText('0 unread notifications'));
+    expect(screen.getByText("Couldn't load notifications")).toBeInTheDocument();
+    expect(screen.queryByText('No notifications')).toBeNull();
+  });
+
+  it('drops the previous user notifications when a different user signs in', () => {
+    setState(2, [item({ title: 'Old user note' })]);
+    render(<NotificationBell basePath={BASE} />);
+    fireEvent.click(screen.getByLabelText('2 unread notifications'));
+    expect(screen.getByText('Old user note')).toBeInTheDocument();
+    load.mockClear();
+    act(() => userStore.setState({ user: { status: 'success', data: { id: 'u2' } } }));
+    expect(reset).toHaveBeenCalledTimes(1);
+    expect(load).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText('Old user note')).toBeNull();
+    expect(screen.getByLabelText('0 unread notifications')).toBeInTheDocument();
+  });
+
+  it('does not reset on first mount', () => {
+    render(<NotificationBell basePath={BASE} />);
+    expect(reset).not.toHaveBeenCalled();
+  });
+
   it('goes to the notification link inside the portal', () => {
-    setState(1, [item({ link: `${BASE}/students` })]);
+    setState(1, [item({ link: `${BASE}/staff` })]);
     render(<NotificationBell basePath={BASE} />);
     fireEvent.click(screen.getByLabelText('1 unread notifications'));
     fireEvent.click(screen.getByText('Exam week'));
-    expect(push).toHaveBeenCalledWith(`${BASE}/students`);
+    expect(push).toHaveBeenCalledWith(`${BASE}/teachers-staff`);
     expect(screen.queryByText('View all notifications')).toBeNull();
   });
 

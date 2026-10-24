@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Bell } from 'lucide-react';
 import { Dropdown } from '@nemis-desktop/ui';
-import { useHeaderNotificationsViewModel } from '../../lib/presentation/hooks/shared';
+import { useCurrentUserViewModel, useHeaderNotificationsViewModel } from '../../lib/presentation/hooks/shared';
 import { useViewModel } from '../../hooks/use-view-model';
 import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 import { useRealtime } from '@/hooks/use-realtime';
@@ -15,7 +15,22 @@ export function NotificationBell({ basePath }: { basePath: string }) {
   const pathname = usePathname();
   const router = useRouter();
   const vm = useHeaderNotificationsViewModel();
-  const { unread, recent } = useViewModel(vm.store, (s) => s);
+  const currentUser = useCurrentUserViewModel();
+  const userState = useViewModel(currentUser.store, (s) => s.user);
+  const userId = userState.status === 'success' || userState.status === 'refreshing' ? userState.data.id : null;
+  const { status, unread, recent } = useViewModel(vm.store, (s) => s);
+
+  // The view model is a session singleton: when a different user signs in,
+  // drop the previous user's summary before loading the new one.
+  const lastUserId = useRef<string | null>(null);
+  useEffect(() => {
+    if (!userId) return;
+    if (lastUserId.current !== null && lastUserId.current !== userId) {
+      vm.reset();
+      void vm.load();
+    }
+    lastUserId.current = userId;
+  }, [userId, vm]);
   const [open, setOpen] = useState(false);
 
   useRevalidateOnSync(() => {
@@ -60,7 +75,9 @@ export function NotificationBell({ basePath }: { basePath: string }) {
       </div>
       <div className="max-h-96 overflow-y-auto">
         {recent.length === 0 ? (
-          <p className="px-4 py-6 text-sm text-gray-500 text-center">No notifications</p>
+          <p className="px-4 py-6 text-sm text-gray-500 text-center">
+            {status === 'error' && unread === 0 ? "Couldn't load notifications" : 'No notifications'}
+          </p>
         ) : (
           recent.map((n) => {
             const meta = getNotificationMeta(n.type);

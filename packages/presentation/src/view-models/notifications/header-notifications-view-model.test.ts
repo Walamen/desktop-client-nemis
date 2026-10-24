@@ -38,6 +38,17 @@ describe('HeaderNotificationsViewModel', () => {
     expect(vm.store.getState()).toMatchObject({ status: 'error', unread: 2 });
   });
 
+  it('reset clears the data and discards an in-flight load', async () => {
+    const { app, ports } = createTestApplication();
+    ports.headerNotifications.summaries.set(ports.currentUserId, { unread: 2, recent: [note('a')] });
+    const vm = new HeaderNotificationsViewModel({ identity: app.identity });
+    await vm.load();
+    const inFlight = vm.load();
+    vm.reset();
+    await inFlight;
+    expect(vm.store.getState()).toMatchObject({ status: 'idle', unread: 0, recent: [] });
+  });
+
   it('does not drop to loading during a reload', async () => {
     const { app, ports } = createTestApplication();
     ports.headerNotifications.summaries.set(ports.currentUserId, { unread: 1, recent: [note('a')] });

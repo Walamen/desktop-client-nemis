@@ -25,6 +25,13 @@ export class HeaderNotificationsViewModel {
 
   constructor(private readonly deps: HeaderNotificationsViewModelDeps) {}
 
+  /** Back to idle with no data (a different user signed in) and drop any
+   * in-flight load so it cannot repopulate the previous user's summary. */
+  reset(): void {
+    this.#latestRequest++;
+    this.store.setState({ status: 'idle', unread: 0, recent: [] });
+  }
+
   async load(): Promise<void> {
     const requestId = ++this.#latestRequest;
     if (this.store.getState().status === 'idle') this.store.setState({ status: 'loading' });

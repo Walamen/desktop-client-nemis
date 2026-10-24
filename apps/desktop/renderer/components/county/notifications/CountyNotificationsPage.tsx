@@ -57,15 +57,24 @@ export function CountyNotificationsPage() {
     setMarkingAll(true);
     try {
       await vm.markAllRead();
-      void headerNotifications.load();
+    } catch (error) {
+      console.error('Failed to mark all notifications read', error);
+      void vm.load(filter); // resync the list; a success already updated it locally
     } finally {
+      void headerNotifications.load();
       setMarkingAll(false);
     }
   };
 
   const handleMarkRead = async (id: string) => {
-    await vm.markRead(id);
-    void headerNotifications.load();
+    try {
+      await vm.markRead(id);
+    } catch (error) {
+      console.error('Failed to mark notification read', error);
+      void vm.load(filter);
+    } finally {
+      void headerNotifications.load();
+    }
   };
 
   const notifications = state.items;

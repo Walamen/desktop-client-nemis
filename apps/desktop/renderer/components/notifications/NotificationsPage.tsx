@@ -9,10 +9,11 @@ import { schoolAdminBridge } from '@/services/nemis-bridge/school-admin';
 import type { SchoolSummaryResult } from '@nemis-desktop/types';
 import { getNotificationMeta, listMyNotifications, markNotificationRead, relativeTime, type NotificationRow } from './shared';
 import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
+import { toPortalRoute } from '@/components/shell/notification-links';
 
 type FilterRead = 'ALL' | 'UNREAD' | 'READ';
 
-export function NotificationsPage() {
+export function NotificationsPage({ basePath = '/government/school-admin' }: { basePath?: string }) {
   const currentUser = useCurrentUserViewModel();
   const headerNotifications = useHeaderNotificationsViewModel();
   const userState = useViewModel(currentUser.store, (s) => s.user);
@@ -37,25 +38,45 @@ export function NotificationsPage() {
 
   useRevalidateOnSync(() => { void load(); }, [load]);
 
+  const detailsHref = (link: string | null | undefined) => toPortalRoute(link, basePath);
+
   const isLoading = userId !== null && notifications === null;
   const all = notifications ?? [];
   const unreadCount = all.filter((n) => !n.isRead).length;
   const visible = filterRead === 'ALL' ? all : filterRead === 'UNREAD' ? all.filter((n) => !n.isRead) : all.filter((n) => n.isRead);
 
+  // Reload both lists even when a mark call fails part-way, so the page and
+  // the header bell never show a stale count.
+  const refreshAll = async () => {
+    try {
+      await load();
+    } finally {
+      void headerNotifications.load();
+    }
+  };
+
   const handleMarkRead = async (id: string) => {
-    await markNotificationRead(id);
-    await load();
-    void headerNotifications.load();
+    try {
+      await markNotificationRead(id);
+    } catch (error) {
+      console.error('Failed to mark notification read', error);
+    } finally {
+      await refreshAll();
+    }
   };
 
   const handleMarkAllRead = async () => {
     setMarkingAll(true);
     try {
       await Promise.all(all.filter((n) => !n.isRead).map((n) => markNotificationRead(n.id)));
-      await load();
-      void headerNotifications.load();
+    } catch (error) {
+      console.error('Failed to mark all notifications read', error);
     } finally {
-      setMarkingAll(false);
+      try {
+        await refreshAll();
+      } finally {
+        setMarkingAll(false);
+      }
     }
   };
 
@@ -123,8 +144,8 @@ export function NotificationsPage() {
                         {!n.isRead && <span className="h-2 w-2 flex-shrink-0 rounded-full bg-sky-600" />}
                       </div>
                       <p className="mb-1 text-sm text-gray-600">{n.message}</p>
-                      {n.link && (
-                        <a href={n.link} className="text-xs text-sky-700 hover:underline">View details →</a>
+                      {detailsHref(n.link) && (
+                        <a href={detailsHref(n.link)!} className="text-xs text-sky-700 hover:underline">View details →</a>
                       )}
                       <p className="mt-1 text-xs text-gray-400">{relativeTime(n.createdAt)}</p>
                     </div>

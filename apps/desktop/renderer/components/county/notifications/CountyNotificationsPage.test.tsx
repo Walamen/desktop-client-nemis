@@ -140,4 +140,25 @@ describe('County Notifications page', () => {
     fireEvent.click(within(screen.getByText('Title n-1').closest('div.flex-1')!.parentElement!).getByRole('button', { name: /Read/ }));
     await waitFor(() => expect(headerLoad).toHaveBeenCalled());
   });
+
+  it('still refreshes the bell and logs when marking all read fails', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { county } = renderWith([page([item('n-1')])], { markAllNotificationsRead: vi.fn(async () => { throw new Error('boom'); }) });
+    await waitFor(() => expect(screen.getByText('Title n-1')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /Mark all read/ }));
+    await waitFor(() => expect(headerLoad).toHaveBeenCalled());
+    expect(spy).toHaveBeenCalled();
+    await waitFor(() => expect(county.listNotifications.mock.calls.length).toBeGreaterThan(1));
+    spy.mockRestore();
+  });
+
+  it('still refreshes the bell and logs when marking one read fails', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    renderWith([page([item('n-1')])], { markNotificationRead: vi.fn(async () => { throw new Error('boom'); }) });
+    await waitFor(() => expect(screen.getByText('Title n-1')).toBeInTheDocument());
+    fireEvent.click(within(screen.getByText('Title n-1').closest('div.flex-1')!.parentElement!).getByRole('button', { name: /Read/ }));
+    await waitFor(() => expect(headerLoad).toHaveBeenCalled());
+    expect(spy).toHaveBeenCalled();
+    spy.mockRestore();
+  });
 });

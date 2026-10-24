@@ -7,8 +7,6 @@ import { SystemRole, type DesktopPortalRole } from '@nemis-desktop/types';
 import { headerConfigs, sidebarConfigs, type SidebarBadge } from './sidebarConfig';
 import { resolveActiveHref } from './active-nav';
 import { useCollapsedGroups } from './use-collapsed-groups';
-import { useNotificationStore } from '../../lib/presentation/hooks/shared';
-import { useViewModel } from '../../hooks/use-view-model';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
 import { usePendingTransferCount } from '@/lib/use-pending-transfer-count';
 
@@ -36,13 +34,10 @@ export function Sidebar({
   const collapsible = config.collapsibleGroups === true;
   const { collapsed, toggle } = useCollapsedGroups(role, collapsible);
 
-  const notifications = useNotificationStore();
-  const unreadNotifications = useViewModel(notifications.store, (s) => s.notifications.length);
   // Hooks may not be called conditionally, so every role calls this; only the
   // school admin enables it, so other roles make no transfer reads.
   const pendingTransfers = usePendingTransferCount(role === SystemRole.INSTITUTION_ADMIN);
   const getBadgeCount = (badge?: SidebarBadge) => {
-    if (badge === 'notifications') return unreadNotifications;
     if (badge === 'transfers') return pendingTransfers;
     return 0;
   };

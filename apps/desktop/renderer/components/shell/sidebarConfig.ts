@@ -14,7 +14,7 @@ import { DESKTOP_PORTALS, SystemRole, type DesktopPortalRole } from '@nemis-desk
 import type { AvatarRole } from '@nemis-desktop/ui';
 import { academicSetupHref } from '@/lib/academic-setup';
 
-export type SidebarBadge = 'notifications' | 'transfers';
+export type SidebarBadge = 'transfers';
 
 export interface SidebarNavItem {
   name: string;

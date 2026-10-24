@@ -49,4 +49,30 @@ describe('NotificationsPage', () => {
     fireEvent.click(screen.getByText('Hello bell').closest('div.flex')!.parentElement!.parentElement!.querySelector('button')!);
     await waitFor(() => expect(headerLoad).toHaveBeenCalled());
   });
+
+  it('still refreshes the bell and logs when a mark call fails', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    bridge.listSchoolAdminRecords.mockResolvedValue({ items: [row] });
+    bridge.saveSchoolAdminRecord.mockRejectedValueOnce(new Error('boom'));
+    render(<NotificationsPage />);
+    await waitFor(() => expect(screen.getByText('Hello bell')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /Mark all read/ }));
+    await waitFor(() => expect(headerLoad).toHaveBeenCalled());
+    expect(spy).toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
+  it('View details uses the mapped desktop route for a known server link', async () => {
+    bridge.listSchoolAdminRecords.mockResolvedValue({ items: [{ ...row, link: '/government/school-admin/staff' }] });
+    render(<NotificationsPage />);
+    const a = await screen.findByText(/View details/);
+    expect(a.closest('a')).toHaveAttribute('href', '/government/school-admin/teachers-staff');
+  });
+
+  it('hides View details for a link the desktop has no page for', async () => {
+    bridge.listSchoolAdminRecords.mockResolvedValue({ items: [{ ...row, link: '/government/school-admin/unknown-thing' }] });
+    render(<NotificationsPage />);
+    await waitFor(() => expect(screen.getByText('Hello bell')).toBeInTheDocument());
+    expect(screen.queryByText(/View details/)).toBeNull();
+  });
 });

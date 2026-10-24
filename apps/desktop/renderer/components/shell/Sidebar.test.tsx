@@ -12,10 +12,8 @@ vi.mock('next/navigation', () => ({
 // (subscribe/getState/setState) — a bare `{ getState: () => ... }` object is not
 // enough and throws "store.subscribe is not a function". Use a real vanilla store,
 // same pattern as Header.test.tsx.
-const notificationStore = createStore(() => ({ notifications: [] as unknown[] }));
 const connectivityStore = createStore(() => ({ lastSyncAt: null as string | null }));
 vi.mock('../../lib/presentation/hooks/shared', () => ({
-  useNotificationStore: () => ({ store: notificationStore }),
   useConnectivityStore: () => ({ store: connectivityStore }),
 }));
 const settingsStore = createStore(() => ({ profile: { status: 'success', data: { id: 'inst-1' } } }));
