@@ -4,6 +4,12 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import type { RealtimeEvent } from '@nemis-desktop/types';
 import { PresentationProvider } from '@/lib/presentation/presentation-provider';
 import { createRendererPresentation } from '@/lib/presentation/create-renderer-presentation';
+const headerLoad = vi.hoisted(() => vi.fn(() => Promise.resolve()));
+vi.mock('@/lib/presentation/hooks/shared', async (orig) => ({
+  ...(await orig<Record<string, unknown>>()),
+  useHeaderNotificationsViewModel: () => ({ load: headerLoad }),
+}));
+
 import { CountyNotificationsPage } from './CountyNotificationsPage';
 
 vi.mock('next/link', () => ({
@@ -42,6 +48,7 @@ const page = (items: ReturnType<typeof item>[], extra: Record<string, unknown> =
 });
 
 afterEach(() => {
+  headerLoad.mockClear();
   delete (window as unknown as { nemis?: unknown }).nemis;
 });
 
@@ -117,5 +124,20 @@ describe('County Notifications page', () => {
     county.listNotifications.mockClear();
     push({ type: 'notification' });
     await waitFor(() => expect(county.listNotifications).toHaveBeenCalledWith({ filter: 'ALL', page: 1, limit: 20 }));
+  });
+
+  it('refreshes the header bell after Mark all read', async () => {
+    const { county } = renderWith([page([item('n-1')])]);
+    await waitFor(() => expect(screen.getByText('Title n-1')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /Mark all read/ }));
+    await waitFor(() => expect(county.markAllNotificationsRead).toHaveBeenCalled());
+    await waitFor(() => expect(headerLoad).toHaveBeenCalled());
+  });
+
+  it('refreshes the header bell after marking one read', async () => {
+    renderWith([page([item('n-1')])]);
+    await waitFor(() => expect(screen.getByText('Title n-1')).toBeInTheDocument());
+    fireEvent.click(within(screen.getByText('Title n-1').closest('div.flex-1')!.parentElement!).getByRole('button', { name: /Read/ }));
+    await waitFor(() => expect(headerLoad).toHaveBeenCalled());
   });
 });

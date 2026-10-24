@@ -6,6 +6,7 @@ import { Card, Button, Spinner, EmptyState } from '@nemis-desktop/ui';
 import type { CountyNotificationsFilter } from '@nemis-desktop/types';
 import { Check, AlertTriangle, Info } from 'lucide-react';
 import { useCountyNotificationsViewModel } from '@/lib/presentation/hooks/county';
+import { useHeaderNotificationsViewModel } from '@/lib/presentation/hooks/shared';
 import { useViewModel } from '@/hooks/use-view-model';
 import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 import { useRealtime } from '@/hooks/use-realtime';
@@ -42,6 +43,7 @@ export function CountyNotificationsPage() {
   const [filter, setFilter] = useState<CountyNotificationsFilter>('ALL');
   const [markingAll, setMarkingAll] = useState(false);
   const vm = useCountyNotificationsViewModel();
+  const headerNotifications = useHeaderNotificationsViewModel();
   const state = useViewModel(vm.store, (s) => s);
 
   useRevalidateOnSync(() => {
@@ -55,9 +57,15 @@ export function CountyNotificationsPage() {
     setMarkingAll(true);
     try {
       await vm.markAllRead();
+      void headerNotifications.load();
     } finally {
       setMarkingAll(false);
     }
+  };
+
+  const handleMarkRead = async (id: string) => {
+    await vm.markRead(id);
+    void headerNotifications.load();
   };
 
   const notifications = state.items;
@@ -180,7 +188,7 @@ export function CountyNotificationsPage() {
                         <Button
                           variant="secondary"
                           size="sm"
-                          onClick={() => void vm.markRead(n.id)}
+                          onClick={() => void handleMarkRead(n.id)}
                           className="flex-shrink-0"
                         >
                           <Check className="w-3 h-3 mr-1" />

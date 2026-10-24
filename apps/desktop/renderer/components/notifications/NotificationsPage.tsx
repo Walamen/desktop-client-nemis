@@ -3,7 +3,7 @@
 import { useCallback, useState } from 'react';
 import { Bell, Check, Filter } from 'lucide-react';
 import { Spinner } from '@nemis-desktop/ui';
-import { useCurrentUserViewModel } from '@/lib/presentation/hooks/shared';
+import { useCurrentUserViewModel, useHeaderNotificationsViewModel } from '@/lib/presentation/hooks/shared';
 import { useViewModel } from '@/hooks/use-view-model';
 import { schoolAdminBridge } from '@/services/nemis-bridge/school-admin';
 import type { SchoolSummaryResult } from '@nemis-desktop/types';
@@ -14,6 +14,7 @@ type FilterRead = 'ALL' | 'UNREAD' | 'READ';
 
 export function NotificationsPage() {
   const currentUser = useCurrentUserViewModel();
+  const headerNotifications = useHeaderNotificationsViewModel();
   const userState = useViewModel(currentUser.store, (s) => s.user);
   const userId = userState.status === 'success' ? userState.data.id : null;
 
@@ -44,6 +45,7 @@ export function NotificationsPage() {
   const handleMarkRead = async (id: string) => {
     await markNotificationRead(id);
     await load();
+    void headerNotifications.load();
   };
 
   const handleMarkAllRead = async () => {
@@ -51,6 +53,7 @@ export function NotificationsPage() {
     try {
       await Promise.all(all.filter((n) => !n.isRead).map((n) => markNotificationRead(n.id)));
       await load();
+      void headerNotifications.load();
     } finally {
       setMarkingAll(false);
     }
