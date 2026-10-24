@@ -1,15 +1,28 @@
+
 import path from 'node:path';
-import { BrowserWindow } from 'electron';
+import {  BrowserWindow, screen } from 'electron';
 import type { AppConfig } from '@app/config/env';
 
 export const RENDERER_ORIGIN = 'app://renderer/';
 
 export function createMainWindow(config: AppConfig): BrowserWindow {
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const { width: screenWidth, height: screenHeight } =
+    primaryDisplay.workAreaSize;
+
+
+
+  // Keep minimum dimensions within the available screen size.
+  const minWidth = Math.min(1280, screenWidth);
+  const minHeight = Math.min(700, screenHeight);
+
   const window = new BrowserWindow({
-    width: 1280,
-    height: 800,
-    minWidth: 1024,
-    minHeight: 700,
+    width: screenWidth,
+    height: screenHeight,
+    minWidth,
+    minHeight,
+    center: true,
+    show: false,
     backgroundColor: '#020833',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -18,6 +31,10 @@ export function createMainWindow(config: AppConfig): BrowserWindow {
       nodeIntegration: false,
       webSecurity: true,
     },
+  });
+
+  window.once('ready-to-show', () => {
+    window.show();
   });
 
   if (config.isDev) {
