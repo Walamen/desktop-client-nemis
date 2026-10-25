@@ -52,6 +52,23 @@ describe('dashboard query use cases', () => {
         status: AttendanceStatus.PRESENT, occurredAt: '2026-07-20T08:00:00.000Z',
       }),
     );
+    // Only the active year counts: s-1 is enrolled in it, s-2 only in last year.
+    students.save(
+      Student.create({
+        id: 's-2', institutionId: 'inst-1', firstName: 'C', lastName: 'D',
+        nemisId: '000000000026', dateOfBirth: '2015-01-01', gender: 'MALE',
+        occurredAt: '2026-07-20T00:00:00.000Z',
+      }),
+    );
+    classes.store.set(
+      'c-old',
+      Class.reconstitute({
+        id: 'c-old', institutionId: 'inst-1', academicYearId: 'ay-0', name: 'Grade 1 A',
+        gradeLevel: 'GRADE_1', isActive: true, version: 1, updatedAt: '2026-07-20T00:00:00.000Z',
+      }),
+    );
+    classes.activeAcademicYearId = 'ay-1';
+    students.activeYearEnrollments.push({ studentId: 's-1', gradeLevel: 'GRADE_1', enrolledAt: '2026-07-20' });
     const useCase = new GetDashboardOverviewUseCase({
       students, classes, subjects, attendance, clock: new FixedClock('2026-07-20T09:00:00.000Z'), logger,
     });
@@ -60,7 +77,7 @@ describe('dashboard query use cases', () => {
       totalStudents: 1,
       totalClasses: 1,
       totalSubjects: 0,
-      studentsByGrade: [],
+      studentsByGrade: [{ gradeLevel: 'GRADE_1', studentCount: 1 }],
       recentlyEnrolled: [{ id: 's-1', fullName: 'A B', nemisId: '000000000018', updatedAt: '2026-07-20T00:00:00.000Z' }],
       attendanceToday: { present: 1, total: 1 },
     });

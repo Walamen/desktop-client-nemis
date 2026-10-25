@@ -30,6 +30,21 @@ export class InMemoryStudentRepository implements IStudentRepository {
   findByClassId(_classId: string): Student[] {
     return [];
   }
+  /** Enrolments in the active academic year, standing in for the enrollments/classes join. */
+  readonly activeYearEnrollments: { studentId: string; gradeLevel: import('@nemis-desktop/types').GradeLevel; enrolledAt: string }[] = [];
+  countEnrolledInActiveYear(): number {
+    return new Set(this.activeYearEnrollments.map((e) => e.studentId)).size;
+  }
+  countByGradeLevelInActiveYear(): { gradeLevel: import('@nemis-desktop/types').GradeLevel; studentCount: number }[] {
+    const byGrade = new Map<import('@nemis-desktop/types').GradeLevel, Set<string>>();
+    for (const e of this.activeYearEnrollments) byGrade.set(e.gradeLevel, (byGrade.get(e.gradeLevel) ?? new Set()).add(e.studentId));
+    return [...byGrade].map(([gradeLevel, ids]) => ({ gradeLevel, studentCount: ids.size }));
+  }
+  findRecentlyEnrolledInActiveYear(limit: number): Student[] {
+    const latest = new Map<string, string>();
+    for (const e of this.activeYearEnrollments) if (!latest.has(e.studentId) || e.enrolledAt > (latest.get(e.studentId) ?? '')) latest.set(e.studentId, e.enrolledAt);
+    return [...latest].sort((a, b) => b[1].localeCompare(a[1])).map(([id]) => this.store.get(id)).filter((s): s is Student => s !== undefined).slice(0, limit);
+  }
   countAll(): number {
     return this.store.size;
   }

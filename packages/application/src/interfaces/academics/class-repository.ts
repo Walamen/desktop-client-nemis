@@ -26,6 +26,8 @@ export interface IClassRepository {
   exists(id: string): boolean;
   /** Real COUNT(*) — total classes in this installation. */
   countAll(): number;
+  /** Classes belonging to the active academic year (`isCurrent = 1`). */
+  countInActiveYear(): number;
   findPage(filter: ClassPageFilter): ClassPage;
   existsByName(
     institutionId: string,

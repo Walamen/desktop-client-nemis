@@ -112,7 +112,7 @@ export class SqliteTeacherRepository implements ITeacherRepository {
     });
   }
   listAssignments(teacherId: string): TeachingAssignmentResult[] {
-    const rows = this.#statements.get(`${assignmentSelect} WHERE a.staffId=? UNION ALL ${classAssignmentSelect} WHERE a.staffId=? ORDER BY assignedAt DESC`).all(teacherId,teacherId) as AssignmentRow[];
+    const rows = this.#statements.get(`${assignmentSelect} WHERE a.staffId=? AND y.isCurrent=1 UNION ALL ${classAssignmentSelect} WHERE a.staffId=? AND y.isCurrent=1 ORDER BY assignedAt DESC`).all(teacherId,teacherId) as AssignmentRow[];
     return rows.map(toAssignment);
   }
   findAssignment(id: string): TeachingAssignmentResult | null {
@@ -163,12 +163,12 @@ export class SqliteTeacherRepository implements ITeacherRepository {
   dashboard(): TeacherDashboardResult {
     return guarded('SqliteTeacherRepository.dashboard', () => {
       const total=(this.#statements.get('SELECT COUNT(*) n FROM staff WHERE isActive=1').get() as {n:number}).n;
-      const assigned=(this.#statements.get('SELECT COUNT(DISTINCT staffId) n FROM (SELECT staffId FROM class_subject_teachers UNION SELECT staffId FROM class_teachers)').get() as {n:number}).n;
+      const assigned=(this.#statements.get('SELECT COUNT(DISTINCT staffId) n FROM (SELECT staffId FROM class_subject_teachers a JOIN classes c ON c.id=a.classId JOIN academic_years y ON y.id=c.academicYearId AND y.isCurrent=1 UNION SELECT staffId FROM class_teachers a JOIN classes c ON c.id=a.classId JOIN academic_years y ON y.id=c.academicYearId AND y.isCurrent=1)').get() as {n:number}).n;
       const recently=this.#statements.get('SELECT id,firstName,lastName,employeeNumber,createdAt FROM staff ORDER BY createdAt DESC LIMIT 5').all() as TeacherDashboardResult['recentlyAdded'];
-      const bySubject=this.#statements.get('SELECT s.id subjectId,s.name subjectName,COUNT(DISTINCT a.staffId) teacherCount FROM class_subject_teachers a JOIN subjects s ON s.id=a.subjectId GROUP BY s.id,s.name ORDER BY teacherCount DESC').all() as TeacherDashboardResult['bySubject'];
-      const byGrade=this.#statements.get('SELECT c.gradeLevel,COUNT(DISTINCT a.staffId) teacherCount FROM class_subject_teachers a JOIN classes c ON c.id=a.classId GROUP BY c.gradeLevel').all() as TeacherDashboardResult['byGrade'];
+      const bySubject=this.#statements.get('SELECT s.id subjectId,s.name subjectName,COUNT(DISTINCT a.staffId) teacherCount FROM class_subject_teachers a JOIN classes c ON c.id=a.classId JOIN academic_years y ON y.id=c.academicYearId AND y.isCurrent=1 JOIN subjects s ON s.id=a.subjectId GROUP BY s.id,s.name ORDER BY teacherCount DESC').all() as TeacherDashboardResult['bySubject'];
+      const byGrade=this.#statements.get('SELECT c.gradeLevel,COUNT(DISTINCT a.staffId) teacherCount FROM class_subject_teachers a JOIN classes c ON c.id=a.classId JOIN academic_years y ON y.id=c.academicYearId AND y.isCurrent=1 GROUP BY c.gradeLevel').all() as TeacherDashboardResult['byGrade'];
       const byEmploymentStatus=this.#statements.get('SELECT employmentType,COUNT(*) teacherCount FROM staff WHERE isActive=1 GROUP BY employmentType').all() as TeacherDashboardResult['byEmploymentStatus'];
-      const totalAssignments=(this.#statements.get('SELECT (SELECT COUNT(*) FROM class_subject_teachers)+(SELECT COUNT(*) FROM class_teachers) n').get() as {n:number}).n;
+      const totalAssignments=(this.#statements.get('SELECT (SELECT COUNT(*) FROM class_subject_teachers a JOIN classes c ON c.id=a.classId JOIN academic_years y ON y.id=c.academicYearId AND y.isCurrent=1)+(SELECT COUNT(*) FROM class_teachers a JOIN classes c ON c.id=a.classId JOIN academic_years y ON y.id=c.academicYearId AND y.isCurrent=1) n').get() as {n:number}).n;
       return { totalTeachers:total,bySubject,byGrade,byEmploymentStatus,recentlyAdded:recently,totalAssignments,unassignedTeachers:Math.max(0,total-assigned) };
     });
   }

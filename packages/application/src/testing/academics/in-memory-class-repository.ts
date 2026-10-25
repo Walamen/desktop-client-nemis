@@ -21,6 +21,11 @@ export class InMemoryClassRepository implements IClassRepository {
   exists(id: string): boolean {
     return this.store.has(id);
   }
+  /** Stands in for the `academic_years.isCurrent = 1` row. */
+  activeAcademicYearId: string | null = null;
+  countInActiveYear(): number {
+    return [...this.store.values()].filter((c) => c.academicYearId === this.activeAcademicYearId).length;
+  }
   countAll(): number {
     return this.store.size;
   }

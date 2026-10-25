@@ -218,4 +218,65 @@ describe('SqliteStudentRepository', () => {
     repo.save(student);
     expect(repo.findById('s-a')?.assertedNoNemisId).toBe(true);
   });
+
+  describe('active academic year', () => {
+    const db = () => test.context.connection;
+    function year(id: string, isCurrent: number, status: string): void {
+      db().prepare(`INSERT INTO academic_years (id,institutionId,code,startDate,endDate,isCurrent,version,updatedAt,status) VALUES (?,'inst-1',?,'2026-09-01','2027-06-30',?,1,'2026-07-20T00:00:00.000Z',?)`).run(id, id, isCurrent, status);
+    }
+    function klass(id: string, yearId: string, grade: string): void {
+      db().prepare(`INSERT INTO classes (id,institutionId,academicYearId,name,gradeLevel,isActive,version,updatedAt) VALUES (?,'inst-1',?,?,?,1,1,'2026-07-20T00:00:00.000Z')`).run(id, yearId, id, grade);
+    }
+    function enrol(id: string, studentId: string, classId: string, yearId: string, termId: string, date: string, updatedAt = '2026-07-20T00:00:00.000Z'): void {
+      db().prepare(`INSERT INTO enrollments (id,studentId,classId,academicYearId,termId,enrollmentDate,status,version,updatedAt) VALUES (?,?,?,?,?,?,'ACTIVE',1,?)`).run(id, studentId, classId, yearId, termId, date, updatedAt);
+    }
+    beforeEach(() => {
+      year('y-old', 0, 'SETUP');
+      year('y-new', 1, 'ACTIVE');
+      for (const [t, y] of [['t0', 'y-old'], ['t1', 'y-new'], ['t2', 'y-new']] as const) db().prepare(`INSERT INTO terms (id,academicYearId,name,startDate,endDate,isCurrent,version,updatedAt) VALUES (?,?,?,'2026-09-01','2027-06-30',0,1,'2026-07-20T00:00:00.000Z')`).run(t, y, t);
+      klass('c-old', 'y-old', 'GRADE_1');
+      klass('c-new-2', 'y-new', 'GRADE_2');
+      klass('c-new-3', 'y-new', 'GRADE_3');
+      repo.save(newStudent('s-1', '482915736045'));
+      repo.save(newStudent('s-2', '123456789015'));
+      repo.save(newStudent('s-3', '000000000018'));
+      repo.save(newStudent('s-4', '000000000026'));
+      enrol('e1', 's-1', 'c-new-2', 'y-new', 't1', '2026-09-02');
+      enrol('e1b', 's-1', 'c-new-2', 'y-new', 't2', '2026-09-03'); // second term, same student
+      enrol('e2', 's-2', 'c-old', 'y-old', 't0', '2025-09-01'); // old year only
+      enrol('e3', 's-3', 'c-old', 'y-old', 't0', '2025-09-01');
+      enrol('e3b', 's-3', 'c-new-3', 'y-new', 't1', '2026-09-10');
+      // s-4 never enrolled
+    });
+
+    it('countEnrolledInActiveYear counts distinct students enrolled in the current year', () => {
+      expect(repo.countEnrolledInActiveYear()).toBe(2);
+    });
+
+    it('countByGradeLevelInActiveYear takes the grade from the enrolment class', () => {
+      const rows = repo.countByGradeLevelInActiveYear().sort((a, b) => a.gradeLevel.localeCompare(b.gradeLevel));
+      expect(rows).toEqual([
+        { gradeLevel: 'GRADE_2', studentCount: 1 },
+        { gradeLevel: 'GRADE_3', studentCount: 1 },
+      ]);
+    });
+
+    it('findRecentlyEnrolledInActiveYear orders by enrolment date, distinct, active year only', () => {
+      expect(repo.findRecentlyEnrolledInActiveYear(5).map((s) => s.id)).toEqual(['s-3', 's-1']);
+      expect(repo.findRecentlyEnrolledInActiveYear(1).map((s) => s.id)).toEqual(['s-3']);
+    });
+
+    it('is empty when no year is current', () => {
+      db().prepare(`UPDATE academic_years SET isCurrent = 0`).run();
+      expect(repo.countEnrolledInActiveYear()).toBe(0);
+      expect(repo.countByGradeLevelInActiveYear()).toEqual([]);
+      expect(repo.findRecentlyEnrolledInActiveYear(5)).toEqual([]);
+    });
+
+    it('stays inside the workspace school', () => {
+      db().prepare(`INSERT INTO provisioning_metadata (id, status, institutionId, startedAt, updatedAt) VALUES ('singleton','complete','inst-other','2026-07-20T00:00:00.000Z','2026-07-20T00:00:00.000Z')`).run();
+      expect(repo.countEnrolledInActiveYear()).toBe(0);
+      expect(repo.findRecentlyEnrolledInActiveYear(5)).toEqual([]);
+    });
+  });
 });

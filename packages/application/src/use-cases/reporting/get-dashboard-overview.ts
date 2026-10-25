@@ -28,12 +28,12 @@ export class GetDashboardOverviewUseCase implements QueryHandler<
     return invokeUseCase('GetDashboardOverview', this.deps.logger, async () => {
       const today = this.deps.clock.now().slice(0, 10);
       return ok({
-        totalStudents: this.deps.students.countAll(),
-        totalClasses: this.deps.classes.countAll(),
+        totalStudents: this.deps.students.countEnrolledInActiveYear(),
+        totalClasses: this.deps.classes.countInActiveYear(),
         totalSubjects: this.deps.subjects.countAll(),
         attendanceToday: this.deps.attendance.countByDate(today),
-        studentsByGrade: this.deps.students.countByGradeLevel(),
-        recentlyEnrolled: this.deps.students.findRecentlyUpdated(5).map((student) => ({ id: student.id, fullName: student.name.full, nemisId: student.nemisId?.value, updatedAt: student.updatedAt })),
+        studentsByGrade: this.deps.students.countByGradeLevelInActiveYear(),
+        recentlyEnrolled: this.deps.students.findRecentlyEnrolledInActiveYear(5).map((student) => ({ id: student.id, fullName: student.name.full, nemisId: student.nemisId?.value, updatedAt: student.updatedAt })),
       });
     });
   }

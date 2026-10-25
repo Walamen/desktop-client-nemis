@@ -212,4 +212,13 @@ export class SqliteStudentRepository implements IStudentRepository {
   findRecentlyUpdated(limit: number): Student[] {
     return guarded('SqliteStudentRepository.findRecentlyUpdated', () => (this.#statements.get(`SELECT ${COLUMNS} FROM ${TableNames.students} s WHERE ${workspaceStudentScope('s')} ORDER BY updatedAt DESC LIMIT ?`).all(limit) as StudentRow[]).map(toStudent));
   }
+  countEnrolledInActiveYear(): number {
+    return guarded('SqliteStudentRepository.countEnrolledInActiveYear', () => (this.#statements.get(`SELECT COUNT(DISTINCT s.id) AS n FROM ${TableNames.students} s JOIN ${TableNames.enrollments} e ON e.studentId = s.id JOIN academic_years y ON y.id = e.academicYearId AND y.isCurrent = 1 WHERE ${workspaceStudentScope('s')}`).get() as { n: number }).n);
+  }
+  countByGradeLevelInActiveYear(): { gradeLevel: GradeLevel; studentCount: number }[] {
+    return guarded('SqliteStudentRepository.countByGradeLevelInActiveYear', () => this.#statements.get(`SELECT c.gradeLevel AS gradeLevel, COUNT(DISTINCT s.id) AS studentCount FROM ${TableNames.students} s JOIN ${TableNames.enrollments} e ON e.studentId = s.id JOIN academic_years y ON y.id = e.academicYearId AND y.isCurrent = 1 JOIN ${TableNames.classes} c ON c.id = e.classId WHERE s.isActive = 1 AND ${workspaceStudentScope('s')} GROUP BY c.gradeLevel`).all() as { gradeLevel: GradeLevel; studentCount: number }[]);
+  }
+  findRecentlyEnrolledInActiveYear(limit: number): Student[] {
+    return guarded('SqliteStudentRepository.findRecentlyEnrolledInActiveYear', () => (this.#statements.get(`SELECT ${COLUMNS.split(', ').map((c) => `s.${c}`).join(', ')} FROM ${TableNames.students} s JOIN (SELECT e.studentId, MAX(e.enrollmentDate) AS lastDate, MAX(e.updatedAt) AS lastUpdated FROM ${TableNames.enrollments} e JOIN academic_years y ON y.id = e.academicYearId AND y.isCurrent = 1 GROUP BY e.studentId) en ON en.studentId = s.id WHERE ${workspaceStudentScope('s')} ORDER BY en.lastDate DESC, en.lastUpdated DESC, s.id ASC LIMIT ?`).all(limit) as StudentRow[]).map(toStudent));
+  }
 }

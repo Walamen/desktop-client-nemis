@@ -134,4 +134,15 @@ describe('SqliteClassRepository', () => {
       .run();
     expect(repo.countSubjects('c-1')).toBe(1);
   });
+
+  it('countInActiveYear counts only classes of the current academic year', () => {
+    const db = test.context.connection;
+    db.prepare(`INSERT INTO academic_years (id,institutionId,code,startDate,endDate,isCurrent,version,updatedAt,status) VALUES ('y-old','inst-1','old','2025-09-01','2026-06-30',0,1,?,'SETUP'),('y-new','inst-1','new','2026-09-01','2027-06-30',1,1,?,'ACTIVE')`).run(ISO, ISO);
+    const ins = db.prepare(`INSERT INTO ${TableNames.classes} (id, institutionId, academicYearId, name, gradeLevel, isActive, version, updatedAt) VALUES (?, 'inst-1', ?, ?, 'GRADE_1', 1, 1, ?)`);
+    ins.run('c-old', 'y-old', 'Old', ISO);
+    ins.run('c-new-a', 'y-new', 'A', ISO);
+    ins.run('c-new-b', 'y-new', 'B', ISO);
+    expect(repo.countAll()).toBe(3);
+    expect(repo.countInActiveYear()).toBe(2);
+  });
 });

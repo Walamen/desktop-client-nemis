@@ -52,15 +52,6 @@ describe('business application layer end-to-end against real SQLite', () => {
     expect((await app.infra.getDeviceInfo()).data?.deviceName).toBe('business-e2e');
   });
 
-  it('creating a student through the use case increments the overview count', async () => {
-    const app = createApplicationComposition(dataLayer, 'test-user', silent);
-    await app.students.create({
-      institutionId: 'inst-1', firstName: 'Grace', lastName: 'Toe',
-      dateOfBirth: '2015-01-01', gender: Gender.FEMALE,
-    });
-    expect((await app.reporting.getDashboardOverview()).data.totalStudents).toBe(1);
-  });
-
   /** The server starts a year (SETUP -> ACTIVE, current); the importer copies that down. */
   function activateYear(id: string): void {
     manager.connection
@@ -251,6 +242,25 @@ describe('business application layer end-to-end against real SQLite', () => {
         .get(res.data.id) as { payload: string }).payload,
     );
     expect(studentPayload.record.assertedNoNemisId).toBe(1);
+  });
+
+  it('the overview counts a student only once enrolled in the active year', async () => {
+    seedInstitution();
+    const app = createApplicationComposition(dataLayer, 'test-user', silent);
+    const { year, term, klass } = await seedEnrolmentTarget(app);
+    await app.students.create({
+      institutionId: 'inst-1', firstName: 'Grace', lastName: 'Toe',
+      dateOfBirth: '2015-01-01', gender: Gender.FEMALE,
+    });
+    expect((await app.reporting.getDashboardOverview()).data.totalStudents).toBe(0);
+    await app.students.createAndEnroll({
+      ...ada, academicYearId: year.data.id, termId: term.data.id, classId: klass.data.id,
+      assertedNoNemisId: true,
+    });
+    const overview = (await app.reporting.getDashboardOverview()).data;
+    expect(overview.totalStudents).toBe(1);
+    expect(overview.studentsByGrade).toEqual([{ gradeLevel: GradeLevel.GRADE_7, studentCount: 1 }]);
+    expect(overview.recentlyEnrolled.map((r) => r.fullName)).toEqual(['Ada Toe']);
   });
 
   it('rolls back everything when the enrolment write fails', async () => {

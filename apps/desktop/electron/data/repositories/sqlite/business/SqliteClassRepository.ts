@@ -85,6 +85,15 @@ export class SqliteClassRepository implements IClassRepository {
     });
   }
 
+  countInActiveYear(): number {
+    return guarded('SqliteClassRepository.countInActiveYear', () => {
+      const row = this.#statements
+        .get(`SELECT COUNT(*) AS n FROM ${TableNames.classes} c JOIN academic_years y ON y.id = c.academicYearId AND y.isCurrent = 1`)
+        .get() as { n: number };
+      return row.n;
+    });
+  }
+
   findPage(filter: ClassPageFilter): ClassPage {
     return guarded('SqliteClassRepository.findPage', () => {
       const clauses: string[] = [];

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Gender } from '@nemis-desktop/types';
+import { Gender, GradeLevel } from '@nemis-desktop/types';
 import { NotificationStore } from '../../stores/notification-store';
 import { createTestApplication } from '../../testing/create-test-application';
 import { DashboardViewModel } from './dashboard-view-model';
@@ -17,7 +17,9 @@ async function seedStudents(count: number) {
 
 describe('DashboardViewModel', () => {
   it('loads the real overview from the reporting service', async () => {
-    const { app } = await seedStudents(3);
+    const { app, ports } = await seedStudents(3);
+    // The dashboard counts students enrolled in the active year only.
+    for (const id of ports.students.store.keys()) ports.students.activeYearEnrollments.push({ studentId: id, gradeLevel: GradeLevel.GRADE_1, enrolledAt: '2026-07-20' });
     const vm = new DashboardViewModel({ reporting: app.reporting, notifications: new NotificationStore() });
     await vm.loadOverview();
     const summary = vm.store.getState().summary;

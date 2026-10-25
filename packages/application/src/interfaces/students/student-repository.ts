@@ -29,4 +29,10 @@ export interface IStudentRepository {
   /** Active students with admissionDate on/after `sinceDate` (YYYY-MM-DD). */
   countRecentAdmissions(sinceDate: string): number;
   findRecentlyUpdated(limit: number): Student[];
+  /** Distinct students enrolled in the active academic year (`isCurrent = 1`), within the workspace school. */
+  countEnrolledInActiveYear(): number;
+  /** Active-year students grouped by the grade of their enrolment class. */
+  countByGradeLevelInActiveYear(): { gradeLevel: GradeLevel; studentCount: number }[];
+  /** Active-year students, newest enrolment first (enrolment date, then updatedAt). */
+  findRecentlyEnrolledInActiveYear(limit: number): Student[];
 }
