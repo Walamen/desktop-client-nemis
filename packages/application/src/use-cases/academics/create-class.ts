@@ -45,8 +45,8 @@ export class CreateClassUseCase implements CommandHandler<
       if (!year) {
         throw new WorkflowException(`Academic year ${command.academicYearId} does not exist.`);
       }
-      if (year.status === AcademicYearStatus.ARCHIVED) {
-        throw new WorkflowException('Cannot add a class to an archived academic year.');
+      if (year.status === AcademicYearStatus.CLOSED) {
+        throw new WorkflowException('Cannot add a class to a closed academic year.');
       }
       if (
         this.deps.classes.existsByName(institution.id, command.academicYearId, command.name)

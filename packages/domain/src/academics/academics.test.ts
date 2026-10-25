@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { EnrollmentStatus, GradeLevel } from '@nemis-desktop/types';
-import { AcademicYear } from './entities/academic-year';
 import { AcademicYearCode } from './value-objects/academic-year-code';
 import { Class } from './entities/class';
 import { Enrollment } from './entities/enrollment';
@@ -13,28 +12,6 @@ describe('AcademicYearCode', () => {
   it('accepts YYYY/YYYY and rejects malformed', () => {
     expect(AcademicYearCode.create('2025/2026').value).toBe('2025/2026');
     expect(() => AcademicYearCode.create('2025-2026')).toThrow(InvalidValueObjectException);
-  });
-});
-
-describe('AcademicYear', () => {
-  it('makeCurrent flips the flag and bumps version', () => {
-    const year = AcademicYear.reconstitute({
-      id: 'ay-1',
-      institutionId: 'inst-1',
-      code: '2025/2026',
-      start: '2025-09-01',
-      end: '2026-07-31',
-      isCurrent: false,
-      version: 1,
-      updatedAt: ISO,
-    });
-    year.makeCurrent('admin', ISO);
-    expect(year.isCurrent).toBe(true);
-    expect(year.version).toBe(2);
-
-    year.makeCurrent('admin', ISO);
-    expect(year.isCurrent).toBe(true);
-    expect(year.version).toBe(2);
   });
 });
 

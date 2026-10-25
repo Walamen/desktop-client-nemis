@@ -19,7 +19,6 @@ export interface CreateAcademicYearDto {
   code: string;
   startDate: string;
   endDate: string;
-  makeCurrent?: boolean;
   actorId?: string;
 }
 
@@ -30,9 +29,4 @@ export interface UpdateAcademicYearDto {
   endDate?: string;
   actorId?: string;
 }
-
-export interface SetAcademicYearStatusDto {
-  id: string;
-  status: AcademicYearStatus;
-  actorId?: string;
-}
+

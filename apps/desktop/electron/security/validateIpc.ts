@@ -1,6 +1,5 @@
 import { IPCError, normalizeNemisId } from '@nemis-desktop/shared';
 import {
-  AcademicYearStatus,
   AssignmentStatus,
   AssignmentType,
   AttendanceStatus,
@@ -712,11 +711,10 @@ export function assertCreateAcademicYearArgs(args: readonly unknown[]): void {
   assertArity(args, 1);
   const [request] = args;
   if (!isPlainObject(request)) throw new IPCError('Expected a request object.');
-  assertKnownKeys(request, ['code', 'startDate', 'endDate', 'makeCurrent']);
+  assertKnownKeys(request, ['code', 'startDate', 'endDate']);
   assertString(request.code, 'code', NAME_MAX_LENGTH);
   assertIsoDate(request.startDate, 'startDate');
   assertIsoDate(request.endDate, 'endDate');
-  assertOptionalBoolean(request.makeCurrent, 'makeCurrent');
 }
 
 export function assertUpdateAcademicYearArgs(args: readonly unknown[]): void {
@@ -728,15 +726,6 @@ export function assertUpdateAcademicYearArgs(args: readonly unknown[]): void {
   assertOptionalString(request.code, 'code', NAME_MAX_LENGTH);
   assertOptionalIsoDate(request.startDate, 'startDate');
   assertOptionalIsoDate(request.endDate, 'endDate');
-}
-
-export function assertSetAcademicYearStatusArgs(args: readonly unknown[]): void {
-  assertArity(args, 1);
-  const [request] = args;
-  if (!isPlainObject(request)) throw new IPCError('Expected a request object.');
-  assertKnownKeys(request, ['id', 'status']);
-  assertString(request.id, 'id', ID_MAX_LENGTH);
-  assertEnumMember(request.status, 'status', Object.values(AcademicYearStatus));
 }
 
 export function assertCreateTermArgs(args: readonly unknown[]): void {

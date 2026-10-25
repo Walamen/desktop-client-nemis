@@ -39,8 +39,8 @@ export class CreateTermUseCase implements CommandHandler<
       if (!year) {
         throw new WorkflowException(`Academic year ${command.academicYearId} does not exist.`);
       }
-      if (year.status === AcademicYearStatus.ARCHIVED) {
-        throw new WorkflowException('Cannot add a term to an archived academic year.');
+      if (year.status === AcademicYearStatus.CLOSED) {
+        throw new WorkflowException('Cannot add a term to a closed academic year.');
       }
       if (!year.period.contains(command.startDate) || !year.period.contains(command.endDate)) {
         throw new WorkflowException('Term dates must fall within the academic year.');

@@ -16,7 +16,6 @@ export interface CreateAcademicYearRequest {
   code: string;
   startDate: string;
   endDate: string;
-  makeCurrent?: boolean;
 }
 
 export interface UpdateAcademicYearRequest {
@@ -24,11 +23,6 @@ export interface UpdateAcademicYearRequest {
   code?: string;
   startDate?: string;
   endDate?: string;
-}
-
-export interface SetAcademicYearStatusRequest {
-  id: string;
-  status: AcademicYearStatus;
 }
 
 export interface TermResult {

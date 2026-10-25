@@ -32,7 +32,6 @@ export const schoolAdminIpc = {
           code: dto.code,
           startDate: dto.startDate,
           endDate: dto.endDate,
-          makeCurrent: dto.makeCurrent,
         }),
       ),
     updateAcademicYear: (dto) =>
@@ -44,9 +43,6 @@ export const schoolAdminIpc = {
           endDate: dto.endDate,
         }),
       ),
-    setCurrentAcademicYear: (dto) => query(() => schoolAdminBridge.setCurrentAcademicYear(dto.id)),
-    setAcademicYearStatus: (dto) =>
-      query(() => schoolAdminBridge.setAcademicYearStatus({ id: dto.id, status: dto.status })),
     listTerms: (dto) => query(() => schoolAdminBridge.listTerms(dto.academicYearId)),
     getCurrentTerm: () => query(() => schoolAdminBridge.getCurrentTerm()),
     createTerm: (dto) =>

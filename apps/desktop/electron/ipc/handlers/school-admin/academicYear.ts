@@ -3,10 +3,8 @@ import type { ApplicationLayer } from '@nemis-desktop/application';
 import type { IpcHandle } from '@app/ipc/registrar';
 import {
   assertNoArgs,
-  assertSingleIdArg,
   assertCreateAcademicYearArgs,
   assertUpdateAcademicYearArgs,
-  assertSetAcademicYearStatusArgs,
 } from '@app/security/validateIpc';
 
 export function registerAcademicYearHandlers(handle: IpcHandle, app: ApplicationLayer): void {
@@ -29,18 +27,4 @@ export function registerAcademicYearHandlers(handle: IpcHandle, app: Application
     const res = await app.academics.updateAcademicYear(request);
     return res.data;
   });
-
-  handle(IpcChannels.ACADEMIC_YEAR_SET_CURRENT, assertSingleIdArg, async (id) => {
-    const res = await app.academics.setCurrentAcademicYear({ id });
-    return res.data;
-  });
-
-  handle(
-    IpcChannels.ACADEMIC_YEAR_SET_STATUS,
-    assertSetAcademicYearStatusArgs,
-    async (request) => {
-      const res = await app.academics.setAcademicYearStatus(request);
-      return res.data;
-    },
-  );
 }

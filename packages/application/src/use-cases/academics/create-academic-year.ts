@@ -56,19 +56,10 @@ export class CreateAcademicYearUseCase implements CommandHandler<
         code: command.code,
         start: command.startDate,
         end: command.endDate,
-        isCurrent: command.makeCurrent ?? false,
         occurredAt,
       });
 
-      this.deps.unitOfWork.run(() => {
-        if (command.makeCurrent) {
-          for (const other of this.deps.academicYears.findCurrentOthers(institution.id, year.id)) {
-            other.clearCurrent(command.actorId, occurredAt);
-            this.deps.academicYears.save(other);
-          }
-        }
-        this.deps.academicYears.save(year);
-      });
+      this.deps.unitOfWork.run(() => this.deps.academicYears.save(year));
 
       for (const event of year.pullDomainEvents()) this.deps.events.publish(event);
 

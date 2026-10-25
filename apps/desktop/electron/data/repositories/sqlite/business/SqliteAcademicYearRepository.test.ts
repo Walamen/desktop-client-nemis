@@ -7,6 +7,12 @@ import { SqliteAcademicYearRepository } from './SqliteAcademicYearRepository';
 
 const ISO = '2026-07-21T00:00:00.000Z';
 
+const currentYear = (id: string, code: string, start: string, end: string) =>
+  AcademicYear.reconstitute({
+    id, institutionId: 'inst-1', code, start, end, isCurrent: true,
+    status: AcademicYearStatus.ACTIVE, version: 1, updatedAt: ISO,
+  });
+
 describe('SqliteAcademicYearRepository', () => {
   let test: TestContext;
   let repo: SqliteAcademicYearRepository;
@@ -41,11 +47,12 @@ describe('SqliteAcademicYearRepository', () => {
       start: '2025-09-01', end: '2026-07-31', occurredAt: ISO,
     });
     repo.save(year);
-    expect(repo.findById('ay-1')?.status).toBe(AcademicYearStatus.ACTIVE);
+    expect(repo.findById('ay-1')?.status).toBe(AcademicYearStatus.SETUP);
 
-    year.close('admin', ISO);
+    year.rename('2025/2027', 'admin', ISO);
     repo.save(year);
-    expect(repo.findById('ay-1')?.status).toBe(AcademicYearStatus.CLOSED);
+    expect(repo.findById('ay-1')?.code.value).toBe('2025/2027');
+    expect(repo.findById('ay-1')?.status).toBe(AcademicYearStatus.SETUP);
   });
 
   it('findAll orders by startDate DESC', () => {
@@ -79,16 +86,10 @@ describe('SqliteAcademicYearRepository', () => {
 
   it('findCurrentOthers excludes the given id', () => {
     repo.save(
-      AcademicYear.create({
-        id: 'ay-1', institutionId: 'inst-1', code: '2024/2025',
-        start: '2024-09-01', end: '2025-07-31', isCurrent: true, occurredAt: ISO,
-      }),
+      currentYear('ay-1', '2024/2025', '2024-09-01', '2025-07-31'),
     );
     repo.save(
-      AcademicYear.create({
-        id: 'ay-2', institutionId: 'inst-1', code: '2025/2026',
-        start: '2025-09-01', end: '2026-07-31', isCurrent: true, occurredAt: ISO,
-      }),
+      currentYear('ay-2', '2025/2026', '2025-09-01', '2026-07-31'),
     );
     const others = repo.findCurrentOthers('inst-1', 'ay-2');
     expect(others.map((y) => y.id)).toEqual(['ay-1']);

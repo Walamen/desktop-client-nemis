@@ -1,8 +1,14 @@
 import type { ReactNode } from 'react';
 import { EmptyState, ErrorState, Skeleton } from '@nemis-desktop/ui';
 
-export const statusVariant = (status: string) =>
-  status === 'ACTIVE' ? 'success' : status === 'CLOSED' ? 'warning' : 'neutral';
+const STATUS_VARIANTS: Record<string, 'primary' | 'success' | 'warning' | 'neutral'> = {
+  SETUP: 'primary',
+  ACTIVE: 'success',
+  CLOSED: 'warning',
+  REOPENED: 'primary',
+};
+
+export const statusVariant = (status: string) => STATUS_VARIANTS[status] ?? 'neutral';
 
 export function LoadState({
   state,

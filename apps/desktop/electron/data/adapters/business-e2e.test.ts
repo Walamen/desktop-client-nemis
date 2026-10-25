@@ -61,6 +61,13 @@ describe('business application layer end-to-end against real SQLite', () => {
     expect((await app.reporting.getDashboardOverview()).data.totalStudents).toBe(1);
   });
 
+  /** The server starts a year (SETUP -> ACTIVE, current); the importer copies that down. */
+  function activateYear(id: string): void {
+    manager.connection
+      .prepare("UPDATE academic_years SET status = 'ACTIVE', isCurrent = 1 WHERE id = ?")
+      .run(id);
+  }
+
   function seedInstitution(): void {
     manager.connection
       .prepare(
@@ -157,9 +164,11 @@ describe('business application layer end-to-end against real SQLite', () => {
     const app = createApplicationComposition(dataLayer, 'test-user', silent);
 
     const year = await app.academics.createAcademicYear({
-      code: '2025/2026', startDate: '2025-09-01', endDate: '2026-07-31', makeCurrent: true,
+      code: '2025/2026', startDate: '2025-09-01', endDate: '2026-07-31',
     });
-    expect(year.data.isCurrent).toBe(true);
+    expect(year.data.isCurrent).toBe(false);
+    expect(year.data.status).toBe('SETUP');
+    activateYear(year.data.id);
 
     const term = await app.academics.createTerm({
       academicYearId: year.data.id, name: 'Term 1', sequence: 1, startDate: '2025-09-01', endDate: '2025-12-19',
@@ -197,8 +206,9 @@ describe('business application layer end-to-end against real SQLite', () => {
 
   async function seedEnrolmentTarget(app: ReturnType<typeof createApplicationComposition>) {
     const year = await app.academics.createAcademicYear({
-      code: '2025/2026', startDate: '2025-09-01', endDate: '2026-07-31', makeCurrent: true,
+      code: '2025/2026', startDate: '2025-09-01', endDate: '2026-07-31',
     });
+    activateYear(year.data.id);
     const term = await app.academics.createTerm({
       academicYearId: year.data.id, name: 'Term 1', sequence: 1, startDate: '2025-09-01', endDate: '2025-12-19',
       makeCurrent: true,

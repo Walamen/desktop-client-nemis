@@ -12,7 +12,6 @@ import type {
   DeletedResult,
   GradeLevelCountResult,
   PagedListResult,
-  SetAcademicYearStatusRequest,
   SetActiveRequest,
   SubjectListRequest,
   SubjectResult,
@@ -290,8 +289,6 @@ export interface AcademicYearApi {
   list(): Promise<AcademicYearListItemResult[]>;
   create(request: CreateAcademicYearRequest): Promise<AcademicYearListItemResult>;
   update(request: UpdateAcademicYearRequest): Promise<AcademicYearListItemResult>;
-  setCurrent(id: string): Promise<AcademicYearListItemResult>;
-  setStatus(request: SetAcademicYearStatusRequest): Promise<AcademicYearListItemResult>;
 }
 export interface TermApi {
   list(academicYearId: string): Promise<TermResult[]>;

@@ -11,7 +11,6 @@ export interface CreateAcademicYearInput {
   code: string;
   start: string;
   end: string;
-  isCurrent?: boolean;
   occurredAt: string;
 }
 
@@ -22,7 +21,7 @@ export interface ReconstituteAcademicYearInput {
   start: string;
   end: string;
   isCurrent: boolean;
-  /** Rows written before migration 003 default to ACTIVE. */
+  /** Rows written before migration 003 default to ACTIVE. Server-owned. */
   status?: AcademicYearStatus;
   version: number;
   updatedAt: string;
@@ -59,8 +58,8 @@ export class AcademicYear extends AggregateRoot<string> {
       input.institutionId,
       AcademicYearCode.create(input.code),
       DateRange.create({ start: input.start, end: input.end }),
-      input.isCurrent ?? false,
-      AcademicYearStatus.ACTIVE,
+      false,
+      AcademicYearStatus.SETUP,
       { version: 1, updatedAt: input.occurredAt },
     );
     const event: AcademicYearCreatedEvent = {
@@ -103,7 +102,7 @@ export class AcademicYear extends AggregateRoot<string> {
   }
 
   rename(code: string, by: string | undefined, at: string): void {
-    this.#requireActive('renamed');
+    this.#requireOpen('renamed');
     const next = AcademicYearCode.create(code);
     if (next.value === this.#code.value) return;
     this.#code = next;
@@ -111,63 +110,14 @@ export class AcademicYear extends AggregateRoot<string> {
   }
 
   reschedule(start: string, end: string, by: string | undefined, at: string): void {
-    this.#requireActive('rescheduled');
+    this.#requireOpen('rescheduled');
     this.#period = DateRange.create({ start, end });
     this.touch(by, at);
   }
 
-  makeCurrent(by: string | undefined, at: string): void {
-    if (this.#status !== AcademicYearStatus.ACTIVE) {
-      throw new BusinessRuleViolationException(
-        `A ${this.#status.toLowerCase()} academic year cannot be made current.`,
-      );
-    }
-    if (this.#isCurrent) return;
-    this.#isCurrent = true;
-    this.touch(by, at);
-  }
-
-  clearCurrent(by: string | undefined, at: string): void {
-    if (!this.#isCurrent) return;
-    this.#isCurrent = false;
-    this.touch(by, at);
-  }
-
-  close(by: string | undefined, at: string): void {
-    if (this.#status !== AcademicYearStatus.ACTIVE) {
-      throw new BusinessRuleViolationException('Only an active academic year can be closed.');
-    }
-    this.#requireNotCurrent('closed');
-    this.#status = AcademicYearStatus.CLOSED;
-    this.touch(by, at);
-  }
-
-  archive(by: string | undefined, at: string): void {
-    if (this.#status === AcademicYearStatus.ARCHIVED) return;
-    this.#requireNotCurrent('archived');
-    this.#status = AcademicYearStatus.ARCHIVED;
-    this.touch(by, at);
-  }
-
-  restore(by: string | undefined, at: string): void {
-    if (this.#status === AcademicYearStatus.ACTIVE) return;
-    this.#status = AcademicYearStatus.ACTIVE;
-    this.touch(by, at);
-  }
-
-  #requireActive(action: string): void {
-    if (this.#status !== AcademicYearStatus.ACTIVE) {
-      throw new BusinessRuleViolationException(
-        `A ${this.#status.toLowerCase()} academic year cannot be ${action}.`,
-      );
-    }
-  }
-
-  #requireNotCurrent(action: string): void {
-    if (this.#isCurrent) {
-      throw new BusinessRuleViolationException(
-        `The current academic year cannot be ${action}. Set another year as current first.`,
-      );
+  #requireOpen(action: string): void {
+    if (this.#status === AcademicYearStatus.CLOSED) {
+      throw new BusinessRuleViolationException(`A closed academic year cannot be ${action}.`);
     }
   }
 }

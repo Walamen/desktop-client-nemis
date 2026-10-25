@@ -46,8 +46,6 @@ const academics = {
   listAcademicYears: vi.fn(() => ok([academicYearRow])),
   createAcademicYear: vi.fn(() => ok(academicYearRow)),
   updateAcademicYear: vi.fn(() => ok(academicYearRow)),
-  setCurrentAcademicYear: vi.fn(() => ok(academicYearRow)),
-  setAcademicYearStatus: vi.fn(() => ok(academicYearRow)),
   listTerms: vi.fn(() => ok([termRow])),
   getCurrentTerm: vi.fn(() => ok(termRow)),
   createTerm: vi.fn(() => ok(termRow)),
@@ -89,16 +87,8 @@ describe('academic-year IPC handlers', () => {
     const update = calls.get('academic-year:update')!;
     expect(await update.handler({ id: 'ay-1', code: '2030/2031' })).toEqual(academicYearRow);
 
-    const setCurrent = calls.get('academic-year:set-current')!;
-    await setCurrent.handler('ay-1');
-    expect(academics.setCurrentAcademicYear).toHaveBeenCalledWith({ id: 'ay-1' });
-
-    const setStatus = calls.get('academic-year:set-status')!;
-    expect(() => setStatus.validate([{ id: 'ay-1', status: 'NOT_A_STATUS' }])).toThrow(IPCError);
-    await setStatus.handler({ id: 'ay-1', status: AcademicYearStatus.CLOSED });
-    expect(academics.setAcademicYearStatus).toHaveBeenCalledWith({
-      id: 'ay-1', status: AcademicYearStatus.CLOSED,
-    });
+    expect(calls.has('academic-year:set-current')).toBe(false);
+    expect(calls.has('academic-year:set-status')).toBe(false);
   });
 });
 

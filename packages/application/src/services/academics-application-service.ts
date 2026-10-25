@@ -32,7 +32,6 @@ import type {
   AcademicYearListItemOutput,
   AcademicYearOutput,
   CreateAcademicYearDto,
-  SetAcademicYearStatusDto,
   UpdateAcademicYearDto,
 } from '../dto/academics/academic-year-dto';
 import type { EnrollStudentUseCase } from '../use-cases/academics/enroll-student';
@@ -43,11 +42,6 @@ import type { GetCurrentAcademicYearUseCase } from '../use-cases/academics/get-c
 import type { ListAcademicYearsUseCase } from '../use-cases/academics/list-academic-years';
 import type { CreateAcademicYearUseCase } from '../use-cases/academics/create-academic-year';
 import type { UpdateAcademicYearUseCase } from '../use-cases/academics/update-academic-year';
-import type {
-  SetCurrentAcademicYearDto,
-  SetCurrentAcademicYearUseCase,
-} from '../use-cases/academics/set-current-academic-year';
-import type { SetAcademicYearStatusUseCase } from '../use-cases/academics/set-academic-year-status';
 import type { ListTermsUseCase } from '../use-cases/academics/list-terms';
 import type { GetCurrentTermUseCase } from '../use-cases/academics/get-current-term';
 import type { CreateTermUseCase } from '../use-cases/academics/create-term';
@@ -79,8 +73,6 @@ export interface AcademicsApplicationServiceDeps {
   listAcademicYears: ListAcademicYearsUseCase;
   createAcademicYear: CreateAcademicYearUseCase;
   updateAcademicYear: UpdateAcademicYearUseCase;
-  setCurrentAcademicYear: SetCurrentAcademicYearUseCase;
-  setAcademicYearStatus: SetAcademicYearStatusUseCase;
   listTerms: ListTermsUseCase;
   getCurrentTerm: GetCurrentTermUseCase;
   createTerm: CreateTermUseCase;
@@ -135,16 +127,6 @@ export class AcademicsApplicationService {
     dto: UpdateAcademicYearDto,
   ): Promise<ApplicationResponse<AcademicYearListItemOutput>> {
     return this.deps.updateAcademicYear.execute(dto);
-  }
-  setCurrentAcademicYear(
-    dto: SetCurrentAcademicYearDto,
-  ): Promise<ApplicationResponse<AcademicYearListItemOutput>> {
-    return this.deps.setCurrentAcademicYear.execute(dto);
-  }
-  setAcademicYearStatus(
-    dto: SetAcademicYearStatusDto,
-  ): Promise<ApplicationResponse<AcademicYearListItemOutput>> {
-    return this.deps.setAcademicYearStatus.execute(dto);
   }
 
   // --- Terms ---

@@ -38,8 +38,6 @@ export * from './use-cases/academics/get-class-roster';
 export * from './use-cases/academics/list-academic-years';
 export * from './use-cases/academics/create-academic-year';
 export * from './use-cases/academics/update-academic-year';
-export * from './use-cases/academics/set-current-academic-year';
-export * from './use-cases/academics/set-academic-year-status';
 export * from './use-cases/academics/list-terms';
 export * from './use-cases/academics/get-current-term';
 export * from './use-cases/academics/create-term';

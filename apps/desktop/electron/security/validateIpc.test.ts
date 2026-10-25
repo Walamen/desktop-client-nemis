@@ -6,7 +6,6 @@ import {
   assertSingleIdArg,
   assertCreateAcademicYearArgs,
   assertUpdateAcademicYearArgs,
-  assertSetAcademicYearStatusArgs,
   assertCreateTermArgs,
   assertUpdateTermArgs,
   assertListClassesArgs,
@@ -82,9 +81,9 @@ describe('assertSingleIdArg', () => {
 describe('assertCreateAcademicYearArgs', () => {
   const valid = { code: '2025/2026', startDate: '2025-09-01', endDate: '2026-07-31' };
 
-  it('accepts a well-formed request, with and without makeCurrent', () => {
+  it('accepts a well-formed request and rejects makeCurrent (server owns current)', () => {
     expect(() => assertCreateAcademicYearArgs([valid])).not.toThrow();
-    expect(() => assertCreateAcademicYearArgs([{ ...valid, makeCurrent: true }])).not.toThrow();
+    expect(() => assertCreateAcademicYearArgs([{ ...valid, makeCurrent: true }])).toThrow();
   });
 
   it('rejects wrong arity, non-objects, missing fields, bad dates, unknown keys', () => {
@@ -93,7 +92,6 @@ describe('assertCreateAcademicYearArgs', () => {
     expect(() => assertCreateAcademicYearArgs(['not-an-object'])).toThrow();
     expect(() => assertCreateAcademicYearArgs([{ startDate: valid.startDate, endDate: valid.endDate }])).toThrow();
     expect(() => assertCreateAcademicYearArgs([{ ...valid, startDate: 'not-a-date' }])).toThrow();
-    expect(() => assertCreateAcademicYearArgs([{ ...valid, makeCurrent: 'yes' }])).toThrow();
     expect(() => assertCreateAcademicYearArgs([{ ...valid, extra: 'nope' }])).toThrow();
   });
 });
@@ -103,14 +101,6 @@ describe('assertUpdateAcademicYearArgs', () => {
     expect(() => assertUpdateAcademicYearArgs([{ id: 'ay-1' }])).not.toThrow();
     expect(() => assertUpdateAcademicYearArgs([{ id: 'ay-1', code: '2030/2031' }])).not.toThrow();
     expect(() => assertUpdateAcademicYearArgs([{ code: '2030/2031' }])).toThrow();
-  });
-});
-
-describe('assertSetAcademicYearStatusArgs', () => {
-  it('accepts a known status and rejects unknown ones', () => {
-    expect(() => assertSetAcademicYearStatusArgs([{ id: 'ay-1', status: 'CLOSED' }])).not.toThrow();
-    expect(() => assertSetAcademicYearStatusArgs([{ id: 'ay-1', status: 'DELETED' }])).toThrow();
-    expect(() => assertSetAcademicYearStatusArgs([{ id: 'ay-1' }])).toThrow();
   });
 });
 

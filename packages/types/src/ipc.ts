@@ -35,7 +35,6 @@ import type {
   DeletedResult,
   GradeLevelCountResult,
   PagedListResult,
-  SetAcademicYearStatusRequest,
   SetActiveRequest,
   SubjectListRequest,
   SubjectResult,
@@ -281,11 +280,6 @@ export interface IpcContract {
     args: [request: UpdateAcademicYearRequest];
     result: AcademicYearListItemResult;
   };
-  'academic-year:set-current': { args: [id: string]; result: AcademicYearListItemResult };
-  'academic-year:set-status': {
-    args: [request: SetAcademicYearStatusRequest];
-    result: AcademicYearListItemResult;
-  };
   'term:list': { args: [academicYearId: string]; result: TermResult[] };
   'term:get-current': { args: []; result: TermResult | null };
   'term:create': { args: [request: CreateTermRequest]; result: TermResult };
@@ -510,8 +504,6 @@ export const IpcChannels = {
   ACADEMIC_YEAR_LIST: 'academic-year:list',
   ACADEMIC_YEAR_CREATE: 'academic-year:create',
   ACADEMIC_YEAR_UPDATE: 'academic-year:update',
-  ACADEMIC_YEAR_SET_CURRENT: 'academic-year:set-current',
-  ACADEMIC_YEAR_SET_STATUS: 'academic-year:set-status',
   TERM_LIST: 'term:list',
   TERM_GET_CURRENT: 'term:get-current',
   TERM_CREATE: 'term:create',

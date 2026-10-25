@@ -18,7 +18,6 @@ import type {
   UpdateSubjectDto,
   UpdateTermDto,
 } from '@nemis-desktop/application';
-import type { AcademicYearStatus } from '@nemis-desktop/types';
 import { createStore } from 'zustand/vanilla';
 import { executeCommand, trackQuery, type CommandOutcome } from '../../core/async-runner';
 import { idleState, type AsyncState } from '../../core/async-state';
@@ -193,12 +192,6 @@ export class AcademicFoundationViewModel {
   }
   async updateAcademicYear(dto: UpdateAcademicYearDto): Promise<CommandOutcome<AcademicYearListItemOutput>> {
     return this.command(() => this.deps.academics.updateAcademicYear(dto), 'Academic year updated.', () => this.loadAcademicYears());
-  }
-  async setCurrentAcademicYear(id: string): Promise<CommandOutcome<AcademicYearListItemOutput>> {
-    return this.command(() => this.deps.academics.setCurrentAcademicYear({ id }), 'Current academic year updated.', () => this.loadAcademicYears());
-  }
-  async setAcademicYearStatus(id: string, status: AcademicYearStatus): Promise<CommandOutcome<AcademicYearListItemOutput>> {
-    return this.command(() => this.deps.academics.setAcademicYearStatus({ id, status }), 'Academic year status updated.', () => this.loadAcademicYears());
   }
   async createTerm(dto: CreateTermDto): Promise<CommandOutcome<TermOutput>> {
     return this.command(() => this.deps.academics.createTerm(dto), 'Term created.', () => this.loadTerms(dto.academicYearId));

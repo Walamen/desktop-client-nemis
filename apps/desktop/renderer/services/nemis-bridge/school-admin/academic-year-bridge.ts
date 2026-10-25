@@ -2,7 +2,6 @@ import type {
   AcademicYearListItemResult,
   AcademicYearResult,
   CreateAcademicYearRequest,
-  SetAcademicYearStatusRequest,
   UpdateAcademicYearRequest,
 } from '@nemis-desktop/types';
 import { api } from '../api';
@@ -14,9 +13,4 @@ export const academicYearBridge = {
     api().academicYear.create(request),
   updateAcademicYear: (request: UpdateAcademicYearRequest): Promise<AcademicYearListItemResult> =>
     api().academicYear.update(request),
-  setCurrentAcademicYear: (id: string): Promise<AcademicYearListItemResult> =>
-    api().academicYear.setCurrent(id),
-  setAcademicYearStatus: (
-    request: SetAcademicYearStatusRequest,
-  ): Promise<AcademicYearListItemResult> => api().academicYear.setStatus(request),
 };

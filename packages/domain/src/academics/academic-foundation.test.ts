@@ -23,7 +23,7 @@ describe('AcademicYear lifecycle', () => {
     });
   }
 
-  it('create() defaults to ACTIVE and emits AcademicYearCreated', () => {
+  it('create() yields SETUP, not current, and emits AcademicYearCreated', () => {
     const year = AcademicYear.create({
       id: 'ay-2',
       institutionId: 'inst-1',
@@ -32,60 +32,33 @@ describe('AcademicYear lifecycle', () => {
       end: '2027-07-31',
       occurredAt: ISO,
     });
-    expect(year.status).toBe(AcademicYearStatus.ACTIVE);
+    expect(year.status).toBe(AcademicYearStatus.SETUP);
     expect(year.isCurrent).toBe(false);
     const events = year.pullDomainEvents();
     expect(events[0]?.name).toBe('AcademicYearCreated');
   });
 
-  it('rename() and reschedule() bump version; reject on non-ACTIVE', () => {
-    const year = activeYear();
-    year.rename('2025/2099', 'admin', ISO);
-    expect(year.code.value).toBe('2025/2099');
-    expect(year.version).toBe(2);
+  it.each([AcademicYearStatus.SETUP, AcademicYearStatus.ACTIVE, AcademicYearStatus.REOPENED])(
+    'rename() and reschedule() succeed and bump version on a %s year',
+    (status) => {
+      const year = activeYear({ status });
+      year.rename('2025/2099', 'admin', ISO);
+      expect(year.code.value).toBe('2025/2099');
+      expect(year.version).toBe(2);
+      year.reschedule('2025-08-01', '2026-06-30', 'admin', ISO);
+      expect(year.period.start).toBe('2025-08-01');
+      expect(year.version).toBe(3);
+    },
+  );
 
-    year.reschedule('2025-08-01', '2026-06-30', 'admin', ISO);
-    expect(year.period.start).toBe('2025-08-01');
-    expect(year.version).toBe(3);
-
+  it('rename() and reschedule() reject a CLOSED year', () => {
     const closed = activeYear({ status: AcademicYearStatus.CLOSED });
     expect(() => closed.rename('2030/2031', 'admin', ISO)).toThrow(
-      BusinessRuleViolationException,
+      new BusinessRuleViolationException('A closed academic year cannot be renamed.'),
     );
-  });
-
-  it('makeCurrent rejects non-ACTIVE years', () => {
-    const archived = activeYear({ status: AcademicYearStatus.ARCHIVED });
-    expect(() => archived.makeCurrent('admin', ISO)).toThrow(BusinessRuleViolationException);
-  });
-
-  it('close() requires ACTIVE and not current', () => {
-    const current = activeYear({ isCurrent: true });
-    expect(() => current.close('admin', ISO)).toThrow(BusinessRuleViolationException);
-
-    const year = activeYear();
-    year.close('admin', ISO);
-    expect(year.status).toBe(AcademicYearStatus.CLOSED);
-    expect(() => year.close('admin', ISO)).toThrow(BusinessRuleViolationException);
-  });
-
-  it('archive() requires not current; is idempotent when already archived', () => {
-    const current = activeYear({ isCurrent: true });
-    expect(() => current.archive('admin', ISO)).toThrow(BusinessRuleViolationException);
-
-    const closed = activeYear({ status: AcademicYearStatus.CLOSED });
-    closed.archive('admin', ISO);
-    expect(closed.status).toBe(AcademicYearStatus.ARCHIVED);
-
-    const versionBefore = closed.version;
-    closed.archive('admin', ISO);
-    expect(closed.version).toBe(versionBefore);
-  });
-
-  it('restore() returns an archived/closed year to ACTIVE', () => {
-    const archived = activeYear({ status: AcademicYearStatus.ARCHIVED });
-    archived.restore('admin', ISO);
-    expect(archived.status).toBe(AcademicYearStatus.ACTIVE);
+    expect(() => closed.reschedule('2025-08-01', '2026-06-30', 'admin', ISO)).toThrow(
+      new BusinessRuleViolationException('A closed academic year cannot be rescheduled.'),
+    );
   });
 });
 

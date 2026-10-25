@@ -5,8 +5,9 @@ vi.mock('@/services/nemis-bridge/shared', () => ({
   sharedBridge: { listSchoolAdminRecords: vi.fn(async () => ({ items: [], total: 0 })) },
 }));
 
+import { statusVariant } from '@/components/academic/foundation-ui';
 import { AcademicYearsDrawer } from './AcademicYearsDrawer';
-import { CURRENT_YEAR, OLD_YEAR, clearNemis, field, renderWithLayer, stubNemis, yearRow } from './setup-test-support';
+import { clearNemis, field, renderWithLayer, stubNemis, yearRow } from './setup-test-support';
 
 const props = () => ({ isOpen: true, onClose: vi.fn(), onNavigate: vi.fn() });
 
@@ -103,106 +104,31 @@ describe('AcademicYearsDrawer form view', () => {
   });
 });
 
-describe('AcademicYearsDrawer status actions (edit view)', () => {
+describe('AcademicYearsDrawer status (edit view, read-only)', () => {
   const openEdit = async (code: string) => {
     fireEvent.click(await screen.findByRole('button', { name: `Edit ${code}` }));
     expect(screen.getByRole('heading', { name: 'Edit Academic Year' })).toBeInTheDocument();
   };
-  const shown = () => ['Set current', 'Close', 'Archive', 'Restore'].filter((name) => screen.queryByRole('button', { name }));
+  const STATUS_ACTIONS = ['Set current', 'Close', 'Archive', 'Restore'];
 
-  it('offers Archive and Restore for a closed year', async () => {
+  it.each(['SETUP', 'ACTIVE', 'CLOSED', 'REOPENED'])('renders no status buttons for a %s year', async (status) => {
+    stubNemis({ years: [yearRow({ id: 'y9', code: '2027/2028', isCurrent: status === 'ACTIVE', status })] });
+    await renderWithLayer(<AcademicYearsDrawer {...props()} />);
+    await openEdit('2027/2028');
+    for (const name of STATUS_ACTIONS) expect(screen.queryByRole('button', { name })).toBeNull();
+  });
+
+  it.each(['SETUP', 'REOPENED'])('shows the %s status badge in the list', async (status) => {
+    stubNemis({ years: [yearRow({ id: 'y9', code: '2027/2028', isCurrent: false, status })] });
+    await renderWithLayer(<AcademicYearsDrawer {...props()} />);
+    expect(await screen.findByText(status)).toBeInTheDocument();
+    expect(statusVariant(status)).not.toBe('neutral');
+  });
+
+  it('does not offer a make-current checkbox when creating', async () => {
     stubNemis();
     await renderWithLayer(<AcademicYearsDrawer {...props()} />);
-    await openEdit(OLD_YEAR.code);
-    expect(shown()).toEqual(['Archive', 'Restore']);
-  });
-
-  it('offers no status change for the current year', async () => {
-    stubNemis();
-    await renderWithLayer(<AcademicYearsDrawer {...props()} />);
-    await openEdit(CURRENT_YEAR.code);
-    expect(shown()).toEqual([]);
-  });
-
-  it('offers Set current, Close and Archive for an active non-current year', async () => {
-    stubNemis({ years: [yearRow({ id: 'y3', code: '2026/2027', isCurrent: false })] });
-    await renderWithLayer(<AcademicYearsDrawer {...props()} />);
-    await openEdit('2026/2027');
-    expect(shown()).toEqual(['Set current', 'Close', 'Archive']);
-  });
-
-  it('disables the status actions while the form has unsaved changes', async () => {
-    stubNemis({ years: [yearRow({ id: 'y3', code: '2026/2027', isCurrent: false })] });
-    await renderWithLayer(<AcademicYearsDrawer {...props()} />);
-    await openEdit('2026/2027');
-    const warning = "Save or cancel your changes before changing this year's status.";
-    const statusButtons = () => ['Set current', 'Close', 'Archive'].map((name) => screen.getByRole('button', { name }));
-
-    statusButtons().forEach((b) => expect(b).toBeEnabled());
-    expect(screen.queryByText(warning)).toBeNull();
-
-    fireEvent.change(field('Academic year code'), { target: { value: '2026/27' } });
-    statusButtons().forEach((b) => expect(b).toBeDisabled());
-    expect(screen.getByText(warning)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Set current' })).toHaveAttribute('aria-describedby', 'year-status-locked-reason');
-
-    fireEvent.change(field('Academic year code'), { target: { value: '2026/2027' } });
-    statusButtons().forEach((b) => expect(b).toBeEnabled());
-    expect(screen.queryByText(warning)).toBeNull();
-
-    fireEvent.change(field('End date'), { target: { value: '2027-08-31' } });
-    statusButtons().forEach((b) => expect(b).toBeDisabled());
-    expect(screen.getByText(warning)).toBeInTheDocument();
-  });
-
-  it('does not show the unsaved-changes warning for the current year, which has no status buttons', async () => {
-    stubNemis();
-    await renderWithLayer(<AcademicYearsDrawer {...props()} />);
-    await openEdit(CURRENT_YEAR.code);
-    fireEvent.change(field('Academic year code'), { target: { value: '2025/26' } });
-    expect(shown()).toEqual([]);
-    expect(screen.queryByText("Save or cancel your changes before changing this year's status.")).toBeNull();
-  });
-
-  it('offers only Restore for an archived year', async () => {
-    stubNemis({ years: [yearRow({ id: 'y4', code: '2020/2021', isCurrent: false, status: 'ARCHIVED' })] });
-    await renderWithLayer(<AcademicYearsDrawer {...props()} />);
-    await openEdit('2020/2021');
-    expect(shown()).toEqual(['Restore']);
-  });
-
-  it('confirms, changes the status and returns to the list', async () => {
-    const setStatus = vi.fn(async () => yearRow({ id: 'y0', code: '2024/2025', isCurrent: false, status: 'ARCHIVED' }));
-    stubNemis({ academicYear: { setStatus } });
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
-    await renderWithLayer(<AcademicYearsDrawer {...props()} />);
-    await openEdit(OLD_YEAR.code);
-    fireEvent.click(screen.getByRole('button', { name: 'Archive' }));
-    expect(window.confirm).toHaveBeenCalledWith('Change 2024/2025 to archived?');
-    await waitFor(() => expect(setStatus).toHaveBeenCalledWith(expect.objectContaining({ id: 'y0', status: 'ARCHIVED' })));
-    expect(await screen.findByRole('button', { name: 'Edit 2024/2025' })).toBeInTheDocument();
-  });
-
-  it('sets the year current without a confirmation and returns to the list', async () => {
-    const setCurrent = vi.fn(async () => yearRow({ id: 'y3', code: '2026/2027', isCurrent: true }));
-    stubNemis({ years: [yearRow({ id: 'y3', code: '2026/2027', isCurrent: false })], academicYear: { setCurrent } });
-    const confirm = vi.spyOn(window, 'confirm');
-    await renderWithLayer(<AcademicYearsDrawer {...props()} />);
-    await openEdit('2026/2027');
-    fireEvent.click(screen.getByRole('button', { name: 'Set current' }));
-    await waitFor(() => expect(setCurrent).toHaveBeenCalledWith('y3'));
-    expect(confirm).not.toHaveBeenCalled();
-    expect(await screen.findByRole('button', { name: 'Edit 2026/2027' })).toBeInTheDocument();
-  });
-
-  it('does nothing when the confirmation is declined', async () => {
-    const setStatus = vi.fn();
-    stubNemis({ academicYear: { setStatus } });
-    vi.spyOn(window, 'confirm').mockReturnValue(false);
-    await renderWithLayer(<AcademicYearsDrawer {...props()} />);
-    await openEdit(OLD_YEAR.code);
-    fireEvent.click(screen.getByRole('button', { name: 'Archive' }));
-    expect(setStatus).not.toHaveBeenCalled();
-    expect(screen.getByRole('heading', { name: 'Edit Academic Year' })).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: 'Create academic year' }));
+    expect(screen.queryByRole('checkbox')).toBeNull();
   });
 });

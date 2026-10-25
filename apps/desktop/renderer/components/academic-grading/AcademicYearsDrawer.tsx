@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useState, type FormEvent } from 'react';
-import { AcademicYearStatus } from '@nemis-desktop/types';
 import type { AcademicYearRowView } from '@nemis-desktop/presentation';
 import { Badge, Button, Drawer, Input } from '@nemis-desktop/ui';
 import { useViewModel } from '@/hooks/use-view-model';
@@ -11,12 +10,10 @@ import { FormField, LoadState, statusVariant } from '@/components/academic/found
 import { useEscapeCapture } from './use-escape-capture';
 import { useOpenSession, type SetupDrawerProps, type SetupNavigate } from './setup-drawers';
 
-type YearStatus = (typeof AcademicYearStatus)[keyof typeof AcademicYearStatus];
-
 /** Academic years, managed from a drawer on the Academic Grading page.
  * Create/edit swap the drawer body to a form — a Modal can't stack inside the
- * transformed Drawer. A year's status actions live in its edit form so the
- * table fits the drawer width. */
+ * transformed Drawer. A year's status is owned by the server (SETUP,
+ * ACTIVE, CLOSED, REOPENED) and is shown read-only here. */
 export function AcademicYearsDrawer({ isOpen, onClose, onNavigate }: SetupDrawerProps) {
   const session = useOpenSession(isOpen);
   return (
@@ -34,15 +31,6 @@ function AcademicYearsManager({ onNavigate }: { onNavigate: SetupNavigate }) {
   const [code, setCode] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [makeCurrent, setMakeCurrent] = useState(false);
-  // A status change applies immediately and would silently drop unsaved edits
-  // to the code or dates, so the status actions wait until the form is clean.
-  const dirty =
-    editing !== null &&
-    (code !== editing.code || startDate !== editing.startDate || endDate !== editing.endDate);
-  // The current active year has no status buttons, so there is nothing to hold.
-  const hasStatusActions = editing !== null && (editing.status !== 'ACTIVE' || !editing.isCurrent);
-  const lockedReasonId = dirty ? 'year-status-locked-reason' : undefined;
   const backToList = useCallback(() => setView('list'), []);
   useEscapeCapture(view === 'form', backToList);
   useRevalidateOnSync(() => { void vm.loadAcademicYears(); }, [vm]);
@@ -52,7 +40,6 @@ function AcademicYearsManager({ onNavigate }: { onNavigate: SetupNavigate }) {
     setCode(year?.code ?? '');
     setStartDate(year?.startDate ?? '');
     setEndDate(year?.endDate ?? '');
-    setMakeCurrent(year?.isCurrent ?? false);
     setView('form');
   };
 
@@ -60,18 +47,7 @@ function AcademicYearsManager({ onNavigate }: { onNavigate: SetupNavigate }) {
     event.preventDefault();
     const result = editing
       ? await vm.updateAcademicYear({ id: editing.id, code, startDate, endDate })
-      : await vm.createAcademicYear({ code, startDate, endDate, makeCurrent });
-    if (result.ok) setView('list');
-  };
-
-  const setStatus = async (year: AcademicYearRowView, status: YearStatus) => {
-    if (!window.confirm(`Change ${year.code} to ${status.toLowerCase()}?`)) return;
-    const result = await vm.setAcademicYearStatus(year.id, status);
-    if (result.ok) setView('list');
-  };
-
-  const setCurrent = async (year: AcademicYearRowView) => {
-    const result = await vm.setCurrentAcademicYear(year.id);
+      : await vm.createAcademicYear({ code, startDate, endDate });
     if (result.ok) setView('list');
   };
 
@@ -85,11 +61,6 @@ function AcademicYearsManager({ onNavigate }: { onNavigate: SetupNavigate }) {
             <Input label="Start date" required type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
             <Input label="End date" required type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
           </FormField>
-          {!editing && (
-            <label className="flex gap-2 text-sm">
-              <input type="checkbox" checked={makeCurrent} onChange={(e) => setMakeCurrent(e.target.checked)} /> Make this the current academic year
-            </label>
-          )}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="secondary" onClick={backToList}>Cancel</Button>
             <Button type="submit">Save</Button>
@@ -102,25 +73,9 @@ function AcademicYearsManager({ onNavigate }: { onNavigate: SetupNavigate }) {
               <Badge variant={statusVariant(editing.status)} size="sm">{editing.status}</Badge>
               {editing.isCurrent && <span>Current academic year</span>}
             </p>
-            {dirty && hasStatusActions && (
-              <p id="year-status-locked-reason" role="status" className="text-sm text-amber-700">
-                Save or cancel your changes before changing this year&apos;s status.
-              </p>
-            )}
-            <div className="flex flex-wrap gap-2">
-              {editing.status === 'ACTIVE' && !editing.isCurrent && (
-                <Button type="button" size="sm" disabled={dirty} aria-describedby={lockedReasonId} onClick={() => void setCurrent(editing)}>Set current</Button>
-              )}
-              {editing.status === 'ACTIVE' && !editing.isCurrent && (
-                <Button type="button" size="sm" variant="secondary" disabled={dirty} aria-describedby={lockedReasonId} onClick={() => void setStatus(editing, AcademicYearStatus.CLOSED)}>Close</Button>
-              )}
-              {editing.status !== 'ARCHIVED' && !editing.isCurrent && (
-                <Button type="button" size="sm" variant="secondary" disabled={dirty} aria-describedby={lockedReasonId} onClick={() => void setStatus(editing, AcademicYearStatus.ARCHIVED)}>Archive</Button>
-              )}
-              {editing.status !== 'ACTIVE' && (
-                <Button type="button" size="sm" variant="secondary" disabled={dirty} aria-describedby={lockedReasonId} onClick={() => void setStatus(editing, AcademicYearStatus.ACTIVE)}>Restore</Button>
-              )}
-            </div>
+            <p className="text-sm text-slate-500">
+              The server controls when a year starts and closes.
+            </p>
           </section>
         )}
       </div>
@@ -154,7 +109,7 @@ function AcademicYearsManager({ onNavigate }: { onNavigate: SetupNavigate }) {
                     {year.isCurrent && <Badge className="ml-2" size="sm">Current</Badge>}
                   </td>
                   <td className="p-3">{year.startDate} — {year.endDate}</td>
-                  <td className="p-3"><Badge variant={statusVariant(year.status)} size="sm">{year.isCurrent ? 'Active' : "Inactive"}</Badge></td>
+                  <td className="p-3"><Badge variant={statusVariant(year.status)} size="sm">{year.status}</Badge></td>
                   <td className="p-3">
                     <button
                       type="button"

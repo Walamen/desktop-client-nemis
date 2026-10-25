@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { Institution } from '@nemis-desktop/domain';
+import { AcademicYear, Institution } from '@nemis-desktop/domain';
 import { AcademicYearStatus, ApprovalStatus, GradeLevel, InstitutionType, OwnershipType } from '@nemis-desktop/types';
 import { FixedClock } from '../../testing/fixed-clock';
 import { RecordingLogger } from '../../testing/recording-logger';
@@ -16,8 +16,6 @@ import { WorkflowException } from '../../exceptions';
 import { ListAcademicYearsUseCase } from './list-academic-years';
 import { CreateAcademicYearUseCase } from './create-academic-year';
 import { UpdateAcademicYearUseCase } from './update-academic-year';
-import { SetCurrentAcademicYearUseCase } from './set-current-academic-year';
-import { SetAcademicYearStatusUseCase } from './set-academic-year-status';
 import { ListTermsUseCase } from './list-terms';
 import { GetCurrentTermUseCase } from './get-current-term';
 import { CreateTermUseCase } from './create-term';
@@ -36,6 +34,20 @@ import { SetSubjectActiveUseCase } from './set-subject-active';
 import { ListClassSubjectsUseCase } from './list-class-subjects';
 import { AssignSubjectToClassUseCase } from './assign-subject-to-class';
 import { UnassignSubjectFromClassUseCase } from './unassign-subject-from-class';
+
+function closedYear(id: string) {
+  return AcademicYear.reconstitute({
+    id,
+    institutionId: 'inst-1',
+    code: '2024/2025',
+    start: '2024-09-01',
+    end: '2025-07-31',
+    isCurrent: false,
+    status: AcademicYearStatus.CLOSED,
+    version: 1,
+    updatedAt: '2025-08-01T00:00:00.000Z',
+  });
+}
 
 const logger = new RecordingLogger();
 const clock = new FixedClock('2026-07-21T09:00:00.000Z');
@@ -84,34 +96,13 @@ describe('Academic Year use cases', () => {
     });
     const res = await useCase.execute({ code: '2025/2026', startDate: '2025-09-01', endDate: '2026-07-31' });
     expect(res.data.code).toBe('2025/2026');
-    expect(res.data.status).toBe(AcademicYearStatus.ACTIVE);
+    expect(res.data.status).toBe(AcademicYearStatus.SETUP);
+    expect(res.data.isCurrent).toBe(false);
     expect(ctx.events.published[0]?.name).toBe('AcademicYearCreated');
 
     await expect(
       useCase.execute({ code: '2025/2026', startDate: '2025-09-01', endDate: '2026-07-31' }),
     ).rejects.toThrow(WorkflowException);
-  });
-
-  it('CreateAcademicYear with makeCurrent clears other current years', async () => {
-    const createUseCase = new CreateAcademicYearUseCase({
-      academicYears: ctx.academicYears,
-      institutions: ctx.institutions,
-      unitOfWork: ctx.unitOfWork,
-      clock,
-      ids: ctx.ids,
-      events: ctx.events,
-      logger,
-    });
-    const first = await createUseCase.execute({
-      code: '2025/2026', startDate: '2025-09-01', endDate: '2026-07-31', makeCurrent: true,
-    });
-    expect(first.data.isCurrent).toBe(true);
-
-    const second = await createUseCase.execute({
-      code: '2026/2027', startDate: '2026-09-01', endDate: '2027-07-31', makeCurrent: true,
-    });
-    expect(second.data.isCurrent).toBe(true);
-    expect(ctx.academicYears.findById(first.data.id)?.isCurrent).toBe(false);
   });
 
   it('ListAcademicYears includes term and class counts', async () => {
@@ -141,46 +132,6 @@ describe('Academic Year use cases', () => {
     expect(updated.data.code).toBe('2030/2031');
 
     await expect(update.execute({ id: b.data.id, code: '2030/2031' })).rejects.toThrow(WorkflowException);
-  });
-
-  it('SetCurrentAcademicYear swaps current between years', async () => {
-    const create = new CreateAcademicYearUseCase({
-      academicYears: ctx.academicYears, institutions: ctx.institutions, unitOfWork: ctx.unitOfWork,
-      clock, ids: ctx.ids, events: ctx.events, logger,
-    });
-    const a = await create.execute({ code: '2025/2026', startDate: '2025-09-01', endDate: '2026-07-31', makeCurrent: true });
-    const b = await create.execute({ code: '2026/2027', startDate: '2026-09-01', endDate: '2027-07-31' });
-
-    const setCurrent = new SetCurrentAcademicYearUseCase({
-      academicYears: ctx.academicYears, unitOfWork: ctx.unitOfWork, clock, logger,
-    });
-    const res = await setCurrent.execute({ id: b.data.id });
-    expect(res.data.isCurrent).toBe(true);
-    expect(ctx.academicYears.findById(a.data.id)?.isCurrent).toBe(false);
-  });
-
-  it('SetAcademicYearStatus blocks closing the current year and allows close→archive→restore', async () => {
-    const create = new CreateAcademicYearUseCase({
-      academicYears: ctx.academicYears, institutions: ctx.institutions, unitOfWork: ctx.unitOfWork,
-      clock, ids: ctx.ids, events: ctx.events, logger,
-    });
-    const current = await create.execute({
-      code: '2025/2026', startDate: '2025-09-01', endDate: '2026-07-31', makeCurrent: true,
-    });
-    const setStatus = new SetAcademicYearStatusUseCase({
-      academicYears: ctx.academicYears, unitOfWork: ctx.unitOfWork, clock, logger,
-    });
-    await expect(
-      setStatus.execute({ id: current.data.id, status: AcademicYearStatus.CLOSED }),
-    ).rejects.toThrow();
-
-    const other = await create.execute({ code: '2026/2027', startDate: '2026-09-01', endDate: '2027-07-31' });
-    const closed = await setStatus.execute({ id: other.data.id, status: AcademicYearStatus.CLOSED });
-    expect(closed.data.status).toBe(AcademicYearStatus.CLOSED);
-    const archived = await setStatus.execute({ id: other.data.id, status: AcademicYearStatus.ARCHIVED });
-    expect(archived.data.status).toBe(AcademicYearStatus.ARCHIVED);
-    const restored = await setStatus.execute({ id: other.data.id, status: AcademicYearStatus.ACTIVE });
-    expect(restored.data.status).toBe(AcademicYearStatus.ACTIVE);
   });
 });
 
@@ -218,6 +169,14 @@ describe('Term use cases', () => {
     await expect(
       useCase.execute({ academicYearId: yearId, name: 'Term 1', sequence: 2, startDate: '2026-01-05', endDate: '2026-04-01' }),
     ).rejects.toThrow(WorkflowException);
+  });
+
+  it('CreateTerm rejects a CLOSED academic year', async () => {
+    ctx.academicYears.save(closedYear('ay-closed'));
+    const useCase = new CreateTermUseCase(deps());
+    await expect(
+      useCase.execute({ academicYearId: 'ay-closed', name: 'Term 1', sequence: 1, startDate: '2024-09-01', endDate: '2024-12-19' }),
+    ).rejects.toThrow(/closed academic year/);
   });
 
   it('CreateTerm rejects a sequence already used by another term in the same year', async () => {
@@ -322,6 +281,14 @@ describe('Class use cases', () => {
     await expect(
       useCase.execute({ academicYearId: yearId, name: 'JSS1-A', gradeLevel: GradeLevel.GRADE_7 }),
     ).rejects.toThrow(WorkflowException);
+  });
+
+  it('CreateClass rejects a CLOSED academic year', async () => {
+    ctx.academicYears.save(closedYear('ay-closed'));
+    const useCase = new CreateClassUseCase(classDeps());
+    await expect(
+      useCase.execute({ academicYearId: 'ay-closed', name: 'JSS1-A', gradeLevel: GradeLevel.GRADE_7 }),
+    ).rejects.toThrow(/closed academic year/);
   });
 
   it('ListClasses filters by keyword, gradeLevel, and includeInactive', async () => {

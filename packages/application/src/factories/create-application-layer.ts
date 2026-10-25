@@ -107,8 +107,6 @@ import { GetClassRosterUseCase } from '../use-cases/academics/get-class-roster';
 import { ListAcademicYearsUseCase } from '../use-cases/academics/list-academic-years';
 import { CreateAcademicYearUseCase } from '../use-cases/academics/create-academic-year';
 import { UpdateAcademicYearUseCase } from '../use-cases/academics/update-academic-year';
-import { SetCurrentAcademicYearUseCase } from '../use-cases/academics/set-current-academic-year';
-import { SetAcademicYearStatusUseCase } from '../use-cases/academics/set-academic-year-status';
 import { ListTermsUseCase } from '../use-cases/academics/list-terms';
 import { GetCurrentTermUseCase } from '../use-cases/academics/get-current-term';
 import { CreateTermUseCase } from '../use-cases/academics/create-term';
@@ -356,18 +354,6 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
       logger,
     }),
     updateAcademicYear: new UpdateAcademicYearUseCase({
-      academicYears: ports.academicYears,
-      unitOfWork,
-      clock,
-      logger,
-    }),
-    setCurrentAcademicYear: new SetCurrentAcademicYearUseCase({
-      academicYears: ports.academicYears,
-      unitOfWork,
-      clock,
-      logger,
-    }),
-    setAcademicYearStatus: new SetAcademicYearStatusUseCase({
       academicYears: ports.academicYears,
       unitOfWork,
       clock,

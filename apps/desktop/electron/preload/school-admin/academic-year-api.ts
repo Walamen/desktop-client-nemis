@@ -7,6 +7,4 @@ export const academicYearApi: AcademicYearApi = {
   list: () => invoke(IpcChannels.ACADEMIC_YEAR_LIST),
   create: (request) => invoke(IpcChannels.ACADEMIC_YEAR_CREATE, request),
   update: (request) => invoke(IpcChannels.ACADEMIC_YEAR_UPDATE, request),
-  setCurrent: (id) => invoke(IpcChannels.ACADEMIC_YEAR_SET_CURRENT, id),
-  setStatus: (request) => invoke(IpcChannels.ACADEMIC_YEAR_SET_STATUS, request),
 };
