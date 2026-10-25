@@ -5,4 +5,5 @@ import { invoke } from '../invoke';
 export const identityApi: IdentityApi = {
   getCurrentUser: () => invoke(IpcChannels.IDENTITY_GET_CURRENT_USER),
   getHeaderNotifications: () => invoke(IpcChannels.IDENTITY_HEADER_NOTIFICATIONS),
+  getAcademicContext: () => invoke(IpcChannels.ACADEMIC_CONTEXT_GET),
 };

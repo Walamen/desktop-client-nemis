@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { createStore } from 'zustand/vanilla';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -9,7 +10,13 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace }),
 }));
 
-vi.mock('@/services/nemis-bridge/shared', () => ({ sharedBridge: { logout: vi.fn() } }));
+vi.mock('@/services/nemis-bridge/shared', () => ({ sharedBridge: { logout: vi.fn(), getAcademicContext: vi.fn() } }));
+vi.mock('@/hooks/use-revalidate-on-sync', () => ({
+  useRevalidateOnSync: (load: () => void | (() => void), deps: unknown[]) => {
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => load(), deps);
+  },
+}));
 
 vi.mock('./NotificationBell', () => ({ NotificationBell: () => <span aria-label="2 unread notifications" /> }));
 const baseUser = { fullName: 'Joseph Boakai', firstName: 'Joseph', lastName: 'Boakai', photoUrl: null, roleLabels: ['Principal'] };
@@ -28,6 +35,8 @@ describe('Header', () => {
   beforeEach(() => {
     replace.mockClear();
     vi.mocked(sharedBridge.logout).mockReset();
+    vi.mocked(sharedBridge.getAcademicContext).mockReset();
+    vi.mocked(sharedBridge.getAcademicContext).mockResolvedValue({ year: null, term: null, period: null });
     setUser({ status: 'success', data: baseUser });
   });
   afterEach(() => vi.restoreAllMocks());
@@ -105,6 +114,42 @@ describe('Header', () => {
     fireEvent.click(screen.getByText('Sign Out'));
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/'));
     expect(errorSpy).toHaveBeenCalled();
+  });
+
+  describe('academic year label', () => {
+    it('shows year, term and period for a school admin', async () => {
+      vi.mocked(sharedBridge.getAcademicContext).mockResolvedValue({
+        year: { id: 'y', code: '2026/2027', status: 'ACTIVE' },
+        term: { id: 't', name: 'First Semester' },
+        period: { id: 'p', name: 'Period 2' },
+      });
+      render(<Header role={SystemRole.INSTITUTION_ADMIN} />);
+      expect(await screen.findByText('2026/2027 · First Semester · Period 2')).toBeInTheDocument();
+    });
+
+    it('omits the parts that are missing, and shows it for a teacher', async () => {
+      vi.mocked(sharedBridge.getAcademicContext).mockResolvedValue({
+        year: { id: 'y', code: '2026/2027', status: 'ACTIVE' },
+        term: null,
+        period: null,
+      });
+      render(<Header role={SystemRole.TEACHER} />);
+      expect(await screen.findByText('2026/2027')).toBeInTheDocument();
+    });
+
+    it('says so when there is no active academic year', async () => {
+      render(<Header role={SystemRole.INSTITUTION_ADMIN} />);
+      expect(await screen.findByText('No active academic year')).toBeInTheDocument();
+    });
+
+    it('is not rendered, nor fetched, for DEO, county and ministry', () => {
+      for (const role of [SystemRole.DEO, SystemRole.COUNTY_ADMIN, SystemRole.MINISTRY_ADMIN]) {
+        const { unmount } = render(<Header role={role} />);
+        expect(screen.queryByTestId('academic-year-label')).toBeNull();
+        unmount();
+      }
+      expect(sharedBridge.getAcademicContext).not.toHaveBeenCalled();
+    });
   });
 
   it('writes nothing to the console', () => {

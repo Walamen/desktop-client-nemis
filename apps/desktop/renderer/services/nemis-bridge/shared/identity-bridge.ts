@@ -1,7 +1,8 @@
-import type { CurrentUserResult, HeaderNotificationsSummary } from '@nemis-desktop/types';
+import type { AcademicContext, CurrentUserResult, HeaderNotificationsSummary } from '@nemis-desktop/types';
 import { api } from '../api';
 
 export const identityBridge = {
   getCurrentUser: (): Promise<CurrentUserResult | null> => api().identity.getCurrentUser(),
   getHeaderNotifications: (): Promise<HeaderNotificationsSummary> => api().identity.getHeaderNotifications(),
+  getAcademicContext: (): Promise<AcademicContext> => api().identity.getAcademicContext(),
 };

@@ -1,3 +1,4 @@
+import type { AcademicContext } from './academic-context';
 import type { HeaderNotificationsSummary } from './header-notifications';
 import type {
   OnlineCommandResult,
@@ -269,6 +270,7 @@ export interface IpcContract {
   'academic-year:get-current': { args: []; result: AcademicYearResult | null };
   'identity:get-current-user': { args: []; result: CurrentUserResult | null };
   'identity:header-notifications': { args: []; result: HeaderNotificationsSummary };
+  'academic-context:get': { args: []; result: AcademicContext };
   'device:get-info': { args: []; result: DeviceInfoResult | null };
   // Academic Foundation (Phase 9)
   'academic-year:list': { args: []; result: AcademicYearListItemResult[] };
@@ -501,6 +503,7 @@ export const IpcChannels = {
   ACADEMIC_YEAR_GET_CURRENT: 'academic-year:get-current',
   IDENTITY_GET_CURRENT_USER: 'identity:get-current-user',
   IDENTITY_HEADER_NOTIFICATIONS: 'identity:header-notifications',
+  ACADEMIC_CONTEXT_GET: 'academic-context:get',
   DEVICE_GET_INFO: 'device:get-info',
   ACADEMIC_YEAR_LIST: 'academic-year:list',
   ACADEMIC_YEAR_CREATE: 'academic-year:create',

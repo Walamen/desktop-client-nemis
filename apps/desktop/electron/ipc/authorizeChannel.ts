@@ -105,6 +105,7 @@ const SCHOOL_STAFF_CHANNELS = new Set<IpcChannel>([
   IpcChannels.TIMETABLE_PERIODS,
   IpcChannels.ACADEMIC_YEAR_GET_CURRENT,
   IpcChannels.TERM_LIST,
+  IpcChannels.ACADEMIC_CONTEXT_GET,
 ]);
 
 // Teacher-exclusive channels — unlike attendance, the web app has no

@@ -6,12 +6,41 @@ import { Search, ChevronDown, LogOut, User2, Settings } from 'lucide-react';
 import { Avatar, Breadcrumbs, Dropdown, DropdownItem, Input } from '@nemis-desktop/ui';
 import { useCurrentUserViewModel } from '../../lib/presentation/hooks/shared';
 import { useViewModel } from '../../hooks/use-view-model';
-import type { DesktopPortalRole } from '@nemis-desktop/types';
+import { useRevalidateOnSync } from '../../hooks/use-revalidate-on-sync';
+import { SystemRole, type AcademicContext, type DesktopPortalRole } from '@nemis-desktop/types';
 import { resolvePageTitle } from './page-titles';
 import { headerConfigs } from './sidebarConfig';
 import { NotificationBell } from './NotificationBell';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
 import { useRouter } from 'next/navigation';
+
+/** "2026/2027 · First Semester · Period 2", missing parts left out. */
+export function academicContextLabel(context: AcademicContext): string {
+  if (!context.year) return 'No active academic year';
+  return [context.year.code, context.term?.name, context.period?.name].filter(Boolean).join(' · ');
+}
+
+function AcademicYearLabel() {
+  const [label, setLabel] = useState<string | null>(null);
+  useRevalidateOnSync(() => {
+    let cancelled = false;
+    sharedBridge
+      .getAcademicContext()
+      .then((context) => {
+        if (!cancelled) setLabel(academicContextLabel(context));
+      })
+      .catch((err: unknown) => console.error('Academic year label failed', err));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  if (label === null) return null;
+  return (
+    <span data-testid="academic-year-label" className="hidden md:inline text-sm font-medium text-gray-600 whitespace-nowrap">
+      {label}
+    </span>
+  );
+}
 
 export function Header({ role }: { role: DesktopPortalRole }) {
   const pathname = usePathname();
@@ -53,6 +82,8 @@ export function Header({ role }: { role: DesktopPortalRole }) {
               icon={<Search className="w-4 h-4 text-gray-400" />}
             />
           </div>
+
+          {(role === SystemRole.INSTITUTION_ADMIN || role === SystemRole.TEACHER) && <AcademicYearLabel />}
 
           {headerConfigs[role].showNotificationBell && <NotificationBell basePath={headerConfigs[role].basePath} />}
 
