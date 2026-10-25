@@ -25,7 +25,19 @@ const CODE_MESSAGES: Record<IpcErrorCode, string> = {
   OFFLINE: "You're offline. Connect to the internet to do this.",
   RATE_LIMITED: 'Too many attempts. Please wait and try again later.',
   REMOTE_REJECTED: 'The server could not complete this request.',
+  ACADEMIC_YEAR_CLOSED: 'This academic year is closed. Its records can no longer be changed.',
+  ACADEMIC_YEAR_NOT_STARTED:
+    'This academic year has not started yet. Grades, attendance and assignments can be recorded once it starts.',
+  ACADEMIC_YEAR_NOT_DELETABLE: 'Only an academic year that is still being set up can be deleted.',
 };
+
+/** Violation tokens raised by the local freeze triggers (migration 040) as the
+ * message of a SqliteError, usually buried under application-layer wrappers. */
+const ACADEMIC_YEAR_TOKENS = [
+  'ACADEMIC_YEAR_CLOSED',
+  'ACADEMIC_YEAR_NOT_STARTED',
+  'ACADEMIC_YEAR_NOT_DELETABLE',
+] as const;
 
 function payloadFor(code: IpcErrorCode): IpcErrorPayload {
   return { code, message: CODE_MESSAGES[code] };
@@ -61,7 +73,18 @@ const MAX_CAUSE_DEPTH = 5;
  * UNAUTHORIZED is defined-and-reserved for Phase 4 authentication.
  */
 export function toIpcError(error: unknown): IpcErrorPayload {
+  const violation = findAcademicYearViolation(error, MAX_CAUSE_DEPTH);
+  if (violation) return payloadFor(violation);
   return mapError(error, MAX_CAUSE_DEPTH);
+}
+
+function findAcademicYearViolation(error: unknown, remainingDepth: number): IpcErrorCode | undefined {
+  if (!(error instanceof Error)) return undefined;
+  const token = ACADEMIC_YEAR_TOKENS.find((t) => error.message.includes(t));
+  if (token) return token;
+  return remainingDepth > 0 && error.cause !== undefined
+    ? findAcademicYearViolation(error.cause, remainingDepth - 1)
+    : undefined;
 }
 
 function mapError(error: unknown, remainingDepth: number): IpcErrorPayload {

@@ -53,6 +53,22 @@ describe('toIpcError', () => {
     expect(payload.message).toBe('The local database is currently unavailable.');
   });
 
+  it('maps an academic-year violation buried in the cause chain to its own code and exact message', () => {
+    const wrapped = new UnexpectedApplicationException('An unexpected error occurred.', {
+      cause: new Error('ACADEMIC_YEAR_CLOSED'),
+    });
+    expect(toIpcError(wrapped)).toEqual({
+      code: 'ACADEMIC_YEAR_CLOSED',
+      message: 'This academic year is closed. Its records can no longer be changed.',
+    });
+    expect(toIpcError(new ConnectionError('x', { cause: new Error('ACADEMIC_YEAR_NOT_STARTED') })).code).toBe(
+      'ACADEMIC_YEAR_NOT_STARTED',
+    );
+    expect(toIpcError(new Error('ACADEMIC_YEAR_NOT_DELETABLE')).message).toBe(
+      'Only an academic year that is still being set up can be deleted.',
+    );
+  });
+
   it('bounds cause-chain unwrapping so deep chains stay masked', () => {
     let error: Error = new ConnectionError('deep');
     for (let i = 0; i < 10; i += 1) {

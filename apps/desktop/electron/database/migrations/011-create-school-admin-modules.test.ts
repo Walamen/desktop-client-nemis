@@ -56,7 +56,7 @@ describe('school admin module migration', () => {
 
     const triggers = manager.connection.prepare(`
       SELECT name FROM sqlite_master
-      WHERE type='trigger' AND tbl_name IN (${TABLES.map(() => '?').join(',')})
+      WHERE type='trigger' AND name LIKE 'outbox_%' AND tbl_name IN (${TABLES.map(() => '?').join(',')})
     `).all(...TABLES) as Array<{ name: string }>;
     const pushTables = TABLES.filter((table) => !PULL_ONLY_TABLES.has(table));
     expect(triggers).toHaveLength(pushTables.length * 3);

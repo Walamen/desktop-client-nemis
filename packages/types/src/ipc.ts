@@ -609,7 +609,11 @@ export type IpcErrorCode =
   // whose message may come from the server rather than a fixed table.
   | 'OFFLINE'
   | 'RATE_LIMITED'
-  | 'REMOTE_REJECTED';
+  | 'REMOTE_REJECTED'
+  // Local academic-year freeze triggers (lifecycle spec §6.2).
+  | 'ACADEMIC_YEAR_CLOSED'
+  | 'ACADEMIC_YEAR_NOT_STARTED'
+  | 'ACADEMIC_YEAR_NOT_DELETABLE';
 
 export interface IpcValidationIssue {
   field: string;

@@ -38,6 +38,7 @@ import { addGuardianPhoto } from './036-add-guardian-photo';
 import { addUserEmailVerified } from './037-add-user-email-verified';
 import { createDirectMessages } from './038-create-direct-messages';
 import { createAuditLogs } from './039-create-audit-logs';
+import { createAcademicYearFreeze } from './040-create-academic-year-freeze';
 
 /**
  * Every migration, ascending by version. Append only — never edit or reorder
@@ -83,4 +84,5 @@ export const migrations: readonly Migration[] = [
   addUserEmailVerified,
   createDirectMessages,
   createAuditLogs,
+  createAcademicYearFreeze,
 ];

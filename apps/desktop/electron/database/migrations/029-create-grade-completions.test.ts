@@ -50,7 +50,7 @@ describe('029-create-grade-completions', () => {
 
   it('installs no outbox triggers', () => {
     const db = migrated();
-    expect(db.prepare(`SELECT count(*) c FROM sqlite_master WHERE type='trigger' AND tbl_name='grade_completions'`).get())
+    expect(db.prepare(`SELECT count(*) c FROM sqlite_master WHERE type='trigger' AND tbl_name='grade_completions' AND name LIKE 'outbox_%'`).get())
       .toEqual({ c: 0 });
     db.close();
   });
