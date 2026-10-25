@@ -65,7 +65,7 @@ describe('Teacher class detail page', () => {
       </PresentationProvider>,
     );
 
-    await waitFor(() => expect(nemis.teacher.listAssignments).toHaveBeenCalledWith(STAFF_ID));
+    await waitFor(() => expect(nemis.teacher.listAssignments).toHaveBeenCalledWith(STAFF_ID, { activeYearOnly: true }));
     expect(nemis.teacher.listAssignments).not.toHaveBeenCalledWith(USER_ID);
     expect(await screen.findByText('Grade 10A')).toBeInTheDocument();
     expect(screen.queryByText('Class not found')).toBeNull();

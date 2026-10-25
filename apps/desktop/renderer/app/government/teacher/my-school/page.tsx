@@ -237,7 +237,7 @@ export default function MySchoolPage() {
   const staffId = own?.id;
 
   useRevalidateOnSync(() => {
-    if (staffId) void teachingAssignments.load(staffId);
+    if (staffId) void teachingAssignments.load(staffId, { activeYearOnly: true });
   }, [staffId, teachingAssignments]);
 
   const directory = useMemo(() => directoryRecords.map(toStaffMember), [directoryRecords]);

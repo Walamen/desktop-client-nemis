@@ -6,7 +6,7 @@ import type { WorkspaceManager } from '@app/workspace/WorkspaceManager';
 import {
   assertAssignTeacherArgs, assertCreateTeacherArgs, assertListTeachersArgs,
   assertRemoveTeachingAssignmentArgs, assertSetTeacherActiveArgs,
-  assertSingleIdArg, assertUpdateTeacherArgs, assertUpdateTeachingAssignmentArgs,
+  assertListTeachingAssignmentsArgs, assertSingleIdArg, assertUpdateTeacherArgs, assertUpdateTeachingAssignmentArgs,
 } from '@app/security/validateIpc';
 
 /** Staff-directory management — school admins creating/editing teacher
@@ -32,7 +32,7 @@ export function registerTeacherDirectoryHandlers(handle:IpcHandle,app:Applicatio
     const updated=(await app.teachers.setActive(r)).data;
     return (await app.teachers.getProfile(updated.id)).data!;
   });
-  handle(IpcChannels.TEACHER_LIST_ASSIGNMENTS,assertSingleIdArg,async id=>{
+  handle(IpcChannels.TEACHER_LIST_ASSIGNMENTS,assertListTeachingAssignmentsArgs,async (id,options)=>{
     const user=workspaces.active.user;
     // user.id is the login (`users` table) identity; teaching assignments are
     // keyed by the linked staff record (`staff.id` / user.staffId) — the same
@@ -40,7 +40,7 @@ export function registerTeacherDirectoryHandlers(handle:IpcHandle,app:Applicatio
     if(user.role===SystemRole.TEACHER&&id!==user.staffId){
       throw new ForbiddenError('Teachers may only view their own teaching assignments.');
     }
-    return (await app.teachers.getAssignments(id)).data;
+    return (await app.teachers.getAssignments(id,options)).data;
   });
   handle(IpcChannels.TEACHER_ASSIGN,assertAssignTeacherArgs,async r=>(await app.teachers.assign(r)).data);
   handle(IpcChannels.TEACHER_UPDATE_ASSIGNMENT,assertUpdateTeachingAssignmentArgs,async r=>(await app.teachers.updateAssignment(r)).data);

@@ -66,7 +66,7 @@ describe('Teacher assignment form', () => {
       </PresentationProvider>,
     );
 
-    await waitFor(() => expect(nemis.teacher.listAssignments).toHaveBeenCalledWith(STAFF_ID));
+    await waitFor(() => expect(nemis.teacher.listAssignments).toHaveBeenCalledWith(STAFF_ID, { activeYearOnly: true }));
     expect(nemis.teacher.listAssignments).not.toHaveBeenCalledWith(USER_ID);
     // The class dropdown is only populated once teachingAssignments loaded
     // successfully — its option confirms the self-scoped call actually

@@ -25,8 +25,8 @@ export const teacherDirectoryBridge = {
     api().teacher.update(request),
   setTeacherActive: (request: SetTeacherActiveRequest): Promise<TeacherProfileResult> =>
     api().teacher.setActive(request),
-  listTeachingAssignments: (id: string): Promise<TeachingAssignmentResult[]> =>
-    api().teacher.listAssignments(id),
+  listTeachingAssignments: (id: string, options?: { activeYearOnly?: boolean }): Promise<TeachingAssignmentResult[]> =>
+    options ? api().teacher.listAssignments(id, options) : api().teacher.listAssignments(id),
   assignTeacher: (request: AssignTeacherRequest): Promise<TeachingAssignmentResult> =>
     api().teacher.assign(request),
   updateTeachingAssignment: (

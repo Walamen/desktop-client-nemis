@@ -323,7 +323,7 @@ export interface IpcContract {
   'teacher:create': { args: [request: CreateTeacherRequest]; result: TeacherProfileResult };
   'teacher:update': { args: [request: UpdateTeacherRequest]; result: TeacherProfileResult };
   'teacher:set-active': { args: [request: SetTeacherActiveRequest]; result: TeacherProfileResult };
-  'teacher:list-assignments': { args: [id: string]; result: TeachingAssignmentResult[] };
+  'teacher:list-assignments': { args: [id: string, options?: { activeYearOnly?: boolean }]; result: TeachingAssignmentResult[] };
   'teacher:assign': { args: [request: AssignTeacherRequest]; result: TeachingAssignmentResult };
   'teacher:update-assignment': {
     args: [request: UpdateTeachingAssignmentRequest];

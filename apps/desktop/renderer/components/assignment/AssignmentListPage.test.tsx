@@ -64,7 +64,7 @@ describe('Teacher assignments list page', () => {
       </PresentationProvider>,
     );
 
-    await waitFor(() => expect(nemis.teacher.listAssignments).toHaveBeenCalledWith(STAFF_ID));
+    await waitFor(() => expect(nemis.teacher.listAssignments).toHaveBeenCalledWith(STAFF_ID, { activeYearOnly: true }));
     expect(nemis.teacher.listAssignments).not.toHaveBeenCalledWith(USER_ID);
     expect(await screen.findByText('Chapter 5')).toBeInTheDocument();
     expect(screen.queryByText(/something went wrong/i)).toBeNull();

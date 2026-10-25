@@ -84,7 +84,7 @@ export default function TeacherDashboardPage() {
   }, [userId]);
 
   useRevalidateOnSync(() => {
-    if (staffId) void teachingAssignments.load(staffId);
+    if (staffId) void teachingAssignments.load(staffId, { activeYearOnly: true });
   }, [staffId, teachingAssignments]);
 
   const hasAssignmentData = assignments.status === 'success' || assignments.status === 'refreshing';
@@ -179,11 +179,11 @@ export default function TeacherDashboardPage() {
         <DashboardGreeting name={name} role="Teacher" />
 
         {assignments.status === 'error' && assignments.error.kind === 'database-unavailable' ? (
-          <DatabaseUnavailablePanel onRetry={() => staffId && void teachingAssignments.load(staffId)} />
+          <DatabaseUnavailablePanel onRetry={() => staffId && void teachingAssignments.load(staffId, { activeYearOnly: true })} />
         ) : assignments.status === 'error' ? (
           <ErrorState
             message={assignments.error.userMessage}
-            onRetry={() => staffId && void teachingAssignments.load(staffId)}
+            onRetry={() => staffId && void teachingAssignments.load(staffId, { activeYearOnly: true })}
           />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">

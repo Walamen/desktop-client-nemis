@@ -62,7 +62,7 @@ export function AssignmentListPage() {
   const [subjectId, setSubjectId] = useState('');
 
   useRevalidateOnSync(() => {
-    if (staffId) void teachingAssignments.load(staffId);
+    if (staffId) void teachingAssignments.load(staffId, { activeYearOnly: true });
   }, [staffId, teachingAssignments]);
 
   useRevalidateOnSync(() => {

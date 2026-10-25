@@ -111,8 +111,9 @@ export class SqliteTeacherRepository implements ITeacherRepository {
         .run(p.id,p.institutionId,p.firstName,p.middleName??null,p.lastName,p.dateOfBirth,p.gender,p.nationalId??null,p.phoneNumber,p.email??null,p.address??null,p.employeeNumber,p.position,p.employmentType,p.dateOfJoining,p.dateOfLeaving??null,p.qualifications?JSON.stringify(p.qualifications):null,p.isActive?1:0,p.photoUrl??null,p.approvalStatus,p.approvalNotes??null,p.createdAt,p.updatedAt);
     });
   }
-  listAssignments(teacherId: string): TeachingAssignmentResult[] {
-    const rows = this.#statements.get(`${assignmentSelect} WHERE a.staffId=? AND y.isCurrent=1 UNION ALL ${classAssignmentSelect} WHERE a.staffId=? AND y.isCurrent=1 ORDER BY assignedAt DESC`).all(teacherId,teacherId) as AssignmentRow[];
+  listAssignments(teacherId: string, options?: { activeYearOnly?: boolean }): TeachingAssignmentResult[] {
+    const only = options?.activeYearOnly ? ' AND y.isCurrent=1' : '';
+    const rows = this.#statements.get(`${assignmentSelect} WHERE a.staffId=?${only} UNION ALL ${classAssignmentSelect} WHERE a.staffId=?${only} ORDER BY assignedAt DESC`).all(teacherId,teacherId) as AssignmentRow[];
     return rows.map(toAssignment);
   }
   findAssignment(id: string): TeachingAssignmentResult | null {

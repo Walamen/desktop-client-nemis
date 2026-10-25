@@ -4,6 +4,7 @@ import {
   assertNoArgs,
   assertSettingKeyArg,
   assertSingleIdArg,
+  assertListTeachingAssignmentsArgs,
   assertCreateAcademicYearArgs,
   assertUpdateAcademicYearArgs,
   assertCreateTermArgs,
@@ -394,5 +395,19 @@ describe('assertListPendingRecordsArgs', () => {
   });
   it('rejects the wrong arity', () => {
     expect(() => assertListPendingRecordsArgs([])).toThrow();
+  });
+});
+
+describe('assertListTeachingAssignmentsArgs', () => {
+  it('accepts an id with an optional { activeYearOnly } and rejects anything else', () => {
+    expect(() => assertListTeachingAssignmentsArgs(['t-1'])).not.toThrow();
+    expect(() => assertListTeachingAssignmentsArgs(['t-1', { activeYearOnly: true }])).not.toThrow();
+    expect(() => assertListTeachingAssignmentsArgs(['t-1', {}])).not.toThrow();
+    expect(() => assertListTeachingAssignmentsArgs([])).toThrow();
+    expect(() => assertListTeachingAssignmentsArgs([42])).toThrow();
+    expect(() => assertListTeachingAssignmentsArgs(['t-1', { activeYearOnly: 'yes' }])).toThrow();
+    expect(() => assertListTeachingAssignmentsArgs(['t-1', { other: true }])).toThrow();
+    expect(() => assertListTeachingAssignmentsArgs(['t-1', null])).toThrow();
+    expect(() => assertListTeachingAssignmentsArgs(['t-1', {}, 'x'])).toThrow();
   });
 });

@@ -60,7 +60,7 @@ describe('Teacher my-classes page', () => {
       </PresentationProvider>,
     );
 
-    await waitFor(() => expect(nemis.teacher.listAssignments).toHaveBeenCalledWith(STAFF_ID));
+    await waitFor(() => expect(nemis.teacher.listAssignments).toHaveBeenCalledWith(STAFF_ID, { activeYearOnly: true }));
     expect(nemis.teacher.listAssignments).not.toHaveBeenCalledWith(USER_ID);
     expect(await screen.findByText('Grade 10A')).toBeInTheDocument();
     expect(screen.queryByText(/something went wrong/i)).toBeNull();

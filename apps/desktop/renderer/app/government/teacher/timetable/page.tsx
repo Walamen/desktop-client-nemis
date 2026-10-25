@@ -65,7 +65,7 @@ export default function TeacherTimetablePage() {
   useRevalidateOnSync(() => {
     if (staffId) void teacherSchedule.load(staffId);
     void teacherSchedule.core.loadPeriods();
-    if (staffId) void teachingAssignments.load(staffId);
+    if (staffId) void teachingAssignments.load(staffId, { activeYearOnly: true });
   }, [staffId, teacherSchedule, teachingAssignments]);
 
   const [selectedDay, setSelectedDay] = useState<(typeof DAYS)[number]>(getTodayDay());

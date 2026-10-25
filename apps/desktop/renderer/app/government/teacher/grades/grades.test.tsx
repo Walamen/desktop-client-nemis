@@ -131,7 +131,7 @@ describe('Teacher grades page', () => {
       </PresentationProvider>,
     );
 
-    await waitFor(() => expect(nemis.teacher.listAssignments).toHaveBeenCalledWith(STAFF_ID));
+    await waitFor(() => expect(nemis.teacher.listAssignments).toHaveBeenCalledWith(STAFF_ID, { activeYearOnly: true }));
     expect(nemis.teacher.listAssignments).not.toHaveBeenCalledWith(USER_ID);
     await waitFor(() => expect(nemis.term.list).toHaveBeenCalledWith('ay-1'));
     await waitFor(() => expect(nemis.schoolAdmin.list).toHaveBeenCalledWith(

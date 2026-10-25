@@ -69,7 +69,7 @@ describe('Teacher dashboard (fresh install)', () => {
       </PresentationProvider>,
     );
     await waitFor(() => expect(screen.getAllByText('My Classes').length).toBeGreaterThan(0));
-    await waitFor(() => expect((window as unknown as { nemis: { teacher: { listAssignments: ReturnType<typeof vi.fn> } } }).nemis.teacher.listAssignments).toHaveBeenCalledWith(STAFF_ID));
+    await waitFor(() => expect((window as unknown as { nemis: { teacher: { listAssignments: ReturnType<typeof vi.fn> } } }).nemis.teacher.listAssignments).toHaveBeenCalledWith(STAFF_ID, { activeYearOnly: true }));
     expect(await screen.findByText('No classes assigned yet. Contact your school administrator.')).toBeInTheDocument();
     expect(screen.getByText('No upcoming assignments due.')).toBeInTheDocument();
     expect(screen.queryByText(/^sample$/i)).toBeNull();

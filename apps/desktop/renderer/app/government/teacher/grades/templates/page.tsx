@@ -91,7 +91,7 @@ export default function AssessmentSetupPage() {
   }, [userId]);
 
   useRevalidateOnSync(() => {
-    if (staffId) void teachingAssignments.load(staffId);
+    if (staffId) void teachingAssignments.load(staffId, { activeYearOnly: true });
   }, [staffId, teachingAssignments]);
 
   const myClasses = useMemo<ClassOption[]>(() => {

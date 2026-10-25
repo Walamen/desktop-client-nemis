@@ -77,7 +77,7 @@ export default function ClassDetailPage() {
   }, [userId]);
 
   useRevalidateOnSync(() => {
-    if (staffId) void teachingAssignments.load(staffId);
+    if (staffId) void teachingAssignments.load(staffId, { activeYearOnly: true });
   }, [staffId, teachingAssignments]);
 
   const hasAssignmentData = assignments.status === 'success' || assignments.status === 'refreshing';

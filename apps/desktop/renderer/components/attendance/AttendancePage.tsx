@@ -158,7 +158,7 @@ export function AttendancePage() {
   const calRef = useRef<HTMLDivElement>(null);
 
   useRevalidateOnSync(() => {
-    if (staffId) void teachingAssignments.load(staffId);
+    if (staffId) void teachingAssignments.load(staffId, { activeYearOnly: true });
   }, [staffId, teachingAssignments]);
 
   const assignmentsLoaded =
@@ -343,7 +343,7 @@ export function AttendancePage() {
   if (assignments.status === 'error' && assignments.error.kind === 'database-unavailable') {
     return (
       <div className="p-6">
-        <DatabaseUnavailablePanel onRetry={() => staffId && void teachingAssignments.load(staffId)} />
+        <DatabaseUnavailablePanel onRetry={() => staffId && void teachingAssignments.load(staffId, { activeYearOnly: true })} />
       </div>
     );
   }
@@ -352,7 +352,7 @@ export function AttendancePage() {
       <div className="p-6">
         <ErrorState
           message={assignments.error.userMessage}
-          onRetry={() => staffId && void teachingAssignments.load(staffId)}
+          onRetry={() => staffId && void teachingAssignments.load(staffId, { activeYearOnly: true })}
         />
       </div>
     );

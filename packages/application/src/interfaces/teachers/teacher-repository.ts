@@ -15,7 +15,8 @@ export interface ITeacherRepository {
   existsByEmployeeNumber(institutionId: string, employeeNumber: string, excludeId?: string): boolean;
   existsByEmail(email: string, excludeId?: string): boolean;
   save(teacher: Teacher): void;
-  listAssignments(teacherId: string): TeachingAssignmentResult[];
+  /** All years by default; `activeYearOnly` keeps only classes of the active (`isCurrent`) year. */
+  listAssignments(teacherId: string, options?: { activeYearOnly?: boolean }): TeachingAssignmentResult[];
   findAssignment(assignmentId: string): TeachingAssignmentResult | null;
   findClassSubjectAssignment(classId: string, subjectId: string): TeachingAssignmentResult | null;
   assign(request: AssignTeacherRequest, assignmentId: string, assignedAt: string): TeachingAssignmentResult;

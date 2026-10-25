@@ -63,7 +63,7 @@ export default function MyClassesPage() {
   }, [userId]);
 
   useRevalidateOnSync(() => {
-    if (staffId) void teachingAssignments.load(staffId);
+    if (staffId) void teachingAssignments.load(staffId, { activeYearOnly: true });
   }, [staffId, teachingAssignments]);
 
   const hasAssignmentData = assignments.status === 'success' || assignments.status === 'refreshing';
@@ -114,7 +114,7 @@ export default function MyClassesPage() {
   if (assignments.status === 'error' && assignments.error.kind === 'database-unavailable') {
     return (
       <div className="min-h-full bg-slate-100 px-6 py-6">
-        <DatabaseUnavailablePanel onRetry={() => staffId && void teachingAssignments.load(staffId)} />
+        <DatabaseUnavailablePanel onRetry={() => staffId && void teachingAssignments.load(staffId, { activeYearOnly: true })} />
       </div>
     );
   }
@@ -123,7 +123,7 @@ export default function MyClassesPage() {
       <div className="min-h-full bg-slate-100 px-6 py-6">
         <ErrorState
           message={assignments.error.userMessage}
-          onRetry={() => staffId && void teachingAssignments.load(staffId)}
+          onRetry={() => staffId && void teachingAssignments.load(staffId, { activeYearOnly: true })}
         />
       </div>
     );

@@ -120,8 +120,8 @@ export class GetTeacherProfileUseCase {
 
 export class GetTeachingAssignmentsUseCase {
   constructor(private readonly deps: CommonDeps) {}
-  execute(dto: { teacherId: string }): Promise<ApplicationResponse<TeachingAssignmentOutput[]>> {
-    return invokeUseCase('GetTeachingAssignments', this.deps.logger, async () => ok(this.deps.teachers.listAssignments(dto.teacherId)));
+  execute(dto: { teacherId: string; activeYearOnly?: boolean }): Promise<ApplicationResponse<TeachingAssignmentOutput[]>> {
+    return invokeUseCase('GetTeachingAssignments', this.deps.logger, async () => ok(this.deps.teachers.listAssignments(dto.teacherId, dto.activeYearOnly ? { activeYearOnly: true } : undefined)));
   }
 }
 

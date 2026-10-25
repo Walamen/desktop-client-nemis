@@ -97,7 +97,7 @@ export function AssignmentForm({ mode, assignmentId }: AssignmentFormProps) {
   }, [teacherId]);
 
   useRevalidateOnSync(() => {
-    if (staffId) void teachingAssignments.load(staffId);
+    if (staffId) void teachingAssignments.load(staffId, { activeYearOnly: true });
   }, [staffId, teachingAssignments]);
 
   useEffect(() => {

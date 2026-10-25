@@ -152,6 +152,18 @@ export function assertSingleIdArg(args: readonly unknown[]): void {
   assertString(args[0], 'id', ID_MAX_LENGTH);
 }
 
+/** A teacher id with an optional `{ activeYearOnly?: boolean }` filter. */
+export function assertListTeachingAssignmentsArgs(args: readonly unknown[]): void {
+  if (args.length < 1 || args.length > 2) throw new IPCError('Expected a teacher id and optional options.');
+  assertString(args[0], 'id', ID_MAX_LENGTH);
+  if (args.length === 2) {
+    const options = args[1];
+    if (!isPlainObject(options)) throw new IPCError('Expected an options object.');
+    assertKnownKeys(options, ['activeYearOnly']);
+    if (options.activeYearOnly !== undefined && typeof options.activeYearOnly !== 'boolean') throw new IPCError('activeYearOnly must be a boolean.');
+  }
+}
+
 // --- Student Management (Phase 10) --------------------------------------
 export function assertListStudentsArgs(args: readonly unknown[]): void {
   assertArity(args, 1);

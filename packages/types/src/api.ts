@@ -346,7 +346,7 @@ export interface TeacherApi {
   create(request: CreateTeacherRequest): Promise<TeacherProfileResult>;
   update(request: UpdateTeacherRequest): Promise<TeacherProfileResult>;
   setActive(request: SetTeacherActiveRequest): Promise<TeacherProfileResult>;
-  listAssignments(id: string): Promise<TeachingAssignmentResult[]>;
+  listAssignments(id: string, options?: { activeYearOnly?: boolean }): Promise<TeachingAssignmentResult[]>;
   assign(request: AssignTeacherRequest): Promise<TeachingAssignmentResult>;
   updateAssignment(request: UpdateTeachingAssignmentRequest): Promise<TeachingAssignmentResult>;
   removeAssignment(request: RemoveTeachingAssignmentRequest): Promise<{ id: string }>;

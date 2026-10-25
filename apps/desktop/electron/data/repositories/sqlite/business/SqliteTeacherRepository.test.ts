@@ -11,7 +11,7 @@ describe('SqliteTeacherRepository',()=>{
   it('persists and pages teachers with unique employee lookup',()=>{repo.save(teacher());expect(repo.findById('teacher-1')?.fullName).toBe('Martha Doe');expect(repo.existsByEmployeeNumber('inst-1','EMP-1')).toBe(true);expect(repo.findPage({limit:25,offset:0,keyword:'Martha'}).total).toBe(1);});
   it('creates the backend-aligned class, subject, and class-subject relations atomically',()=>{repo.save(teacher());const assignment=repo.assign({teacherId:'teacher-1',classId:'class-1',subjectId:'subject-1',isClassTeacher:true},'assignment-1',NOW);expect(assignment.subjectName).toBe('Mathematics');expect(repo.listAssignments('teacher-1')).toHaveLength(2);const counts=test.context.connection.prepare("SELECT (SELECT COUNT(*) FROM class_teachers) classCount,(SELECT COUNT(*) FROM subject_teachers) subjectCount,(SELECT COUNT(*) FROM class_subject_teachers) teachingCount").get() as {classCount:number;subjectCount:number;teachingCount:number};expect(counts).toEqual({classCount:1,subjectCount:1,teachingCount:1});});
   it('rejects a second teacher for the same class subject',()=>{repo.save(teacher());repo.save(teacher('teacher-2','EMP-2'));repo.assign({teacherId:'teacher-1',classId:'class-1',subjectId:'subject-1'},'assignment-1',NOW);expect(()=>repo.assign({teacherId:'teacher-2',classId:'class-1',subjectId:'subject-1'},'assignment-2',NOW)).toThrow();});
-  it('listAssignments and dashboard count only active-year assignments',()=>{
+  it('listAssignments returns every year by default and only the active year with activeYearOnly; dashboard counts active year only',()=>{
     const db=test.context.connection;
     db.prepare("INSERT INTO academic_years (id,institutionId,code,startDate,endDate,isCurrent,version,updatedAt,status) VALUES ('year-0','inst-1','2025/2026','2025-09-01','2026-06-30',0,1,?,'SETUP')").run(NOW);
     db.prepare("INSERT INTO classes (id,institutionId,academicYearId,name,gradeLevel,isActive,version,updatedAt,section) VALUES ('class-0','inst-1','year-0','Grade 5 A','GRADE_5',1,1,?,'A')").run(NOW);
@@ -19,9 +19,12 @@ describe('SqliteTeacherRepository',()=>{
     repo.assign({teacherId:'teacher-1',classId:'class-1',subjectId:'subject-1',isClassTeacher:true},'assignment-1',NOW);
     db.prepare("INSERT INTO subjects (id,institutionId,name,code,isActive,version,updatedAt) VALUES ('subject-2','inst-1','Science','SCI',1,1,?)").run(NOW);repo.assign({teacherId:'teacher-1',classId:'class-0',subjectId:'subject-2',isClassTeacher:true},'assignment-0',NOW);
     repo.assign({teacherId:'teacher-2',classId:'class-0',subjectId:'subject-1'},'assignment-00',NOW);
-    expect(repo.listAssignments('teacher-1').every((a)=>a.classId==='class-1')).toBe(true);
-    expect(repo.listAssignments('teacher-1')).toHaveLength(2);
-    expect(repo.listAssignments('teacher-2')).toHaveLength(0);
+    expect(repo.listAssignments('teacher-1')).toHaveLength(4);
+    expect(repo.listAssignments('teacher-1',{activeYearOnly:false})).toHaveLength(4);
+    expect(repo.listAssignments('teacher-1',{activeYearOnly:true}).every((a)=>a.classId==='class-1')).toBe(true);
+    expect(repo.listAssignments('teacher-1',{activeYearOnly:true})).toHaveLength(2);
+    expect(repo.listAssignments('teacher-2')).toHaveLength(2);
+    expect(repo.listAssignments('teacher-2',{activeYearOnly:true})).toHaveLength(0);
     const d=repo.dashboard();
     expect(d.totalAssignments).toBe(2);
     expect(d.unassignedTeachers).toBe(1);

@@ -23,7 +23,9 @@ export class InMemoryTeacherRepository implements ITeacherRepository {
     if(filter.employmentType)rows=rows.filter(v=>v.data.employmentType===filter.employmentType);
     return {items:rows.slice(filter.offset,filter.offset+filter.limit),total:rows.length};
   }
-  listAssignments(teacherId: string): TeachingAssignmentResult[] { return [...this.assignments.values()].filter(v=>v.teacherId===teacherId); }
+  /** Stands in for the `academic_years.isCurrent = 1` row. */
+  activeAcademicYearId: string | null = null;
+  listAssignments(teacherId: string, options?: { activeYearOnly?: boolean }): TeachingAssignmentResult[] { return [...this.assignments.values()].filter(v=>v.teacherId===teacherId&&(!options?.activeYearOnly||v.academicYearId===this.activeAcademicYearId)); }
   findAssignment(id: string): TeachingAssignmentResult | null { return this.assignments.get(id)??null; }
   findClassSubjectAssignment(classId:string,subjectId:string):TeachingAssignmentResult|null {
     return [...this.assignments.values()].find(v=>v.classId===classId&&v.subjectId===subjectId)??null;
