@@ -3,3 +3,4 @@ export * from './sync-conflict';
 export * from './nemis-id';
 export * from './transfers';
 export * from './sync-labels';
+export * from './academic-year-rejection';

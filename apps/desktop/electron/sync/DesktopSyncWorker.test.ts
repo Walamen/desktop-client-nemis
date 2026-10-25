@@ -221,6 +221,40 @@ describe('DesktopSyncWorker retry policy', () => {
     ).toBeUndefined();
   });
 
+  it('records an ACADEMIC_YEAR_ conflict even when payloads agree', async () => {
+    const item = await dataLayer.services.syncQueue.enqueue({
+      entityType: 'grades',
+      entityId: 'g1',
+      operationType: 'update',
+      payload: { record: { id: 'g1', score: 80 } },
+    });
+    const gateway = {
+      pushChanges: vi.fn().mockResolvedValue({
+        processedAt: '2026-08-16T00:00:00.000Z',
+        results: [
+          {
+            operationId: item.id,
+            entityType: 'grades',
+            entityId: 'g1',
+            status: 'conflict',
+            reason: 'ACADEMIC_YEAR_CLOSED: This academic year is closed. Its records can no longer be changed.',
+            remotePayload: { id: 'g1', score: 80 },
+          },
+        ],
+      }),
+      downloadSnapshot: vi.fn().mockResolvedValue(emptySnapshot()),
+    } as unknown as BackendProvisioningGateway;
+    const worker = new DesktopSyncWorker(workspaces, gateway, alwaysOnline());
+
+    await worker.syncActive();
+
+    const row = manager.connection
+      .prepare(`SELECT reason, status FROM sync_conflicts WHERE entityId='g1'`)
+      .get() as { reason: string; status: string };
+    expect(row.status).toBe('unresolved');
+    expect(row.reason).toMatch(/^ACADEMIC_YEAR_CLOSED: /);
+  });
+
   it('still surfaces a conflict for the admin to decide when the offline entry and the server genuinely disagree', async () => {
     const item = await dataLayer.services.syncQueue.enqueue({
       entityType: 'students',

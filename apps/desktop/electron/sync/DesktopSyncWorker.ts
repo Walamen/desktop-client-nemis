@@ -20,7 +20,7 @@ import { PendingChangesService } from './pending/PendingChangesService';
 import type { PendingContext } from './pending/types';
 import { FEE_REVERSAL_PENDING, GRADE_COMPLETION_PENDING, SCHOOL_REGISTRATION_PENDING } from './pendingPredicates';
 import { logger } from '@app/services/logger';
-import { hasRealDisagreement, unwrapLocalPayload } from '@nemis-desktop/shared';
+import { hasRealDisagreement, isAcademicYearRejection, unwrapLocalPayload } from '@nemis-desktop/shared';
 
 const BACKOFF_SCHEDULE_MS = [30_000, 60_000, 300_000, 900_000] as const; // 30s, 1m, 5m, 15m
 const DEAD_LETTER_THRESHOLD = 5;
@@ -182,7 +182,10 @@ export class DesktopSyncWorker {
             // genuine disagreement (including every delete, where silently
             // picking a side risks losing data either way) still gets
             // recorded below for a human decision.
+            // A year-closed rejection is never a false positive: it is always
+            // recorded so the user sees their offline change was refused.
             if (
+              !isAcademicYearRejection(result.reason) &&
               queued?.operationType !== 'delete' &&
               hasRealDisagreement(unwrapLocalPayload(local).edited, result.remotePayload) === false
             ) {

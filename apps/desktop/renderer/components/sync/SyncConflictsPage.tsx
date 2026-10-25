@@ -2,6 +2,7 @@
 
 import { Fragment, useState } from 'react';
 import { AlertTriangle, ChevronDown, ChevronRight, RefreshCw } from 'lucide-react';
+import { academicYearRejectionMessage, isAcademicYearRejection } from '@nemis-desktop/shared';
 import type { DesktopSyncStatus, SyncConflictResult } from '@nemis-desktop/types';
 import { Alert, Badge, Button, EmptyState, ErrorState, Modal, Skeleton } from '@nemis-desktop/ui';
 import { nemisBridge } from '@/services/nemis-bridge';
@@ -104,7 +105,17 @@ export function SyncConflictsPage() {
                 Needs your decision
               </h2>
               <div className="space-y-3">
-                {decisions.map((conflict) => (
+                {decisions.map((conflict) =>
+                  isAcademicYearRejection(conflict.reason) ? (
+                    <YearRejectionCard
+                      key={conflict.id}
+                      conflict={conflict}
+                      resolving={resolving === conflict.id}
+                      onDiscard={() =>
+                        setConfirmTarget({ conflict, resolution: 'accept_remote', hasRealDisagreement: true })
+                      }
+                    />
+                  ) : (
                   <ConflictCard
                     key={conflict.id}
                     conflict={conflict}
@@ -116,7 +127,8 @@ export function SyncConflictsPage() {
                       setConfirmTarget({ conflict, resolution: 'accept_remote', hasRealDisagreement })
                     }
                   />
-                ))}
+                  ),
+                )}
               </div>
             </section>
           )}
@@ -367,6 +379,38 @@ function ConflictCard({
           onClick={() => onAcceptRemote(hasRealDisagreement)}
         >
           {isDelete ? "Restore server's copy" : 'Accept server version'}
+        </Button>
+      </div>
+    </article>
+  );
+}
+
+function YearRejectionCard({
+  conflict,
+  resolving,
+  onDiscard,
+}: {
+  conflict: SyncConflictResult;
+  resolving: boolean;
+  onDiscard: () => void;
+}) {
+  const label = pickEntityLabel(conflict.localPayload, conflict.remotePayload, conflict.entityType, conflict.entityId);
+  const notStarted = conflict.reason.startsWith('ACADEMIC_YEAR_NOT_STARTED');
+  return (
+    <article className="rounded-card border border-slate-200 border-l-4 border-l-error bg-white p-5">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h3 className="font-semibold text-slate-900">
+            {notStarted ? 'Rejected — academic year not started' : 'Rejected — academic year closed'}
+          </h3>
+          <p className="mt-1 text-sm text-slate-600">{label}</p>
+          <p className="mt-1 text-sm text-slate-600">{academicYearRejectionMessage(conflict.reason)}</p>
+          <time className="mt-1 block text-xs text-slate-500" dateTime={conflict.createdAt}>
+            {relativeTime(conflict.createdAt)}
+          </time>
+        </div>
+        <Button size="sm" variant="destructive" disabled={resolving} onClick={onDiscard}>
+          Discard my change
         </Button>
       </div>
     </article>
