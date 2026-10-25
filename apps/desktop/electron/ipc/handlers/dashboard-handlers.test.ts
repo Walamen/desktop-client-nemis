@@ -44,7 +44,7 @@ describe('dashboard/bootstrap IPC handlers', () => {
   it('registers the other four no-arg channels', () => {
     const { calls, handle } = makeHarness();
     registerSchoolHandlers(handle, app);
-    registerAcademicYearHandlers(handle, app);
+    registerAcademicYearHandlers(handle, app, { startAcademicYear: async () => null }, async () => true);
     registerIdentityHandlers(handle, app);
     registerDeviceHandlers(handle, app);
     for (const channel of ['school:get-summary', 'academic-year:get-current', 'identity:get-current-user', 'identity:header-notifications', 'device:get-info']) {

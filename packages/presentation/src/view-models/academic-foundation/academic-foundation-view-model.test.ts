@@ -303,3 +303,17 @@ describe('AcademicFoundationViewModel.loadYearClasses', () => {
     if (state.yearClasses.status === 'success') expect(state.yearClasses.data.map((c) => c.academicYearId)).toEqual(['y1']);
   });
 });
+
+describe('AcademicFoundationViewModel.startAcademicYear', () => {
+  it('returns the online command result and reloads the list', async () => {
+    const startAcademicYear = vi.fn(async () => ({ data: null, refreshed: true }));
+    const vm = new AcademicFoundationViewModel({ academics: makeAcademics(), notifications: new NotificationStore(), startAcademicYear });
+    expect(await vm.startAcademicYear('year-1')).toEqual({ data: null, refreshed: true });
+    expect(startAcademicYear).toHaveBeenCalledWith('year-1');
+  });
+
+  it('rejects when the layer was built without an online start command', async () => {
+    const vm = new AcademicFoundationViewModel({ academics: makeAcademics(), notifications: new NotificationStore() });
+    await expect(vm.startAcademicYear('year-1')).rejects.toThrow();
+  });
+});

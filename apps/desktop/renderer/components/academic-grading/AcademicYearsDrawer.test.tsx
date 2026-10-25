@@ -132,3 +132,80 @@ describe('AcademicYearsDrawer status (edit view, read-only)', () => {
     expect(screen.queryByRole('checkbox')).toBeNull();
   });
 });
+
+describe('AcademicYearsDrawer start (online only)', () => {
+  const SETUP = yearRow({ id: 'y9', code: '2027/2028', isCurrent: false, status: 'SETUP', termCount: 0, classCount: 0 });
+  const CLOSED = yearRow({ id: 'y0', code: '2024/2025', isCurrent: false, status: 'CLOSED' });
+  const ACTIVE = yearRow({ id: 'y1', code: '2025/2026', isCurrent: true, status: 'ACTIVE' });
+  const START = 'Start this year';
+
+  const openEdit = async (code: string) => {
+    fireEvent.click(await screen.findByRole('button', { name: `Edit ${code}` }));
+  };
+
+  it('offers Start on a SETUP year when no year is ACTIVE', async () => {
+    stubNemis({ years: [CLOSED, SETUP] });
+    await renderWithLayer(<AcademicYearsDrawer {...props()} />);
+    await openEdit('2027/2028');
+    expect(screen.getByRole('button', { name: START })).toBeEnabled();
+  });
+
+  it('hides Start when another year is ACTIVE', async () => {
+    stubNemis({ years: [ACTIVE, SETUP] });
+    await renderWithLayer(<AcademicYearsDrawer {...props()} />);
+    await openEdit('2027/2028');
+    expect(screen.queryByRole('button', { name: START })).toBeNull();
+  });
+
+  it.each(['ACTIVE', 'CLOSED', 'REOPENED'])('hides Start on a %s year', async (status) => {
+    stubNemis({ years: [yearRow({ id: 'y8', code: '2026/2027', isCurrent: false, status })] });
+    await renderWithLayer(<AcademicYearsDrawer {...props()} />);
+    await openEdit('2026/2027');
+    expect(screen.queryByRole('button', { name: START })).toBeNull();
+  });
+
+  it('confirms, starts the year and reports it', async () => {
+    const start = vi.fn(async () => ({ data: null, refreshed: true }));
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    stubNemis({ years: [SETUP], academicYear: { start } });
+    await renderWithLayer(<AcademicYearsDrawer {...props()} />);
+    await openEdit('2027/2028');
+    fireEvent.click(screen.getByRole('button', { name: START }));
+    await waitFor(() => expect(start).toHaveBeenCalledWith('y9'));
+    expect(confirm).toHaveBeenCalledWith(
+      'Start 2027/2028? Teachers can record grades and attendance once it starts, and it becomes the year every dashboard shows.',
+    );
+    expect(await screen.findByText('2027/2028 started.')).toBeInTheDocument();
+  });
+
+  it('says the year will appear after the next sync when the refresh did not finish', async () => {
+    const start = vi.fn(async () => ({ data: null, refreshed: false }));
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    stubNemis({ years: [SETUP], academicYear: { start } });
+    await renderWithLayer(<AcademicYearsDrawer {...props()} />);
+    await openEdit('2027/2028');
+    fireEvent.click(screen.getByRole('button', { name: START }));
+    expect(await screen.findByText('2027/2028 started. It will appear here after the next sync.')).toBeInTheDocument();
+  });
+
+  it('does nothing when the confirmation is declined', async () => {
+    const start = vi.fn(async () => ({ data: null, refreshed: true }));
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    stubNemis({ years: [SETUP], academicYear: { start } });
+    await renderWithLayer(<AcademicYearsDrawer {...props()} />);
+    await openEdit('2027/2028');
+    fireEvent.click(screen.getByRole('button', { name: START }));
+    expect(start).not.toHaveBeenCalled();
+  });
+
+  it('shows the offline message when the start cannot reach the server', async () => {
+    const start = vi.fn(async () => { throw new Error("[OFFLINE] You're offline. Connect to the internet to do this."); });
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    stubNemis({ years: [SETUP], academicYear: { start } });
+    await renderWithLayer(<AcademicYearsDrawer {...props()} />);
+    await openEdit('2027/2028');
+    fireEvent.click(screen.getByRole('button', { name: START }));
+    expect(await screen.findByText("You're offline. Connect to the internet to do this.")).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Edit Academic Year' })).toBeInTheDocument();
+  });
+});

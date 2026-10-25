@@ -102,7 +102,6 @@ export function registerIpcHandlers(
   registerCountyGuardianHandlers(securedHandle, app);
   registerCountyUserHandlers(securedHandle, app);
   registerSchoolHandlers(securedHandle, app);
-  registerAcademicYearHandlers(securedHandle, app);
   registerTermHandlers(securedHandle, app);
   registerClassHandlers(securedHandle, app);
   registerSubjectHandlers(securedHandle, app);
@@ -116,6 +115,7 @@ export function registerIpcHandlers(
   const refresh = () => syncWorker.pullNow();
   registerRegistryHandlers(securedHandle, gateway, refresh);
   registerTransferHandlers(securedHandle, gateway, refresh);
+  registerAcademicYearHandlers(securedHandle, app, gateway, refresh);
   registerCountyDeoHandlers(securedHandle, gateway, refresh);
   registerCountyMessagingHandlers(securedHandle, app, gateway, refresh, presence);
   registerCountyUserCommandHandlers(securedHandle, gateway, refresh, () => workspaces.active.user.scope.scopeId);

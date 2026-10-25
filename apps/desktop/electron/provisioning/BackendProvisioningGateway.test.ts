@@ -488,6 +488,15 @@ describe('BackendProvisioningGateway', () => {
       expect(JSON.parse(String(init.body))).toEqual({ replaceExisting: true });
     });
 
+    it('startAcademicYear POSTs to the encoded start endpoint and returns null', async () => {
+      const fetchMock = vi.fn(async () => response({ id: 'y 1', status: 'ACTIVE' }));
+      vi.stubGlobal('fetch', fetchMock);
+      expect(await buildGateway().startAcademicYear('y 1')).toBeNull();
+      const [url, init] = fetchMock.mock.calls[0] as unknown as [URL, RequestInit];
+      expect(url).toEqual(new URL('https://nemis.example/academic-years/y%201/start'));
+      expect(init.method).toBe('POST');
+    });
+
     it('startDirectConversation POSTs the target and first message', async () => {
       const fetchMock = vi.fn(async () => response({ conversation: { id: 'c-1' }, message: { id: 'm-1' } }));
       vi.stubGlobal('fetch', fetchMock);

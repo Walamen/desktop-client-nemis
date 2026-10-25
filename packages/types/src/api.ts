@@ -289,6 +289,8 @@ export interface AcademicYearApi {
   list(): Promise<AcademicYearListItemResult[]>;
   create(request: CreateAcademicYearRequest): Promise<AcademicYearListItemResult>;
   update(request: UpdateAcademicYearRequest): Promise<AcademicYearListItemResult>;
+  /** Online only: the server moves a SETUP year to ACTIVE, then a forced pull follows. */
+  start(id: string): Promise<OnlineCommandResult<null>>;
 }
 export interface TermApi {
   list(academicYearId: string): Promise<TermResult[]>;

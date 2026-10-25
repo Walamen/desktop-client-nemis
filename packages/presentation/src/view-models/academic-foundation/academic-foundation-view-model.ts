@@ -18,6 +18,7 @@ import type {
   UpdateSubjectDto,
   UpdateTermDto,
 } from '@nemis-desktop/application';
+import type { OnlineCommandResult } from '@nemis-desktop/types';
 import { createStore } from 'zustand/vanilla';
 import { executeCommand, trackQuery, type CommandOutcome } from '../../core/async-runner';
 import { idleState, type AsyncState } from '../../core/async-state';
@@ -53,6 +54,8 @@ export interface AcademicFoundationState {
 export interface AcademicFoundationViewModelDeps {
   readonly academics: AcademicsApplicationService;
   readonly notifications: NotificationStore;
+  /** Online-only command that starts a SETUP year on the server (and pulls). */
+  readonly startAcademicYear?: (id: string) => Promise<OnlineCommandResult<null>>;
 }
 
 const identity = <T>(value: T): T => value;
@@ -192,6 +195,15 @@ export class AcademicFoundationViewModel {
   }
   async updateAcademicYear(dto: UpdateAcademicYearDto): Promise<CommandOutcome<AcademicYearListItemOutput>> {
     return this.command(() => this.deps.academics.updateAcademicYear(dto), 'Academic year updated.', () => this.loadAcademicYears());
+  }
+  /** Online only. Throws on failure (offline, server refusal) so the caller can show
+   * the message. Reloads the list after a success: the forced pull already ran. */
+  async startAcademicYear(id: string): Promise<OnlineCommandResult<null>> {
+    const start = this.deps.startAcademicYear;
+    if (!start) throw new Error('Starting an academic year is not available here.');
+    const result = await start(id);
+    await this.loadAcademicYears();
+    return result;
   }
   async createTerm(dto: CreateTermDto): Promise<CommandOutcome<TermOutput>> {
     return this.command(() => this.deps.academics.createTerm(dto), 'Term created.', () => this.loadTerms(dto.academicYearId));

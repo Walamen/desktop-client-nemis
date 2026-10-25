@@ -4,8 +4,10 @@ import { useCallback, useState, type FormEvent } from 'react';
 import type { AcademicYearRowView } from '@nemis-desktop/presentation';
 import { Badge, Button, Drawer, Input } from '@nemis-desktop/ui';
 import { useViewModel } from '@/hooks/use-view-model';
+import { parseIpcError } from '@/lib/errors/parseIpcError';
 import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 import { useAcademicFoundationViewModel } from '@/lib/presentation/hooks/school-admin';
+import { useConnectivityStore } from '@/lib/presentation/hooks/shared';
 import { FormField, LoadState, statusVariant } from '@/components/academic/foundation-ui';
 import { useEscapeCapture } from './use-escape-capture';
 import { useOpenSession, type SetupDrawerProps, type SetupNavigate } from './setup-drawers';
@@ -23,14 +25,28 @@ export function AcademicYearsDrawer({ isOpen, onClose, onNavigate }: SetupDrawer
   );
 }
 
+const OFFLINE_MESSAGE = "You're offline. Connect to the internet to do this.";
+
+/** Only a SETUP year can start, and only while the school has no ACTIVE year
+ * (the server refuses a second one). */
+function canStart(year: AcademicYearRowView, years: readonly AcademicYearRowView[] | null): boolean {
+  return year.status === 'SETUP' && years !== null && !years.some((y) => y.status === 'ACTIVE');
+}
+
 function AcademicYearsManager({ onNavigate }: { onNavigate: SetupNavigate }) {
   const vm = useAcademicFoundationViewModel();
   const state = useViewModel(vm.store, (s) => s.academicYears);
+  const years = state.status === 'success' || state.status === 'refreshing' ? state.data : null;
   const [view, setView] = useState<'list' | 'form'>('list');
   const [editing, setEditing] = useState<AcademicYearRowView | null>(null);
   const [code, setCode] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const connectivity = useConnectivityStore();
+  const online = useViewModel(connectivity.store, (s) => s.isOnline);
+  const [starting, setStarting] = useState(false);
+  const [startError, setStartError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const backToList = useCallback(() => setView('list'), []);
   useEscapeCapture(view === 'form', backToList);
   useRevalidateOnSync(() => { void vm.loadAcademicYears(); }, [vm]);
@@ -40,7 +56,25 @@ function AcademicYearsManager({ onNavigate }: { onNavigate: SetupNavigate }) {
     setCode(year?.code ?? '');
     setStartDate(year?.startDate ?? '');
     setEndDate(year?.endDate ?? '');
+    setStartError(null);
+    setNotice(null);
     setView('form');
+  };
+
+  /** The server decides when a year starts, so this is online only. */
+  const startYear = async (year: AcademicYearRowView) => {
+    if (!window.confirm(`Start ${year.code}? Teachers can record grades and attendance once it starts, and it becomes the year every dashboard shows.`)) return;
+    setStarting(true);
+    setStartError(null);
+    try {
+      const { refreshed } = await vm.startAcademicYear(year.id);
+      setNotice(refreshed ? `${year.code} started.` : `${year.code} started. It will appear here after the next sync.`);
+      setView('list');
+    } catch (cause) {
+      setStartError(parseIpcError(cause)?.message ?? 'The academic year could not be started. Please try again.');
+    } finally {
+      setStarting(false);
+    }
   };
 
   const submit = async (event: FormEvent) => {
@@ -74,8 +108,19 @@ function AcademicYearsManager({ onNavigate }: { onNavigate: SetupNavigate }) {
               {editing.isCurrent && <span>Current academic year</span>}
             </p>
             <p className="text-sm text-slate-500">
-              The server controls when a year starts and closes.
+              {canStart(editing, years)
+                ? 'Starting a year is done online and cannot be undone here. The server controls when a year closes.'
+                : 'The server controls when a year starts and closes.'}
             </p>
+            {canStart(editing, years) && (
+              <div className="space-y-2">
+                <Button type="button" disabled={!online || starting} onClick={() => void startYear(editing)}>
+                  {starting ? 'Starting…' : 'Start this year'}
+                </Button>
+                {!online && <p className="text-sm text-slate-500">{OFFLINE_MESSAGE}</p>}
+                {startError && <p role="alert" className="text-sm text-red-700">{startError}</p>}
+              </div>
+            )}
           </section>
         )}
       </div>
@@ -84,6 +129,7 @@ function AcademicYearsManager({ onNavigate }: { onNavigate: SetupNavigate }) {
 
   return (
     <div className="space-y-4">
+      {notice && <p role="status" className="rounded-card border border-green-200 bg-green-50 p-3 text-sm text-green-800">{notice}</p>}
       <div className="flex justify-end">
         <Button onClick={() => begin()}>Create academic year</Button>
       </div>

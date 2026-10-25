@@ -32,6 +32,7 @@ const SCHOOL_ADMIN_CHANNELS = new Set<IpcChannel>([
   IpcChannels.GRADE_COMPLETION_GUIDANCE,
   IpcChannels.ACADEMIC_YEAR_CREATE,
   IpcChannels.ACADEMIC_YEAR_UPDATE,
+  IpcChannels.ACADEMIC_YEAR_START,
   IpcChannels.TERM_CREATE,
   IpcChannels.TERM_UPDATE,
   IpcChannels.TERM_SET_CURRENT,

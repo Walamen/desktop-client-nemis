@@ -262,6 +262,19 @@ export class BackendProvisioningGateway {
     return { id };
   }
 
+  /** Moves a SETUP academic year to ACTIVE (INSTITUTION_ADMIN). The response is
+   * not used — the forced pull that follows writes local truth. A 409 (not
+   * SETUP, or another year is ACTIVE) surfaces as RemoteRejectedError. */
+  async startAcademicYear(id: string): Promise<null> {
+    await this.authorized(
+      `/academic-years/${encodeURIComponent(id)}/start`,
+      { method: 'POST' },
+      () => undefined,
+      ONLINE_COMMAND,
+    );
+    return null;
+  }
+
   /** County (CEO) Manage DEO: districts.service assignOfficer. The response
    * is not used — the forced pull that follows writes local truth. */
   async assignDistrictOfficer(request: CountyAssignDeoRequest): Promise<null> {

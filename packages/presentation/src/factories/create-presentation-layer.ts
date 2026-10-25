@@ -1,4 +1,5 @@
 import type { ApplicationLayer } from '@nemis-desktop/application';
+import type { OnlineCommandResult } from '@nemis-desktop/types';
 import type { NotificationKind } from '../notifications/notification';
 import { AcademicYearViewModel } from '../view-models/academic-year/academic-year-view-model';
 import { AcademicFoundationViewModel } from '../view-models/academic-foundation/academic-foundation-view-model';
@@ -124,6 +125,8 @@ export interface PresentationLayer {
 
 export interface PresentationLayerOptions {
   readonly autoDismissOverrides?: Partial<Record<NotificationKind, number | null>>;
+  /** Online-only academic-year start (the renderer wires the IPC bridge). */
+  readonly startAcademicYear?: (id: string) => Promise<OnlineCommandResult<null>>;
 }
 
 /** Composition root: the renderer (Phase 7) calls this once with the
@@ -201,6 +204,7 @@ export function createPresentationLayer(
     academicFoundation: new AcademicFoundationViewModel({
       academics: app.academics,
       notifications,
+      ...(options?.startAcademicYear ? { startAcademicYear: options.startAcademicYear } : {}),
     }),
     timetable,
     teacherSchedule: new TeacherScheduleViewModel(timetable),

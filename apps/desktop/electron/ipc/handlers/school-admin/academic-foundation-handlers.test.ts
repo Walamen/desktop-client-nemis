@@ -71,7 +71,7 @@ const app = { academics } as unknown as ApplicationLayer;
 describe('academic-year IPC handlers', () => {
   it('registers every channel and returns unwrapped data', async () => {
     const { calls, handle } = makeHarness();
-    registerAcademicYearHandlers(handle, app);
+    registerAcademicYearHandlers(handle, app, { startAcademicYear: vi.fn(async () => null) }, vi.fn(async () => true));
 
     const list = calls.get('academic-year:list')!;
     expect(await list.handler()).toEqual([academicYearRow]);
@@ -89,6 +89,30 @@ describe('academic-year IPC handlers', () => {
 
     expect(calls.has('academic-year:set-current')).toBe(false);
     expect(calls.has('academic-year:set-status')).toBe(false);
+  });
+});
+
+describe('academic-year start IPC handler', () => {
+  it('runs the gateway command then the refresh and returns the online result', async () => {
+    const { calls, handle } = makeHarness();
+    const gateway = { startAcademicYear: vi.fn(async () => null) };
+    const refresh = vi.fn(async () => true);
+    registerAcademicYearHandlers(handle, app, gateway, refresh);
+    const start = calls.get('academic-year:start')!;
+    expect(() => start.validate([])).toThrow(IPCError);
+    expect(() => start.validate(['ay-1'])).not.toThrow();
+    expect(await start.handler('ay-1')).toEqual({ data: null, refreshed: true });
+    expect(gateway.startAcademicYear).toHaveBeenCalledWith('ay-1');
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not refresh when the server refuses', async () => {
+    const { calls, handle } = makeHarness();
+    const gateway = { startAcademicYear: vi.fn(async () => { throw new Error('409'); }) };
+    const refresh = vi.fn(async () => true);
+    registerAcademicYearHandlers(handle, app, gateway, refresh);
+    await expect(calls.get('academic-year:start')!.handler('ay-1')).rejects.toThrow('409');
+    expect(refresh).not.toHaveBeenCalled();
   });
 });
 

@@ -44,3 +44,13 @@ describe('online bridges', () => {
     expect(parseIpcError('string')).toBeNull();
   });
 });
+
+describe('academicYearBridge.start', () => {
+  it('routes to window.nemis.academicYear.start', async () => {
+    const start = vi.fn(async () => ({ data: null, refreshed: true }));
+    (window as { nemis?: unknown }).nemis = { academicYear: { start } };
+    const { academicYearBridge } = await import('./academic-year-bridge');
+    expect(await academicYearBridge.start('y-1')).toEqual({ data: null, refreshed: true });
+    expect(start).toHaveBeenCalledWith('y-1');
+  });
+});

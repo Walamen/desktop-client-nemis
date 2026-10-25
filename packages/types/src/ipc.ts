@@ -280,6 +280,7 @@ export interface IpcContract {
     args: [request: UpdateAcademicYearRequest];
     result: AcademicYearListItemResult;
   };
+  'academic-year:start': { args: [id: string]; result: OnlineCommandResult<null> };
   'term:list': { args: [academicYearId: string]; result: TermResult[] };
   'term:get-current': { args: []; result: TermResult | null };
   'term:create': { args: [request: CreateTermRequest]; result: TermResult };
@@ -504,6 +505,7 @@ export const IpcChannels = {
   ACADEMIC_YEAR_LIST: 'academic-year:list',
   ACADEMIC_YEAR_CREATE: 'academic-year:create',
   ACADEMIC_YEAR_UPDATE: 'academic-year:update',
+  ACADEMIC_YEAR_START: 'academic-year:start',
   TERM_LIST: 'term:list',
   TERM_GET_CURRENT: 'term:get-current',
   TERM_CREATE: 'term:create',
