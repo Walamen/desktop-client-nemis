@@ -59,4 +59,35 @@ describe('ClassReportCardsPage', () => {
     renderIn(<ClassReportCardsPage classId="cl-1" />);
     expect(await screen.findByRole('alert')).toBeInTheDocument();
   });
+
+  it('shows a not-found error for an empty class id instead of a skeleton', async () => {
+    const rc = install([]);
+    renderIn(<ClassReportCardsPage classId="" />);
+    expect(await screen.findByText('This class could not be found.')).toBeInTheDocument();
+    expect(rc.listForClass).not.toHaveBeenCalled();
+  });
+
+  it('drops the previous class entries while another class loads', async () => {
+    let release: (v: unknown[]) => void = () => undefined;
+    const listForClass = vi
+      .fn()
+      .mockResolvedValueOnce([{ student: { id: 'st-1', nemisId: null, fullName: 'Grace Toe' }, latest: summaryFixture() }])
+      .mockImplementationOnce(() => new Promise((r) => { release = r; }));
+    install([], { listForClass });
+    const layer = createRendererPresentation();
+    const { rerender } = render(
+      <PresentationProvider layer={layer}>
+        <ClassReportCardsPage classId="cl-1" />
+      </PresentationProvider>,
+    );
+    expect(await screen.findByText('Grace Toe')).toBeInTheDocument();
+    rerender(
+      <PresentationProvider layer={layer}>
+        <ClassReportCardsPage classId="cl-2" />
+      </PresentationProvider>,
+    );
+    await waitFor(() => expect(listForClass).toHaveBeenCalledWith('cl-2'));
+    expect(screen.queryByText('Grace Toe')).toBeNull();
+    release([]);
+  });
 });

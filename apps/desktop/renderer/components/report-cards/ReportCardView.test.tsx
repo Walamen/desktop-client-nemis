@@ -67,4 +67,11 @@ describe('ReportCardView', () => {
     expect(screen.queryByText('Replaced by a newer version')).toBeNull();
     expect(screen.queryByRole('button', { name: /print|pdf/i })).toBeNull();
   });
+
+  it('shows an update message instead of the table for a newer schema version', () => {
+    const payload = { ...payloadFixture(), schemaVersion: 2 } as unknown as ReturnType<typeof payloadFixture>;
+    render(<ReportCardView payload={payload} />);
+    expect(screen.getByText('This report card uses a newer format. Update the app to view it.')).toBeInTheDocument();
+    expect(screen.queryByRole('table')).toBeNull();
+  });
 });

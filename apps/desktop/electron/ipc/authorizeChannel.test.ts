@@ -119,6 +119,9 @@ describe('authorizeChannel', () => {
       }
       for (const role of [SystemRole.COUNTY_ADMIN, SystemRole.DEO, SystemRole.MINISTRY_ADMIN]) {
         expect(() => authorizeChannel(channel, workspace(role))).toThrow(ForbiddenError);
+        expect(() => authorizeChannel(channel, workspace(role))).toThrow(
+          'Report cards are only available to school administrators and teachers.',
+        );
       }
     }
   });

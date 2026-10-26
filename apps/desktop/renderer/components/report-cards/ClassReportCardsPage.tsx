@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { ReportCardClassEntry } from '@nemis-desktop/types';
 import { formatNemisId } from '@nemis-desktop/shared';
 import { EmptyState, ErrorState, Skeleton } from '@nemis-desktop/ui';
@@ -21,9 +21,17 @@ export function ClassReportCardsPage({ classId }: { classId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
 
+  // Another class: show the loading state, never the previous class's students.
+  useEffect(() => {
+    setEntries(null);
+  }, [classId]);
+
   const load = useCallback(() => {
-    if (!classId) return undefined;
     let cancelled = false;
+    if (!classId) {
+      setError('This class could not be found.');
+      return undefined;
+    }
     setError(null);
     void (async () => {
       try {

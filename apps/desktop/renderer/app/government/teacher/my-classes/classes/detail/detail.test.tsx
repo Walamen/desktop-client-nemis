@@ -85,4 +85,30 @@ describe('Teacher class detail page', () => {
     expect(await screen.findByText('No report cards have been issued for this class yet.')).toBeInTheDocument();
     expect(nemis.reportCards.listForClass).toHaveBeenCalledWith('class-1');
   });
+
+  it('renders a student with a real latest card and calls no admin-only channel', async () => {
+    const nemis = installBaseMock() as unknown as Record<string, Record<string, ReturnType<typeof vi.fn>>>;
+    nemis.reportCards!.listForClass = vi.fn(async () => [
+      {
+        student: { id: 'st-1', nemisId: null, fullName: 'Grace Toe' },
+        latest: {
+          issueId: 'iss-1', reportCardId: 'rc-1', studentId: 'st-1', academicYearId: 'ay-1', academicYearName: '2025/2026',
+          classId: 'class-1', className: 'Grade 10A', kind: 'PERIOD', gradingPeriodName: 'Period 2', version: 1,
+          status: 'CURRENT', issuedAt: '2026-10-01T10:00:00.000Z',
+        },
+      },
+    ]);
+    const layer = createRendererPresentation();
+    await layer.bootstrap.run();
+    render(
+      <PresentationProvider layer={layer}>
+        <ClassDetailPage />
+      </PresentationProvider>,
+    );
+    expect(await screen.findByText('Grace Toe')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Period 2/ })).toBeInTheDocument();
+    expect(nemis.reportCards!.listForClass).toHaveBeenCalledWith('class-1');
+    expect(nemis.reportCards!.listArchivedYears).toBeUndefined();
+    expect(nemis.schoolAdmin!.list).not.toHaveBeenCalledWith(expect.objectContaining({ collection: 'report_cards' }));
+  });
 });

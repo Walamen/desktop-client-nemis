@@ -48,6 +48,13 @@ function Fact({ label, children }: { label: string; children: React.ReactNode })
 /** Renders a report card payload on screen. Pure display: readers never
  * recompute a card, and there are deliberately no print or PDF controls. */
 export function ReportCardView({ payload, status, version }: ReportCardViewProps) {
+  if (payload.schemaVersion !== 1) {
+    return (
+      <article className="bg-white border border-slate-300 rounded-card p-6">
+        <p className="text-sm text-slate-700">This report card uses a newer format. Update the app to view it.</p>
+      </article>
+    );
+  }
   const { student, school, columns, subjects, overall, attendance } = payload;
   const fullName = [student.firstName, student.middleName, student.lastName].filter(Boolean).join(' ');
   const kindLabel = payload.kind === 'FINAL' ? 'Final report' : 'Period report';

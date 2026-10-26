@@ -114,6 +114,15 @@ const SCHOOL_STAFF_CHANNELS = new Set<IpcChannel>([
   IpcChannels.REPORT_CARDS_LIST_ARCHIVED_YEARS,
 ]);
 
+// Report-card channels are also members of SCHOOL_STAFF_CHANNELS; they are
+// checked first so a refusal names report cards, not attendance.
+const REPORT_CARD_CHANNELS = new Set<IpcChannel>([
+  IpcChannels.REPORT_CARDS_LIST_FOR_STUDENT,
+  IpcChannels.REPORT_CARDS_LIST_FOR_CLASS,
+  IpcChannels.REPORT_CARD_GET_ISSUE,
+  IpcChannels.REPORT_CARDS_LIST_ARCHIVED_YEARS,
+]);
+
 // Teacher-exclusive channels — unlike attendance, the web app has no
 // school-admin-facing assignments screen at all, so these stay closed to
 // INSTITUTION_ADMIN rather than falling into SCHOOL_STAFF_CHANNELS. Ownership
@@ -194,6 +203,9 @@ export function authorizeChannel(channel: IpcChannel, workspaces: WorkspaceManag
   }
   if (SCHOOL_ADMIN_CHANNELS.has(channel) && role !== SystemRole.INSTITUTION_ADMIN) {
     throw new ForbiddenError('This action requires a school administrator workspace.');
+  }
+  if (REPORT_CARD_CHANNELS.has(channel) && role !== SystemRole.INSTITUTION_ADMIN && role !== SystemRole.TEACHER) {
+    throw new ForbiddenError('Report cards are only available to school administrators and teachers.');
   }
   if (
     SCHOOL_STAFF_CHANNELS.has(channel) &&

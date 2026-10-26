@@ -238,6 +238,28 @@ describe('SqliteReportCardReadModel', () => {
       expect(rows[0]!.student).toEqual({ id: 's-2', nemisId: 'NID2', fullName: 'Ama Kollie' });
     });
 
+    it('keeps the latest period as the latest card after an earlier period is re-issued', () => {
+      seedCards();
+      run(`UPDATE report_card_issues SET status='SUPERSEDED' WHERE id='i-2a'`);
+      issue('i-2a-v2', 'rc-2', { gp: 'gp-1', version: 2, issuedAt: '2026-06-01T00:00:00.000Z', payload: payload('s-2', 'c-7a', '7A', '2025/2026', 'Period 1') });
+      const rows = model.listForClass(ADMIN, 'c-7a');
+      expect(rows.find((r) => r.student.id === 's-2')!.latest?.issueId).toBe('i-2b');
+    });
+
+    it('prefers a later term over an earlier one regardless of issue time', () => {
+      seedCards();
+      issue('i-p1v3', 'rc-1', { gp: 'gp-1', version: 3, issuedAt: '2026-09-01T00:00:00.000Z', payload: payload('s-1', 'c-7a', '7A', '2025/2026', 'Period 1') });
+      expect(model.listForClass(ADMIN, 'c-7a').find((r) => r.student.id === 's-1')!.latest?.issueId).toBe('i-p3');
+    });
+
+    it('names a student Unknown student when neither the row nor the payload has a name', () => {
+      seedCards();
+      run(`DELETE FROM students WHERE id='s-2'`);
+      run(`UPDATE report_card_issues SET payload='{not json' WHERE reportCardId='rc-2'`);
+      const row = model.listForClass(ADMIN, 'c-7a').find((r) => r.student.id === 's-2')!;
+      expect(row.student.fullName).toBe('Unknown student');
+    });
+
     it('has a null latest when nothing is CURRENT', () => {
       seedCards();
       run(`UPDATE report_card_issues SET status='WITHDRAWN' WHERE reportCardId='rc-2'`);

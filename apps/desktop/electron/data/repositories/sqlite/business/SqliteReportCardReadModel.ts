@@ -107,18 +107,19 @@ export class SqliteReportCardReadModel {
         middleName: string | null;
         lastName: string | null;
       }[];
+      // "Latest" is the latest period of the year, not the latest issued: a
+      // re-issue of an earlier period must not displace a later period's card.
+      const positions = this.#periodPositions(classId);
       const latestByCard = new Map<string, ReportCardSummary>();
       for (const row of this.#summaries(`rc.classId = :classId AND i.status = 'CURRENT'`, { classId })) {
         const best = latestByCard.get(row.reportCardId);
-        if (!best || row.issuedAt > best.issuedAt || (row.issuedAt === best.issuedAt && row.version > best.version)) {
-          latestByCard.set(row.reportCardId, row);
-        }
+        if (!best || isLater(row, best, positions)) latestByCard.set(row.reportCardId, row);
       }
       return cards.map((card) => ({
         student: {
           id: card.studentId,
           nemisId: card.nemisId,
-          fullName: [card.firstName, card.middleName, card.lastName].filter(Boolean).join(' '),
+          fullName: [card.firstName, card.middleName, card.lastName].filter(Boolean).join(' ') || 'Unknown student',
         },
         latest: latestByCard.get(card.cardId) ?? null,
       }));
@@ -187,6 +188,24 @@ export class SqliteReportCardReadModel {
     });
   }
 
+  /** Calendar position of each issue's period in the class: term start, then
+   * grading-period sequence. A final report (no period) sorts after every period. */
+  #periodPositions(classId: string): Map<string, { termStart: string; sequence: number }> {
+    const rows = this.#repository.connection
+      .prepare(
+        `SELECT i.id AS issueId, t.startDate AS termStart, gp.sequence AS sequence
+         FROM report_card_issues i
+         JOIN report_cards rc ON rc.id = i.reportCardId
+         LEFT JOIN grading_periods gp ON gp.id = i.gradingPeriodId
+         LEFT JOIN terms t ON t.id = gp.termId
+         WHERE rc.classId = ?`,
+      )
+      .all(classId) as { issueId: string; termStart: string | null; sequence: number | null }[];
+    return new Map(
+      rows.map((r) => [r.issueId, { termStart: r.termStart ?? '', sequence: r.sequence ?? 0 }]),
+    );
+  }
+
   #summaries(where: string, params: Record<string, string>): ReportCardSummary[] {
     return this.#repository.connection
       .prepare(`${SUMMARY_SELECT} WHERE ${where} AND ${workspaceStudentScope('rc')} ${SUMMARY_ORDER}`)
@@ -216,6 +235,25 @@ function guardedRead<T>(context: string, read: () => T): T {
   });
   if (result instanceof ApplicationError) throw result;
   return result;
+}
+
+/** Is `a` a later card than `b`? Term, then grading period, then issue time, then version. */
+function isLater(
+  a: ReportCardSummary,
+  b: ReportCardSummary,
+  positions: Map<string, { termStart: string; sequence: number }>,
+): boolean {
+  const rank = (s: ReportCardSummary) => {
+    const p = positions.get(s.issueId);
+    return { final: s.kind === 'FINAL' ? 1 : 0, termStart: p?.termStart ?? '', sequence: p?.sequence ?? 0 };
+  };
+  const ra = rank(a);
+  const rb = rank(b);
+  if (ra.final !== rb.final) return ra.final > rb.final;
+  if (ra.termStart !== rb.termStart) return ra.termStart > rb.termStart;
+  if (ra.sequence !== rb.sequence) return ra.sequence > rb.sequence;
+  if (a.issuedAt !== b.issuedAt) return a.issuedAt > b.issuedAt;
+  return a.version > b.version;
 }
 
 function forbidden(): ForbiddenError {
