@@ -1,3 +1,4 @@
+import { ForbiddenError } from '@nemis-desktop/shared';
 import { IpcChannels, SystemRole } from '@nemis-desktop/types';
 import type { IpcHandle } from '@app/ipc/registrar';
 import { assertNoArgs, assertSingleIdArg } from '@app/security/validateIpc';
@@ -12,11 +13,17 @@ import {
  * is derived from the signed-in user, never from renderer input, and the read
  * model enforces what a teacher may see. */
 export function registerReportCardHandlers(handle: IpcHandle, workspaces: WorkspaceManager): void {
+  const viewerFor = (user: { id: string; role: string }): ReportCardViewer => {
+    if (user.role === SystemRole.INSTITUTION_ADMIN) return { teacherUserId: null };
+    if (user.role === SystemRole.TEACHER) return { teacherUserId: user.id };
+    // authorizeChannel already refuses every other role; never widen to admin scope here.
+    throw new ForbiddenError('Report cards are only available to school administrators and teachers.');
+  };
   const context = (): { model: SqliteReportCardReadModel; viewer: ReportCardViewer } => {
     const { database, user } = workspaces.active;
     return {
       model: new SqliteReportCardReadModel({ connection: database.connection }),
-      viewer: { teacherUserId: user.role === SystemRole.TEACHER ? user.id : null },
+      viewer: viewerFor(user),
     };
   };
 

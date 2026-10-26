@@ -1,4 +1,4 @@
-import { ForbiddenError } from '@nemis-desktop/shared';
+import { ApplicationError, ForbiddenError } from '@nemis-desktop/shared';
 import type {
   ReportCardArchivedYear,
   ReportCardClassEntry,
@@ -17,6 +17,20 @@ export interface ReportCardViewer {
   teacherUserId: string | null;
 }
 
+/** json_extract that yields NULL for a corrupt payload instead of raising, so
+ * one bad row cannot break a whole list (COALESCE then falls back to the
+ * live academic_years / classes / students rows). */
+const jx = (column: string, path: string): string =>
+  `CASE WHEN json_valid(${column}) THEN json_extract(${column}, '${path}') END`;
+
+/** The stored payload of an issue is not valid JSON. Surfaces to the renderer
+ * as IPC_ERROR with this (our own) message. */
+export class ReportCardPayloadCorruptError extends ApplicationError {
+  constructor(options?: { cause?: unknown }) {
+    super('IPC_ERROR', 'This report card could not be read. It will be refreshed at the next sync.', options);
+  }
+}
+
 /** A teacher's classes: class teacher or subject teacher, every year. */
 const TEACHER_CLASSES = `
   SELECT ct.classId AS classId FROM class_teachers ct JOIN staff s ON s.id = ct.staffId WHERE s.userId = :teacherUserId
@@ -26,10 +40,10 @@ const TEACHER_CLASSES = `
 const SUMMARY_SELECT = `
   SELECT i.id AS issueId, i.reportCardId AS reportCardId, rc.studentId AS studentId,
          rc.academicYearId AS academicYearId,
-         COALESCE(json_extract(i.payload, '$.academicYear.name'), ay.code) AS academicYearName,
+         COALESCE(${jx('i.payload', '$.academicYear.name')}, ay.code) AS academicYearName,
          rc.classId AS classId,
-         COALESCE(json_extract(i.payload, '$.class.name'), c.name) AS className,
-         i.kind AS kind, json_extract(i.payload, '$.issuedForPeriod.name') AS gradingPeriodName,
+         COALESCE(${jx('i.payload', '$.class.name')}, c.name) AS className,
+         i.kind AS kind, COALESCE(${jx('i.payload', '$.issuedForPeriod.name')}, gp.name) AS gradingPeriodName,
          i.version AS version, i.status AS status, i.issuedAt AS issuedAt
   FROM report_card_issues i
   JOIN report_cards rc ON rc.id = i.reportCardId
@@ -73,10 +87,10 @@ export class SqliteReportCardReadModel {
       const cards = this.#repository.connection
         .prepare(
           `SELECT rc.id AS cardId, rc.studentId AS studentId,
-                  COALESCE(s.nemisId, json_extract(latest.payload, '$.student.nemisId')) AS nemisId,
-                  COALESCE(s.firstName, json_extract(latest.payload, '$.student.firstName')) AS firstName,
-                  COALESCE(s.middleName, json_extract(latest.payload, '$.student.middleName')) AS middleName,
-                  COALESCE(s.lastName, json_extract(latest.payload, '$.student.lastName')) AS lastName
+                  COALESCE(s.nemisId, ${jx('latest.payload', '$.student.nemisId')}) AS nemisId,
+                  COALESCE(s.firstName, ${jx('latest.payload', '$.student.firstName')}) AS firstName,
+                  COALESCE(s.middleName, ${jx('latest.payload', '$.student.middleName')}) AS middleName,
+                  COALESCE(s.lastName, ${jx('latest.payload', '$.student.lastName')}) AS lastName
            FROM report_cards rc
            LEFT JOIN students s ON s.id = rc.studentId
            LEFT JOIN report_card_issues latest ON latest.id = (
@@ -122,7 +136,13 @@ export class SqliteReportCardReadModel {
       const row = this.#repository.connection
         .prepare(`SELECT payload FROM report_card_issues WHERE id = ?`)
         .get(issueId) as { payload: string };
-      return { summary, payload: JSON.parse(row.payload) as ReportCardPayloadV1 };
+      let payload: ReportCardPayloadV1;
+      try {
+        payload = JSON.parse(row.payload) as ReportCardPayloadV1;
+      } catch (error) {
+        throw new ReportCardPayloadCorruptError({ cause: error });
+      }
+      return { summary, payload };
     });
   }
 
@@ -134,7 +154,7 @@ export class SqliteReportCardReadModel {
         .prepare(
           `SELECT DISTINCT ay.id AS academicYearId, ay.code AS code, ay.status AS status, ay.startDate AS startDate,
                   rc.classId AS classId,
-                  COALESCE(c.name, (SELECT json_extract(i.payload, '$.class.name') FROM report_card_issues i
+                  COALESCE(c.name, (SELECT ${jx('i.payload', '$.class.name')} FROM report_card_issues i
                                     WHERE i.reportCardId = rc.id LIMIT 1)) AS name,
                   COALESCE(c.gradeLevel, rc.gradeLevel) AS gradeLevel
            FROM report_cards rc
@@ -182,18 +202,19 @@ export class SqliteReportCardReadModel {
   }
 }
 
-/** `guarded` turns every non-driver error into a DatabaseError; a refusal is
- * the caller's answer, not a database failure, so it passes through intact. */
+/** `guarded` turns every non-driver error into a DatabaseError; a refusal (or
+ * a corrupt payload) is the caller's answer, not a database failure, so
+ * application errors pass through intact. */
 function guardedRead<T>(context: string, read: () => T): T {
-  const result = guarded<T | ForbiddenError>(context, () => {
+  const result = guarded<T | ApplicationError>(context, () => {
     try {
       return read();
     } catch (error) {
-      if (error instanceof ForbiddenError) return error;
+      if (error instanceof ApplicationError) return error;
       throw error;
     }
   });
-  if (result instanceof ForbiddenError) throw result;
+  if (result instanceof ApplicationError) throw result;
   return result;
 }
 

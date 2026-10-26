@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ForbiddenError } from '@nemis-desktop/shared';
 import type { ReportCardPayloadV1 } from '@nemis-desktop/types';
 import { createTestContext, type TestContext } from '../../../testing/createTestContext';
-import { SqliteReportCardReadModel } from './SqliteReportCardReadModel';
+import { ReportCardPayloadCorruptError, SqliteReportCardReadModel } from './SqliteReportCardReadModel';
 
 const NOW = '2026-07-01T00:00:00.000Z';
 const ADMIN = { teacherUserId: null };
@@ -143,6 +143,38 @@ describe('SqliteReportCardReadModel', () => {
     card('rc-x', 's-x', 'y-other', 'c-x', 'inst-2');
     issue('i-x', 'rc-x', { kind: 'FINAL', payload: payload('s-x', 'c-x', 'X', '2025/2026', null) });
   }
+
+  describe('a corrupt stored payload', () => {
+    it('does not break lists, and getIssue says so clearly', () => {
+      seedCards();
+      workspaceSchool('inst-1');
+      run(`UPDATE report_card_issues SET payload = '{not json' WHERE id IN ('i-p3', 'i-2b', 'i-6')`);
+      const rows = model.listForStudent(ADMIN, 's-1');
+      expect(rows.map((r) => r.issueId)).toEqual(['i-now', 'i-p1v2', 'i-p1v1', 'i-p2', 'i-p3']);
+      // Names fall back to the live rows.
+      expect(rows.find((r) => r.issueId === 'i-p3')).toMatchObject({
+        academicYearName: '2025/2026',
+        className: '7A',
+        gradingPeriodName: 'Period 3',
+      });
+      expect(model.listForClass(ADMIN, 'c-7a').map((r) => r.student.fullName)).toEqual(['Ama Kollie', 'Musu Zubah']);
+      expect(model.listArchivedYears(ADMIN).map((y) => y.classes.map((c) => c.name))).toEqual([['7A', '8B'], ['6A']]);
+      expect(() => model.getIssue(ADMIN, 'i-p3')).toThrow(ReportCardPayloadCorruptError);
+      expect(() => model.getIssue(ADMIN, 'i-p3')).toThrow(/could not be read/);
+    });
+  });
+
+  describe('a teacher at one school', () => {
+    it("cannot see another school's cards on any channel, even in a class id they are assigned to", () => {
+      seedCards();
+      workspaceSchool('inst-1');
+      run(`INSERT INTO class_teachers (id,classId,staffId,isClassTeacher,assignedAt,updatedAt) VALUES ('ct-x','c-x','st-1',0,?,?)`, NOW, NOW);
+      expect(model.listForStudent(TEACHER, 's-x')).toEqual([]);
+      expect(model.listForClass(TEACHER, 'c-x')).toEqual([]);
+      expect(() => model.getIssue(TEACHER, 'i-x')).toThrow(ForbiddenError);
+      expect(model.listArchivedYears(TEACHER).map((y) => y.academicYearId)).not.toContain('y-other');
+    });
+  });
 
   describe('listForStudent', () => {
     it('lists every issue, newest year first, then grading-period order, newest version first', () => {

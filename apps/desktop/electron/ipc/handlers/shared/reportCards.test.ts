@@ -5,6 +5,7 @@ import type { IpcChannel } from '@nemis-desktop/types';
 import type { IpcHandle, IpcValidator } from '@app/ipc/registrar';
 import type { WorkspaceManager } from '@app/workspace/WorkspaceManager';
 import { createTestContext, type TestContext } from '@app/data/testing/createTestContext';
+import { toIpcError } from '@app/ipc/errorMapping';
 import { registerReportCardHandlers } from './reportCards';
 
 describe('registerReportCardHandlers', () => {
@@ -53,6 +54,51 @@ describe('registerReportCardHandlers', () => {
     register(SystemRole.TEACHER);
     expect(() => calls.get(IpcChannels.REPORT_CARDS_LIST_FOR_CLASS)!.handler('c-1')).toThrow(ForbiddenError);
     expect(() => calls.get(IpcChannels.REPORT_CARD_GET_ISSUE)!.handler('i-1')).toThrow(ForbiddenError);
+  });
+
+  it('serves a teacher with a staff record the cards of their own class', () => {
+    const now = '2026-07-01T00:00:00.000Z';
+    test.context.connection
+      .prepare(
+        `INSERT INTO staff (id,institutionId,userId,firstName,lastName,dateOfBirth,gender,phoneNumber,employeeNumber,position,employmentType,dateOfJoining,createdAt,updatedAt)
+         VALUES ('st-1','inst-1','user-1','T','Teacher','1980-01-01','MALE','1','E1','TEACHER','FULL_TIME','2020-01-01',?,?)`,
+      )
+      .run(now, now);
+    test.context.connection
+      .prepare(`INSERT INTO class_teachers (id,classId,staffId,isClassTeacher,assignedAt,updatedAt) VALUES ('ct-1','c-1','st-1',1,?,?)`)
+      .run(now, now);
+    register(SystemRole.TEACHER);
+    const byClass = calls.get(IpcChannels.REPORT_CARDS_LIST_FOR_CLASS)!.handler('c-1') as { latest: { issueId: string } }[];
+    expect(byClass.map((r) => r.latest.issueId)).toEqual(['i-1']);
+    const detail = calls.get(IpcChannels.REPORT_CARD_GET_ISSUE)!.handler('i-1') as { summary: { issueId: string } };
+    expect(detail.summary.issueId).toBe('i-1');
+  });
+
+  it('never gives a role other than administrator or teacher the admin view', () => {
+    register(SystemRole.COUNTY_ADMIN);
+    for (const channel of [
+      IpcChannels.REPORT_CARDS_LIST_FOR_STUDENT,
+      IpcChannels.REPORT_CARDS_LIST_FOR_CLASS,
+      IpcChannels.REPORT_CARD_GET_ISSUE,
+    ]) {
+      expect(() => calls.get(channel)!.handler('s-1')).toThrow(ForbiddenError);
+    }
+    expect(() => calls.get(IpcChannels.REPORT_CARDS_LIST_ARCHIVED_YEARS)!.handler()).toThrow(ForbiddenError);
+  });
+
+  it('reports a corrupt payload to the renderer in plain words', () => {
+    test.context.connection.prepare(`UPDATE report_card_issues SET payload = 'oops'`).run();
+    register(SystemRole.INSTITUTION_ADMIN);
+    let thrown: unknown;
+    try {
+      calls.get(IpcChannels.REPORT_CARD_GET_ISSUE)!.handler('i-1');
+    } catch (error) {
+      thrown = error;
+    }
+    expect(toIpcError(thrown)).toEqual({
+      code: 'IPC_ERROR',
+      message: 'This report card could not be read. It will be refreshed at the next sync.',
+    });
   });
 
   it('lists archived years without arguments', () => {
