@@ -877,6 +877,87 @@ describe('DesktopSyncWorker retry policy', () => {
     expect(row.deadLetter).toBe(0);
   });
 
+  describe('discarding a year rejection', () => {
+    const seedConflict = (id: string, reason: string) => {
+      manager.connection.prepare(`
+        INSERT INTO sync_conflicts
+          (id,operationId,entityType,entityId,operationType,localPayload,remotePayload,reason,status,createdAt,resolvedAt)
+        VALUES (?,NULL,'students','s1','update','{"firstName":"Ada"}',NULL,?,'unresolved',?,NULL)
+      `).run(id, reason, '2026-01-01T00:00:00.000Z');
+    };
+    const setFullResync = (at: string | null) =>
+      manager.connection.prepare(`UPDATE sync_metadata SET lastDeltaAt=?, lastFullResyncAt=? WHERE id='singleton'`)
+        .run(at, at);
+    const statusOf = (id: string) =>
+      (manager.connection.prepare(`SELECT status FROM sync_conflicts WHERE id=?`).get(id) as { status: string }).status;
+
+    it('discarding a year rejection marks a full resync due', () => {
+      setFullResync(new Date().toISOString());
+      seedConflict('c-year', 'ACADEMIC_YEAR_CLOSED: closed');
+      const worker = new DesktopSyncWorker(workspaces, {} as BackendProvisioningGateway, alwaysOnline());
+      const pullNow = vi.spyOn(worker, 'pullNow').mockResolvedValue(true);
+
+      worker.resolveConflict({ conflictId: 'c-year', resolution: 'accept_remote' });
+
+      expect(statusOf('c-year')).toBe('accept_remote');
+      expect(readSyncMetadata().lastFullResyncAt).toBeNull();
+      expect(pullNow).toHaveBeenCalledTimes(1);
+    });
+
+    it('marks a full resync due even when no sync can run now', async () => {
+      setFullResync(new Date().toISOString());
+      seedConflict('c-year', 'ACADEMIC_YEAR_CLOSED: closed');
+      const worker = new DesktopSyncWorker(workspaces, {} as BackendProvisioningGateway, { isOnline: () => false });
+      vi.spyOn(worker, 'pullNow').mockRejectedValue(new Error('offline'));
+
+      expect(() => worker.resolveConflict({ conflictId: 'c-year', resolution: 'accept_remote' })).not.toThrow();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(statusOf('c-year')).toBe('accept_remote');
+      expect(readSyncMetadata().lastFullResyncAt).toBeNull();
+    });
+
+    it('a non-year accept_remote leaves lastFullResyncAt unchanged', () => {
+      const at = '2026-07-29T00:00:00.000Z';
+      setFullResync(at);
+      seedConflict('c-plain', 'stale write');
+      const worker = new DesktopSyncWorker(workspaces, {} as BackendProvisioningGateway, alwaysOnline());
+      const pullNow = vi.spyOn(worker, 'pullNow').mockResolvedValue(true);
+
+      worker.resolveConflict({ conflictId: 'c-plain', resolution: 'accept_remote' });
+
+      expect(readSyncMetadata().lastFullResyncAt).toBe(at);
+      expect(pullNow).not.toHaveBeenCalled();
+    });
+
+    it('a pending queue item delays but does not cancel the full resync', async () => {
+      setFullResync(new Date().toISOString());
+      seedConflict('c-year', 'ACADEMIC_YEAR_CLOSED: closed');
+      const downloadSnapshot = vi.fn().mockResolvedValue(emptySnapshot());
+      const pushChanges = vi.fn().mockRejectedValue(new Error('server unreachable'));
+      const gateway = { pushChanges, downloadSnapshot } as unknown as BackendProvisioningGateway;
+      const worker = new DesktopSyncWorker(workspaces, gateway, alwaysOnline());
+      const pullNow = vi.spyOn(worker, 'pullNow').mockResolvedValue(true);
+      worker.resolveConflict({ conflictId: 'c-year', resolution: 'accept_remote' });
+      pullNow.mockRestore();
+      manager.connection.prepare(`
+        INSERT INTO sync_queue (id,entityType,entityId,operationType,payload,retryCount,status,createdAt,updatedAt,seq)
+        VALUES ('q1','students','s1','update','{}',0,'pending',?,?,1)
+      `).run('2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z');
+
+      await worker.syncActive().catch(() => {}); // the push fails; the item stays queued
+      expect(pushChanges).toHaveBeenCalledTimes(1);
+      expect(downloadSnapshot).not.toHaveBeenCalled();
+      expect(readSyncMetadata().lastFullResyncAt).toBeNull();
+
+      manager.connection.prepare('DELETE FROM sync_queue').run(); // the queue drains
+      await worker.syncActive();
+      expect(downloadSnapshot).toHaveBeenCalledTimes(1);
+      expect(downloadSnapshot).toHaveBeenCalledWith('device-1', undefined);
+      expect(readSyncMetadata().lastFullResyncAt).not.toBeNull();
+    });
+  });
+
   it('resolveConflict with resolution "keep_local" still re-queues a conflict from a queue-backed table', () => {
     // Regression guard for the fee-reversal fix below: an ordinary conflict
     // that originated from the generic outbox (here 'students', which has

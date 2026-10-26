@@ -188,13 +188,21 @@ export class GradeCompletionService {
    */
   discard(academicYearId: string, studentId: string): DiscardCompletionResult {
     const { db, institutionId } = this.context();
-    const result = db
-      .prepare(
-        `DELETE FROM grade_completions
-          WHERE studentId = ? AND academicYearId = ? AND institutionId = ?
-            AND syncState IN ('pending', 'rejected')`,
-      )
-      .run(studentId, academicYearId, institutionId);
+    // A rejection in a CLOSED year is exactly what this removes, and the
+    // freeze trigger would abort the DELETE, so capture is paused around it.
+    // Both toggles sit inside one transaction: a throw rolls back to 1.
+    const result = db.transaction(() => {
+      db.prepare(`UPDATE sync_runtime SET captureEnabled=0 WHERE id='singleton'`).run();
+      const deleted = db
+        .prepare(
+          `DELETE FROM grade_completions
+            WHERE studentId = ? AND academicYearId = ? AND institutionId = ?
+              AND syncState IN ('pending', 'rejected')`,
+        )
+        .run(studentId, academicYearId, institutionId);
+      db.prepare(`UPDATE sync_runtime SET captureEnabled=1 WHERE id='singleton'`).run();
+      return deleted;
+    })();
     return { discarded: result.changes > 0 };
   }
 

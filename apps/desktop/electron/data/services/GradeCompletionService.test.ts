@@ -347,6 +347,20 @@ describe('GradeCompletionService', () => {
     expect(snapshot()).toEqual(before);
   });
 
+  it('discards a rejected stamp in a CLOSED year', () => {
+    const { db, service } = setup();
+    stamp(db, 's-enrolled', GradeLevel.GRADE_7, 'PROMOTED', GradeLevel.GRADE_8, 'rejected', 'ACADEMIC_YEAR_CLOSED: closed');
+    db.prepare(`UPDATE sync_runtime SET captureEnabled=0 WHERE id='singleton'`).run();
+    db.prepare(`UPDATE academic_years SET status='CLOSED' WHERE id='y1'`).run();
+    db.prepare(`UPDATE sync_runtime SET captureEnabled=1 WHERE id='singleton'`).run();
+
+    expect(service.discard('y1', 's-enrolled')).toEqual({ discarded: true });
+    expect(row(db, 's-enrolled')).toBeUndefined();
+    expect(
+      (db.prepare(`SELECT captureEnabled FROM sync_runtime WHERE id='singleton'`).get() as { captureEnabled: number }).captureEnabled,
+    ).toBe(1);
+  });
+
   it('refuses a workspace that is not a school admin\'s', () => {
     const { service } = setup({
       ...admin,

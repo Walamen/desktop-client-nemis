@@ -190,7 +190,9 @@ export function SyncConflictsPage() {
         {confirmTarget && (
           <p className="text-sm text-slate-600">
             {confirmTarget.resolution === 'accept_remote' ? (
-              confirmTarget.hasRealDisagreement ? (
+              isAcademicYearRejection(confirmTarget.conflict.reason) ? (
+                'Your device will reload this record from the server at the next sync.'
+              ) : confirmTarget.hasRealDisagreement ? (
                 <>
                   The offline change you made to{' '}
                   <strong>{pickEntityLabel(confirmTarget.conflict.localPayload, confirmTarget.conflict.remotePayload, confirmTarget.conflict.entityType, confirmTarget.conflict.entityId)}</strong>{' '}

@@ -685,7 +685,8 @@ export class DesktopSyncWorker {
     // survives capture by the closure below — TS re-widens `request.resolution`
     // itself inside nested function bodies.
     const resolution: 'keep_local' | 'accept_remote' = request.resolution;
-    return db.transactions.runImmediate(() => {
+    let reloadFromServer = false;
+    const result = db.transactions.runImmediate(() => {
       const row = db.connection.prepare(`
         SELECT id,operationId,entityType,entityId,operationType,localPayload,remotePayload,
                reason,status,createdAt,resolvedAt
@@ -731,8 +732,22 @@ export class DesktopSyncWorker {
       db.connection.prepare(`
         UPDATE sync_conflicts SET status=?,resolvedAt=? WHERE id=?
       `).run(resolution, resolvedAt, row.id);
+      if (resolution === 'accept_remote' && isAcademicYearRejection(row.reason)) {
+        // The server refused this write for good, but the refused content is
+        // still in the local tables. Marking the full resync due is durable
+        // (it survives being offline and a non-empty queue: the cycle only
+        // pulls once the queue drains) and a full resync reloads every table.
+        db.connection.prepare(`UPDATE sync_metadata SET lastFullResyncAt=NULL WHERE id='singleton'`).run();
+        reloadFromServer = true;
+      }
       return { ...toConflict({ ...row, status: resolution, resolvedAt }), source: 'conflict' as const };
     });
+    if (reloadFromServer) {
+      // Fire-and-forget: offline or a failed cycle must not undo the discard;
+      // the flag set above makes the next successful cycle do the full resync.
+      void this.pullNow().catch((error) => logger.error('DesktopSyncWorker year-rejection reload failed', error));
+    }
+    return result;
   }
 }
 

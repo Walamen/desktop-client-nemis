@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DesktopSyncStatus, SyncConflictResult } from '@nemis-desktop/types';
 
@@ -62,6 +62,15 @@ describe('SyncConflictsPage academic-year rejections', () => {
     bridge.listSyncConflicts.mockResolvedValue([conflict(`${token}: Some message.`)]);
     render(<SyncConflictsPage />);
     expect(await screen.findByText(heading)).toBeInTheDocument();
+  });
+
+  it('tells the user the record will reload from the server when discarding', async () => {
+    bridge.listSyncConflicts.mockResolvedValue([conflict('ACADEMIC_YEAR_CLOSED: closed.')]);
+    render(<SyncConflictsPage />);
+    fireEvent.click(await screen.findByRole('button', { name: /discard/i }));
+    expect(
+      await screen.findByText('Your device will reload this record from the server at the next sync.'),
+    ).toBeInTheDocument();
   });
 
   it('still offers keep-local for ordinary conflicts', async () => {
