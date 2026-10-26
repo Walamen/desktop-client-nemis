@@ -84,7 +84,7 @@ export function ReadinessStep({
     }
   };
 
-  const blocked = !readiness || readiness.unpublishedPeriods.length > 0 || readiness.missingCells.length > 0;
+  const blocked = !readiness || readiness.noGradingPeriods || readiness.unpublishedPeriods.length > 0 || readiness.missingCells.length > 0;
 
   return (
     <section className="space-y-4" aria-label="Readiness">
@@ -93,6 +93,7 @@ export function ReadinessStep({
       {readiness && blocked && (
         <div className="space-y-4">
           <h3 className="font-semibold text-slate-900">{READINESS_HEADING}</h3>
+          {readiness.noGradingPeriods && <p className="text-sm text-slate-700">This year has no grading periods.</p>}
           {readiness.unpublishedPeriods.length > 0 && (
             <div>
               <p className="text-sm font-medium text-slate-800">Grading periods not yet published</p>

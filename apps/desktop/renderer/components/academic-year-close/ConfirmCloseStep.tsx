@@ -41,6 +41,19 @@ export function ConfirmCloseStep({
   const close = async () => {
     setBusy(true);
     setError(null);
+    // Re-check right now: changes may have appeared since the screen opened.
+    try {
+      const fresh = await academicYearCloseBridge.getClosePendingChangesCount();
+      setPending(fresh);
+      if (fresh > 0) {
+        setBusy(false);
+        return;
+      }
+    } catch {
+      setPending(null);
+      setBusy(false);
+      return;
+    }
     try {
       await academicYearCloseBridge.closeYear(yearId);
       onClosed();
@@ -64,10 +77,13 @@ export function ConfirmCloseStep({
           {PENDING_CHANGES_MESSAGE}
         </p>
       )}
+      {pending === null && (
+        <p role="alert" className="text-sm text-red-700">Could not check this device&apos;s unsynced changes. Try again.</p>
+      )}
       {!online && <p className="text-sm text-slate-500">{OFFLINE_MESSAGE}</p>}
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       <div className="flex justify-end gap-2">
-        <Button variant="secondary" disabled={busy} onClick={() => void loadPending()}>Check again</Button>
+        <Button variant="secondary" disabled={busy} onClick={() => void loadPending()}>{pending === null ? 'Try again' : 'Check again'}</Button>
         <Button variant="destructive" disabled={busy || !online || blockedByPending} onClick={() => void close()}>
           {`Close ${code}`}
         </Button>

@@ -22,6 +22,8 @@ export interface CloseMissingCell {
 
 /** GET /academic-years/:id/close/readiness */
 export interface CloseReadiness {
+  /** True when the year has no grading periods at all; nothing can close. */
+  noGradingPeriods: boolean;
   unpublishedPeriods: { id: string; name: string }[];
   missingCells: CloseMissingCell[];
   cohort: { present: number; withdrawn: number };

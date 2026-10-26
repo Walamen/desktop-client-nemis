@@ -7,7 +7,7 @@ const cell = {
   studentId: 's1', studentName: 'Ama Kofi', classId: 'c1', className: 'Grade 7A',
   subjectId: 'sub1', subjectName: 'Math', gradingPeriodId: 'p1', gradingPeriodName: 'Period 1',
 };
-const CLEAN = { unpublishedPeriods: [], missingCells: [], cohort: { present: 2, withdrawn: 0 } };
+const CLEAN = { noGradingPeriods: false, unpublishedPeriods: [], missingCells: [], cohort: { present: 2, withdrawn: 0 } };
 const student = (over: Record<string, unknown> = {}) => ({
   studentId: 's1', name: 'Ama Kofi', nemisId: '100000000001', classId: 'c1', gradeLevel: 'GRADE_7',
   kind: 'PRESENT', yearlyAverage: 72, suggestion: 'PROMOTED', decision: null, principalRemark: null, ...over,
@@ -83,6 +83,16 @@ describe('CloseWorkflowPage readiness', () => {
   });
 });
 
+describe('CloseWorkflowPage no grading periods', () => {
+  it('blocks the close and says the year has no grading periods', async () => {
+    stubClose({ getReadiness: vi.fn(async () => ({ ...CLEAN, noGradingPeriods: true })) });
+    await renderWithLayer(<CloseWorkflowPage />);
+    expect(await screen.findByRole('heading', { name: 'Before this year can close' })).toBeInTheDocument();
+    expect(screen.getByText('This year has no grading periods.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+  });
+});
+
 describe('CloseWorkflowPage promotion', () => {
   async function toPromotion() {
     const close = stubClose();
@@ -107,6 +117,24 @@ describe('CloseWorkflowPage promotion', () => {
     });
   });
 
+  it('does not pre-select or require an override reason when there is no suggestion', async () => {
+    const close = stubClose({
+      getPromotion: vi.fn(async () => ({ passMark: 50, students: [student({ suggestion: null, yearlyAverage: null })] })),
+    });
+    await renderWithLayer(<CloseWorkflowPage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Continue' }));
+    const select = (await screen.findByLabelText('Outcome for Ama Kofi')) as HTMLSelectElement;
+    expect(select.value).toBe('');
+    expect(screen.queryByLabelText('Reason for overriding Ama Kofi')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
+    expect(close.savePromotion).not.toHaveBeenCalled();
+    expect(await screen.findByRole('alert')).toHaveTextContent('Choose an outcome');
+    fireEvent.change(select, { target: { value: 'PROMOTED' } });
+    expect(screen.queryByLabelText('Reason for overriding Ama Kofi')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
+    await waitFor(() => expect(close.savePromotion).toHaveBeenCalledTimes(1));
+  });
+
   it('applies one principal remark to every student', async () => {
     const close = await toPromotion();
     fireEvent.change(screen.getByLabelText('Principal remark for all students'), { target: { value: 'Well done' } });
@@ -129,6 +157,25 @@ describe('CloseWorkflowPage confirm', () => {
     const button = screen.getByRole('button', { name: 'Close 2025/2026' });
     expect(button).toBeDisabled();
     fireEvent.click(button);
+    expect(close.closeYear).not.toHaveBeenCalled();
+  });
+
+  it('re-checks pending changes at click time and does not close', async () => {
+    const count = vi.fn().mockResolvedValueOnce(0).mockResolvedValue(2);
+    const close = stubClose({ pendingChangesCount: count });
+    await toConfirm();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Close 2025/2026' })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: 'Close 2025/2026' }));
+    expect(await screen.findByText(PENDING)).toBeInTheDocument();
+    expect(close.closeYear).not.toHaveBeenCalled();
+  });
+
+  it('says so and offers a retry when the pending count cannot be read', async () => {
+    const close = stubClose({ pendingChangesCount: vi.fn(async () => { throw new Error('boom'); }) });
+    await toConfirm();
+    expect(await screen.findByText("Could not check this device's unsynced changes. Try again.")).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Close 2025/2026' })).toBeDisabled();
     expect(close.closeYear).not.toHaveBeenCalled();
   });
 

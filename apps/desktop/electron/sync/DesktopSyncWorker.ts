@@ -784,8 +784,7 @@ function toConflict(row: RawConflict): Omit<SyncConflictResult, 'source'> {
   };
 }
 
-/** The school this workspace belongs to — same resolution as
- * GradeCompletionService, so pushed rows match the rows it wrote. */
+/** The school this workspace belongs to. */
 function institutionIdOf(user: ActiveWorkspace['user']): string {
   return user.institutionId ?? user.scope.institutionId ?? user.scope.scopeId;
 }

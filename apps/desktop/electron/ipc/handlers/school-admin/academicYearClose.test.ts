@@ -31,6 +31,7 @@ function setup(countPending = () => 0) {
   }) as IpcHandle;
   const gateway = {
     getCloseReadiness: vi.fn(async () => ({
+      noGradingPeriods: false,
       unpublishedPeriods: [],
       missingCells: [],
       cohort: { present: 1, withdrawn: 0 },

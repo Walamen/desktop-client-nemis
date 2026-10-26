@@ -13,15 +13,16 @@ import { academicYearCloseBridge } from '@/services/nemis-bridge/school-admin/ac
 import { OUTCOME_LABEL, gradeLabel, nextGradeFor, outcomesFor } from './close-copy';
 
 interface Row {
-  outcome: CompletionOutcome;
+  /** Null until the admin chooses (no server suggestion). */
+  outcome: CompletionOutcome | null;
   overrideReason: string;
   remark: string;
 }
 
 /** The outcome a student starts with: a saved decision, else the suggestion. */
 function initialRow(s: PromotionStudent): Row | null {
-  if (s.kind === 'WITHDRAWN') return s.principalRemark ? { outcome: 'RETAINED', overrideReason: '', remark: s.principalRemark } : null;
-  const outcome = s.decision?.outcome ?? s.suggestion ?? 'RETAINED';
+  if (s.kind === 'WITHDRAWN') return s.principalRemark ? { outcome: null, overrideReason: '', remark: s.principalRemark } : null;
+  const outcome = s.decision?.outcome ?? s.suggestion ?? null;
   return { outcome, overrideReason: s.decision?.overrideReason ?? '', remark: s.principalRemark ?? '' };
 }
 
@@ -54,14 +55,14 @@ export function PromotionStep({ yearId, onSaved }: { yearId: string; onSaved: ()
   }, [yearId]);
 
   const patch = (id: string, change: Partial<Row>) =>
-    setRows((r) => ({ ...r, [id]: { outcome: 'RETAINED', overrideReason: '', remark: '', ...r[id], ...change } }));
+    setRows((r) => ({ ...r, [id]: { outcome: null, overrideReason: '', remark: '', ...r[id], ...change } }));
 
   const applyToAll = () => {
     if (!overview) return;
     setRows((r) => {
       const next = { ...r };
       for (const s of overview.students) {
-        next[s.studentId] = { outcome: 'RETAINED', overrideReason: '', ...next[s.studentId], remark: allRemark.trim() };
+        next[s.studentId] = { outcome: null, overrideReason: '', ...next[s.studentId], remark: allRemark.trim() };
       }
       return next;
     });
@@ -74,7 +75,11 @@ export function PromotionStep({ yearId, onSaved }: { yearId: string; onSaved: ()
       if (s.kind !== 'PRESENT') continue;
       const row = rows[s.studentId];
       if (!row) continue;
-      const overriding = row.outcome !== s.suggestion;
+      if (row.outcome === null) {
+        setError(`Choose an outcome for ${s.name}.`);
+        return;
+      }
+      const overriding = s.suggestion !== null && row.outcome !== s.suggestion;
       if (overriding && row.overrideReason.trim() === '') {
         setError(`Give a reason for overriding the suggestion for ${s.name}.`);
         return;
@@ -132,8 +137,8 @@ export function PromotionStep({ yearId, onSaved }: { yearId: string; onSaved: ()
                 {overview.students.map((s) => {
                   const row = rows[s.studentId];
                   const present = s.kind === 'PRESENT';
-                  const overriding = present && row !== undefined && row.outcome !== s.suggestion;
-                  const next = row && present ? nextGradeFor(s.gradeLevel, row.outcome) : null;
+                  const overriding = present && row?.outcome != null && s.suggestion !== null && row.outcome !== s.suggestion;
+                  const next = row?.outcome && present ? nextGradeFor(s.gradeLevel, row.outcome) : null;
                   return (
                     <tr key={s.studentId} className="border-b align-top last:border-0">
                       <td className="p-3">{s.name}</td>
@@ -146,9 +151,10 @@ export function PromotionStep({ yearId, onSaved }: { yearId: string; onSaved: ()
                             <select
                               aria-label={`Outcome for ${s.name}`}
                               className="rounded border border-slate-300 px-2 py-1"
-                              value={row.outcome}
+                              value={row.outcome ?? ''}
                               onChange={(e) => patch(s.studentId, { outcome: e.target.value as CompletionOutcome })}
                             >
+                              {row.outcome === null && <option value="" disabled>Choose…</option>}
                               {outcomesFor(s.gradeLevel).map((o) => <option key={o} value={o}>{OUTCOME_LABEL[o]}</option>)}
                             </select>
                             {overriding && (
