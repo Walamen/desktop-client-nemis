@@ -347,6 +347,33 @@ describe('GradeCompletionService', () => {
     expect(snapshot()).toEqual(before);
   });
 
+  it('discarding an amended synced stamp marks a full resync due, so the pull reloads the server record', () => {
+    const { db, service } = setup();
+    const at = '2026-07-29T00:00:00.000Z';
+    const fullResyncAt = () =>
+      (db.prepare(`SELECT lastFullResyncAt FROM sync_metadata WHERE id='singleton'`).get() as {
+        lastFullResyncAt: string | null;
+      }).lastFullResyncAt;
+    db.prepare(`UPDATE sync_metadata SET lastDeltaAt=?, lastFullResyncAt=? WHERE id='singleton'`).run(at, at);
+
+    // Nothing to delete: a synced row, and nobody at all.
+    expect(service.discard('y1', 's-promoted')).toEqual({ discarded: false });
+    expect(service.discard('y1', 'nobody')).toEqual({ discarded: false });
+    expect(fullResyncAt()).toBe(at);
+
+    // s-promoted's synced stamp is amended in place to pending, then refused.
+    service.save({
+      academicYearId: 'y1',
+      gradeLevel: GradeLevel.GRADE_7,
+      decisions: [{ studentId: 's-promoted', outcome: 'RETAINED', nextGradeLevel: GradeLevel.GRADE_7 }],
+    });
+    db.prepare(`UPDATE grade_completions SET syncState='rejected', syncError='Group refused' WHERE studentId='s-promoted'`).run();
+
+    expect(service.discard('y1', 's-promoted')).toEqual({ discarded: true });
+    expect(row(db, 's-promoted')).toBeUndefined();
+    expect(fullResyncAt()).toBeNull();
+  });
+
   it('discards a rejected stamp in a CLOSED year', () => {
     const { db, service } = setup();
     stamp(db, 's-enrolled', GradeLevel.GRADE_7, 'PROMOTED', GradeLevel.GRADE_8, 'rejected', 'ACADEMIC_YEAR_CLOSED: closed');

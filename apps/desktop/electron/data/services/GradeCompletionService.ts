@@ -200,6 +200,13 @@ export class GradeCompletionService {
               AND syncState IN ('pending', 'rejected')`,
         )
         .run(studentId, academicYearId, institutionId);
+      // `save` amends a synced stamp in place to pending, and the importer
+      // never overwrites a local pending/rejected row, so the server's own
+      // record may never have landed here. A delta pull will not resend a
+      // frozen (closed-year) stamp, so mark a full resync due to reload it.
+      if (deleted.changes > 0) {
+        db.prepare(`UPDATE sync_metadata SET lastFullResyncAt=NULL WHERE id='singleton'`).run();
+      }
       db.prepare(`UPDATE sync_runtime SET captureEnabled=1 WHERE id='singleton'`).run();
       return deleted;
     })();
