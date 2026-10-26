@@ -31,10 +31,10 @@ function inPull(db: SqliteDatabase, fn: () => void): void {
   })();
 }
 
-// report_cards / report_card_issues: pull-only, no user ever writes them.
+// report_cards / report_card_issues / academic_year_archives: pull-only, no user ever writes them.
 const EXEMPT = [
   'fee_rules', 'fee_obligations', 'fee_payments', 'fee_payment_reversals', 'student_transfers',
-  'report_cards', 'report_card_issues',
+  'report_cards', 'report_card_issues', 'academic_year_archives',
 ];
 const FROZEN = [
   'grades', 'attendance', 'assignments', 'assignment_submissions', 'term_averages', 'grade_completions',
@@ -149,7 +149,7 @@ describe('migration 040 create-academic-year-freeze', () => {
     expect(() => db.prepare(`UPDATE academic_years SET code = 'z' WHERE id = 'y-closed'`).run()).toThrow(
       /ACADEMIC_YEAR_CLOSED/,
     );
-    inPull(db, () => db.prepare(`UPDATE academic_years SET status = 'REOPENED' WHERE id = 'y-closed'`).run());
+    inPull(db, () => db.prepare(`UPDATE academic_years SET status = 'ACTIVE' WHERE id = 'y-closed'`).run());
     expect(() => db.prepare(`UPDATE academic_years SET code = 'z' WHERE id = 'y-closed'`).run()).not.toThrow();
   });
 

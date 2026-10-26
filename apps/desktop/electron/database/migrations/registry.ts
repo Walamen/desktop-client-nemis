@@ -41,6 +41,7 @@ import { createAuditLogs } from './039-create-audit-logs';
 import { createAcademicYearFreeze } from './040-create-academic-year-freeze';
 import { enrollmentFreezeClassYear } from './041-enrollment-freeze-class-year';
 import { createReportCards } from './042-create-report-cards';
+import { academicYearClose } from './043-academic-year-close';
 
 /**
  * Every migration, ascending by version. Append only — never edit or reorder
@@ -89,4 +90,5 @@ export const migrations: readonly Migration[] = [
   createAcademicYearFreeze,
   enrollmentFreezeClassYear,
   createReportCards,
+  academicYearClose,
 ];

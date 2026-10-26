@@ -78,11 +78,16 @@ const BOOKKEEPING: Record<string, readonly string[]> = {
 
 const CAPTURE_ON = `(SELECT captureEnabled FROM sync_runtime WHERE id = 'singleton') = 1`;
 
-function guards(table: string, resolvers: readonly YearResolver[], alias: Alias): string {
+/** Year statuses that refuse user writes. 040 froze CLOSED only; 043 adds REOPENED. */
+export type FrozenStatuses = readonly ('CLOSED' | 'REOPENED')[];
+const CLOSED_ONLY: FrozenStatuses = ['CLOSED'];
+
+function guards(table: string, resolvers: readonly YearResolver[], alias: Alias, frozen: FrozenStatuses): string {
+  const frozenSql = frozen.map((f) => `'${f}'`).join(', ');
   let sql = '';
   for (const resolve of resolvers) {
     const status = `(SELECT status FROM academic_years WHERE id = ${resolve(alias)})`;
-    sql += `SELECT RAISE(ABORT, 'ACADEMIC_YEAR_CLOSED') WHERE ${status} = 'CLOSED';\n`;
+    sql += `SELECT RAISE(ABORT, 'ACADEMIC_YEAR_CLOSED') WHERE ${status} IN (${frozenSql});\n`;
     if (TEACHING.has(table)) {
       sql += `SELECT RAISE(ABORT, 'ACADEMIC_YEAR_NOT_STARTED') WHERE ${status} = 'SETUP';\n`;
     }
@@ -100,6 +105,7 @@ export function installTableFreezeTriggers(
   db: SqliteDatabase,
   table: string,
   resolvers: readonly YearResolver[],
+  frozen: FrozenStatuses = CLOSED_ONLY,
 ): void {
   const columns = (db.prepare(`PRAGMA table_info("${table}")`).all() as { name: string }[]).map((c) => c.name);
   if (columns.length === 0) throw new Error(`freeze triggers: table ${table} does not exist`);
@@ -107,9 +113,9 @@ export function installTableFreezeTriggers(
   const updateOf = columns.filter((c) => !skip.includes(c));
   const updateEvent = skip.length > 0 ? `UPDATE OF ${updateOf.map((c) => `"${c}"`).join(', ')}` : 'UPDATE';
   const defs: [string, string, string][] = [
-    ['insert', 'INSERT', guards(table, resolvers, 'NEW')],
-    ['update', updateEvent, guards(table, resolvers, 'OLD') + guards(table, resolvers, 'NEW')],
-    ['delete', 'DELETE', guards(table, resolvers, 'OLD')],
+    ['insert', 'INSERT', guards(table, resolvers, 'NEW', frozen)],
+    ['update', updateEvent, guards(table, resolvers, 'OLD', frozen) + guards(table, resolvers, 'NEW', frozen)],
+    ['delete', 'DELETE', guards(table, resolvers, 'OLD', frozen)],
   ];
   for (const [action, event, body] of defs) {
     db.exec(`
@@ -123,15 +129,13 @@ export function installTableFreezeTriggers(
   }
 }
 
-export function installFreezeTriggers(db: SqliteDatabase): void {
-  for (const [table, resolve] of Object.entries(RESOLVERS)) {
-    installTableFreezeTriggers(db, table, [resolve]);
-  }
-
+/** The academic_years triggers: user edits refused once the year is frozen, deletes once it has started. */
+export function installYearRowTriggers(db: SqliteDatabase, frozen: FrozenStatuses = CLOSED_ONLY): void {
+  const frozenSql = frozen.map((f) => `'${f}'`).join(', ');
   db.exec(`
     CREATE TRIGGER freeze_academic_years_update
     BEFORE UPDATE ON academic_years
-    WHEN ${CAPTURE_ON} AND OLD.status = 'CLOSED'
+    WHEN ${CAPTURE_ON} AND OLD.status IN (${frozenSql})
     BEGIN
       SELECT RAISE(ABORT, 'ACADEMIC_YEAR_CLOSED');
     END;
@@ -143,6 +147,13 @@ export function installFreezeTriggers(db: SqliteDatabase): void {
       SELECT RAISE(ABORT, 'ACADEMIC_YEAR_NOT_DELETABLE');
     END;
   `);
+}
+
+export function installFreezeTriggers(db: SqliteDatabase): void {
+  for (const [table, resolve] of Object.entries(RESOLVERS)) {
+    installTableFreezeTriggers(db, table, [resolve]);
+  }
+  installYearRowTriggers(db);
 }
 
 export const createAcademicYearFreeze: Migration = {

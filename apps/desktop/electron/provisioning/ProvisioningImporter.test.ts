@@ -577,6 +577,41 @@ describe('ProvisioningImporter', () => {
     expect(countRows('report_card_issues')).toBe(0);
   });
 
+  it('imports the Stage 3 close fields and the pull-only year archives', () => {
+    const importer = new ProvisioningImporter(manager);
+    const db = manager.connection;
+    const summary = { present: 30, withdrawn: 1, promoted: 25, retained: 4, graduated: 1, byGrade: { GRADE_7: { promoted: 25, retained: 4, graduated: 0 } } };
+    importer.import(
+      snapshotOf({
+        ...BASE_DATA,
+        grades: [
+          { id: 'g-close', studentId: 's1', subjectId: 'subject-1', classId: 'class-1', gradingPeriodId: 'gp-1', marksObtained: 70, isPublished: true, maxMarks: 100, percentage: 70, status: 'PUBLISHED', enteredAtClose: true, createdAt: '2026-10-01T00:00:00.000Z', updatedAt: '2026-10-01T00:00:00.000Z' },
+          { id: 'g-old', studentId: 's1', subjectId: 'subject-1', classId: 'class-1', gradingPeriodId: 'gp-1', marksObtained: 60, isPublished: true, maxMarks: 100, percentage: 60, status: 'PUBLISHED', createdAt: '2026-10-01T00:00:00.000Z', updatedAt: '2026-10-01T00:00:00.000Z' },
+        ],
+        reportCards: [{ id: 'rc-1', studentId: 's1', institutionId: 'school-1', academicYearId: 'ay-1', classId: 'class-1', gradeLevel: 'GRADE_7', principalRemark: 'Well done', createdAt: null, updatedAt: null }],
+        gradeCompletions: [{ id: 'gc-1', studentId: 's1', institutionId: 'school-1', academicYearId: 'ay-1', gradeLevel: 'GRADE_7', outcome: 'RETAINED', nextGradeLevel: null, averageAtDecision: 48, overrideReason: 'Illness', createdAt: '2026-10-02T00:00:00.000Z', updatedAt: '2026-10-02T00:00:00.000Z' }],
+        academicYearArchives: [{ id: 'ar-1', academicYearId: 'ay-1', institutionId: 'school-1', version: 1, closedBy: 'user-1', closedAt: '2026-10-03T00:00:00.000Z', summary, reopenedBy: null, reopenedAt: null, reopenReason: null, createdAt: '2026-10-03T00:00:00.000Z', updatedAt: '2026-10-03T00:00:00.000Z' }],
+      }),
+      CONTEXT,
+    );
+    expect(db.prepare(`SELECT id, enteredAtClose FROM grades ORDER BY id`).all()).toEqual([
+      { id: 'g-close', enteredAtClose: 1 }, { id: 'g-old', enteredAtClose: 0 },
+    ]);
+    expect(db.prepare(`SELECT principalRemark FROM report_cards WHERE id='rc-1'`).get()).toEqual({ principalRemark: 'Well done' });
+    expect(db.prepare(`SELECT overrideReason FROM grade_completions WHERE id='gc-1'`).get()).toEqual({ overrideReason: 'Illness' });
+    const archive = db.prepare(`SELECT version, summary FROM academic_year_archives WHERE id='ar-1'`).get() as { version: number; summary: string };
+    expect(archive.version).toBe(1);
+    expect(JSON.parse(archive.summary)).toEqual(summary);
+    expect(countRows('sync_queue')).toBe(0);
+
+    importer.import(
+      snapshotOf({ ...BASE_DATA, academicYearArchives: [{ id: 'ar-1', academicYearId: 'ay-1', institutionId: 'school-1', version: 1, closedBy: 'user-1', closedAt: '2026-10-03T00:00:00.000Z', summary, reopenedBy: 'user-1', reopenedAt: '2026-10-04T00:00:00.000Z', reopenReason: 'Fix a mark', createdAt: '2026-10-03T00:00:00.000Z', updatedAt: '2026-10-04T00:00:00.000Z' }] }),
+      CONTEXT,
+      { merge: true },
+    );
+    expect(db.prepare(`SELECT reopenReason FROM academic_year_archives WHERE id='ar-1'`).get()).toEqual({ reopenReason: 'Fix a mark' });
+  });
+
   it('imports the county audit trail and prunes rows older than 365 days after verification', () => {
     const day = 24 * 60 * 60 * 1000;
     const audit = (id: string, ageDays: number) => ({

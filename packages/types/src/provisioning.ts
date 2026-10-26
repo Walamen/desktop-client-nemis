@@ -95,6 +95,8 @@ export const PROVISIONING_COLLECTIONS = [
   'directConversations', 'directMessages', 'auditLogs',
   // Pull-only; reportCards before reportCardIssues (issues belong to a card).
   'reportCards', 'reportCardIssues',
+  // Stage 3: pull-only close archives.
+  'academicYearArchives',
 ] as const;
 
 export type ProvisioningCollection = (typeof PROVISIONING_COLLECTIONS)[number];

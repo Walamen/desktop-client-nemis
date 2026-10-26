@@ -32,3 +32,4 @@ export * from './county-users';
 export * from './header-notifications';
 export * from './academic-context';
 export * from './report-cards';
+export * from './academic-year-close';

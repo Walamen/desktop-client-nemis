@@ -46,6 +46,12 @@ export interface ReportCardAttendance {
   carriedDays: number;
 }
 
+export interface ReportCardOutcome {
+  status: 'PROMOTED' | 'RETAINED' | 'GRADUATED' | 'WITHDRAWN';
+  nextGradeLevel: string | null;
+  yearlyAverage: number | null;
+}
+
 export interface ReportCardPayloadV1 {
   schemaVersion: 1;
   kind: ReportCardIssueKind;
@@ -61,8 +67,8 @@ export interface ReportCardPayloadV1 {
   overall: Record<string, number | null>;
   attendance: ReportCardAttendance;
   passMark: number;
-  /** Stage 3 fills FINAL outcomes. */
-  outcome: null;
+  /** FINAL cards carry the end-of-year outcome; PERIOD cards keep null. */
+  outcome: ReportCardOutcome | null;
   /** Null for PERIOD. */
   principalRemark: string | null;
 }

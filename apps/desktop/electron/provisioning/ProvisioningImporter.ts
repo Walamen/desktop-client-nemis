@@ -88,13 +88,13 @@ const SPECS: Record<ProvisioningCollection, TableSpec> = {
   classSubjectTeachers: spec('class_subject_teachers', ['id','classId','subjectId','staffId','assignedAt','version','updatedAt','lastModifiedBy'], ['classId','subjectId']),
   timetableEntries: spec('timetable_entries', ['id','institutionId','classId','subjectId','staffId','dayOfWeek','startTime','endTime','room','isBreak','assignmentId','createdAt','updatedAt','version','lastModifiedBy']),
   studentTransfers: spec('student_transfers', ['id','studentId','fromInstitutionId','toInstitutionId','requestedBy','reason','status','reviewedBy','reviewedAt','reviewNotes','requestedDate','toGradeLevel','initiatedBy','lapsesAt','classId','termId','studentName','studentNemisId','fromInstitutionName','toInstitutionName','createdAt','updatedAt']),
-  gradeCompletions: spec('grade_completions', ['id','studentId','institutionId','academicYearId','gradeLevel','outcome','nextGradeLevel','averageAtDecision','notes','decidedBy','amendedBy','amendedAt','createdAt','updatedAt']),
+  gradeCompletions: spec('grade_completions', ['id','studentId','institutionId','academicYearId','gradeLevel','outcome','nextGradeLevel','averageAtDecision','notes','decidedBy','amendedBy','amendedAt','overrideReason','createdAt','updatedAt']),
   termAverages: spec('term_averages', ['id','studentId','subjectId','termId','classId','percentage','calculatedAt','updatedAt']),
   institutionGradingConfigs: spec('institution_grading_configs', ['id','institutionId','maxMarks','passingMarks','periodsPerTerm','termsPerYear','hasExams','calculationMethod','gradeScale','allowLateSubmission','lateSubmissionPenalty','requireAdminApproval','createdAt','updatedAt']),
   gradingPeriods: spec('grading_periods', ['id','institutionId','academicYearId','termId','name','code','periodType','sequence','maxMarks','passingMarks','weight','startDate','endDate','isActive','createdAt','updatedAt']),
   gradeEntryWindows: spec('grade_entry_windows', ['id','institutionId','gradingPeriodId','name','description','openDate','closeDate','status','allowedRoles','openedBy','openedAt','closedBy','closedAt','publishedBy','publishedAt','createdAt','updatedAt']),
   gradeEntryWindowClasses: spec('grade_entry_window_classes', ['id','windowId','classId','status','openedBy','openedAt','closedBy','closedAt','createdAt','updatedAt']),
-  grades: spec('grades', ['id','studentId','subjectId','assessmentId','marksObtained','examScore','remarks','assessmentScore','finalGrade','testScore','classId','enteredBy','gradePoint','gradingPeriodId','isPublished','lastModifiedBy','letterGrade','maxMarks','percentage','publishedAt','status','createdAt','updatedAt']),
+  grades: spec('grades', ['id','studentId','subjectId','assessmentId','marksObtained','examScore','remarks','assessmentScore','finalGrade','testScore','classId','enteredBy','gradePoint','gradingPeriodId','isPublished','lastModifiedBy','letterGrade','maxMarks','percentage','publishedAt','status','enteredAtClose','createdAt','updatedAt'], undefined, { enteredAtClose: 0 }),
   feeRules: spec('fee_rules', ['id','institutionId','name','description','category','amount','currency','applicableLevels','isMandatory','isActive','createdBy','createdAt','updatedAt']),
   feeObligations: spec('fee_obligations', ['id','studentId','feeRuleId','institutionId','academicYearId','termId','requiredAmount','totalPaid','status','dueDate','notes','createdBy','createdAt','updatedAt']),
   feePayments: spec('fee_payments', ['id','obligationId','studentId','institutionId','amount','method','reference','notes','receiptNumber','recordedBy','isReversed','paidAt','createdAt','updatedAt']),
@@ -113,8 +113,10 @@ const SPECS: Record<ProvisioningCollection, TableSpec> = {
   directMessages: spec('direct_messages', ['id','conversationId','senderId','content','isRead','readAt','createdAt','updatedAt']),
   auditLogs: spec('audit_logs', ['id','userId','action','entityType','entityId','timestamp','actorName','actorScope']),
   // Academic-year lifecycle: pull-only report cards; payload is the JSON of the issue.
-  reportCards: spec('report_cards', ['id','studentId','institutionId','academicYearId','classId','gradeLevel','createdAt','updatedAt']),
+  reportCards: spec('report_cards', ['id','studentId','institutionId','academicYearId','classId','gradeLevel','principalRemark','createdAt','updatedAt']),
   reportCardIssues: spec('report_card_issues', ['id','reportCardId','kind','gradingPeriodId','version','status','payload','issuedBy','issuedAt','supersededAt','withdrawnAt','createdAt','updatedAt']),
+  // Stage 3: pull-only close archives; summary is a JSON object.
+  academicYearArchives: spec('academic_year_archives', ['id','academicYearId','institutionId','version','closedBy','closedAt','summary','reopenedBy','reopenedAt','reopenReason','createdAt','updatedAt']),
 };
 
 const DELETE_ORDER = [...PROVISIONING_COLLECTIONS].reverse();
