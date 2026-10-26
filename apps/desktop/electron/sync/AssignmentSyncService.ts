@@ -1,4 +1,6 @@
+import { randomUUID } from 'node:crypto';
 import type { Database as SqliteDatabase } from 'better-sqlite3';
+import { academicYearTokenOf, RemoteRejectedError } from '@nemis-desktop/shared';
 import type { BackendProvisioningGateway } from '@app/provisioning/BackendProvisioningGateway';
 import { AttachmentStorage } from '@app/services/AttachmentStorage';
 import { logger } from '@app/services/logger';
@@ -23,7 +25,17 @@ interface SubmissionRow {
   studentId: string;
   grade: number;
   feedback: string | null;
+  syncedAt: string | null;
   assignmentRemoteId: string;
+}
+
+/** `"<TOKEN>: <message>"` when the server refused the push because the row's
+ * academic year is closed / not started (a 409 from a freeze trigger), else
+ * undefined. */
+function academicYearRejectionReason(error: unknown): string | undefined {
+  if (!(error instanceof RemoteRejectedError) || error.status !== 409) return undefined;
+  const token = academicYearTokenOf(error.remoteErrorCode, error.remoteMessage);
+  return token ? `${token}: ${error.remoteMessage ?? ''}` : undefined;
 }
 
 /** Pushes locally-dirty assignments and grades to the backend through the
@@ -33,7 +45,15 @@ interface SubmissionRow {
  * (migration 019's doc comment explains why: no backend support there, and
  * it can't carry a file). A row failing here just stays dirty for the next
  * cycle; there's no backoff schedule or dead-lettering — this path is
- * already a simplified, bespoke one, not the generic queue's machinery. */
+ * already a simplified, bespoke one, not the generic queue's machinery.
+ *
+ * The one exception is an academic-year refusal (409 ACADEMIC_YEAR_*): it
+ * can never succeed on retry, so it is recorded in sync_conflicts (shown on
+ * the Sync Conflicts page) and the row's syncedAt is stamped so the dirty
+ * predicate stops selecting it — the same "conflict + mark synced" choice
+ * FeeReversalSyncService makes. syncedAt is a bookkeeping column the local
+ * freeze triggers never refuse, and a later local edit (possible only once
+ * the year is reopened) makes the row dirty again. */
 export class AssignmentSyncService {
   constructor(private readonly gateway: BackendProvisioningGateway) {}
 
@@ -48,6 +68,11 @@ export class AssignmentSyncService {
       try {
         await this.pushAssignment(db, row);
       } catch (error) {
+        const reason = academicYearRejectionReason(error);
+        if (reason) {
+          this.#recordRejection(db, 'assignments', row.id, row.remoteId === null ? 'create' : 'update', row, reason);
+          continue;
+        }
         logger.error(`AssignmentSyncService: failed to push assignment ${row.id}`, error);
       }
     }
@@ -56,7 +81,7 @@ export class AssignmentSyncService {
     // assignment failing above simply defers its grades to the next cycle.
     const submissions = db
       .prepare(
-        `SELECT s.id, s.studentId, s.grade, s.feedback, a.remoteId AS assignmentRemoteId
+        `SELECT s.id, s.studentId, s.grade, s.feedback, s.syncedAt, a.remoteId AS assignmentRemoteId
          FROM assignment_submissions s
          JOIN assignments a ON a.id = s.assignmentId
          WHERE ${SUBMISSION_DIRTY}
@@ -67,9 +92,41 @@ export class AssignmentSyncService {
       try {
         await this.pushSubmission(db, row);
       } catch (error) {
+        const reason = academicYearRejectionReason(error);
+        if (reason) {
+          this.#recordRejection(
+            db,
+            'assignment_submissions',
+            row.id,
+            row.syncedAt === null ? 'create' : 'update',
+            row,
+            reason,
+          );
+          continue;
+        }
         logger.error(`AssignmentSyncService: failed to push grade for submission ${row.id}`, error);
       }
     }
+  }
+
+  #recordRejection(
+    db: SqliteDatabase,
+    table: 'assignments' | 'assignment_submissions',
+    id: string,
+    operationType: 'create' | 'update',
+    row: AssignmentRow | SubmissionRow,
+    reason: string,
+  ): void {
+    logger.info(`AssignmentSyncService: server refused ${table}/${id} (${reason}); recorded as a sync conflict.`);
+    const now = new Date().toISOString();
+    db.transaction(() => {
+      db.prepare(
+        `INSERT INTO sync_conflicts
+           (id,operationId,entityType,entityId,operationType,localPayload,remotePayload,reason,status,createdAt,resolvedAt)
+         VALUES (?,NULL,?,?,?,?,NULL,?,'unresolved',?,NULL)`,
+      ).run(randomUUID(), table, id, operationType, JSON.stringify(row), reason, now);
+      db.prepare(`UPDATE ${table} SET syncedAt = ? WHERE id = ?`).run(now, id);
+    })();
   }
 
   private async pushAssignment(db: SqliteDatabase, row: AssignmentRow): Promise<void> {

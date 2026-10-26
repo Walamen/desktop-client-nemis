@@ -546,7 +546,8 @@ export class BackendProvisioningGateway {
       // branches on status (404/409) and embeds the message text.
       if (response.status === 429) throw new RateLimitedError(await readRemoteMessage(response));
       if (response.status >= 400 && response.status < 500) {
-        throw new RemoteRejectedError(response.status, await readRemoteMessage(response));
+        const { message, errorCode } = await readRemoteError(response);
+        throw new RemoteRejectedError(response.status, message, { remoteErrorCode: errorCode });
       }
       throw Object.assign(new Error(`Provisioning request failed with status ${response.status}.`), {
         status: response.status,
@@ -560,14 +561,22 @@ export class BackendProvisioningGateway {
  * class-validator failures put an array in `message`. Anything unreadable
  * yields undefined — the caller still classifies by status. */
 async function readRemoteMessage(response: Response): Promise<string | undefined> {
+  return (await readRemoteError(response)).message;
+}
+
+/** Message plus `errorCode` (e.g. ACADEMIC_YEAR_CLOSED from a freeze trigger). */
+async function readRemoteError(response: Response): Promise<{ message?: string; errorCode?: string }> {
   try {
-    const message = asRecord(await response.json()).message;
-    if (typeof message === 'string') return message;
-    if (Array.isArray(message) && typeof message[0] === 'string') return message[0];
+    const body = asRecord(await response.json());
+    const errorCode = typeof body.errorCode === 'string' ? body.errorCode : undefined;
+    const raw = body.message;
+    const message =
+      typeof raw === 'string' ? raw : Array.isArray(raw) && typeof raw[0] === 'string' ? raw[0] : undefined;
+    return { message, errorCode };
   } catch {
     // Non-JSON body (proxy error page, empty body).
   }
-  return undefined;
+  return {};
 }
 
 function toStudentAcademicRecord(value: unknown): StudentAcademicRecord {

@@ -71,11 +71,18 @@ export class OfflineError extends ApplicationError {
 export class RemoteRejectedError extends ApplicationError {
   readonly status: number;
   readonly remoteMessage: string | undefined;
+  /** The server envelope's `errorCode` (e.g. ACADEMIC_YEAR_CLOSED), if any. */
+  readonly remoteErrorCode: string | undefined;
 
-  constructor(status: number, remoteMessage?: string, options?: { cause?: unknown }) {
+  constructor(
+    status: number,
+    remoteMessage?: string,
+    options?: { cause?: unknown; remoteErrorCode?: string },
+  ) {
     super('REMOTE_REJECTED', `Provisioning request failed with status ${status}.`, options);
     this.status = status;
     this.remoteMessage = remoteMessage;
+    this.remoteErrorCode = options?.remoteErrorCode;
   }
 }
 

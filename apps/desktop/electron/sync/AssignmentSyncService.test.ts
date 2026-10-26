@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTestContext, type TestContext } from '../data/testing/createTestContext';
 import type { BackendProvisioningGateway } from '../provisioning/BackendProvisioningGateway';
+import { RemoteRejectedError } from '@nemis-desktop/shared';
 import { AssignmentSyncService } from './AssignmentSyncService';
 
 function buildGateway(): BackendProvisioningGateway {
@@ -141,5 +142,121 @@ describe('AssignmentSyncService', () => {
       syncedAt: string | null;
     };
     expect(s1.syncedAt).toBeNull();
+  });
+
+  describe('academic-year rejections (R16)', () => {
+    const CLOSED_MESSAGE = 'This academic year is closed. Its records can no longer be changed.';
+    const yearClosed = () => new RemoteRejectedError(409, CLOSED_MESSAGE, { remoteErrorCode: 'ACADEMIC_YEAR_CLOSED' });
+
+    function conflicts() {
+      return test.context.connection
+        .prepare(`SELECT entityType, entityId, operationType, reason, status, operationId FROM sync_conflicts`)
+        .all();
+    }
+
+    function insertGradedSubmission(id: string, assignmentId: string, syncedAt: string | null = null) {
+      test.context.connection.prepare(`
+        INSERT INTO assignment_submissions (id,assignmentId,studentId,status,grade,feedback,createdAt,updatedAt,syncedAt)
+        VALUES (?,?,'stu-1','GRADED',90,NULL,?,?,?)
+      `).run(id, assignmentId, '2026-08-02T00:00:00.000Z', '2026-08-02T00:00:00.000Z', syncedAt);
+    }
+
+    it('records one conflict for a year-rejected assignment create and does not retry it', async () => {
+      insertAssignment();
+      const gateway = buildGateway();
+      (gateway.createAssignment as ReturnType<typeof vi.fn>).mockRejectedValue(yearClosed());
+      const service = new AssignmentSyncService(gateway);
+
+      await service.pushPending(test.context.connection);
+      await service.pushPending(test.context.connection);
+
+      expect(gateway.createAssignment).toHaveBeenCalledTimes(1);
+      expect(conflicts()).toEqual([
+        {
+          entityType: 'assignments',
+          entityId: 'a1',
+          operationType: 'create',
+          reason: `ACADEMIC_YEAR_CLOSED: ${CLOSED_MESSAGE}`,
+          status: 'unresolved',
+          operationId: null,
+        },
+      ]);
+    });
+
+    it('records an update conflict for a year-rejected edit of a pushed assignment', async () => {
+      insertAssignment({ remoteId: 'remote-a1', syncedAt: '2026-07-01T00:00:00.000Z' });
+      const gateway = buildGateway();
+      (gateway.updateAssignment as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new RemoteRejectedError(
+          409,
+          'This academic year has not started yet. Grades, attendance and assignments can be recorded once it starts.',
+          { remoteErrorCode: 'ACADEMIC_YEAR_NOT_STARTED' },
+        ),
+      );
+      await new AssignmentSyncService(gateway).pushPending(test.context.connection);
+      expect(conflicts()).toEqual([
+        expect.objectContaining({
+          entityType: 'assignments',
+          entityId: 'a1',
+          operationType: 'update',
+          reason: expect.stringMatching(/^ACADEMIC_YEAR_NOT_STARTED: This academic year has not started yet\./),
+        }),
+      ]);
+    });
+
+    it('records one conflict for a year-rejected grade and does not retry it', async () => {
+      insertAssignment({ id: 'a2', remoteId: 'remote-a2', syncedAt: '2026-08-01T00:00:00.000Z' });
+      insertGradedSubmission('s2', 'a2');
+      const gateway = buildGateway();
+      (gateway.gradeSubmission as ReturnType<typeof vi.fn>).mockRejectedValue(yearClosed());
+      const service = new AssignmentSyncService(gateway);
+
+      await service.pushPending(test.context.connection);
+      await service.pushPending(test.context.connection);
+
+      expect(gateway.gradeSubmission).toHaveBeenCalledTimes(1);
+      expect(conflicts()).toEqual([
+        {
+          entityType: 'assignment_submissions',
+          entityId: 's2',
+          operationType: 'create',
+          reason: `ACADEMIC_YEAR_CLOSED: ${CLOSED_MESSAGE}`,
+          status: 'unresolved',
+          operationId: null,
+        },
+      ]);
+    });
+
+    it('recognises the year message even when the server errorCode is generic', async () => {
+      insertAssignment();
+      const gateway = buildGateway();
+      (gateway.createAssignment as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new RemoteRejectedError(409, CLOSED_MESSAGE, { remoteErrorCode: 'CONFLICT' }),
+      );
+      await new AssignmentSyncService(gateway).pushPending(test.context.connection);
+      expect(conflicts()).toHaveLength(1);
+    });
+
+    it('any other rejection keeps the row dirty and records nothing', async () => {
+      insertAssignment();
+      insertAssignment({ id: 'a2', remoteId: 'remote-a2', syncedAt: '2026-08-01T00:00:00.000Z' });
+      insertGradedSubmission('s2', 'a2');
+      const gateway = buildGateway();
+      (gateway.createAssignment as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new RemoteRejectedError(409, 'Some other conflict.', { remoteErrorCode: 'CONFLICT' }),
+      );
+      (gateway.gradeSubmission as ReturnType<typeof vi.fn>).mockRejectedValue(new RemoteRejectedError(400, 'bad'));
+      const service = new AssignmentSyncService(gateway);
+
+      await service.pushPending(test.context.connection);
+      await service.pushPending(test.context.connection);
+
+      expect(gateway.createAssignment).toHaveBeenCalledTimes(2);
+      expect(gateway.gradeSubmission).toHaveBeenCalledTimes(2);
+      expect(conflicts()).toEqual([]);
+      expect(test.context.connection.prepare(`SELECT syncedAt FROM assignments WHERE id='a1'`).get()).toEqual({
+        syncedAt: null,
+      });
+    });
   });
 });

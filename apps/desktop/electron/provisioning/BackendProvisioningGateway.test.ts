@@ -363,6 +363,15 @@ describe('BackendProvisioningGateway', () => {
       expect((error as RemoteRejectedError).remoteMessage).toBe('This request was withdrawn while the transfer was being completed.');
     });
 
+    it('a 4xx carries the server errorCode', async () => {
+      vi.stubGlobal('fetch', vi.fn(async () =>
+        errorResponse(409, { success: false, errorCode: 'ACADEMIC_YEAR_CLOSED', message: 'closed' })));
+      const error = await buildGateway().cancelTransfer('t-1').catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(RemoteRejectedError);
+      expect((error as RemoteRejectedError).remoteErrorCode).toBe('ACADEMIC_YEAR_CLOSED');
+      expect((error as RemoteRejectedError).remoteMessage).toBe('closed');
+    });
+
     it('array message: surfaces the first validation message', async () => {
       vi.stubGlobal('fetch', vi.fn(async () =>
         errorResponse(400, { message: ['classId should not be empty', 'termId should not be empty'] })));
