@@ -125,7 +125,7 @@ export function ReportCardList({ studentId }: { studentId: string }) {
           </ul>
         </div>
       ))}
-      {openId && <OpenedReportCard issueId={openId} onClose={() => setOpenId(null)} />}
+      {openId && <OpenedReportCard key={openId} issueId={openId} onClose={() => setOpenId(null)} />}
     </div>
   );
 }

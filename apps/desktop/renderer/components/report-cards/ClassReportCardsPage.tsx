@@ -89,7 +89,7 @@ export function ClassReportCardsPage({ classId }: { classId: string }) {
           </tbody>
         </table>
       </div>
-      {openId && <OpenedReportCard issueId={openId} onClose={() => setOpenId(null)} />}
+      {openId && <OpenedReportCard key={openId} issueId={openId} onClose={() => setOpenId(null)} />}
     </div>
   );
 }

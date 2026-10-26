@@ -71,4 +71,26 @@ describe('ReportCardList', () => {
     renderIn(<ReportCardList studentId="st-1" />);
     expect(await screen.findByText('Not allowed.')).toBeInTheDocument();
   });
+
+  it('never shows the previous card while the next one loads', async () => {
+    let release: (v: ReturnType<typeof detailFixture>) => void = () => undefined;
+    const getIssue = vi
+      .fn()
+      .mockImplementationOnce(async () => detailFixture())
+      .mockImplementationOnce(
+        () =>
+          new Promise((res) => {
+            release = res;
+          }),
+      );
+    install({ getIssue });
+    renderIn(<ReportCardList studentId="st-1" />);
+    fireEvent.click((await screen.findAllByRole('button', { name: /Period 2/ }))[0]!);
+    expect(await screen.findByText('Monrovia Central High')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Period 3/ }));
+    await waitFor(() => expect(getIssue).toHaveBeenCalledWith('i-3'));
+    expect(screen.queryByText('Monrovia Central High')).not.toBeInTheDocument();
+    release(detailFixture());
+    expect(await screen.findByText('Monrovia Central High')).toBeInTheDocument();
+  });
 });
