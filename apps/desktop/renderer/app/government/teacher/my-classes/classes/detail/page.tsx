@@ -15,6 +15,7 @@ import { sharedBridge } from '@/services/nemis-bridge/shared';
 import { studentBridge } from '@/services/nemis-bridge/school-admin/student-bridge';
 import { genderBadgeClass, genderLabel, human, queryId } from '@/components/teachers/shared';
 import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
+import { ClassReportCardsPage } from '@/components/report-cards/ClassReportCardsPage';
 
 interface ClassHeader {
   classId: string;
@@ -297,6 +298,11 @@ export default function ClassDetailPage() {
                 </tbody>
               </table>
             </div>
+
+            <section className="space-y-3">
+              <h2 className="text-base font-semibold text-slate-900">Report cards</h2>
+              <ClassReportCardsPage classId={classId} />
+            </section>
           </>
         )}
       </div>

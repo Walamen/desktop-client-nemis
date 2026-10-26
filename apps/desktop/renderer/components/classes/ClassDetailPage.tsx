@@ -9,9 +9,10 @@ import { ArrowLeft, Users, BookOpen, UserCheck, Plus, Trash2, AlertTriangle } fr
 import { useViewModel } from '@/hooks/use-view-model';
 import { useAcademicFoundationViewModel, useTeachersListViewModel, useTeachingAssignmentViewModel } from '@/lib/presentation/hooks/school-admin';
 import { schoolAdminBridge } from '@/services/nemis-bridge/school-admin';
+import { ClassReportCardsPage } from '@/components/report-cards/ClassReportCardsPage';
 import { fetchAllPages, formatGrade, getClassTeacherRoster, queryId, type TeacherOnClass } from './shared';
 
-type Tab = 'students' | 'subjects' | 'settings';
+type Tab = 'students' | 'subjects' | 'reportCards' | 'settings';
 
 function StatChip({ label, value }: { label: string; value: number | string }) {
   return (
@@ -218,6 +219,7 @@ export function ClassDetailPage() {
               [
                 { key: 'students' as Tab, label: 'Students', icon: <Users className="w-4 h-4" /> },
                 { key: 'subjects' as Tab, label: 'Subjects & Teachers', icon: <BookOpen className="w-4 h-4" /> },
+                { key: 'reportCards' as Tab, label: 'Report cards', icon: null },
                 { key: 'settings' as Tab, label: 'Settings', icon: null },
               ]
             ).map((tab) => (
@@ -412,6 +414,8 @@ export function ClassDetailPage() {
             </div>
           </>
         )}
+
+        {activeTab === 'reportCards' && <ClassReportCardsPage classId={id} />}
 
         {activeTab === 'settings' && (
           <div className="space-y-5 max-w-xl">

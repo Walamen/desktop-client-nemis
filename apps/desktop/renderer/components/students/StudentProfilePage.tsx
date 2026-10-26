@@ -24,6 +24,7 @@ import {
   useSettingsViewModel,
   useStudentProfileViewModel,
 } from '@/lib/presentation/hooks/school-admin';
+import { ReportCardList } from '@/components/report-cards/ReportCardList';
 import { human, queryId } from './shared';
 
 function DetailRow({
@@ -284,6 +285,13 @@ export function StudentProfilePage() {
         ) : (
           <Skeleton className="h-16 w-full" />
         )}
+      </section>
+      <section className="bg-white border border-slate-300 rounded-card p-6">
+        <h2 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <GraduationCap className="w-4 h-4 text-sky-700" />
+          Report cards
+        </h2>
+        <ReportCardList studentId={id} />
       </section>
       <div className="grid sm:grid-cols-2 gap-4">
         <EmptyState

@@ -32,6 +32,7 @@ function installBaseMock() {
         ];
       }),
     },
+    reportCards: { listForClass: vi.fn(async () => [{ student: { id: 'st-1', nemisId: null, fullName: 'Grace Toe' }, latest: null }]) },
     student: { list: vi.fn(async () => ({ items: [], total: 0, limit: 200, offset: 0 })) },
     attendance: { list: vi.fn(async () => []) },
     schoolAdmin: {
@@ -69,5 +70,19 @@ describe('Teacher class detail page', () => {
     expect(nemis.teacher.listAssignments).not.toHaveBeenCalledWith(USER_ID);
     expect(await screen.findByText('Grade 10A')).toBeInTheDocument();
     expect(screen.queryByText('Class not found')).toBeNull();
+  });
+
+  it('shows the class report cards read-only', async () => {
+    const nemis = installBaseMock() as unknown as { reportCards: { listForClass: ReturnType<typeof vi.fn> } };
+    const layer = createRendererPresentation();
+    await layer.bootstrap.run();
+    render(
+      <PresentationProvider layer={layer}>
+        <ClassDetailPage />
+      </PresentationProvider>,
+    );
+    expect(await screen.findByRole('heading', { name: 'Report cards' })).toBeInTheDocument();
+    expect(await screen.findByText('No report cards have been issued for this class yet.')).toBeInTheDocument();
+    expect(nemis.reportCards.listForClass).toHaveBeenCalledWith('class-1');
   });
 });

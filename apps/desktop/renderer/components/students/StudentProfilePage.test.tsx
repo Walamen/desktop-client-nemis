@@ -107,3 +107,26 @@ describe('StudentProfilePage student login note', () => {
     expect(screen.queryByText('Student login becomes available after this record syncs.')).not.toBeInTheDocument();
   });
 });
+
+describe('StudentProfilePage report cards', () => {
+  it('shows a Report cards section listing the issued cards', async () => {
+    const nemis = (window as unknown as { nemis: Record<string, unknown> }).nemis;
+    nemis.reportCards = {
+      listForStudent: vi.fn(async () => [
+        {
+          issueId: 'i-1', reportCardId: 'rc-1', studentId: 's-1', academicYearId: 'ay-1', academicYearName: '2026/2027',
+          classId: 'c-1', className: 'Grade 1A', kind: 'PERIOD', gradingPeriodName: 'Period 1', version: 1,
+          status: 'CURRENT', issuedAt: '2026-10-01T10:00:00.000Z',
+        },
+      ]),
+    };
+    const layer = createRendererPresentation();
+    render(
+      <PresentationProvider layer={layer}>
+        <StudentProfilePage />
+      </PresentationProvider>,
+    );
+    expect(await screen.findByRole('heading', { name: 'Report cards' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: '2026/2027' })).toBeInTheDocument();
+  });
+});
