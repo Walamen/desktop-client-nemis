@@ -107,6 +107,22 @@ describe('authorizeChannel', () => {
     }
   });
 
+  it('opens report cards to school administrators and teachers only', () => {
+    for (const channel of [
+      IpcChannels.REPORT_CARDS_LIST_FOR_STUDENT,
+      IpcChannels.REPORT_CARDS_LIST_FOR_CLASS,
+      IpcChannels.REPORT_CARD_GET_ISSUE,
+      IpcChannels.REPORT_CARDS_LIST_ARCHIVED_YEARS,
+    ]) {
+      for (const role of [SystemRole.INSTITUTION_ADMIN, SystemRole.TEACHER]) {
+        expect(() => authorizeChannel(channel, workspace(role))).not.toThrow();
+      }
+      for (const role of [SystemRole.COUNTY_ADMIN, SystemRole.DEO, SystemRole.MINISTRY_ADMIN]) {
+        expect(() => authorizeChannel(channel, workspace(role))).toThrow(ForbiddenError);
+      }
+    }
+  });
+
   it('allows teacher attendance but blocks unrelated roles', () => {
     expect(() =>
       authorizeChannel(IpcChannels.ATTENDANCE_RECORD, workspace(SystemRole.TEACHER)),

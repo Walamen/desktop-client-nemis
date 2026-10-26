@@ -22,6 +22,7 @@ import { registerAttendanceHandlers } from '@app/ipc/handlers/shared/attendance'
 import { registerSchoolAdminHandlers } from '@app/ipc/handlers/shared/schoolAdmin';
 import { registerInstitutionHandlers } from '@app/ipc/handlers/shared/institutions';
 import { registerAcademicContextHandlers } from '@app/ipc/handlers/shared/academicContext';
+import { registerReportCardHandlers } from '@app/ipc/handlers/shared/reportCards';
 
 // Institution Admin (school admin) portal — see
 // electron/ipc/handlers/school-admin/.
@@ -96,6 +97,7 @@ export function registerIpcHandlers(
   registerSchoolAdminHandlers(securedHandle, schoolAdmin);
   registerInstitutionHandlers(securedHandle, app);
   registerAcademicContextHandlers(securedHandle, workspaces);
+  registerReportCardHandlers(securedHandle, workspaces);
 
   registerDashboardHandlers(securedHandle, app);
   registerCountyDashboardHandlers(securedHandle, app);

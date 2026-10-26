@@ -106,6 +106,12 @@ const SCHOOL_STAFF_CHANNELS = new Set<IpcChannel>([
   IpcChannels.ACADEMIC_YEAR_GET_CURRENT,
   IpcChannels.TERM_LIST,
   IpcChannels.ACADEMIC_CONTEXT_GET,
+  // Report cards (academic-year lifecycle Stage 2): the read model scopes a
+  // TEACHER to the classes they are assigned to, see SqliteReportCardReadModel.
+  IpcChannels.REPORT_CARDS_LIST_FOR_STUDENT,
+  IpcChannels.REPORT_CARDS_LIST_FOR_CLASS,
+  IpcChannels.REPORT_CARD_GET_ISSUE,
+  IpcChannels.REPORT_CARDS_LIST_ARCHIVED_YEARS,
 ]);
 
 // Teacher-exclusive channels — unlike attendance, the web app has no

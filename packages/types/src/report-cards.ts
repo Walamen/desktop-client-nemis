@@ -82,3 +82,24 @@ export interface ReportCardSummary {
   status: ReportCardIssueStatus;
   issuedAt: string;
 }
+
+/** One student's line on a class page: the latest CURRENT issue, or null when
+ * every issue of the card has been replaced or withdrawn. */
+export interface ReportCardClassEntry {
+  student: { id: string; nemisId: string | null; fullName: string };
+  latest: ReportCardSummary | null;
+}
+
+/** A closed (or reopened) year that holds report cards, with the classes
+ * whose cards the caller may open. */
+export interface ReportCardArchivedYear {
+  academicYearId: string;
+  code: string;
+  status: 'CLOSED' | 'REOPENED';
+  classes: { classId: string; name: string; gradeLevel: string }[];
+}
+
+export interface ReportCardIssueDetail {
+  summary: ReportCardSummary;
+  payload: ReportCardPayloadV1;
+}

@@ -1,4 +1,10 @@
 import type { AcademicContext } from './academic-context';
+import type {
+  ReportCardArchivedYear,
+  ReportCardClassEntry,
+  ReportCardIssueDetail,
+  ReportCardSummary,
+} from './report-cards';
 import type { HeaderNotificationsSummary } from './header-notifications';
 import type {
   AcademicYearListItemResult,
@@ -322,6 +328,12 @@ export interface IdentityApi {
   getHeaderNotifications(): Promise<HeaderNotificationsSummary>;
   getAcademicContext(): Promise<AcademicContext>;
 }
+export interface ReportCardsApi {
+  listForStudent(studentId: string): Promise<ReportCardSummary[]>;
+  listForClass(classId: string): Promise<ReportCardClassEntry[]>;
+  getIssue(issueId: string): Promise<ReportCardIssueDetail>;
+  listArchivedYears(): Promise<ReportCardArchivedYear[]>;
+}
 export interface DeviceApi {
   getInfo(): Promise<DeviceInfoResult | null>;
 }
@@ -436,6 +448,7 @@ export interface NemisApi {
   classes: ClassesApi;
   subject: SubjectApi;
   identity: IdentityApi;
+  reportCards: ReportCardsApi;
   device: DeviceApi;
   student: StudentApi;
   teacher: TeacherApi;

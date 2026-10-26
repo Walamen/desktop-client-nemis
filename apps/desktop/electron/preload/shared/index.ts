@@ -4,6 +4,7 @@ export * from './sync-api';
 export * from './system-api';
 export * from './settings-api';
 export * from './identity-api';
+export * from './report-cards-api';
 export * from './device-api';
 export * from './attendance-api';
 export * from './school-admin-records-api';
@@ -16,6 +17,7 @@ import { syncApi } from './sync-api';
 import { systemApi } from './system-api';
 import { settingsApi } from './settings-api';
 import { identityApi } from './identity-api';
+import { reportCardsApi } from './report-cards-api';
 import { deviceApi } from './device-api';
 import { attendanceApi } from './attendance-api';
 import { schoolAdminRecordsApi } from './school-admin-records-api';
@@ -30,6 +32,7 @@ export const sharedApi = {
   system: systemApi,
   settings: settingsApi,
   identity: identityApi,
+  reportCards: reportCardsApi,
   device: deviceApi,
   attendance: attendanceApi,
   schoolAdmin: schoolAdminRecordsApi,

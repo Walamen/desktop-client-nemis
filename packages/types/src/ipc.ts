@@ -1,4 +1,10 @@
 import type { AcademicContext } from './academic-context';
+import type {
+  ReportCardArchivedYear,
+  ReportCardClassEntry,
+  ReportCardIssueDetail,
+  ReportCardSummary,
+} from './report-cards';
 import type { HeaderNotificationsSummary } from './header-notifications';
 import type {
   OnlineCommandResult,
@@ -271,6 +277,10 @@ export interface IpcContract {
   'identity:get-current-user': { args: []; result: CurrentUserResult | null };
   'identity:header-notifications': { args: []; result: HeaderNotificationsSummary };
   'academic-context:get': { args: []; result: AcademicContext };
+  'report-cards:list-for-student': { args: [studentId: string]; result: ReportCardSummary[] };
+  'report-cards:list-for-class': { args: [classId: string]; result: ReportCardClassEntry[] };
+  'report-cards:get-issue': { args: [issueId: string]; result: ReportCardIssueDetail };
+  'report-cards:list-archived-years': { args: []; result: ReportCardArchivedYear[] };
   'device:get-info': { args: []; result: DeviceInfoResult | null };
   // Academic Foundation (Phase 9)
   'academic-year:list': { args: []; result: AcademicYearListItemResult[] };
@@ -504,6 +514,10 @@ export const IpcChannels = {
   IDENTITY_GET_CURRENT_USER: 'identity:get-current-user',
   IDENTITY_HEADER_NOTIFICATIONS: 'identity:header-notifications',
   ACADEMIC_CONTEXT_GET: 'academic-context:get',
+  REPORT_CARDS_LIST_FOR_STUDENT: 'report-cards:list-for-student',
+  REPORT_CARDS_LIST_FOR_CLASS: 'report-cards:list-for-class',
+  REPORT_CARD_GET_ISSUE: 'report-cards:get-issue',
+  REPORT_CARDS_LIST_ARCHIVED_YEARS: 'report-cards:list-archived-years',
   DEVICE_GET_INFO: 'device:get-info',
   ACADEMIC_YEAR_LIST: 'academic-year:list',
   ACADEMIC_YEAR_CREATE: 'academic-year:create',
