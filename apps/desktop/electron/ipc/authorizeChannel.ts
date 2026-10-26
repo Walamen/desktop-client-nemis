@@ -33,6 +33,18 @@ const SCHOOL_ADMIN_CHANNELS = new Set<IpcChannel>([
   IpcChannels.ACADEMIC_YEAR_CREATE,
   IpcChannels.ACADEMIC_YEAR_UPDATE,
   IpcChannels.ACADEMIC_YEAR_START,
+  // Close Academic Year (lifecycle Stage 3): online-only commands and the
+  // server reads behind the close workflow.
+  IpcChannels.CLOSE_GET_READINESS,
+  IpcChannels.CLOSE_FILL_CELLS,
+  IpcChannels.CLOSE_GET_PROMOTION,
+  IpcChannels.CLOSE_SAVE_PROMOTION,
+  IpcChannels.CLOSE_YEAR,
+  IpcChannels.REOPEN_YEAR,
+  IpcChannels.CORRECT_GRADE,
+  IpcChannels.CORRECT_OUTCOME,
+  IpcChannels.CORRECT_REMARK,
+  IpcChannels.CLOSE_PENDING_CHANGES_COUNT,
   IpcChannels.TERM_CREATE,
   IpcChannels.TERM_UPDATE,
   IpcChannels.TERM_SET_CURRENT,

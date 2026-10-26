@@ -41,6 +41,14 @@ import {
   type DesktopSyncPushResult,
   type SchoolRegistrationPayload,
   type StudentAcademicRecord,
+  type CloseReadiness,
+  type CorrectGradeRequest,
+  type CorrectOutcomeRequest,
+  type CorrectRemarkRequest,
+  type FillCellsRequest,
+  type PromotionOverview,
+  type ReopenYearRequest,
+  type SavePromotionRequest,
 } from '@nemis-desktop/types';
 import {
   ForbiddenError,
@@ -269,6 +277,100 @@ export class BackendProvisioningGateway {
     await this.authorized(
       `/academic-years/${encodeURIComponent(id)}/start`,
       { method: 'POST' },
+      () => undefined,
+      ONLINE_COMMAND,
+    );
+    return null;
+  }
+
+  // --- Close Academic Year (lifecycle Stage 3) -------------------------------
+  // Online only, INSTITUTION_ADMIN only. Command responses are not used: the
+  // forced pull that follows writes local truth. Any 4xx (including the close
+  // 409 with its blockers) surfaces as RemoteRejectedError with the server's
+  // message; callers re-read readiness rather than parse the 409 body.
+
+  async getCloseReadiness(yearId: string): Promise<CloseReadiness> {
+    return this.authorized(
+      `${closePath(yearId)}/close/readiness`,
+      { method: 'GET' },
+      (value) => {
+        const root = asRecord(value);
+        if (!Array.isArray(root.unpublishedPeriods) || !Array.isArray(root.missingCells)) {
+          throw new Error('Malformed server response.');
+        }
+        asRecord(root.cohort);
+        return root as unknown as CloseReadiness;
+      },
+      ONLINE_COMMAND,
+    );
+  }
+
+  async fillCloseCells(yearId: string, request: FillCellsRequest): Promise<null> {
+    return this.closeCommand(`${closePath(yearId)}/close/fill-cells`, { entries: request.entries });
+  }
+
+  async getClosePromotion(yearId: string): Promise<PromotionOverview> {
+    return this.authorized(
+      `${closePath(yearId)}/close/promotion`,
+      { method: 'GET' },
+      (value) => {
+        const root = asRecord(value);
+        if (!Array.isArray(root.students) || typeof root.passMark !== 'number') {
+          throw new Error('Malformed server response.');
+        }
+        return root as unknown as PromotionOverview;
+      },
+      ONLINE_COMMAND,
+    );
+  }
+
+  async saveClosePromotion(yearId: string, request: SavePromotionRequest): Promise<null> {
+    return this.closeCommand(`${closePath(yearId)}/close/promotion`, {
+      decisions: request.decisions,
+      principalRemarks: request.principalRemarks,
+      defaultPrincipalRemark: request.defaultPrincipalRemark,
+    });
+  }
+
+  async closeAcademicYear(yearId: string): Promise<null> {
+    return this.closeCommand(`${closePath(yearId)}/close`);
+  }
+
+  async reopenAcademicYear(yearId: string, request: ReopenYearRequest): Promise<null> {
+    return this.closeCommand(`${closePath(yearId)}/reopen`, { reason: request.reason });
+  }
+
+  async correctGrade(yearId: string, request: CorrectGradeRequest): Promise<null> {
+    return this.closeCommand(`${closePath(yearId)}/corrections/grade`, {
+      studentId: request.studentId,
+      subjectId: request.subjectId,
+      gradingPeriodId: request.gradingPeriodId,
+      score: request.score,
+      reason: request.reason,
+    });
+  }
+
+  async correctOutcome(yearId: string, request: CorrectOutcomeRequest): Promise<null> {
+    return this.closeCommand(`${closePath(yearId)}/corrections/outcome`, {
+      studentId: request.studentId,
+      outcome: request.outcome,
+      nextGradeLevel: request.nextGradeLevel,
+      reason: request.reason,
+    });
+  }
+
+  async correctRemark(yearId: string, request: CorrectRemarkRequest): Promise<null> {
+    return this.closeCommand(`${closePath(yearId)}/corrections/remark`, {
+      studentId: request.studentId,
+      remark: request.remark,
+      reason: request.reason,
+    });
+  }
+
+  private async closeCommand(path: string, body?: unknown): Promise<null> {
+    await this.authorized(
+      path,
+      { method: 'POST', ...(body === undefined ? {} : { body: JSON.stringify(body) }) },
       () => undefined,
       ONLINE_COMMAND,
     );
@@ -557,6 +659,10 @@ export class BackendProvisioningGateway {
     return validate(root.data);
   }
 }
+function closePath(yearId: string): string {
+  return `/academic-years/${encodeURIComponent(yearId)}`;
+}
+
 /** The server's error envelope is `{ errorCode, message, errors? }`, where
  * class-validator failures put an array in `message`. Anything unreadable
  * yields undefined — the caller still classifies by status. */

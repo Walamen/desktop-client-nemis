@@ -152,3 +152,24 @@ export interface AcademicYearArchive {
   createdAt: string | null;
   updatedAt: string | null;
 }
+
+/** IPC wrappers: the renderer addresses the year in the request body, the
+ * main process maps it to the path. */
+export interface CloseFillCellsIpcRequest extends FillCellsRequest {
+  yearId: string;
+}
+export interface CloseSavePromotionIpcRequest extends SavePromotionRequest {
+  yearId: string;
+}
+export interface CloseReopenIpcRequest extends ReopenYearRequest {
+  yearId: string;
+}
+export interface CloseCorrectGradeIpcRequest extends CorrectGradeRequest {
+  yearId: string;
+}
+export interface CloseCorrectOutcomeIpcRequest extends CorrectOutcomeRequest {
+  yearId: string;
+}
+export interface CloseCorrectRemarkIpcRequest extends CorrectRemarkRequest {
+  yearId: string;
+}

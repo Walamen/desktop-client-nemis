@@ -30,6 +30,16 @@ import type {
 } from './grade-completions';
 import type { GradeLevel } from './enums';
 import type {
+  CloseCorrectGradeIpcRequest,
+  CloseCorrectOutcomeIpcRequest,
+  CloseCorrectRemarkIpcRequest,
+  CloseFillCellsIpcRequest,
+  CloseReadiness,
+  CloseReopenIpcRequest,
+  CloseSavePromotionIpcRequest,
+  PromotionOverview,
+} from './academic-year-close';
+import type {
   AcademicYearListItemResult,
   ClassListRequest,
   ClassResult,
@@ -293,6 +303,16 @@ export interface IpcContract {
     result: AcademicYearListItemResult;
   };
   'academic-year:start': { args: [id: string]; result: OnlineCommandResult<null> };
+  'close:get-readiness': { args: [yearId: string]; result: CloseReadiness };
+  'close:fill-cells': { args: [request: CloseFillCellsIpcRequest]; result: OnlineCommandResult<null> };
+  'close:get-promotion': { args: [yearId: string]; result: PromotionOverview };
+  'close:save-promotion': { args: [request: CloseSavePromotionIpcRequest]; result: OnlineCommandResult<null> };
+  'close:close-year': { args: [yearId: string]; result: OnlineCommandResult<null> };
+  'close:reopen-year': { args: [request: CloseReopenIpcRequest]; result: OnlineCommandResult<null> };
+  'close:correct-grade': { args: [request: CloseCorrectGradeIpcRequest]; result: OnlineCommandResult<null> };
+  'close:correct-outcome': { args: [request: CloseCorrectOutcomeIpcRequest]; result: OnlineCommandResult<null> };
+  'close:correct-remark': { args: [request: CloseCorrectRemarkIpcRequest]; result: OnlineCommandResult<null> };
+  'close:pending-changes-count': { args: []; result: number };
   'term:list': { args: [academicYearId: string]; result: TermResult[] };
   'term:get-current': { args: []; result: TermResult | null };
   'term:create': { args: [request: CreateTermRequest]; result: TermResult };
@@ -523,6 +543,16 @@ export const IpcChannels = {
   ACADEMIC_YEAR_CREATE: 'academic-year:create',
   ACADEMIC_YEAR_UPDATE: 'academic-year:update',
   ACADEMIC_YEAR_START: 'academic-year:start',
+  CLOSE_GET_READINESS: 'close:get-readiness',
+  CLOSE_FILL_CELLS: 'close:fill-cells',
+  CLOSE_GET_PROMOTION: 'close:get-promotion',
+  CLOSE_SAVE_PROMOTION: 'close:save-promotion',
+  CLOSE_YEAR: 'close:close-year',
+  REOPEN_YEAR: 'close:reopen-year',
+  CORRECT_GRADE: 'close:correct-grade',
+  CORRECT_OUTCOME: 'close:correct-outcome',
+  CORRECT_REMARK: 'close:correct-remark',
+  CLOSE_PENDING_CHANGES_COUNT: 'close:pending-changes-count',
   TERM_LIST: 'term:list',
   TERM_GET_CURRENT: 'term:get-current',
   TERM_CREATE: 'term:create',

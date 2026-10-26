@@ -1,5 +1,15 @@
 import type { AcademicContext } from './academic-context';
 import type {
+  CloseCorrectGradeIpcRequest,
+  CloseCorrectOutcomeIpcRequest,
+  CloseCorrectRemarkIpcRequest,
+  CloseFillCellsIpcRequest,
+  CloseReadiness,
+  CloseReopenIpcRequest,
+  CloseSavePromotionIpcRequest,
+  PromotionOverview,
+} from './academic-year-close';
+import type {
   ReportCardArchivedYear,
   ReportCardClassEntry,
   ReportCardIssueDetail,
@@ -432,6 +442,22 @@ export interface GradeCompletionApi {
   guidance(academicYearId: string, gradeLevel: GradeLevel): Promise<CompletionGuidanceRow[]>;
 }
 
+/** Close Academic Year (lifecycle Stage 3): online only, school admin only.
+ * Reads go straight to the server; every command forces a pull afterwards. */
+export interface AcademicYearCloseApi {
+  getReadiness(yearId: string): Promise<CloseReadiness>;
+  fillCells(request: CloseFillCellsIpcRequest): Promise<OnlineCommandResult<null>>;
+  getPromotion(yearId: string): Promise<PromotionOverview>;
+  savePromotion(request: CloseSavePromotionIpcRequest): Promise<OnlineCommandResult<null>>;
+  closeYear(yearId: string): Promise<OnlineCommandResult<null>>;
+  reopenYear(request: CloseReopenIpcRequest): Promise<OnlineCommandResult<null>>;
+  correctGrade(request: CloseCorrectGradeIpcRequest): Promise<OnlineCommandResult<null>>;
+  correctOutcome(request: CloseCorrectOutcomeIpcRequest): Promise<OnlineCommandResult<null>>;
+  correctRemark(request: CloseCorrectRemarkIpcRequest): Promise<OnlineCommandResult<null>>;
+  /** Changes on this device the server has not accepted yet (all pending sources). */
+  pendingChangesCount(): Promise<number>;
+}
+
 export interface NemisApi {
   auth: AuthenticationApi;
   provisioning: ProvisioningApi;
@@ -459,4 +485,5 @@ export interface NemisApi {
   registry: RegistryApi;
   transfer: TransferApi;
   gradeCompletion: GradeCompletionApi;
+  academicYearClose: AcademicYearCloseApi;
 }

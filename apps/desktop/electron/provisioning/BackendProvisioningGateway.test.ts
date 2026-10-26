@@ -506,6 +506,91 @@ describe('BackendProvisioningGateway', () => {
       expect(init.method).toBe('POST');
     });
 
+    describe('close academic year', () => {
+      async function call<T>(data: unknown, run: (g: BackendProvisioningGateway) => Promise<T>) {
+        const fetchMock = vi.fn(async () => response(data));
+        vi.stubGlobal('fetch', fetchMock);
+        const result = await run(buildGateway());
+        const [url, init] = fetchMock.mock.calls[0] as unknown as [URL, RequestInit];
+        return { result, url: url.toString(), method: init.method, body: init.body ? JSON.parse(String(init.body)) : undefined };
+      }
+      const BASE = 'https://nemis.example/academic-years/y%201';
+
+      it('getCloseReadiness GETs the readiness endpoint and returns the data', async () => {
+        const readiness = { unpublishedPeriods: [], missingCells: [], cohort: { present: 3, withdrawn: 1 } };
+        const out = await call(readiness, (g) => g.getCloseReadiness('y 1'));
+        expect(out.url).toBe(`${BASE}/close/readiness`);
+        expect(out.method).toBe('GET');
+        expect(out.result).toEqual(readiness);
+      });
+
+      it('getCloseReadiness rejects a malformed response', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => response({ nope: true })));
+        await expect(buildGateway().getCloseReadiness('y-1')).rejects.toThrow(/Malformed/);
+      });
+
+      it('fillCloseCells POSTs the entries', async () => {
+        const entries = [{ studentId: 's', subjectId: 'x', gradingPeriodId: 'p', score: 70, reason: 'Lost sheet' }];
+        const out = await call({ filled: 1 }, (g) => g.fillCloseCells('y 1', { entries }));
+        expect(out.url).toBe(`${BASE}/close/fill-cells`);
+        expect(out.method).toBe('POST');
+        expect(out.body).toEqual({ entries });
+        expect(out.result).toBeNull();
+      });
+
+      it('getClosePromotion GETs the promotion endpoint', async () => {
+        const overview = { passMark: 50, students: [] };
+        const out = await call(overview, (g) => g.getClosePromotion('y 1'));
+        expect(out.url).toBe(`${BASE}/close/promotion`);
+        expect(out.method).toBe('GET');
+        expect(out.result).toEqual(overview);
+      });
+
+      it('saveClosePromotion POSTs decisions and remarks only', async () => {
+        const body = {
+          decisions: [{ studentId: 's', outcome: 'PROMOTED', nextGradeLevel: 'GRADE_8' }],
+          principalRemarks: [{ studentId: 's', remark: 'Well done' }],
+          defaultPrincipalRemark: 'Keep going',
+        };
+        const out = await call(null, (g) => g.saveClosePromotion('y 1', body as never));
+        expect(out.url).toBe(`${BASE}/close/promotion`);
+        expect(out.method).toBe('POST');
+        expect(out.body).toEqual(body);
+      });
+
+      it('closeAcademicYear POSTs to /close with no body', async () => {
+        const out = await call({ id: 'y 1' }, (g) => g.closeAcademicYear('y 1'));
+        expect(out.url).toBe(`${BASE}/close`);
+        expect(out.method).toBe('POST');
+        expect(out.body).toBeUndefined();
+        expect(out.result).toBeNull();
+      });
+
+      it('reopenAcademicYear POSTs the reason', async () => {
+        const out = await call({}, (g) => g.reopenAcademicYear('y 1', { reason: 'Wrong mark' }));
+        expect(out.url).toBe(`${BASE}/reopen`);
+        expect(out.method).toBe('POST');
+        expect(out.body).toEqual({ reason: 'Wrong mark' });
+      });
+
+      it('the three corrections POST to their own paths', async () => {
+        const grade = { studentId: 's', subjectId: 'x', gradingPeriodId: 'p', score: 61, reason: 'Typo' };
+        const g1 = await call({}, (g) => g.correctGrade('y 1', grade));
+        expect([g1.url, g1.method, g1.body]).toEqual([`${BASE}/corrections/grade`, 'POST', grade]);
+        const outcome = { studentId: 's', outcome: 'RETAINED', nextGradeLevel: null, reason: 'Appeal' };
+        const g2 = await call({}, (g) => g.correctOutcome('y 1', outcome as never));
+        expect([g2.url, g2.method, g2.body]).toEqual([`${BASE}/corrections/outcome`, 'POST', outcome]);
+        const remark = { studentId: 's', remark: 'Improved', reason: 'Typo' };
+        const g3 = await call({}, (g) => g.correctRemark('y 1', remark));
+        expect([g3.url, g3.method, g3.body]).toEqual([`${BASE}/corrections/remark`, 'POST', remark]);
+      });
+
+      it('a 409 refusal surfaces as RemoteRejectedError with the server message', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ message: 'Not ready to close.', blockers: {} }), { status: 409 })));
+        await expect(buildGateway().closeAcademicYear('y-1')).rejects.toMatchObject({ status: 409, remoteMessage: 'Not ready to close.' });
+      });
+    });
+
     it('startDirectConversation POSTs the target and first message', async () => {
       const fetchMock = vi.fn(async () => response({ conversation: { id: 'c-1' }, message: { id: 'm-1' } }));
       vi.stubGlobal('fetch', fetchMock);

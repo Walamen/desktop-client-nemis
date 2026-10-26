@@ -598,6 +598,11 @@ export class DesktopSyncWorker {
     };
   }
 
+  /** The Pending changes page total: everything not yet accepted by the server. */
+  countPendingChanges(): number {
+    return this.pendingChanges.countPending(this.#pendingContext(this.workspaces.active));
+  }
+
   listPending(): PendingSummary {
     return this.pendingChanges.getSummary(this.#pendingContext(this.workspaces.active));
   }

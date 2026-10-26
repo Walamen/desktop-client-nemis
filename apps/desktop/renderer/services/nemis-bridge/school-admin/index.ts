@@ -23,6 +23,7 @@ import { timetableBridge } from './timetable-bridge';
 import { registryBridge } from './registry-bridge';
 import { transferBridge } from './transfer-bridge';
 import { gradeCompletionBridge } from './grade-completion-bridge';
+import { academicYearCloseBridge } from './academic-year-close-bridge';
 
 /** Everything the Institution Admin (school admin) portal owns: school
  * profile, academic foundation (years/terms/classes/subjects), students,
@@ -41,4 +42,5 @@ export const schoolAdminBridge = {
   ...registryBridge,
   ...transferBridge,
   ...gradeCompletionBridge,
+  ...academicYearCloseBridge,
 };

@@ -29,6 +29,7 @@ import { registerReportCardHandlers } from '@app/ipc/handlers/shared/reportCards
 import { registerDashboardHandlers } from '@app/ipc/handlers/school-admin/dashboard';
 import { registerSchoolHandlers } from '@app/ipc/handlers/school-admin/school';
 import { registerAcademicYearHandlers } from '@app/ipc/handlers/school-admin/academicYear';
+import { registerAcademicYearCloseHandlers } from '@app/ipc/handlers/school-admin/academicYearClose';
 import { registerTermHandlers } from '@app/ipc/handlers/school-admin/term';
 import { registerClassHandlers } from '@app/ipc/handlers/school-admin/classes';
 import { registerSubjectHandlers } from '@app/ipc/handlers/school-admin/subject';
@@ -120,6 +121,7 @@ export function registerIpcHandlers(
   registerRegistryHandlers(securedHandle, gateway, refresh);
   registerTransferHandlers(securedHandle, gateway, refresh);
   registerAcademicYearHandlers(securedHandle, app, gateway, refresh);
+  registerAcademicYearCloseHandlers(securedHandle, gateway, refresh, () => syncWorker.countPendingChanges());
   registerCountyDeoHandlers(securedHandle, gateway, refresh);
   registerCountyMessagingHandlers(securedHandle, app, gateway, refresh, presence);
   registerCountyUserCommandHandlers(securedHandle, gateway, refresh, () => workspaces.active.user.scope.scopeId);
