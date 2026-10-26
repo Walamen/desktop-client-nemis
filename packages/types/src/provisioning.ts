@@ -93,6 +93,8 @@ export const PROVISIONING_COLLECTIONS = [
   'counties',
   'termAverages',
   'directConversations', 'directMessages', 'auditLogs',
+  // Pull-only; reportCards before reportCardIssues (issues belong to a card).
+  'reportCards', 'reportCardIssues',
 ] as const;
 
 export type ProvisioningCollection = (typeof PROVISIONING_COLLECTIONS)[number];

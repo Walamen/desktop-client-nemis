@@ -112,6 +112,9 @@ const SPECS: Record<ProvisioningCollection, TableSpec> = {
   directConversations: spec('direct_conversations', ['id','initiatorId','recipientId','lastMessageAt','createdAt','updatedAt','counterpartUserId','counterpartFirstName','counterpartLastName','counterpartPhotoUrl','counterpartRole','counterpartInstitutionName']),
   directMessages: spec('direct_messages', ['id','conversationId','senderId','content','isRead','readAt','createdAt','updatedAt']),
   auditLogs: spec('audit_logs', ['id','userId','action','entityType','entityId','timestamp','actorName','actorScope']),
+  // Academic-year lifecycle: pull-only report cards; payload is the JSON of the issue.
+  reportCards: spec('report_cards', ['id','studentId','institutionId','academicYearId','classId','gradeLevel','createdAt','updatedAt']),
+  reportCardIssues: spec('report_card_issues', ['id','reportCardId','kind','gradingPeriodId','version','status','payload','issuedBy','issuedAt','supersededAt','withdrawnAt','createdAt','updatedAt']),
 };
 
 const DELETE_ORDER = [...PROVISIONING_COLLECTIONS].reverse();

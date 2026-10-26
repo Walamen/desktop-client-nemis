@@ -31,3 +31,4 @@ export * from './realtime';
 export * from './county-users';
 export * from './header-notifications';
 export * from './academic-context';
+export * from './report-cards';

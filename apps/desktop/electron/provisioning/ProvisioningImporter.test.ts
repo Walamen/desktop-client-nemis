@@ -532,6 +532,51 @@ describe('ProvisioningImporter', () => {
     expect(countRows('sync_queue')).toBe(0);
   });
 
+  it('imports report cards pull-only, round-trips the payload, upserts deltas and replaces on a full resync', () => {
+    const card = (id: string, gradeLevel = 'GRADE_7') => ({
+      id, studentId: 's1', institutionId: 'school-1', academicYearId: 'y1', classId: 'c1', gradeLevel,
+      createdAt: '2026-10-01T00:00:00.000Z', updatedAt: '2026-10-01T00:00:00.000Z',
+    });
+    const issue = (id: string, status: string, payload: unknown = { schemaVersion: 1, kind: 'PERIOD' }) => ({
+      id, reportCardId: 'rc-1', kind: 'PERIOD', gradingPeriodId: 'gp1', version: 1, status, payload,
+      issuedBy: 'user-1', issuedAt: '2026-10-02T00:00:00.000Z', supersededAt: null, withdrawnAt: null,
+      createdAt: '2026-10-02T00:00:00.000Z', updatedAt: '2026-10-02T00:00:00.000Z',
+    });
+    const importer = new ProvisioningImporter(manager);
+    const db = manager.connection;
+    const payload = { schemaVersion: 1, kind: 'PERIOD', subjects: [{ name: 'Math', cells: { 'gp:gp1': { value: 82.5 } } }] };
+    importer.import(
+      snapshotOf({ ...BASE_DATA, reportCards: [card('rc-1')], reportCardIssues: [issue('ri-1', 'CURRENT', payload)] }),
+      CONTEXT,
+    );
+    const stored = db.prepare(`SELECT payload FROM report_card_issues WHERE id='ri-1'`).get() as { payload: string };
+    expect(JSON.parse(stored.payload)).toEqual(payload);
+    expect(countRows('sync_queue')).toBe(0);
+
+    importer.import(
+      snapshotOf({
+        ...BASE_DATA,
+        reportCards: [card('rc-1', 'GRADE_8'), card('rc-2')],
+        reportCardIssues: [issue('ri-1', 'SUPERSEDED'), issue('ri-2', 'CURRENT')],
+      }),
+      CONTEXT,
+      { merge: true },
+    );
+    expect(db.prepare(`SELECT id, gradeLevel FROM report_cards ORDER BY id`).all()).toEqual([
+      { id: 'rc-1', gradeLevel: 'GRADE_8' }, { id: 'rc-2', gradeLevel: 'GRADE_7' },
+    ]);
+    expect(db.prepare(`SELECT id, status FROM report_card_issues ORDER BY id`).all()).toEqual([
+      { id: 'ri-1', status: 'SUPERSEDED' }, { id: 'ri-2', status: 'CURRENT' },
+    ]);
+
+    importer.import(
+      snapshotOf({ ...BASE_DATA, reportCards: [card('rc-3')], reportCardIssues: [] }),
+      CONTEXT,
+    );
+    expect(db.prepare(`SELECT id FROM report_cards`).all()).toEqual([{ id: 'rc-3' }]);
+    expect(countRows('report_card_issues')).toBe(0);
+  });
+
   it('imports the county audit trail and prunes rows older than 365 days after verification', () => {
     const day = 24 * 60 * 60 * 1000;
     const audit = (id: string, ageDays: number) => ({

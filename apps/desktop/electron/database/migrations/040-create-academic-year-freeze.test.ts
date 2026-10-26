@@ -31,7 +31,11 @@ function inPull(db: SqliteDatabase, fn: () => void): void {
   })();
 }
 
-const EXEMPT = ['fee_rules', 'fee_obligations', 'fee_payments', 'fee_payment_reversals', 'student_transfers'];
+// report_cards / report_card_issues: pull-only, no user ever writes them.
+const EXEMPT = [
+  'fee_rules', 'fee_obligations', 'fee_payments', 'fee_payment_reversals', 'student_transfers',
+  'report_cards', 'report_card_issues',
+];
 const FROZEN = [
   'grades', 'attendance', 'assignments', 'assignment_submissions', 'term_averages', 'grade_completions',
   'terms', 'classes', 'class_teachers', 'class_subject_teachers', 'class_subjects', 'enrollments',
