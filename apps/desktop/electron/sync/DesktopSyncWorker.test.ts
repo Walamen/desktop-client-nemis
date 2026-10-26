@@ -9,6 +9,7 @@ import type { ApplicationLayer } from '@nemis-desktop/application';
 import type { WorkspaceManager, ActiveWorkspace } from '../workspace/WorkspaceManager';
 import type { BackendProvisioningGateway } from '../provisioning/BackendProvisioningGateway';
 import { PROVISIONING_COLLECTIONS } from '@nemis-desktop/types';
+import { ProvisioningImporter } from '../provisioning/ProvisioningImporter';
 import { DesktopSyncWorker } from './DesktopSyncWorker';
 import { RemoteRejectedError } from '@nemis-desktop/shared';
 
@@ -953,6 +954,79 @@ describe('DesktopSyncWorker retry policy', () => {
       manager.connection.prepare('DELETE FROM sync_queue').run(); // the queue drains
       await worker.syncActive();
       expect(downloadSnapshot).toHaveBeenCalledTimes(1);
+      expect(downloadSnapshot).toHaveBeenCalledWith('device-1', undefined);
+      expect(readSyncMetadata().lastFullResyncAt).not.toBeNull();
+    });
+  });
+
+  describe('a full resync never wipes unpushed homework', () => {
+    const LAST_DELTA = '2026-07-29T00:00:00.000Z';
+    const seed = () => {
+      const db = manager.connection;
+      db.prepare(`UPDATE sync_runtime SET captureEnabled=0 WHERE id='singleton'`).run();
+      db.prepare(`DELETE FROM sync_queue`).run();
+      db.prepare(`UPDATE sync_metadata SET lastDeltaAt=?, lastFullResyncAt=NULL WHERE id='singleton'`).run(LAST_DELTA);
+      const now = new Date().toISOString();
+      db.prepare(
+        `INSERT INTO assignments (id,classId,subjectId,teacherId,title,type,status,dueDate,createdAt,updatedAt)
+         VALUES ('a1','c1',NULL,'t1','Essay','HOMEWORK','PUBLISHED','2026-11-01',?,?)`,
+      ).run(now, now);
+    };
+
+    it('pulls a delta and leaves the full resync due while an assignment is unpushed', async () => {
+      seed();
+      const downloadSnapshot = vi.fn().mockResolvedValue(emptySnapshot());
+      const gateway = { pushChanges: vi.fn(), downloadSnapshot } as unknown as BackendProvisioningGateway;
+      const worker = new DesktopSyncWorker(workspaces, gateway, alwaysOnline());
+      const importSpy = vi.spyOn(ProvisioningImporter.prototype, 'import');
+
+      await worker.syncActive(); // the assignment push fails (no gateway method): still dirty
+
+      expect(downloadSnapshot).toHaveBeenCalledWith('device-1', LAST_DELTA);
+      expect(importSpy).toHaveBeenCalledWith(expect.anything(), expect.anything(), expect.objectContaining({ merge: true }));
+      expect(
+        (manager.connection.prepare(`SELECT COUNT(*) count FROM assignments`).get() as { count: number }).count,
+      ).toBe(1);
+      expect(readSyncMetadata()).toEqual({ lastDeltaAt: SNAPSHOT_GENERATED_AT, lastFullResyncAt: null });
+
+      // The homework pushes; the next cycle does the full reload.
+      manager.connection.prepare(`UPDATE assignments SET syncedAt=updatedAt`).run();
+      importSpy.mockClear();
+      await worker.pullNow();
+
+      expect(downloadSnapshot).toHaveBeenLastCalledWith('device-1', undefined);
+      expect(importSpy).toHaveBeenCalledWith(expect.anything(), expect.anything(), expect.objectContaining({ merge: false }));
+      expect(readSyncMetadata().lastFullResyncAt).not.toBeNull();
+      importSpy.mockRestore();
+    });
+
+    it('also waits on a graded submission not yet pushed', async () => {
+      seed();
+      manager.connection.prepare(`UPDATE assignments SET syncedAt=updatedAt`).run();
+      const now = new Date().toISOString();
+      manager.connection.prepare(
+        `INSERT INTO assignment_submissions (id,assignmentId,studentId,status,grade,createdAt,updatedAt)
+         VALUES ('sub1','a1','s1','GRADED',80,?,?)`,
+      ).run(now, now);
+      const downloadSnapshot = vi.fn().mockResolvedValue(emptySnapshot());
+      const gateway = { pushChanges: vi.fn(), downloadSnapshot } as unknown as BackendProvisioningGateway;
+      const worker = new DesktopSyncWorker(workspaces, gateway, alwaysOnline());
+
+      await worker.syncActive();
+
+      expect(downloadSnapshot).toHaveBeenCalledWith('device-1', LAST_DELTA);
+      expect(readSyncMetadata().lastFullResyncAt).toBeNull();
+    });
+
+    it('a device that never pulled still does its first full download', async () => {
+      seed();
+      manager.connection.prepare(`UPDATE sync_metadata SET lastDeltaAt=NULL WHERE id='singleton'`).run();
+      const downloadSnapshot = vi.fn().mockResolvedValue(emptySnapshot());
+      const gateway = { pushChanges: vi.fn(), downloadSnapshot } as unknown as BackendProvisioningGateway;
+      const worker = new DesktopSyncWorker(workspaces, gateway, alwaysOnline());
+
+      await worker.syncActive();
+
       expect(downloadSnapshot).toHaveBeenCalledWith('device-1', undefined);
       expect(readSyncMetadata().lastFullResyncAt).not.toBeNull();
     });

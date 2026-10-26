@@ -18,7 +18,13 @@ import { GradeCompletionSyncService } from './GradeCompletionSyncService';
 import { SchoolRegistrationSyncService } from './SchoolRegistrationSyncService';
 import { PendingChangesService } from './pending/PendingChangesService';
 import type { PendingContext } from './pending/types';
-import { FEE_REVERSAL_PENDING, GRADE_COMPLETION_PENDING, SCHOOL_REGISTRATION_PENDING } from './pendingPredicates';
+import {
+  ASSIGNMENT_DIRTY,
+  FEE_REVERSAL_PENDING,
+  GRADE_COMPLETION_PENDING,
+  SCHOOL_REGISTRATION_PENDING,
+  SUBMISSION_DIRTY,
+} from './pendingPredicates';
 import { logger } from '@app/services/logger';
 import { hasRealDisagreement, isAcademicYearRejection, unwrapLocalPayload } from '@nemis-desktop/shared';
 
@@ -312,8 +318,17 @@ export class DesktopSyncWorker {
         const meta = workspace.database.connection.prepare(
           `SELECT lastDeltaAt, lastFullResyncAt FROM sync_metadata WHERE id='singleton'`,
         ).get() as { lastDeltaAt: string | null; lastFullResyncAt: string | null };
-        const fullResyncDue =
+        const fullResyncScheduled =
           !meta.lastFullResyncAt || Date.now() - Date.parse(meta.lastFullResyncAt) >= 24 * 60 * 60_000;
+        // A full resync clears assignments and assignment_submissions before
+        // reloading them, which would wipe homework not yet pushed. While any
+        // is dirty, pull a delta and leave the full resync due for a later
+        // cycle. A device that has never pulled has nothing to merge into.
+        const homeworkUnpushed = (workspace.database.connection.prepare(
+          `SELECT EXISTS (SELECT 1 FROM assignments WHERE ${ASSIGNMENT_DIRTY})
+               OR EXISTS (SELECT 1 FROM assignment_submissions s WHERE ${SUBMISSION_DIRTY}) dirty`,
+        ).get() as { dirty: number }).dirty === 1;
+        const fullResyncDue = fullResyncScheduled && !(homeworkUnpushed && meta.lastDeltaAt);
         const since = fullResyncDue ? undefined : (meta.lastDeltaAt ?? undefined);
         const snapshot = await this.gateway.downloadSnapshot(completion.serverDeviceId, since);
         if (this.workspaces.active.identity !== workspace.identity) return;
