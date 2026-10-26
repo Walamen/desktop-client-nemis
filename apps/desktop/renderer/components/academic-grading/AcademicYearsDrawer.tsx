@@ -71,7 +71,7 @@ function AcademicYearsManager({ onNavigate }: { onNavigate: SetupNavigate }) {
       setNotice(refreshed ? `${year.code} started.` : `${year.code} started. It will appear here after the next sync.`);
       setView('list');
     } catch (cause) {
-      setStartError(parseIpcError(cause)?.message ?? 'The academic year could not be started. Please try again.');
+      setStartError(parseIpcError(cause)?.message || 'The academic year could not be started. Please try again.');
     } finally {
       setStarting(false);
     }

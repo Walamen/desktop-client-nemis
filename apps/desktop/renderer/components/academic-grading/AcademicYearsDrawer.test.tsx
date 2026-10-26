@@ -208,4 +208,14 @@ describe('AcademicYearsDrawer start (online only)', () => {
     expect(await screen.findByText("You're offline. Connect to the internet to do this.")).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Edit Academic Year' })).toBeInTheDocument();
   });
+
+  it('falls back to the generic start failure text when the error message is empty', async () => {
+    const start = vi.fn(async () => { throw new Error('[REMOTE_REJECTED] '); });
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    stubNemis({ years: [SETUP], academicYear: { start } });
+    await renderWithLayer(<AcademicYearsDrawer {...props()} />);
+    await openEdit('2027/2028');
+    fireEvent.click(screen.getByRole('button', { name: START }));
+    expect(await screen.findByText('The academic year could not be started. Please try again.')).toBeInTheDocument();
+  });
 });
