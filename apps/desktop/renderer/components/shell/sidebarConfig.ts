@@ -3,7 +3,7 @@ import {
   Building2, CreditCard, Bell, MessageCircle,
   MessageSquare, DollarSign, ClipboardCheck, ShieldCheck, Settings, UserCog,
   GraduationCap, ArrowRightLeft, UserCircle2, AlertTriangle, FileBarChart,
-  SlidersHorizontal, Award, Clock, Receipt, Layers,
+  SlidersHorizontal, Award, Clock, Receipt, Layers, Archive,
 } from 'lucide-react';
 // Use react-icons for icons 
 import { SiGoogleclassroom } from "react-icons/si";
@@ -119,6 +119,7 @@ export const sidebarConfigs: Record<DesktopPortalRole, SidebarConfig> = {
         label: 'REPORTS & MESSAGES',
         items: [
           { name: 'Reports', href: '/government/school-admin/reports', icon: FileBarChart },
+          { name: 'Past years', href: '/government/school-admin/past-years', icon: Archive },
           { name: 'Notifications', href: '/government/school-admin/notifications', icon: Bell },
           { name: 'Messages', href: '/government/school-admin/messages', icon: MessageCircle },
         ],
@@ -300,6 +301,7 @@ export const sidebarConfigs: Record<DesktopPortalRole, SidebarConfig> = {
           { name: 'Class Schedule', href: '/government/teacher/timetable', icon: CheckCircle },
           { name: 'Gradebook', href: '/government/teacher/grades', icon: CalendarCheck },
           { name: 'Attendence', href: '/government/teacher/attendance', icon: PiClockUserBold },
+          { name: 'Past years', href: '/government/teacher/past-years', icon: Archive },
         ],
       },
       {
