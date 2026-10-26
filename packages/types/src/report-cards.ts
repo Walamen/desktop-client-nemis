@@ -109,3 +109,17 @@ export interface ReportCardIssueDetail {
   summary: ReportCardSummary;
   payload: ReportCardPayloadV1;
 }
+
+/** One school's latest close of an academic year, as a district or county
+ * officer sees it (pull-only `academic_year_archives`). */
+export interface YearClosureRow {
+  academicYearId: string;
+  yearCode: string;
+  institutionId: string;
+  schoolName: string;
+  status: 'CLOSED' | 'REOPENED';
+  closedAt: string | null;
+  promoted: number;
+  retained: number;
+  graduated: number;
+}

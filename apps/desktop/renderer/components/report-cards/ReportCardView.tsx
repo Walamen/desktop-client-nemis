@@ -1,6 +1,7 @@
 'use client';
 
 import type {
+  ReportCardOutcome,
   ReportCardColumn,
   ReportCardIssueStatus,
   ReportCardPayloadV1,
@@ -34,6 +35,19 @@ function columnClass(kind: ReportCardColumn['kind']): string {
   if (kind === 'TERM_AVERAGE') return 'bg-sky-50 font-semibold';
   if (kind === 'YEARLY_AVERAGE') return 'bg-slate-200 font-bold';
   return '';
+}
+
+function outcomeLine(outcome: ReportCardOutcome, currentGrade: string): string {
+  switch (outcome.status) {
+    case 'PROMOTED':
+      return outcome.nextGradeLevel ? `Promoted to ${gradeLabel(outcome.nextGradeLevel)}` : 'Promoted';
+    case 'RETAINED':
+      return `Retained in ${gradeLabel(currentGrade)}`;
+    case 'GRADUATED':
+      return 'Graduated';
+    case 'WITHDRAWN':
+      return 'Withdrawn';
+  }
 }
 
 function Fact({ label, children }: { label: string; children: React.ReactNode }) {
@@ -124,6 +138,9 @@ export function ReportCardView({ payload, status, version }: ReportCardViewProps
                           {cell.sourceSchoolName}
                         </span>
                       )}
+                      {cell?.source === 'ADMIN_AT_CLOSE' && (
+                        <span className="block text-[11px] font-normal text-slate-500">Entered at close</span>
+                      )}
                     </td>
                   );
                 })}
@@ -161,6 +178,22 @@ export function ReportCardView({ payload, status, version }: ReportCardViewProps
           ))}
         </dl>
       </section>
+
+      {payload.kind === 'FINAL' && (payload.outcome || payload.principalRemark) && (
+        <section aria-label="Year outcome" className="space-y-2">
+          {payload.outcome && (
+            <p data-testid="report-card-outcome" className="text-base font-bold text-slate-900">
+              {outcomeLine(payload.outcome, payload.class.gradeLevel)}
+            </p>
+          )}
+          {payload.principalRemark && (
+            <div>
+              <h4 className="text-sm font-semibold text-slate-900">Principal&apos;s remark</h4>
+              <p className="text-sm text-slate-700">{payload.principalRemark}</p>
+            </div>
+          )}
+        </section>
+      )}
 
       <p className="text-sm text-slate-600">Pass mark: {payload.passMark}</p>
     </article>

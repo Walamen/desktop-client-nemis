@@ -126,6 +126,18 @@ describe('authorizeChannel', () => {
     }
   });
 
+  it('opens year closures to district and county officers only', () => {
+    for (const role of [SystemRole.DEO, SystemRole.COUNTY_ADMIN]) {
+      expect(() => authorizeChannel(IpcChannels.YEAR_ARCHIVES_LIST, workspace(role))).not.toThrow();
+    }
+    for (const role of [SystemRole.INSTITUTION_ADMIN, SystemRole.TEACHER, SystemRole.MINISTRY_ADMIN]) {
+      expect(() => authorizeChannel(IpcChannels.YEAR_ARCHIVES_LIST, workspace(role))).toThrow(ForbiddenError);
+      expect(() => authorizeChannel(IpcChannels.YEAR_ARCHIVES_LIST, workspace(role))).toThrow(
+        'Year closures are only available to district and county officers.',
+      );
+    }
+  });
+
   it('allows teacher attendance but blocks unrelated roles', () => {
     expect(() =>
       authorizeChannel(IpcChannels.ATTENDANCE_RECORD, workspace(SystemRole.TEACHER)),

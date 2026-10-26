@@ -130,6 +130,9 @@ const REPORT_CARD_CHANNELS = new Set<IpcChannel>([
   IpcChannels.REPORT_CARDS_LIST_ARCHIVED_YEARS,
 ]);
 
+// Closed academic years across the schools a district or county oversees.
+const GOVERNMENT_YEAR_ARCHIVE_CHANNELS = new Set<IpcChannel>([IpcChannels.YEAR_ARCHIVES_LIST]);
+
 // Teacher-exclusive channels — unlike attendance, the web app has no
 // school-admin-facing assignments screen at all, so these stay closed to
 // INSTITUTION_ADMIN rather than falling into SCHOOL_STAFF_CHANNELS. Ownership
@@ -223,6 +226,13 @@ export function authorizeChannel(channel: IpcChannel, workspaces: WorkspaceManag
   }
   if (TEACHER_ONLY_CHANNELS.has(channel) && role !== SystemRole.TEACHER) {
     throw new ForbiddenError('Assignments are only available to teachers.');
+  }
+  if (
+    GOVERNMENT_YEAR_ARCHIVE_CHANNELS.has(channel) &&
+    role !== SystemRole.DEO &&
+    role !== SystemRole.COUNTY_ADMIN
+  ) {
+    throw new ForbiddenError('Year closures are only available to district and county officers.');
   }
   if (COUNTY_ADMIN_CHANNELS.has(channel) && role !== SystemRole.COUNTY_ADMIN) {
     throw new ForbiddenError('This view requires a county administrator workspace.');

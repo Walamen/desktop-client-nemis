@@ -60,6 +60,7 @@ const EMPTY = {
 function mockNemis(getDashboard: () => Promise<unknown>) {
   const nemis = {
     county: { getDashboard: vi.fn(getDashboard) },
+    yearArchives: { list: vi.fn(async () => []) },
     identity: {
       getCurrentUser: vi.fn(async () => ({
         id: 'u1', fullName: 'Musu Kollie', email: 'musu@moe.gov.lr', isActive: true, roles: [],
@@ -117,6 +118,12 @@ describe('County dashboard page', () => {
     expect(statCard('Districts')).toHaveAttribute('href', '/government/county/districts');
     expect(screen.getByText('District Education Scorecard')).toBeInTheDocument();
     expect(screen.getByText('Enrollment by School Type')).toBeInTheDocument();
+  });
+
+  it('shows the year closures panel', async () => {
+    mockNemis(async () => DASHBOARD);
+    renderPage();
+    expect(await screen.findByText('No school has closed an academic year yet.')).toBeInTheDocument();
   });
 
   it('renders an empty county with zeros and the web placeholders', async () => {

@@ -14,6 +14,7 @@ import type {
   ReportCardClassEntry,
   ReportCardIssueDetail,
   ReportCardSummary,
+  YearClosureRow,
 } from './report-cards';
 import type { HeaderNotificationsSummary } from './header-notifications';
 import type {
@@ -336,6 +337,9 @@ export interface ReportCardsApi {
   getIssue(issueId: string): Promise<ReportCardIssueDetail>;
   listArchivedYears(): Promise<ReportCardArchivedYear[]>;
 }
+export interface YearArchivesApi {
+  list(): Promise<YearClosureRow[]>;
+}
 export interface DeviceApi {
   getInfo(): Promise<DeviceInfoResult | null>;
 }
@@ -457,6 +461,7 @@ export interface NemisApi {
   subject: SubjectApi;
   identity: IdentityApi;
   reportCards: ReportCardsApi;
+  yearArchives: YearArchivesApi;
   device: DeviceApi;
   student: StudentApi;
   teacher: TeacherApi;

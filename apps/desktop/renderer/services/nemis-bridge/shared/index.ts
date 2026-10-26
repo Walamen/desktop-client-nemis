@@ -2,6 +2,7 @@ export * from './auth-bridge';
 export * from './sync-bridge';
 export * from './identity-bridge';
 export * from './report-cards-bridge';
+export * from './year-archives-bridge';
 export * from './device-bridge';
 export * from './attendance-bridge';
 export * from './collections-bridge';
@@ -11,6 +12,7 @@ import { authBridge } from './auth-bridge';
 import { syncBridge } from './sync-bridge';
 import { identityBridge } from './identity-bridge';
 import { reportCardsBridge } from './report-cards-bridge';
+import { yearArchivesBridge } from './year-archives-bridge';
 import { deviceBridge } from './device-bridge';
 import { attendanceBridge } from './attendance-bridge';
 import { collectionsBridge } from './collections-bridge';
@@ -24,6 +26,7 @@ export const sharedBridge = {
   ...syncBridge,
   ...identityBridge,
   ...reportCardsBridge,
+  ...yearArchivesBridge,
   ...deviceBridge,
   ...attendanceBridge,
   ...collectionsBridge,

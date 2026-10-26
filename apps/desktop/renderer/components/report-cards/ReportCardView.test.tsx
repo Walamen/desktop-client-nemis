@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
+import type { ReportCardOutcome } from '@nemis-desktop/types';
 import { ReportCardView } from './ReportCardView';
 import { payloadFixture } from './fixtures';
 
@@ -66,6 +67,56 @@ describe('ReportCardView', () => {
     expect(screen.queryByText('Withdrawn')).toBeNull();
     expect(screen.queryByText('Replaced by a newer version')).toBeNull();
     expect(screen.queryByRole('button', { name: /print|pdf/i })).toBeNull();
+  });
+
+  describe('final report outcome', () => {
+    const final = (outcome: ReportCardOutcome | null, principalRemark: string | null = null) => ({
+      ...payloadFixture(),
+      kind: 'FINAL' as const,
+      outcome,
+      principalRemark,
+    });
+    const o = (status: ReportCardOutcome['status'], nextGradeLevel: string | null = null): ReportCardOutcome => ({
+      status,
+      nextGradeLevel,
+      yearlyAverage: 71,
+    });
+
+    it('shows the exact outcome line for all four statuses', () => {
+      const cases: [ReportCardOutcome, string][] = [
+        [o('PROMOTED', 'GRADE_8'), 'Promoted to Grade 8'],
+        [o('RETAINED'), 'Retained in Grade 7'],
+        [o('GRADUATED'), 'Graduated'],
+        [o('WITHDRAWN'), 'Withdrawn'],
+      ];
+      for (const [outcome, line] of cases) {
+        const { unmount } = render(<ReportCardView payload={final(outcome)} />);
+        expect(screen.getByTestId('report-card-outcome')).toHaveTextContent(new RegExp('^' + line + '$'));
+        unmount();
+      }
+    });
+
+    it('shows the principal remark on a final card', () => {
+      render(<ReportCardView payload={final(o('GRADUATED'), 'A fine year.')} />);
+      expect(screen.getByText('A fine year.')).toBeInTheDocument();
+    });
+
+    it('shows no outcome or remark on a period card', () => {
+      render(<ReportCardView payload={payloadFixture()} />);
+      expect(screen.queryByTestId('report-card-outcome')).toBeNull();
+      expect(screen.queryByText(/Principal's remark/)).toBeNull();
+    });
+  });
+
+  it('marks only cells entered at close', () => {
+    const payload = payloadFixture();
+    payload.subjects[0]!.cells['gp:gp-2'] = { value: 60, source: 'ADMIN_AT_CLOSE', sourceSchoolName: null };
+    render(<ReportCardView payload={payload} />);
+    expect(screen.getAllByText('Entered at close')).toHaveLength(1);
+    const row = screen.getByText('Mathematics').closest('tr') as HTMLElement;
+    const cells = within(row).getAllByRole('cell');
+    expect(cells[2]).toHaveTextContent('Entered at close');
+    expect(cells[1]).not.toHaveTextContent('Entered at close');
   });
 
   it('shows an update message instead of the table for a newer schema version', () => {

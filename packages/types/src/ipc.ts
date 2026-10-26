@@ -4,6 +4,7 @@ import type {
   ReportCardClassEntry,
   ReportCardIssueDetail,
   ReportCardSummary,
+  YearClosureRow,
 } from './report-cards';
 import type { HeaderNotificationsSummary } from './header-notifications';
 import type {
@@ -283,6 +284,7 @@ export interface IpcContract {
   'report-cards:list-for-class': { args: [classId: string]; result: ReportCardClassEntry[] };
   'report-cards:get-issue': { args: [issueId: string]; result: ReportCardIssueDetail };
   'report-cards:list-archived-years': { args: []; result: ReportCardArchivedYear[] };
+  'year-archives:list': { args: []; result: YearClosureRow[] };
   'device:get-info': { args: []; result: DeviceInfoResult | null };
   // Academic Foundation (Phase 9)
   'academic-year:list': { args: []; result: AcademicYearListItemResult[] };
@@ -517,6 +519,7 @@ export const IpcChannels = {
   REPORT_CARDS_LIST_FOR_CLASS: 'report-cards:list-for-class',
   REPORT_CARD_GET_ISSUE: 'report-cards:get-issue',
   REPORT_CARDS_LIST_ARCHIVED_YEARS: 'report-cards:list-archived-years',
+  YEAR_ARCHIVES_LIST: 'year-archives:list',
   DEVICE_GET_INFO: 'device:get-info',
   ACADEMIC_YEAR_LIST: 'academic-year:list',
   ACADEMIC_YEAR_CREATE: 'academic-year:create',

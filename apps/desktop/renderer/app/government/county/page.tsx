@@ -8,6 +8,7 @@ import { useCountyDashboardViewModel } from '@/lib/presentation/hooks/county';
 import { useCurrentUserViewModel } from '@/lib/presentation/hooks/shared';
 import { useViewModel } from '@/hooks/use-view-model';
 import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
+import { YearClosuresPanel } from '@/components/year-closures/YearClosuresPanel';
 import EnrollmentByDistrictChart from '@/components/county/charts/EnrollmentByDistrictChart';
 import EnrollmentTrendChart from '@/components/county/charts/EnrollmentTrendChart';
 import DropoutTrendChart from '@/components/county/charts/DropoutTrendChart';
@@ -191,6 +192,8 @@ export default function CountyDashboard() {
             </>
           )}
         </div>
+
+        <YearClosuresPanel />
 
         {/* Analytics Charts */}
         <div>
