@@ -55,6 +55,15 @@ describe('SyncConflictsPage academic-year rejections', () => {
     expect(await screen.findByText('Rejected — academic year not started')).toBeInTheDocument();
   });
 
+  it.each([
+    ['ACADEMIC_YEAR_ALREADY_ACTIVE', 'Rejected — another academic year is active'],
+    ['ACADEMIC_YEAR_NOT_DELETABLE', 'Rejected — academic year cannot be deleted'],
+  ])('uses the %s heading', async (token, heading) => {
+    bridge.listSyncConflicts.mockResolvedValue([conflict(`${token}: Some message.`)]);
+    render(<SyncConflictsPage />);
+    expect(await screen.findByText(heading)).toBeInTheDocument();
+  });
+
   it('still offers keep-local for ordinary conflicts', async () => {
     bridge.listSyncConflicts.mockResolvedValue([conflict('Version mismatch')]);
     render(<SyncConflictsPage />);
