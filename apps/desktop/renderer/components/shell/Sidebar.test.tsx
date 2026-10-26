@@ -98,14 +98,8 @@ describe('Sidebar', () => {
     expect(transfersLink()).toHaveAttribute('href', '/government/school-admin/students/inter-school-transfer');
   });
 
-  it('shows the Promotion & Outcomes entry for a school admin only', () => {
-    const { unmount } = render(<Sidebar role={SystemRole.INSTITUTION_ADMIN} />);
-    expect(screen.getByText('Promotion & Outcomes').closest('a')).toHaveAttribute(
-      'href',
-      '/government/school-admin/students/promote',
-    );
-    unmount();
-    for (const role of [SystemRole.COUNTY_ADMIN, SystemRole.DEO, SystemRole.MINISTRY_ADMIN, SystemRole.TEACHER]) {
+  it('has no Promotion & Outcomes entry: promotion lives only inside Close Academic Year', () => {
+    for (const role of [SystemRole.INSTITUTION_ADMIN, SystemRole.COUNTY_ADMIN, SystemRole.DEO, SystemRole.MINISTRY_ADMIN, SystemRole.TEACHER]) {
       const view = render(<Sidebar role={role} />);
       expect(screen.queryByText('Promotion & Outcomes')).toBeNull();
       view.unmount();

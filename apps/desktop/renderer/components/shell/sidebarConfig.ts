@@ -3,7 +3,7 @@ import {
   Building2, CreditCard, Bell, MessageCircle,
   MessageSquare, DollarSign, ClipboardCheck, ShieldCheck, Settings, UserCog,
   GraduationCap, ArrowRightLeft, UserCircle2, AlertTriangle, FileBarChart,
-  SlidersHorizontal, Award, Clock, Receipt, Layers, Archive,
+  SlidersHorizontal, Clock, Receipt, Layers, Archive,
 } from 'lucide-react';
 // Use react-icons for icons 
 import { SiGoogleclassroom } from "react-icons/si";
@@ -82,7 +82,6 @@ export const sidebarConfigs: Record<DesktopPortalRole, SidebarConfig> = {
             icon: ArrowRightLeft,
             badge: 'transfers',
           },
-          { name: 'Promotion & Outcomes', href: '/government/school-admin/students/promote', icon: Award },
         ],
       },
       {

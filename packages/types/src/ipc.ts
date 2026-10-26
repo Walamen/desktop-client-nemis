@@ -22,14 +22,6 @@ import type {
   TransferReviewRequest,
 } from './registry';
 import type {
-  CohortResult,
-  CompletionGuidanceRow,
-  DiscardCompletionResult,
-  SaveCompletionsRequest,
-  SaveCompletionsResult,
-} from './grade-completions';
-import type { GradeLevel } from './enums';
-import type {
   CloseCorrectGradeIpcRequest,
   CloseCorrectOutcomeIpcRequest,
   CloseCorrectRemarkIpcRequest,
@@ -447,19 +439,6 @@ export interface IpcContract {
   };
   'transfer:cancel': { args: [id: string]; result: OnlineCommandResult<RemoteRecordRef> };
   'transfer:search-schools': { args: [query: string]; result: SchoolSearchResult[] };
-  'grade-completion:cohort': {
-    args: [academicYearId: string, gradeLevel: GradeLevel];
-    result: CohortResult;
-  };
-  'grade-completion:save': { args: [request: SaveCompletionsRequest]; result: SaveCompletionsResult };
-  'grade-completion:guidance': {
-    args: [academicYearId: string, gradeLevel: GradeLevel];
-    result: CompletionGuidanceRow[];
-  };
-  'grade-completion:discard': {
-    args: [academicYearId: string, studentId: string];
-    result: DiscardCompletionResult;
-  };
 }
 
 export type IpcChannel = keyof IpcContract;
@@ -628,10 +607,6 @@ export const IpcChannels = {
   TRANSFER_REVIEW: 'transfer:review',
   TRANSFER_CANCEL: 'transfer:cancel',
   TRANSFER_SEARCH_SCHOOLS: 'transfer:search-schools',
-  GRADE_COMPLETION_COHORT: 'grade-completion:cohort',
-  GRADE_COMPLETION_SAVE: 'grade-completion:save',
-  GRADE_COMPLETION_DISCARD: 'grade-completion:discard',
-  GRADE_COMPLETION_GUIDANCE: 'grade-completion:guidance',
 } as const satisfies Record<string, IpcChannel>;
 
 // Compile-time exhaustiveness: adding a channel to IpcContract without

@@ -195,14 +195,6 @@ import type {
   TransferCreateRequest,
   TransferReviewRequest,
 } from './registry';
-import type {
-  CohortResult,
-  CompletionGuidanceRow,
-  DiscardCompletionResult,
-  SaveCompletionsRequest,
-  SaveCompletionsResult,
-} from './grade-completions';
-import type { GradeLevel } from './enums';
 
 export interface AuthenticationApi {
   getStatus(): Promise<ProvisioningStatus>;
@@ -432,16 +424,6 @@ export interface TransferApi {
   searchSchools(query: string): Promise<SchoolSearchResult[]>;
 }
 
-/** End-of-year outcomes (NEMIS ID desktop parity, Stage 5): the local cohort
- * and pending decisions, pushed later by their own sync path. */
-export interface GradeCompletionApi {
-  cohort(academicYearId: string, gradeLevel: GradeLevel): Promise<CohortResult>;
-  save(request: SaveCompletionsRequest): Promise<SaveCompletionsResult>;
-  discard(academicYearId: string, studentId: string): Promise<DiscardCompletionResult>;
-  /** Online only: the server's published averages per student; rejects offline. */
-  guidance(academicYearId: string, gradeLevel: GradeLevel): Promise<CompletionGuidanceRow[]>;
-}
-
 /** Close Academic Year (lifecycle Stage 3): online only, school admin only.
  * Reads go straight to the server; every command forces a pull afterwards. */
 export interface AcademicYearCloseApi {
@@ -484,6 +466,5 @@ export interface NemisApi {
   assignment: AssignmentApi;
   registry: RegistryApi;
   transfer: TransferApi;
-  gradeCompletion: GradeCompletionApi;
   academicYearClose: AcademicYearCloseApi;
 }

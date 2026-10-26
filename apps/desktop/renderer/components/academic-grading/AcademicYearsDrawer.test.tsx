@@ -219,3 +219,45 @@ describe('AcademicYearsDrawer start (online only)', () => {
     expect(await screen.findByText('The academic year could not be started. Please try again.')).toBeInTheDocument();
   });
 });
+
+describe('AcademicYearsDrawer close, reopen and corrections', () => {
+  const open = async (code: string) => {
+    fireEvent.click(await screen.findByRole('button', { name: `Edit ${code}` }));
+    await screen.findByRole('heading', { name: 'Edit Academic Year' });
+  };
+
+  it('links Close this year on the ACTIVE year to the workflow', async () => {
+    stubNemis();
+    await renderWithLayer(<AcademicYearsDrawer {...props()} />);
+    await open('2025/2026');
+    expect(screen.getByRole('link', { name: 'Close this year' })).toHaveAttribute(
+      'href',
+      '/government/school-admin/academic-years/close?yearId=y1',
+    );
+  });
+
+  it('reopens a CLOSED year with a reason', async () => {
+    const reopenYear = vi.fn(async () => ({ data: null, refreshed: true }));
+    stubNemis();
+    (window as unknown as { nemis: Record<string, unknown> }).nemis.academicYearClose = { reopenYear };
+    await renderWithLayer(<AcademicYearsDrawer {...props()} />);
+    await open('2024/2025');
+    fireEvent.click(screen.getByRole('button', { name: 'Reopen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Reopen year' }));
+    expect(reopenYear).not.toHaveBeenCalled();
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    fireEvent.change(screen.getByText('Why are you reopening this year?').parentElement!.querySelector('textarea')!, { target: { value: 'Wrong mark' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Reopen year' }));
+    await waitFor(() => expect(reopenYear).toHaveBeenCalledWith({ yearId: 'y0', reason: 'Wrong mark' }));
+  });
+
+  it('links Corrections on a REOPENED year to the corrections screen', async () => {
+    stubNemis({ years: [yearRow({ id: 'y5', code: '2023/2024', isCurrent: false, status: 'REOPENED' })] });
+    await renderWithLayer(<AcademicYearsDrawer {...props()} />);
+    await open('2023/2024');
+    expect(screen.getByRole('link', { name: 'Corrections' })).toHaveAttribute(
+      'href',
+      '/government/school-admin/academic-years/corrections?yearId=y5',
+    );
+  });
+});

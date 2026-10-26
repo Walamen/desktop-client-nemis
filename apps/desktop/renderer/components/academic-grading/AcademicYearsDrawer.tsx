@@ -1,14 +1,16 @@
 'use client';
 
 import { useCallback, useState, type FormEvent } from 'react';
+import Link from 'next/link';
 import type { AcademicYearRowView } from '@nemis-desktop/presentation';
-import { Badge, Button, Drawer, Input } from '@nemis-desktop/ui';
+import { Badge, Button, Drawer, Input, Textarea } from '@nemis-desktop/ui';
 import { useViewModel } from '@/hooks/use-view-model';
 import { parseIpcError } from '@/lib/errors/parseIpcError';
 import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 import { useAcademicFoundationViewModel } from '@/lib/presentation/hooks/school-admin';
 import { useConnectivityStore } from '@/lib/presentation/hooks/shared';
 import { FormField, LoadState, statusVariant } from '@/components/academic/foundation-ui';
+import { academicYearCloseBridge } from '@/services/nemis-bridge/school-admin/academic-year-close-bridge';
 import { useEscapeCapture } from './use-escape-capture';
 import { useOpenSession, type SetupDrawerProps, type SetupNavigate } from './setup-drawers';
 
@@ -26,6 +28,10 @@ export function AcademicYearsDrawer({ isOpen, onClose, onNavigate }: SetupDrawer
 }
 
 const OFFLINE_MESSAGE = "You're offline. Connect to the internet to do this.";
+
+const closeHref = (yearId: string) => `/government/school-admin/academic-years/close?yearId=${encodeURIComponent(yearId)}`;
+// The Corrections screen (Stage 3, Task 11) lives at this route.
+const correctionsHref = (yearId: string) => `/government/school-admin/academic-years/corrections?yearId=${encodeURIComponent(yearId)}`;
 
 /** Only a SETUP year can start, and only while the school has no ACTIVE year
  * (the server refuses a second one). */
@@ -47,6 +53,10 @@ function AcademicYearsManager({ onNavigate }: { onNavigate: SetupNavigate }) {
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [reopening, setReopening] = useState(false);
+  const [reopenReason, setReopenReason] = useState('');
+  const [reopenBusy, setReopenBusy] = useState(false);
+  const [reopenError, setReopenError] = useState<string | null>(null);
   const backToList = useCallback(() => setView('list'), []);
   useEscapeCapture(view === 'form', backToList);
   useRevalidateOnSync(() => { void vm.loadAcademicYears(); }, [vm]);
@@ -58,6 +68,9 @@ function AcademicYearsManager({ onNavigate }: { onNavigate: SetupNavigate }) {
     setEndDate(year?.endDate ?? '');
     setStartError(null);
     setNotice(null);
+    setReopening(false);
+    setReopenReason('');
+    setReopenError(null);
     setView('form');
   };
 
@@ -74,6 +87,28 @@ function AcademicYearsManager({ onNavigate }: { onNavigate: SetupNavigate }) {
       setStartError(parseIpcError(cause)?.message || 'The academic year could not be started. Please try again.');
     } finally {
       setStarting(false);
+    }
+  };
+
+  /** Reopening is online only; the server records who and why. */
+  const reopenYear = async (year: AcademicYearRowView) => {
+    if (reopenReason.trim() === '') {
+      setReopenError('Say why you are reopening this year.');
+      return;
+    }
+    setReopenBusy(true);
+    setReopenError(null);
+    try {
+      await academicYearCloseBridge.reopenYear({ yearId: year.id, reason: reopenReason.trim() });
+      setNotice(`${year.code} reopened. You can now correct records.`);
+      setReopening(false);
+      setReopenReason('');
+      await vm.loadAcademicYears();
+      setView('list');
+    } catch (cause) {
+      setReopenError(parseIpcError(cause)?.message || 'The academic year could not be reopened. Please try again.');
+    } finally {
+      setReopenBusy(false);
     }
   };
 
@@ -112,6 +147,53 @@ function AcademicYearsManager({ onNavigate }: { onNavigate: SetupNavigate }) {
                 ? 'Starting a year is done online and cannot be undone here. The server controls when a year closes.'
                 : 'The server controls when a year starts and closes.'}
             </p>
+            {editing.status === 'ACTIVE' && (
+              <div className="space-y-2">
+                {online ? (
+                  <Link
+                    href={closeHref(editing.id)}
+                    className="inline-flex items-center justify-center rounded-lg border-2 border-accent bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-800"
+                  >
+                    Close this year
+                  </Link>
+                ) : (
+                  <>
+                    <Button type="button" disabled>Close this year</Button>
+                    <p className="text-sm text-slate-500">{OFFLINE_MESSAGE}</p>
+                  </>
+                )}
+              </div>
+            )}
+            {editing.status === 'CLOSED' && (
+              <div className="space-y-2">
+                {!reopening ? (
+                  <>
+                    <Button type="button" variant="secondary" disabled={!online} onClick={() => setReopening(true)}>Reopen</Button>
+                    {!online && <p className="text-sm text-slate-500">{OFFLINE_MESSAGE}</p>}
+                  </>
+                ) : (
+                  <div className="space-y-2">
+                    <Textarea label="Why are you reopening this year?" required value={reopenReason} onChange={(e) => setReopenReason(e.target.value)} />
+                    <div className="flex gap-2">
+                      <Button type="button" variant="secondary" disabled={reopenBusy} onClick={() => setReopening(false)}>Cancel</Button>
+                      <Button type="button" disabled={!online || reopenBusy} onClick={() => void reopenYear(editing)}>
+                        {reopenBusy ? 'Reopening…' : 'Reopen year'}
+                      </Button>
+                    </div>
+                    {!online && <p className="text-sm text-slate-500">{OFFLINE_MESSAGE}</p>}
+                    {reopenError && <p role="alert" className="text-sm text-red-700">{reopenError}</p>}
+                  </div>
+                )}
+              </div>
+            )}
+            {editing.status === 'REOPENED' && (
+              <Link
+                href={correctionsHref(editing.id)}
+                className="inline-flex items-center justify-center rounded-lg border-2 border-slate-300 px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
+              >
+                Corrections
+              </Link>
+            )}
             {canStart(editing, years) && (
               <div className="space-y-2">
                 <Button type="button" disabled={!online || starting} onClick={() => void startYear(editing)}>

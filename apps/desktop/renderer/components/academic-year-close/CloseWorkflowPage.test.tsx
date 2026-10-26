@@ -1,0 +1,157 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { clearNemis, renderWithLayer, stubNemis, yearRow } from '@/components/academic-grading/setup-test-support';
+import { CloseWorkflowPage } from './CloseWorkflowPage';
+
+const cell = {
+  studentId: 's1', studentName: 'Ama Kofi', classId: 'c1', className: 'Grade 7A',
+  subjectId: 'sub1', subjectName: 'Math', gradingPeriodId: 'p1', gradingPeriodName: 'Period 1',
+};
+const CLEAN = { unpublishedPeriods: [], missingCells: [], cohort: { present: 2, withdrawn: 0 } };
+const student = (over: Record<string, unknown> = {}) => ({
+  studentId: 's1', name: 'Ama Kofi', nemisId: '100000000001', classId: 'c1', gradeLevel: 'GRADE_7',
+  kind: 'PRESENT', yearlyAverage: 72, suggestion: 'PROMOTED', decision: null, principalRemark: null, ...over,
+});
+const PROMOTION = {
+  passMark: 50,
+  students: [student(), student({ studentId: 's2', name: 'Kofi Mensah', yearlyAverage: 40, suggestion: 'RETAINED' })],
+};
+
+function stubClose(over: Record<string, unknown> = {}) {
+  const close = {
+    getReadiness: vi.fn(async () => CLEAN),
+    fillCells: vi.fn(async () => ({ data: null, refreshed: true })),
+    getPromotion: vi.fn(async () => PROMOTION),
+    savePromotion: vi.fn(async () => ({ data: null, refreshed: true })),
+    closeYear: vi.fn(async () => ({ data: null, refreshed: true })),
+    pendingChangesCount: vi.fn(async () => 0),
+    ...over,
+  };
+  stubNemis({ years: [yearRow({ id: 'y1', code: '2025/2026' })] });
+  (window as unknown as { nemis: Record<string, unknown> }).nemis.academicYearClose = close;
+  return close;
+}
+
+beforeEach(() => window.history.pushState({}, '', '/government/school-admin/academic-years/close?yearId=y1'));
+afterEach(() => {
+  clearNemis();
+  vi.restoreAllMocks();
+});
+
+const CONFIRM = 'Close 2025/2026? Every grade, attendance mark and report card for this year will be frozen. Teachers, students and parents will be notified.';
+const PENDING = 'This device has changes that have not reached the server yet. Sync them before closing the year.';
+
+async function toConfirm() {
+  await renderWithLayer(<CloseWorkflowPage />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Continue' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Save and continue' }));
+  await screen.findByText(CONFIRM);
+}
+
+describe('CloseWorkflowPage readiness', () => {
+  it('lists blockers under the exact heading and submits a fill with its reason', async () => {
+    const close = stubClose({
+      getReadiness: vi.fn().mockResolvedValueOnce({ ...CLEAN, missingCells: [cell] }).mockResolvedValue(CLEAN),
+    });
+    await renderWithLayer(<CloseWorkflowPage />);
+    expect(await screen.findByRole('heading', { name: 'Before this year can close' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText('Score for Ama Kofi, Math, Period 1'), { target: { value: '65' } });
+    fireEvent.change(screen.getByLabelText('Reason for entering this mark'), { target: { value: 'Paper marks found' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save marks' }));
+    await waitFor(() => expect(close.fillCells).toHaveBeenCalledWith({
+      yearId: 'y1',
+      entries: [{ studentId: 's1', subjectId: 'sub1', gradingPeriodId: 'p1', score: 65, reason: 'Paper marks found' }],
+    }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled());
+  });
+
+  it('does not submit a mark without a reason', async () => {
+    const close = stubClose({ getReadiness: vi.fn(async () => ({ ...CLEAN, missingCells: [cell] })) });
+    await renderWithLayer(<CloseWorkflowPage />);
+    fireEvent.change(await screen.findByLabelText('Score for Ama Kofi, Math, Period 1'), { target: { value: '65' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save marks' }));
+    expect(close.fillCells).not.toHaveBeenCalled();
+    expect(await screen.findByRole('alert')).toHaveTextContent('Reason for entering this mark');
+  });
+
+  it('re-checks readiness from the server', async () => {
+    const close = stubClose();
+    await renderWithLayer(<CloseWorkflowPage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Re-check' }));
+    await waitFor(() => expect(close.getReadiness).toHaveBeenCalledTimes(2));
+  });
+});
+
+describe('CloseWorkflowPage promotion', () => {
+  async function toPromotion() {
+    const close = stubClose();
+    await renderWithLayer(<CloseWorkflowPage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Continue' }));
+    await screen.findByText('Kofi Mensah');
+    return close;
+  }
+
+  it('requires a reason when overriding the suggestion', async () => {
+    const close = await toPromotion();
+    fireEvent.change(screen.getByLabelText('Outcome for Kofi Mensah'), { target: { value: 'PROMOTED' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
+    expect(close.savePromotion).not.toHaveBeenCalled();
+    expect(await screen.findByRole('alert')).toHaveTextContent('Give a reason');
+    fireEvent.change(screen.getByLabelText('Reason for overriding Kofi Mensah'), { target: { value: 'Strong recovery' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
+    await waitFor(() => expect(close.savePromotion).toHaveBeenCalledTimes(1));
+    const call = close.savePromotion.mock.calls[0] as unknown as [{ decisions: Record<string, unknown>[] }];
+    expect(call[0].decisions).toContainEqual({
+      studentId: 's2', outcome: 'PROMOTED', nextGradeLevel: 'GRADE_8', overrideReason: 'Strong recovery',
+    });
+  });
+
+  it('applies one principal remark to every student', async () => {
+    const close = await toPromotion();
+    fireEvent.change(screen.getByLabelText('Principal remark for all students'), { target: { value: 'Well done' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Apply to all' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
+    await waitFor(() => expect(close.savePromotion).toHaveBeenCalledTimes(1));
+    const call = close.savePromotion.mock.calls[0] as unknown as [{ principalRemarks: unknown[] }];
+    expect(call[0].principalRemarks).toEqual([
+      { studentId: 's1', remark: 'Well done' },
+      { studentId: 's2', remark: 'Well done' },
+    ]);
+  });
+});
+
+describe('CloseWorkflowPage confirm', () => {
+  it('close is blocked while this device has pending changes', async () => {
+    const close = stubClose({ pendingChangesCount: vi.fn(async () => 3) });
+    await toConfirm();
+    expect(await screen.findByText(PENDING)).toBeInTheDocument();
+    const button = screen.getByRole('button', { name: 'Close 2025/2026' });
+    expect(button).toBeDisabled();
+    fireEvent.click(button);
+    expect(close.closeYear).not.toHaveBeenCalled();
+  });
+
+  it('confirm calls CLOSE_YEAR and reports success', async () => {
+    const close = stubClose();
+    await toConfirm();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Close 2025/2026' })).toBeEnabled());
+    expect(screen.queryByText(PENDING)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Close 2025/2026' }));
+    expect(await screen.findByText('2025/2026 is closed.')).toBeInTheDocument();
+    expect(close.closeYear).toHaveBeenCalledWith('y1');
+  });
+
+  it('shows the server message when the close is refused and reloads readiness', async () => {
+    const close = stubClose({
+      closeYear: vi.fn(async () => { throw new Error('[REMOTE_REJECTED] A period was unpublished.'); }),
+      getReadiness: vi.fn().mockResolvedValueOnce(CLEAN).mockResolvedValue({ ...CLEAN, unpublishedPeriods: [{ id: 'p9', name: 'Period 2' }] }),
+    });
+    await toConfirm();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Close 2025/2026' })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: 'Close 2025/2026' }));
+    expect(await screen.findByText('A period was unpublished.')).toBeInTheDocument();
+    await waitFor(() => expect(close.getReadiness).toHaveBeenCalledTimes(2));
+    expect(await screen.findByRole('heading', { name: 'Before this year can close' })).toBeInTheDocument();
+  });
+});

@@ -9,7 +9,6 @@ export * from './teacher-directory-api';
 export * from './timetable-api';
 export * from './registry-api';
 export * from './transfer-api';
-export * from './grade-completion-api';
 export * from './academic-year-close-api';
 
 import { dashboardApi } from './dashboard-api';
@@ -22,7 +21,6 @@ import { studentApi } from './student-api';
 import { timetableApi } from './timetable-api';
 import { registryApi } from './registry-api';
 import { transferApi } from './transfer-api';
-import { gradeCompletionApi } from './grade-completion-api';
 import { academicYearCloseApi } from './academic-year-close-api';
 
 /** The NemisApi slice the Institution Admin (school admin) portal owns.
@@ -40,6 +38,5 @@ export const schoolAdminApi = {
   timetable: timetableApi,
   registry: registryApi,
   transfer: transferApi,
-  gradeCompletion: gradeCompletionApi,
   academicYearClose: academicYearCloseApi,
 };
