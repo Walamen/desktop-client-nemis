@@ -12,13 +12,20 @@ import type { Migration } from './types';
  * installOutboxTriggers generates the outbox triggers.
  */
 
-type Alias = 'NEW' | 'OLD';
+export type Alias = 'NEW' | 'OLD';
+/** SQL expression resolving an academic year id from the row `a`. */
+export type YearResolver = (a: Alias) => string;
 
-const YEAR_OF_CLASS = (a: Alias) => `(SELECT academicYearId FROM classes WHERE id = ${a}.classId)`;
-const YEAR_OF_PERIOD = (a: Alias) => `(SELECT academicYearId FROM grading_periods WHERE id = ${a}.gradingPeriodId)`;
+export const YEAR_OF_CLASS: YearResolver = (a) => `(SELECT academicYearId FROM classes WHERE id = ${a}.classId)`;
+const YEAR_OF_PERIOD: YearResolver = (a) =>
+  `(SELECT academicYearId FROM grading_periods WHERE id = ${a}.gradingPeriodId)`;
 
-/** Expression resolving the owning academic year id of the row `a`. */
-const RESOLVERS: Record<string, (a: Alias) => string> = {
+/**
+ * Expression resolving the owning academic year id of the row `a`, as
+ * installed by this migration. (041 later adds the class's year for
+ * enrollments; this map stays as 040 shipped it.)
+ */
+export const RESOLVERS: Record<string, YearResolver> = {
   // grades: grading period, else class, else the assessment's class.
   grades: (a) =>
     `COALESCE(${YEAR_OF_PERIOD(a)}, ${YEAR_OF_CLASS(a)}, ` +
@@ -71,37 +78,54 @@ const BOOKKEEPING: Record<string, readonly string[]> = {
 
 const CAPTURE_ON = `(SELECT captureEnabled FROM sync_runtime WHERE id = 'singleton') = 1`;
 
-function guards(table: string, alias: Alias): string {
-  const status = `(SELECT status FROM academic_years WHERE id = ${RESOLVERS[table]!(alias)})`;
-  let sql = `SELECT RAISE(ABORT, 'ACADEMIC_YEAR_CLOSED') WHERE ${status} = 'CLOSED';\n`;
-  if (TEACHING.has(table)) {
-    sql += `SELECT RAISE(ABORT, 'ACADEMIC_YEAR_NOT_STARTED') WHERE ${status} = 'SETUP';\n`;
+function guards(table: string, resolvers: readonly YearResolver[], alias: Alias): string {
+  let sql = '';
+  for (const resolve of resolvers) {
+    const status = `(SELECT status FROM academic_years WHERE id = ${resolve(alias)})`;
+    sql += `SELECT RAISE(ABORT, 'ACADEMIC_YEAR_CLOSED') WHERE ${status} = 'CLOSED';\n`;
+    if (TEACHING.has(table)) {
+      sql += `SELECT RAISE(ABORT, 'ACADEMIC_YEAR_NOT_STARTED') WHERE ${status} = 'SETUP';\n`;
+    }
   }
   return sql;
 }
 
+/**
+ * Creates freeze_<table>_{insert,update,delete}. Every resolver is checked on
+ * the NEW row (insert, update) and the OLD row (update, delete), so a row whose
+ * year can be resolved more than one way (an enrolment: its own academicYearId
+ * and its class's year) is refused if any of them lands in a frozen year.
+ */
+export function installTableFreezeTriggers(
+  db: SqliteDatabase,
+  table: string,
+  resolvers: readonly YearResolver[],
+): void {
+  const columns = (db.prepare(`PRAGMA table_info("${table}")`).all() as { name: string }[]).map((c) => c.name);
+  if (columns.length === 0) throw new Error(`freeze triggers: table ${table} does not exist`);
+  const skip = BOOKKEEPING[table] ?? [];
+  const updateOf = columns.filter((c) => !skip.includes(c));
+  const updateEvent = skip.length > 0 ? `UPDATE OF ${updateOf.map((c) => `"${c}"`).join(', ')}` : 'UPDATE';
+  const defs: [string, string, string][] = [
+    ['insert', 'INSERT', guards(table, resolvers, 'NEW')],
+    ['update', updateEvent, guards(table, resolvers, 'OLD') + guards(table, resolvers, 'NEW')],
+    ['delete', 'DELETE', guards(table, resolvers, 'OLD')],
+  ];
+  for (const [action, event, body] of defs) {
+    db.exec(`
+      CREATE TRIGGER freeze_${table}_${action}
+      BEFORE ${event} ON "${table}"
+      WHEN ${CAPTURE_ON}
+      BEGIN
+        ${body}
+      END;
+    `);
+  }
+}
+
 export function installFreezeTriggers(db: SqliteDatabase): void {
-  for (const table of Object.keys(RESOLVERS)) {
-    const columns = (db.prepare(`PRAGMA table_info("${table}")`).all() as { name: string }[]).map((c) => c.name);
-    if (columns.length === 0) throw new Error(`freeze triggers: table ${table} does not exist`);
-    const skip = BOOKKEEPING[table] ?? [];
-    const updateOf = columns.filter((c) => !skip.includes(c));
-    const updateEvent = skip.length > 0 ? `UPDATE OF ${updateOf.map((c) => `"${c}"`).join(', ')}` : 'UPDATE';
-    const defs: [string, string, string][] = [
-      ['insert', 'INSERT', guards(table, 'NEW')],
-      ['update', updateEvent, guards(table, 'OLD') + guards(table, 'NEW')],
-      ['delete', 'DELETE', guards(table, 'OLD')],
-    ];
-    for (const [action, event, body] of defs) {
-      db.exec(`
-        CREATE TRIGGER freeze_${table}_${action}
-        BEFORE ${event} ON "${table}"
-        WHEN ${CAPTURE_ON}
-        BEGIN
-          ${body}
-        END;
-      `);
-    }
+  for (const [table, resolve] of Object.entries(RESOLVERS)) {
+    installTableFreezeTriggers(db, table, [resolve]);
   }
 
   db.exec(`

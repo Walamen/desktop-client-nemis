@@ -39,6 +39,7 @@ import { addUserEmailVerified } from './037-add-user-email-verified';
 import { createDirectMessages } from './038-create-direct-messages';
 import { createAuditLogs } from './039-create-audit-logs';
 import { createAcademicYearFreeze } from './040-create-academic-year-freeze';
+import { enrollmentFreezeClassYear } from './041-enrollment-freeze-class-year';
 
 /**
  * Every migration, ascending by version. Append only — never edit or reorder
@@ -85,4 +86,5 @@ export const migrations: readonly Migration[] = [
   createDirectMessages,
   createAuditLogs,
   createAcademicYearFreeze,
+  enrollmentFreezeClassYear,
 ];
