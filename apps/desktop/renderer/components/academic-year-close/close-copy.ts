@@ -34,3 +34,7 @@ export const OUTCOME_LABEL: Record<CompletionOutcome, string> = {
   RETAINED: 'Retained',
   GRADUATED: 'Graduated',
 };
+
+export const CORRECTION_REASON_LABEL = 'Reason for this correction';
+export const correctionsTitle = (code: string) => `Corrections — ${code}`;
+export const CLOSE_AGAIN_LABEL = 'Close the year again';
