@@ -266,6 +266,12 @@ describe('SqliteStudentRepository', () => {
       expect(repo.findRecentlyEnrolledInActiveYear(1).map((s) => s.id)).toEqual(['s-3']);
     });
 
+    it('both active-year counts leave out inactive students', () => {
+      db().prepare(`UPDATE students SET isActive = 0 WHERE id = 's-1'`).run();
+      expect(repo.countEnrolledInActiveYear()).toBe(1);
+      expect(repo.countByGradeLevelInActiveYear()).toEqual([{ gradeLevel: 'GRADE_3', studentCount: 1 }]);
+    });
+
     it('is empty when no year is current', () => {
       db().prepare(`UPDATE academic_years SET isCurrent = 0`).run();
       expect(repo.countEnrolledInActiveYear()).toBe(0);
