@@ -38,3 +38,5 @@ export const OUTCOME_LABEL: Record<CompletionOutcome, string> = {
 export const CORRECTION_REASON_LABEL = 'Reason for this correction';
 export const correctionsTitle = (code: string) => `Corrections — ${code}`;
 export const CLOSE_AGAIN_LABEL = 'Close the year again';
+export const CORRECTIONS_UNAVAILABLE = 'Corrections are only available for a reopened year.';
+export const SAVED_PENDING_SYNC = 'Saved. The card will update after the next sync.';

@@ -24,9 +24,9 @@ const student = (over: Record<string, unknown> = {}) => ({
   kind: 'PRESENT', yearlyAverage: 72, suggestion: 'PROMOTED', decision: null, principalRemark: null, ...over,
 });
 
-function stub() {
+function stub(status = 'REOPENED', studentOver: Record<string, unknown> = {}) {
   const close = {
-    getPromotion: vi.fn(async () => ({ passMark: 50, students: [student(), student({ studentId: 'st-2', name: 'Kofi Mensah', nemisId: '100000000002' })] })),
+    getPromotion: vi.fn(async () => ({ passMark: 50, students: [student(studentOver), student({ studentId: 'st-2', name: 'Kofi Mensah', nemisId: '100000000002' })] })),
     correctGrade: vi.fn(async () => ({ data: null, refreshed: true })),
     correctOutcome: vi.fn(async () => ({ data: null, refreshed: true })),
     correctRemark: vi.fn(async () => ({ data: null, refreshed: true })),
@@ -36,9 +36,9 @@ function stub() {
     listForStudent: vi.fn(async () => [final]),
     getIssue: vi.fn(async () => ({ summary: final, payload: { ...payloadFixture(), kind: 'FINAL' as const } })),
   };
-  stubNemis({ years: [yearRow({ id: 'y1', code: '2025/2026', status: 'REOPENED' })] });
+  stubNemis({ years: [yearRow({ id: 'y1', code: '2025/2026', status })] });
   Object.assign((window as unknown as { nemis: Record<string, unknown> }).nemis, { academicYearClose: close, reportCards });
-  return close;
+  return Object.assign(close, { reportCards });
 }
 
 async function openStudent() {
@@ -135,5 +135,64 @@ describe('CorrectionsPage', () => {
     await renderWithLayer(<CorrectionsPage />);
     fireEvent.click(await screen.findByRole('button', { name: 'Close the year again' }));
     expect(push).toHaveBeenCalledWith('/government/school-admin/academic-years/close?yearId=y1');
+  });
+  it.each(['ACTIVE', 'CLOSED'])('shows only the unavailable message for a %s year', async (status) => {
+    stub(status);
+    await renderWithLayer(<CorrectionsPage />);
+    expect(await screen.findByText('Corrections are only available for a reopened year.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Back to Academic Years' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Close the year again' })).not.toBeInTheDocument();
+  });
+
+  it('shows the unavailable message for an unknown year', async () => {
+    stub();
+    window.history.pushState({}, '', '/government/school-admin/academic-years/corrections?yearId=nope');
+    await renderWithLayer(<CorrectionsPage />);
+    expect(await screen.findByText('Corrections are only available for a reopened year.')).toBeInTheDocument();
+  });
+
+  it('shows the unavailable message without a year id', async () => {
+    stub();
+    window.history.pushState({}, '', '/government/school-admin/academic-years/corrections');
+    await renderWithLayer(<CorrectionsPage />);
+    expect(await screen.findByText('Corrections are only available for a reopened year.')).toBeInTheDocument();
+  });
+
+  it('reloads the card after a correction', async () => {
+    const close = stub();
+    await openStudent();
+    const form = within(screen.getByRole('region', { name: 'Correct a mark' }));
+    fireEvent.change(form.getByLabelText('New score'), { target: { value: '81' } });
+    fireEvent.change(form.getByLabelText(REASON), { target: { value: 'Fix' } });
+    fireEvent.click(form.getByRole('button', { name: 'Correct mark' }));
+    expect(await screen.findByText('Mark corrected.')).toBeInTheDocument();
+    expect(close.reportCards.listForStudent).toHaveBeenCalledTimes(2);
+    expect(close.reportCards.getIssue).toHaveBeenCalledTimes(2);
+  });
+
+  it('says the card updates after sync when the result was not refreshed', async () => {
+    const close = stub();
+    close.correctGrade.mockResolvedValue({ data: null, refreshed: false });
+    await openStudent();
+    const form = within(screen.getByRole('region', { name: 'Correct a mark' }));
+    fireEvent.change(form.getByLabelText('New score'), { target: { value: '81' } });
+    fireEvent.change(form.getByLabelText(REASON), { target: { value: 'Fix' } });
+    fireEvent.click(form.getByRole('button', { name: 'Correct mark' }));
+    expect(await screen.findByText('Saved. The card will update after the next sync.')).toBeInTheDocument();
+  });
+
+  it('offers only periods with a graded value for the subject', async () => {
+    stub();
+    await openStudent();
+    const form = within(screen.getByRole('region', { name: 'Correct a mark' }));
+    const options = Array.from(form.getByLabelText('Period').querySelectorAll('option')).map((o) => o.textContent);
+    expect(options).toEqual(['Period 1']);
+  });
+
+  it('defaults the outcome to the saved decision', async () => {
+    stub('REOPENED', { decision: { outcome: 'RETAINED', nextGradeLevel: 'GRADE_7', overrideReason: 'x' } });
+    await openStudent();
+    const form = within(screen.getByRole('region', { name: 'Change outcome' }));
+    expect((form.getByLabelText('Outcome') as HTMLSelectElement).value).toBe('RETAINED');
   });
 });

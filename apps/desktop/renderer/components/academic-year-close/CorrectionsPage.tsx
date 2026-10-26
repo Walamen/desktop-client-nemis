@@ -22,6 +22,8 @@ import {
   CORRECTION_REASON_LABEL,
   OFFLINE_MESSAGE,
   OUTCOME_LABEL,
+  CORRECTIONS_UNAVAILABLE,
+  SAVED_PENDING_SYNC,
   correctionsTitle,
   gradeLabel,
   nextGradeFor,
@@ -49,21 +51,39 @@ function ReasonField({ value, onChange }: { value: string; onChange: (v: string)
  * correct a mark, an outcome or the principal's remark. Online only; every
  * action needs a reason. */
 export function CorrectionsPage() {
-  const router = useRouter();
   const yearId = queryYearId();
   const vm = useAcademicFoundationViewModel();
   const yearsState = useViewModel(vm.store, (s) => s.academicYears);
   const years = yearsState.status === 'success' || yearsState.status === 'refreshing' ? yearsState.data : null;
-  const code = years?.find((y) => y.id === yearId)?.code ?? '';
+  useEffect(() => { void vm.loadAcademicYears(); }, [vm]);
+
+  const unavailable = (
+    <main className="mx-auto max-w-5xl space-y-3 p-6">
+      <p className="text-sm text-slate-700">{CORRECTIONS_UNAVAILABLE}</p>
+      <Link href={academicSetupHref('years')} className="text-sm text-blue-700 hover:underline">Back to Academic Years</Link>
+    </main>
+  );
+  if (!yearId) return unavailable;
+  if (yearsState.status === 'error') {
+    return <ErrorState message="Academic years could not be loaded." onRetry={() => void vm.loadAcademicYears()} />;
+  }
+  if (!years) return <Skeleton className="m-6 h-24" />;
+  const year = years.find((y) => y.id === yearId);
+  if (!year || year.status !== 'REOPENED') return unavailable;
+  return <CorrectionsScreen yearId={yearId} code={year.code} />;
+}
+
+function CorrectionsScreen({ yearId, code }: { yearId: string; code: string }) {
+  const router = useRouter();
   const connectivity = useConnectivityStore();
   const online = useViewModel(connectivity.store, (s) => s.isOnline);
 
   const [cohort, setCohort] = useState<PromotionStudent[] | null>(null);
   const [cohortError, setCohortError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [selected, setSelected] = useState<PromotionStudent | null>(null);
-
-  useEffect(() => { void vm.loadAcademicYears(); }, [vm]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Always the freshest cohort entry, so a changed outcome shows at once.
+  const selected = cohort?.find((s) => s.studentId === selectedId) ?? null;
 
   const loadCohort = useCallback(async () => {
     setCohortError(null);
@@ -80,10 +100,6 @@ export function CorrectionsPage() {
     if (!cohort || q === '') return [];
     return cohort.filter((s) => s.name.toLowerCase().includes(q) || s.nemisId.includes(q)).slice(0, 20);
   }, [cohort, search]);
-
-  if (!yearId) {
-    return <p className="p-6 text-sm text-slate-600">Choose a year to correct from Academic Years.</p>;
-  }
 
   return (
     <main className="mx-auto max-w-5xl space-y-6 p-6">
@@ -115,7 +131,7 @@ export function CorrectionsPage() {
                 <button
                   type="button"
                   className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
-                  onClick={() => setSelected(s)}
+                  onClick={() => setSelectedId(s.studentId)}
                 >
                   {s.name} <span className="text-slate-500">· {gradeLabel(s.gradeLevel)} · {s.nemisId}</span>
                 </button>
@@ -183,7 +199,7 @@ function StudentCorrections({
         <div className="grid gap-4 md:grid-cols-3">
           <MarkForm yearId={yearId} studentId={student.studentId} detail={detail} online={online} onDone={done} />
           {student.kind === 'PRESENT' && (
-            <OutcomeForm yearId={yearId} student={student} online={online} onDone={done} />
+            <OutcomeForm key={student.decision?.outcome ?? 'none'} yearId={yearId} student={student} online={online} onDone={done} />
           )}
           <RemarkForm yearId={yearId} student={student} detail={detail} online={online} onDone={done} />
         </div>
@@ -198,12 +214,12 @@ interface FormProps { yearId: string; online: boolean; onDone: (message: string)
 function useSubmit(onDone: FormProps['onDone'], success: string) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const run = async (action: () => Promise<unknown>) => {
+  const run = async (action: () => Promise<{ refreshed: boolean }>) => {
     setBusy(true);
     setError(null);
     try {
-      await action();
-      await onDone(success);
+      const result = await action();
+      await onDone(result.refreshed === false ? SAVED_PENDING_SYNC : success);
     } catch (cause) {
       setError(parseIpcError(cause)?.message || 'The correction could not be saved. Please try again.');
     } finally {
@@ -216,16 +232,27 @@ function useSubmit(onDone: FormProps['onDone'], success: string) {
 const reasonRequired = `${CORRECTION_REASON_LABEL} is required.`;
 
 function MarkForm({ yearId, studentId, detail, online, onDone }: FormProps & { studentId: string; detail: ReportCardIssueDetail }) {
-  const periods = detail.payload.columns.filter((c) => c.kind === 'PERIOD' && c.gradingPeriodId);
   const subjects = detail.payload.subjects;
   const [subjectId, setSubjectId] = useState(subjects[0]?.subjectId ?? '');
-  const [periodId, setPeriodId] = useState(periods[0]?.gradingPeriodId ?? '');
+  // Only periods the student was graded in (null cells are "not enrolled").
+  const periods = detail.payload.columns.filter(
+    (c) => c.kind === 'PERIOD' && c.gradingPeriodId
+      && subjects.find((s) => s.subjectId === subjectId)?.cells[c.key]?.value != null,
+  );
+  const [chosenPeriod, setPeriodId] = useState('');
+  const periodId = periods.some((p) => p.gradingPeriodId === chosenPeriod)
+    ? chosenPeriod
+    : (periods[0]?.gradingPeriodId ?? '');
   const [score, setScore] = useState('');
   const [reason, setReason] = useState('');
   const { error, setError, busy, run } = useSubmit(onDone, 'Mark corrected.');
 
   const submit = () => {
     const value = Number(score);
+    if (periodId === '') {
+      setError('This subject has no graded period to correct.');
+      return;
+    }
     if (score.trim() === '' || !Number.isFinite(value) || value < 0 || value > 100) {
       setError('Enter a score from 0 to 100.');
       return;
@@ -235,11 +262,12 @@ function MarkForm({ yearId, studentId, detail, online, onDone }: FormProps & { s
       return;
     }
     void run(async () => {
-      await academicYearCloseBridge.correctGrade({
+      const result = await academicYearCloseBridge.correctGrade({
         yearId, studentId, subjectId, gradingPeriodId: periodId, score: value, reason: reason.trim(),
       });
       setScore('');
       setReason('');
+      return result;
     });
   };
 
@@ -271,7 +299,7 @@ function MarkForm({ yearId, studentId, detail, online, onDone }: FormProps & { s
 
 function OutcomeForm({ yearId, student, online, onDone }: FormProps & { student: PromotionStudent }) {
   const choices = outcomesFor(student.gradeLevel);
-  const [outcome, setOutcome] = useState<CompletionOutcome>(student.suggestion ?? choices[0]!);
+  const [outcome, setOutcome] = useState<CompletionOutcome>(student.decision?.outcome ?? student.suggestion ?? choices[0]!);
   const [reason, setReason] = useState('');
   const { error, setError, busy, run } = useSubmit(onDone, 'Outcome changed.');
   const next = nextGradeFor(student.gradeLevel, outcome);
@@ -282,10 +310,11 @@ function OutcomeForm({ yearId, student, online, onDone }: FormProps & { student:
       return;
     }
     void run(async () => {
-      await academicYearCloseBridge.correctOutcome({
+      const result = await academicYearCloseBridge.correctOutcome({
         yearId, studentId: student.studentId, outcome, nextGradeLevel: next, reason: reason.trim(),
       });
       setReason('');
+      return result;
     });
   };
 
@@ -321,10 +350,11 @@ function RemarkForm({ yearId, student, detail, online, onDone }: FormProps & { s
       return;
     }
     void run(async () => {
-      await academicYearCloseBridge.correctRemark({
+      const result = await academicYearCloseBridge.correctRemark({
         yearId, studentId: student.studentId, remark: remark.trim(), reason: reason.trim(),
       });
       setReason('');
+      return result;
     });
   };
 
