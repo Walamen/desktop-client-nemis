@@ -644,7 +644,9 @@ export type IpcErrorCode =
   // Local academic-year freeze triggers (lifecycle spec §6.2).
   | 'ACADEMIC_YEAR_CLOSED'
   | 'ACADEMIC_YEAR_NOT_STARTED'
-  | 'ACADEMIC_YEAR_NOT_DELETABLE';
+  | 'ACADEMIC_YEAR_NOT_DELETABLE'
+  // Offline enrol refused: a returning student re-enrols through the lookup.
+  | 'RETURNING_STUDENT';
 
 export interface IpcValidationIssue {
   field: string;

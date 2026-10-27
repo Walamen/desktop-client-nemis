@@ -6,6 +6,7 @@ import { Button, Input, Select } from '@nemis-desktop/ui';
 import { useViewModel } from '@/hooks/use-view-model';
 import { human, Page, queryId } from './shared';
 import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
+import { parseIpcError } from '@/lib/errors/parseIpcError';
 
 export function EnrollmentPage() {
   const router = useRouter();
@@ -19,6 +20,7 @@ export function EnrollmentPage() {
   const [term, setTerm] = useState('');
   const [clazz, setClazz] = useState('');
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [refusal, setRefusal] = useState<string | null>(null);
   useRevalidateOnSync(() => {
     setId(queryId());
     void foundation.loadAcademicYears();
@@ -38,6 +40,7 @@ export function EnrollmentPage() {
   }, [foundation, year]);
   const submit = async (e: FormEvent) => {
     e.preventDefault();
+    setRefusal(null);
     const r = await students.enrollStudent({
       studentId: id,
       academicYearId: year,
@@ -45,7 +48,13 @@ export function EnrollmentPage() {
       classId: clazz,
       enrollmentDate: date,
     });
-    if (r.ok) router.push(`/government/school-admin/students/profile?id=${id}`);
+    if (r.ok) {
+      router.push(`/government/school-admin/students/profile?id=${id}`);
+      return;
+    }
+    // The IPC layer carries the server-authored refusal text; show it here
+    // as well as in the toast so the admin sees where to go next.
+    setRefusal(parseIpcError(r.error.cause)?.message ?? r.error.userMessage);
   };
   const yearOptions =
     years.status === 'success' || years.status === 'refreshing'
@@ -100,6 +109,11 @@ export function EnrollmentPage() {
           value={date}
           onChange={(e) => setDate(e.target.value)}
         />
+        {refusal && (
+          <p role="alert" className="text-sm text-red-700">
+            {refusal}
+          </p>
+        )}
         <Button type="submit">Complete enrollment</Button>
       </form>
     </Page>

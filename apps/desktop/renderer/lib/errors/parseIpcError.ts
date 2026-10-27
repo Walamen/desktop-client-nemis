@@ -19,6 +19,7 @@ const KNOWN_CODES: Record<IpcErrorCode, true> = {
   ACADEMIC_YEAR_CLOSED: true,
   ACADEMIC_YEAR_NOT_STARTED: true,
   ACADEMIC_YEAR_NOT_DELETABLE: true,
+  RETURNING_STUDENT: true,
 };
 
 function isKnownCode(code: string): code is IpcErrorCode {

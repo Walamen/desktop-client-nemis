@@ -14,6 +14,7 @@ import {
   SequentialIdGenerator,
 } from '../../testing';
 import { WorkflowException } from '../../exceptions';
+import { RETURNING_STUDENT_REFUSAL } from './enroll-student';
 
 function build() {
   const enrollments = new InMemoryEnrollmentRepository();
@@ -86,5 +87,38 @@ describe('EnrollStudentUseCase', () => {
     const { useCase } = build();
     await useCase.execute(dto);
     await expect(useCase.execute(dto)).rejects.toBeInstanceOf(WorkflowException);
+  });
+
+  describe('returning students (online-only re-enrolment)', () => {
+    async function withEarlierYear() {
+      const built = build();
+      await built.useCase.execute({ ...dto, academicYearId: 'ay-0', termId: 'term-0' });
+      return built;
+    }
+
+    it('refuses a student enrolled in another year but not the target year, and writes nothing', async () => {
+      const { enrollments, events, useCase } = await withEarlierYear();
+      const before = enrollments.store.size;
+      const eventsBefore = events.published.length;
+      await expect(useCase.execute(dto)).rejects.toThrow(RETURNING_STUDENT_REFUSAL);
+      expect(RETURNING_STUDENT_REFUSAL).toBe(
+        'This student was enrolled in an earlier year. Enrol them for this year through the student lookup.',
+      );
+      expect(enrollments.store.size).toBe(before);
+      expect(events.published.length).toBe(eventsBefore);
+    });
+
+    it('allows a student who already has an enrolment in the target year (another term)', async () => {
+      const { enrollments, useCase } = build();
+      await useCase.execute(dto);
+      await useCase.execute({ ...dto, termId: 'term-2' });
+      expect(enrollments.store.size).toBe(2);
+    });
+
+    it('allows a student with no enrolments', async () => {
+      const { enrollments, useCase } = build();
+      await useCase.execute(dto);
+      expect(enrollments.store.size).toBe(1);
+    });
   });
 });

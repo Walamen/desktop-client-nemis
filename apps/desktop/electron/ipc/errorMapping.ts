@@ -5,7 +5,10 @@ import {
   RemoteRejectedError,
   toIpcErrorPayload,
 } from '@nemis-desktop/shared';
-import { AuthenticationUnavailableError } from '@nemis-desktop/application';
+import {
+  AuthenticationUnavailableError,
+  ReturningStudentException,
+} from '@nemis-desktop/application';
 import type { IpcErrorCode, IpcErrorPayload } from '@nemis-desktop/types';
 import { RepositoryError, ValidationError } from '../data/errors/repositoryErrors';
 import { DatabaseError } from '../database/errors/errors';
@@ -29,6 +32,8 @@ const CODE_MESSAGES: Record<IpcErrorCode, string> = {
   ACADEMIC_YEAR_NOT_STARTED:
     'This academic year has not started yet. Grades, attendance and assignments can be recorded once it starts.',
   ACADEMIC_YEAR_NOT_DELETABLE: 'Only an academic year that is still being set up can be deleted.',
+  RETURNING_STUDENT:
+    'This student was enrolled in an earlier year. Enrol them for this year through the student lookup.',
 };
 
 /** Violation tokens raised by the local freeze triggers (migration 040) as the
@@ -88,6 +93,7 @@ function findAcademicYearViolation(error: unknown, remainingDepth: number): IpcE
 }
 
 function mapError(error: unknown, remainingDepth: number): IpcErrorPayload {
+  if (error instanceof ReturningStudentException) return payloadFor('RETURNING_STUDENT');
   if (error instanceof OfflineError || error instanceof AuthenticationUnavailableError) {
     return payloadFor('OFFLINE');
   }

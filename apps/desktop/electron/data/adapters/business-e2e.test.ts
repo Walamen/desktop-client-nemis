@@ -281,4 +281,80 @@ describe('business application layer end-to-end against real SQLite', () => {
       expect((manager.connection.prepare(`SELECT count(*) c FROM ${table}`).get() as { c: number }).c, table).toBe(0);
     }
   });
+
+  describe('re-enrolment is online only', () => {
+    const queueSize = () =>
+      (manager.connection.prepare('SELECT count(*) c FROM sync_queue').get() as { c: number }).c;
+
+    /** Year A (ACTIVE) with Ada enrolled; then year B set up and made the active one. */
+    async function twoYears() {
+      seedInstitution();
+      const app = createApplicationComposition(dataLayer, 'test-user', silent);
+      const a = await seedEnrolmentTarget(app);
+      const ada1 = await app.students.createAndEnroll({
+        ...ada, academicYearId: a.year.data.id, termId: a.term.data.id, classId: a.klass.data.id,
+        assertedNoNemisId: true,
+      });
+      const b = {
+        year: await app.academics.createAcademicYear({
+          code: '2026/2027', startDate: '2026-09-01', endDate: '2027-07-31',
+        }),
+      };
+      const termB = await app.academics.createTerm({
+        academicYearId: b.year.data.id, name: 'Term 1', sequence: 1, startDate: '2026-09-01', endDate: '2026-12-19',
+      });
+      const classB = await app.academics.createClass({
+        academicYearId: b.year.data.id, name: 'JSS2-A', gradeLevel: GradeLevel.GRADE_8, capacity: 40,
+      });
+      manager.connection
+        .prepare("UPDATE academic_years SET status = 'CLOSED', isCurrent = 0 WHERE id = ?")
+        .run(a.year.data.id);
+      activateYear(b.year.data.id);
+      manager.connection.prepare('UPDATE academic_years SET isCurrent = 1 WHERE id = ?').run(b.year.data.id);
+      return { app, a, studentId: ada1.data.id, yearB: b.year.data.id, termB: termB.data.id, classB: classB.data.id };
+    }
+
+    it('refuses a returning student and queues nothing', async () => {
+      const { app, studentId, yearB, termB, classB } = await twoYears();
+      const before = queueSize();
+      const outcome = await app.academics
+        .enroll({ studentId, academicYearId: yearB, termId: termB, classId: classB })
+        .catch((error: unknown) => error);
+      expect(outcome).toBeInstanceOf(Error);
+      expect((outcome as Error).message).toBe(
+        'This student was enrolled in an earlier year. Enrol them for this year through the student lookup.',
+      );
+      expect(queueSize()).toBe(before);
+    });
+
+    it('allows a class move within the year', async () => {
+      seedInstitution();
+      const app = createApplicationComposition(dataLayer, 'test-user', silent);
+      const { year, term, klass } = await seedEnrolmentTarget(app);
+      const other = await app.academics.createClass({
+        academicYearId: year.data.id, name: 'JSS1-B', gradeLevel: GradeLevel.GRADE_7, capacity: 40,
+      });
+      const created = await app.students.createAndEnroll({
+        ...ada, academicYearId: year.data.id, termId: term.data.id, classId: klass.data.id,
+        assertedNoNemisId: true,
+      });
+      const enrollment = (await app.students.listEnrollments(created.data.id)).data[0]!;
+      const moved = await app.academics.moveEnrollmentClass({ enrollmentId: enrollment.id, targetClassId: other.data.id });
+      expect(moved.data.classId).toBe(other.data.id);
+    });
+
+    it('allows a student with no enrolments', async () => {
+      seedInstitution();
+      const app = createApplicationComposition(dataLayer, 'test-user', silent);
+      const { year, term, klass } = await seedEnrolmentTarget(app);
+      const grace = await app.students.create({
+        institutionId: 'inst-1', firstName: 'Grace', lastName: 'Toe',
+        dateOfBirth: '2015-01-01', gender: Gender.FEMALE,
+      });
+      const res = await app.academics.enroll({
+        studentId: grace.data.id, academicYearId: year.data.id, termId: term.data.id, classId: klass.data.id,
+      });
+      expect(res.data.classId).toBe(klass.data.id);
+    });
+  });
 });

@@ -8,7 +8,7 @@ import {
   TransactionFailureError,
   ValidationError,
 } from '../data/errors/repositoryErrors';
-import { AuthenticationUnavailableError, UnexpectedApplicationException } from '@nemis-desktop/application';
+import { AuthenticationUnavailableError, ReturningStudentException, UnexpectedApplicationException } from '@nemis-desktop/application';
 import {
   ConnectionError,
   DatabaseError,
@@ -18,6 +18,14 @@ import {
 import { sanitizeRemoteMessage, toIpcError } from './errorMapping';
 
 describe('toIpcError', () => {
+  it('maps a returning-student refusal to RETURNING_STUDENT with its exact copy', () => {
+    expect(toIpcError(new ReturningStudentException('anything'))).toEqual({
+      code: 'RETURNING_STUDENT',
+      message:
+        'This student was enrolled in an earlier year. Enrol them for this year through the student lookup.',
+    });
+  });
+
   it('maps ValidationError to VALIDATION_FAILED with sanitized issues', () => {
     const payload = toIpcError(
       new ValidationError('Device validation failed', [

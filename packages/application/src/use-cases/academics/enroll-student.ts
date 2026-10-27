@@ -14,10 +14,14 @@ import type { IEventPublisher } from '../../interfaces/event-publisher';
 import type { IAppLogger } from '../../interfaces/app-logger';
 import { toEnrollmentOutput } from '../../mappers/academics/enrollment-mapper';
 import { requireFields } from '../../validators/validate';
-import { WorkflowException } from '../../exceptions';
+import { ReturningStudentException, WorkflowException } from '../../exceptions';
 import { invokeUseCase } from '../../pipeline/use-case-invoker';
 import { assertEnrollmentTarget } from './enrollment-target';
 import type { EnrollmentRegistered } from '../../events/academics';
+
+/** Shown verbatim to the admin; identical to the server's refusal. */
+export const RETURNING_STUDENT_REFUSAL =
+  'This student was enrolled in an earlier year. Enrol them for this year through the student lookup.';
 
 export interface EnrollStudentDeps {
   enrollments: IEnrollmentRepository;
@@ -48,6 +52,16 @@ export class EnrollStudentUseCase implements CommandHandler<
       if (!student?.isActive) throw new WorkflowException('Archived students cannot be enrolled.');
       assertEnrollmentTarget(this.deps, command);
       if (this.deps.enrollments.hasEnrollmentForPeriod(command.studentId, command.academicYearId, command.termId)) throw new WorkflowException('Student already has an enrollment for this academic year and term.');
+
+      // Re-enrolment into a new year is online only (the lookup): a child with
+      // no enrolment in this year but one in another year is a returning student.
+      const earlier = this.deps.enrollments.findByStudentId(command.studentId);
+      if (
+        earlier.length > 0 &&
+        !earlier.some((e) => e.academicYearId === command.academicYearId)
+      ) {
+        throw new ReturningStudentException(RETURNING_STUDENT_REFUSAL);
+      }
 
       const occurredAt = this.deps.clock.now();
       const enrollment = Enrollment.create({
