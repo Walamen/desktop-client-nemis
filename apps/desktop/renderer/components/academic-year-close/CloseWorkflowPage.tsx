@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useViewModel } from '@/hooks/use-view-model';
 import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
@@ -31,24 +31,32 @@ export function CloseWorkflowPage() {
   const state = useViewModel(vm.store, (s) => s.academicYears);
   const years = state.status === 'success' || state.status === 'refreshing' ? state.data : null;
   const year = years?.find((y) => y.id === yearId);
-  const code = year?.code ?? '';
+  const isOpen = year?.status === 'ACTIVE' || year?.status === 'REOPENED';
   const [step, setStep] = useState<Step>('readiness');
   const [refusal, setRefusal] = useState<string | null>(null);
   const [closedRefreshed, setClosedRefreshed] = useState(true);
+  // The code of the open year once the gate has let it in; null until then.
+  const [admittedCode, setAdmittedCode] = useState<string | null>(null);
+  const code = year?.code ?? admittedCode ?? '';
   useRevalidateOnSync(() => { void vm.loadAcademicYears(); }, [vm]);
+  useEffect(() => {
+    if (isOpen && year) setAdmittedCode(year.code);
+  }, [isOpen, year]);
 
   if (!yearId) {
     return <p className="p-6 text-sm text-slate-600">Choose a year to close from Academic Years.</p>;
   }
 
-  // Wait for the years list, and only offer the workflow for an open year
-  // (the done step stays visible after the close reloads the list).
-  if (step !== 'done') {
+  // Wait for the years list, and only offer the workflow for an open year.
+  // The gate runs until the first load lets the year in: a later reload
+  // (a sync finishing, or the close itself) must not unmount the open step
+  // and lose its unsaved choices.
+  if (admittedCode === null && !(isOpen && year)) {
     if (state.status === 'error') {
       return <ErrorState message="Academic years could not be loaded." onRetry={() => void vm.loadAcademicYears()} />;
     }
     if (!years) return <Skeleton className="m-6 h-24" />;
-    if (!year || (year.status !== 'ACTIVE' && year.status !== 'REOPENED')) {
+    if (!year || !isOpen) {
       return (
         <main className="mx-auto max-w-5xl space-y-3 p-6">
           <p className="text-sm text-slate-700">{CLOSE_UNAVAILABLE}</p>

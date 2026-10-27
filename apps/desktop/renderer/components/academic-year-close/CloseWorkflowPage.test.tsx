@@ -1,7 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { clearNemis, renderWithLayer, stubNemis, yearRow } from '@/components/academic-grading/setup-test-support';
 import { CloseWorkflowPage } from './CloseWorkflowPage';
+
+// Capture the sync-driven reload so a test can fire it; mount still loads once.
+const revalidate = vi.hoisted(() => ({ load: null as null | (() => void) }));
+vi.mock('@/hooks/use-revalidate-on-sync', async () => {
+  const { useEffect } = await import('react');
+  return {
+    useRevalidateOnSync: (load: () => void, deps: readonly unknown[]) => {
+      revalidate.load = load;
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      useEffect(() => { load(); }, deps);
+    },
+  };
+});
 
 const cell = {
   studentId: 's1', studentName: 'Ama Kofi', classId: 'c1', className: 'Grade 7A',
@@ -227,5 +240,23 @@ describe('CloseWorkflowPage year gate', () => {
     await renderWithLayer(<CloseWorkflowPage />);
     expect(await screen.findByText('This year is not open for closing.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull();
+  });
+});
+
+describe('CloseWorkflowPage reload during the workflow', () => {
+  it('keeps the open step and its unsaved choices when a sync reload of the years fails', async () => {
+    stubClose();
+    await renderWithLayer(<CloseWorkflowPage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Continue' }));
+    const remark = (await screen.findByLabelText('Principal remark for all students')) as HTMLInputElement;
+    fireEvent.change(remark, { target: { value: 'Well done' } });
+    const list = vi.fn(async () => { throw new Error('offline'); });
+    (window as unknown as { nemis: { academicYear: { list: unknown } } }).nemis.academicYear.list = list;
+    act(() => revalidate.load!());
+    await waitFor(() => expect(list).toHaveBeenCalled());
+    await waitFor(() => expect(screen.queryByText('Academic years could not be loaded.')).toBeNull());
+    expect(screen.getByText('Kofi Mensah')).toBeInTheDocument();
+    expect((screen.getByLabelText('Principal remark for all students') as HTMLInputElement).value).toBe('Well done');
+    expect(screen.getByRole('heading', { name: 'Close 2025/2026' })).toBeInTheDocument();
   });
 });
