@@ -279,6 +279,40 @@ describe('SqliteStudentRepository', () => {
       expect(repo.findRecentlyEnrolledInActiveYear(5)).toEqual([]);
     });
 
+    describe('enrolment filter on findPage', () => {
+      const ids = (filter: 'current' | 'not-current' | undefined) =>
+        repo.findPage({ limit: 50, offset: 0, enrolment: filter, sort: 'name' }).items.map((s) => s.id).sort();
+
+      it("'current' returns only students with an ACTIVE/SUSPENDED enrolment in the active year", () => {
+        db().prepare(`UPDATE enrollments SET status = 'SUSPENDED' WHERE id = 'e3b'`).run();
+        const page = repo.findPage({ limit: 50, offset: 0, enrolment: 'current' });
+        expect(page.items.map((s) => s.id).sort()).toEqual(['s-1', 's-3']);
+        expect(page.total).toBe(2);
+      });
+
+      it("'not-current' returns the school's students with no live enrolment in the active year", () => {
+        const page = repo.findPage({ limit: 50, offset: 0, enrolment: 'not-current' });
+        expect(page.items.map((s) => s.id).sort()).toEqual(['s-2', 's-4']);
+        expect(page.total).toBe(2);
+      });
+
+      it('a withdrawn enrolment in the active year does not count as current', () => {
+        db().prepare(`UPDATE enrollments SET status = 'WITHDRAWN' WHERE studentId = 's-1'`).run();
+        expect(ids('current')).toEqual(['s-3']);
+        expect(ids('not-current')).toEqual(['s-1', 's-2', 's-4']);
+      });
+
+      it('is ignored when no year is current', () => {
+        db().prepare(`UPDATE academic_years SET isCurrent = 0`).run();
+        expect(ids('current')).toEqual(['s-1', 's-2', 's-3', 's-4']);
+        expect(ids('not-current')).toEqual(['s-1', 's-2', 's-3', 's-4']);
+      });
+
+      it('no filter returns everyone', () => {
+        expect(ids(undefined)).toEqual(['s-1', 's-2', 's-3', 's-4']);
+      });
+    });
+
     it('stays inside the workspace school', () => {
       db().prepare(`INSERT INTO provisioning_metadata (id, status, institutionId, startedAt, updatedAt) VALUES ('singleton','complete','inst-other','2026-07-20T00:00:00.000Z','2026-07-20T00:00:00.000Z')`).run();
       expect(repo.countEnrolledInActiveYear()).toBe(0);

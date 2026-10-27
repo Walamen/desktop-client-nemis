@@ -3,7 +3,7 @@ import type { EnrollmentStatus, Gender, GradeLevel } from '@nemis-desktop/types'
 
 export interface StudentPageFilter {
   limit: number; offset: number; keyword?: string; gender?: Gender; gradeLevel?: GradeLevel;
-  classId?: string; academicYearId?: string; enrollmentStatus?: EnrollmentStatus; isActive?: boolean;
+  classId?: string; academicYearId?: string; enrollmentStatus?: EnrollmentStatus; enrolment?: 'current' | 'not-current'; isActive?: boolean;
   sort?: 'name' | 'nemisId' | 'updatedAt';
 }
 

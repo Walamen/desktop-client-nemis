@@ -66,6 +66,8 @@ export interface ListStudentsDto {
   classId?: string;
   academicYearId?: string;
   enrollmentStatus?: EnrollmentStatus;
+  /** 'current' = enrolled in the school's active year; 'not-current' = not. Ignored when no year is active. */
+  enrolment?: 'current' | 'not-current';
   isActive?: boolean;
   sort?: 'name' | 'nemisId' | 'updatedAt';
 }
@@ -100,7 +102,7 @@ export interface StudentOutput {
 
 export type StudentSummaryOutput = Pick<
   StudentOutput,
-  'id' | 'fullName' | 'nemisId' | 'gradeLevel' | 'isActive'
+  'id' | 'fullName' | 'nemisId' | 'gradeLevel' | 'isActive' | 'dateOfBirth'
 > & { gender: Gender; updatedAt: string };
 
 export interface CreateAndEnrollGuardianDto {

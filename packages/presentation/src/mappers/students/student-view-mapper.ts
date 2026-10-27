@@ -9,6 +9,7 @@ export function toStudentRowView(dto: StudentSummaryOutput): StudentRowView {
     id: dto.id,
     fullName: dto.fullName,
     nemisId: dto.nemisId,
+    rawDateOfBirth: dto.dateOfBirth,
     gradeLevel: formatGradeLevel(dto.gradeLevel),
     gender: humanizeEnum(dto.gender),
     status: presentActive(dto.isActive),

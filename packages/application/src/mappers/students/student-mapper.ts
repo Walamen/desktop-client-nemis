@@ -37,6 +37,7 @@ export function toStudentSummary(student: Student): StudentSummaryOutput {
     id: student.id,
     fullName: student.name.full,
     nemisId: student.nemisId?.value,
+    dateOfBirth: student.dateOfBirth.value,
     gradeLevel: student.gradeLevel,
     isActive: student.isActive,
     gender: student.gender,

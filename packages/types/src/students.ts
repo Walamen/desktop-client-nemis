@@ -27,6 +27,8 @@ export interface StudentListItemResult {
   fullName: string;
   /** Absent for a legacy row awaiting its first post-rollout sync pull. */
   nemisId?: string;
+  /** ISO date; carries a not-enrolled child into the NEMIS ID lookup. */
+  dateOfBirth: string;
   gradeLevel?: GradeLevel;
   gender: Gender;
   isActive: boolean;
@@ -41,6 +43,8 @@ export interface StudentListRequest {
   classId?: string;
   academicYearId?: string;
   enrollmentStatus?: EnrollmentStatus;
+  /** 'current' = enrolled in the school's active year; 'not-current' = not. Ignored when no year is active. */
+  enrolment?: 'current' | 'not-current';
   isActive?: boolean;
   sort?: 'name' | 'nemisId' | 'updatedAt';
 }

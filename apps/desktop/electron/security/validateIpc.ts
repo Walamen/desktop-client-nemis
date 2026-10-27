@@ -176,6 +176,7 @@ export function assertListStudentsArgs(args: readonly unknown[]): void {
     'classId',
     'academicYearId',
     'enrollmentStatus',
+    'enrolment',
     'isActive',
     'sort',
   ]);
@@ -187,6 +188,7 @@ export function assertListStudentsArgs(args: readonly unknown[]): void {
   assertOptionalString(r.classId, 'classId', ID_MAX_LENGTH);
   assertOptionalString(r.academicYearId, 'academicYearId', ID_MAX_LENGTH);
   assertOptionalEnumMember(r.enrollmentStatus, 'enrollmentStatus', Object.values(EnrollmentStatus));
+  assertOptionalEnumMember(r.enrolment, 'enrolment', ['current', 'not-current']);
   assertOptionalBoolean(r.isActive, 'isActive');
   if (r.sort !== undefined)
     assertEnumMember(r.sort, 'sort', ['name', 'nemisId', 'updatedAt']);

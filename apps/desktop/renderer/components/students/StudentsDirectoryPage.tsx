@@ -26,6 +26,7 @@ import {
 } from '@nemis-desktop/presentation';
 import { useViewModel } from '@/hooks/use-view-model';
 import {
+  useAcademicYearViewModel,
   useSettingsViewModel,
   useStudentProfileViewModel,
   useStudentSearchViewModel,
@@ -34,6 +35,13 @@ import {
 } from '@/lib/presentation/hooks/school-admin';
 import { genders, grades, human } from './shared';
 import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
+
+/** Link into the add-student lookup for a child with no place in the active year. */
+function enrolHref(s: StudentRowView): string | null {
+  if (!s.nemisId) return null;
+  const query = new URLSearchParams({ nemisId: s.nemisId, dob: s.rawDateOfBirth.slice(0, 10) });
+  return `/government/school-admin/students/create?${query.toString()}`;
+}
 
 /**
  * Windows a page-button strip down to a bounded set: page 1, page `total`,
@@ -130,12 +138,19 @@ export function StudentsDirectoryPage() {
   const search = useStudentSearchViewModel();
   const stats = useStudentStatisticsViewModel();
   const settings = useSettingsViewModel();
+  const academicYear = useAcademicYearViewModel();
+  const year = useViewModel(academicYear.store, (s) => s.current);
   const profileVm = useStudentProfileViewModel();
   const list = useViewModel(vm.store, (s) => s.list);
   const p = useViewModel(vm.store, (s) => s.pagination);
   const filters = useViewModel(vm.store, (s) => s.filters);
   const selectedIds = useViewModel(vm.selection, (s) => s.selectedIds);
   const profile = useViewModel(settings.store, (s) => s.profile);
+  // Tabs exist only while the school has an active year; without one the
+  // enrolment filter is ignored by the read model and the whole roster shows.
+  const yearCode = year.status === 'success' || year.status === 'refreshing' ? year.data.code : null;
+  const enrolment = filters.enrolment ?? 'current';
+  const notEnrolledView = yearCode !== null && enrolment === 'not-current';
   const details = useViewModel(profileVm.store, (s) => s.details);
   const schoolName =
     profile.status === 'success' || profile.status === 'refreshing' ? profile.data.name : 'School';
@@ -156,9 +171,12 @@ export function StudentsDirectoryPage() {
     };
   }, []);
   useRevalidateOnSync(() => {
+    void academicYear.loadCurrent();
+    const current = vm.store.getState().filters;
+    if (current.enrolment === undefined) search.setFilters({ ...current, enrolment: 'current' });
     void vm.setPageSize(12);
     void stats.loadStatistics();
-  }, [stats, vm]);
+  }, [stats, vm, search, academicYear]);
   const openEdit = (id: string) => {
     setEditingId(id);
     void profileVm.loadDetails(id);
@@ -233,6 +251,27 @@ export function StudentsDirectoryPage() {
 
         <div className="px-6 py-6 space-y-5">
           <StatCards stats={stats} />
+
+          {yearCode !== null && (
+            <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-0.5 w-fit">
+              {(['current', 'not-current'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  aria-pressed={enrolment === tab}
+                  onClick={() => {
+                    search.setFilters({ ...filters, enrolment: tab });
+                    void search.search();
+                  }}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                    enrolment === tab ? 'bg-slate-900 text-white' : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  {tab === 'current' ? `Enrolled for ${yearCode}` : `Not enrolled for ${yearCode}`}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Sidebar + Main content */}
           <div className="flex flex-col lg:flex-row gap-4">
@@ -452,6 +491,14 @@ export function StudentsDirectoryPage() {
                               </td>
                               <td className="px-4 py-3">
                                 <div className="flex items-center justify-center gap-1">
+                                  {notEnrolledView && enrolHref(s) && (
+                                    <Link
+                                      href={enrolHref(s)!}
+                                      className="px-2 py-1 text-xs rounded-button border border-slate-300 text-slate-600 hover:bg-slate-50"
+                                    >
+                                      Enrol for {yearCode}
+                                    </Link>
+                                  )}
                                   <Link
                                     href={`/government/school-admin/students/profile?id=${s.id}`}
                                     aria-label="View"
@@ -478,7 +525,12 @@ export function StudentsDirectoryPage() {
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                       {list.data.map((s) => (
-                        <StudentCard key={s.id} student={s} onEdit={() => openEdit(s.id)} />
+                        <StudentCard
+                          key={s.id}
+                          student={s}
+                          onEdit={() => openEdit(s.id)}
+                          enrol={notEnrolledView && yearCode ? { href: enrolHref(s), code: yearCode } : null}
+                        />
                       ))}
                     </div>
                   )}
@@ -619,7 +671,15 @@ export function StudentsDirectoryPage() {
   );
 }
 
-function StudentCard({ student, onEdit }: { student: StudentRowView; onEdit: () => void }) {
+function StudentCard({
+  student,
+  onEdit,
+  enrol,
+}: {
+  student: StudentRowView;
+  onEdit: () => void;
+  enrol: { href: string | null; code: string } | null;
+}) {
   return (
     <Card hoverable bordered={false}>
       <div className="flex -mx-6 -mt-6 -mb-6 min-h-[120px]">
@@ -663,6 +723,14 @@ function StudentCard({ student, onEdit }: { student: StudentRowView; onEdit: () 
             </div>
           </div>
           <div className="mt-auto pt-2 border-t border-slate-100 flex items-center justify-end gap-1">
+            {enrol?.href && (
+              <Link
+                href={enrol.href}
+                className="px-3 py-0.5 text-xs rounded-button border border-slate-300 text-slate-600 hover:bg-slate-50"
+              >
+                Enrol for {enrol.code}
+              </Link>
+            )}
             <Link
               href={`/government/school-admin/students/profile?id=${student.id}`}
               className="px-3 py-0.5 text-xs rounded-button border border-slate-300 text-slate-400 hover:text-slate-700 hover:bg-slate-50"

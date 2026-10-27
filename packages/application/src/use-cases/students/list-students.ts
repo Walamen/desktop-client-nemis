@@ -34,6 +34,7 @@ export class ListStudentsUseCase implements QueryHandler<
         classId: query.classId,
         academicYearId: query.academicYearId,
         enrollmentStatus: query.enrollmentStatus,
+        enrolment: query.enrolment,
         isActive: query.isActive,
         sort: query.sort,
       });

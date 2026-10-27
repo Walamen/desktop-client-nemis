@@ -34,7 +34,8 @@ describe('ListStudentsUseCase', () => {
     expect(res.data.offset).toBe(0);
     expect(res.data.items).toHaveLength(3);
     expect(res.data.items[0]).toHaveProperty('fullName');
-    expect(res.data.items[0]).not.toHaveProperty('dateOfBirth');
+    expect(res.data.items[0]).toHaveProperty('dateOfBirth');
+    expect(res.data.items[0]).not.toHaveProperty('guardians');
   });
 
   it('clamps limit to the 1..100 range', async () => {

@@ -414,3 +414,81 @@ describe('StudentsDirectoryPage edit drawer', () => {
     expect(updateMock).not.toHaveBeenCalled();
   });
 });
+
+describe('StudentsDirectoryPage enrolment view', () => {
+  const row = {
+    id: 's-9',
+    fullName: 'Mary Kollie',
+    nemisId: '482915736045',
+    gradeLevel: 'Grade 1',
+    gender: 'Female',
+    isActive: true,
+    updatedAt: '2026-07-01',
+    dateOfBirth: '2015-03-09',
+  };
+  function stubWith(year: unknown, rows: unknown[] = [row]) {
+    const listMock = vi.fn(async () => ({ items: rows, total: rows.length, limit: 12, offset: 0 }));
+    (window as unknown as { nemis: unknown }).nemis = {
+      student: {
+        list: listMock,
+        getStatistics: vi.fn(async () => ({ totalStudents: 1, maleStudents: 0, femaleStudents: 1, recentEnrollments: 0 })),
+      },
+      school: { getSummary: vi.fn(async () => null) },
+      academicYear: { getCurrent: vi.fn(async () => year), list: vi.fn(async () => []) },
+      term: { getCurrent: vi.fn(async () => null) },
+      classes: { list: vi.fn(async () => ({ data: [], total: 0, page: 1, pageSize: 20, totalPages: 0 })) },
+    };
+    return listMock;
+  }
+  const activeYear = {
+    id: 'y1', institutionId: 'inst-1', code: '2026/2027', startDate: '2026-09-01', endDate: '2027-06-30',
+    isCurrent: true, status: 'ACTIVE',
+  };
+  const renderPage = () =>
+    render(
+      <PresentationProvider layer={createRendererPresentation()}>
+        <StudentsDirectoryPage />
+      </PresentationProvider>,
+    );
+
+  it('shows both tabs, defaults to the enrolled view, and asks the list for it', async () => {
+    const listMock = stubWith(activeYear);
+    renderPage();
+    expect(await screen.findByRole('button', { name: 'Enrolled for 2026/2027' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Not enrolled for 2026/2027' })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(listMock.mock.calls.some((c) => (c as unknown[])[0] && (c as unknown as [{ enrolment?: string }])[0].enrolment === 'current')).toBe(true),
+    );
+  });
+
+  it('the not-enrolled tab refetches with not-current and links each row into the lookup', async () => {
+    const listMock = stubWith(activeYear);
+    renderPage();
+    const { default: userEvent } = await import('@testing-library/user-event');
+    await userEvent.setup().click(await screen.findByRole('button', { name: 'Not enrolled for 2026/2027' }));
+    await waitFor(() =>
+      expect((listMock.mock.calls.at(-1) as unknown[] | undefined)?.[0]).toMatchObject({ enrolment: 'not-current' }),
+    );
+    const link = await screen.findByRole('link', { name: 'Enrol for 2026/2027' });
+    expect(link.getAttribute('href')).toBe(
+      '/government/school-admin/students/create?nemisId=482915736045&dob=2015-03-09',
+    );
+  });
+
+  it('hides the action for a student without a NEMIS ID', async () => {
+    stubWith(activeYear, [{ ...row, nemisId: undefined }]);
+    renderPage();
+    const { default: userEvent } = await import('@testing-library/user-event');
+    await userEvent.setup().click(await screen.findByRole('button', { name: 'Not enrolled for 2026/2027' }));
+    await screen.findByText('Mary Kollie');
+    expect(screen.queryByRole('link', { name: 'Enrol for 2026/2027' })).toBeNull();
+  });
+
+  it('shows no tabs and no action when the school has no active year', async () => {
+    stubWith(null);
+    renderPage();
+    await screen.findByText('Mary Kollie');
+    expect(screen.queryByRole('button', { name: /Not enrolled for/ })).toBeNull();
+    expect(screen.queryByRole('link', { name: /Enrol for/ })).toBeNull();
+  });
+});

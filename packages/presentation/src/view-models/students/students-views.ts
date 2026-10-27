@@ -5,6 +5,8 @@ export interface StudentRowView {
   readonly fullName: string;
   /** Absent for a legacy row awaiting its first post-rollout sync pull. */
   readonly nemisId?: string;
+  /** ISO date, unformatted: carries the child into the NEMIS ID lookup. */
+  readonly rawDateOfBirth: string;
   readonly gradeLevel: string;
   readonly gender: string;
   readonly status: StatusPresentation;

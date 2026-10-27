@@ -168,6 +168,14 @@ export class SqliteStudentRepository implements IStudentRepository {
       if (request.classId) { clauses.push('e.classId = ?'); params.push(request.classId); }
       if (request.academicYearId) { clauses.push('e.academicYearId = ?'); params.push(request.academicYearId); }
       if (request.enrollmentStatus) { clauses.push('e.status = ?'); params.push(request.enrollmentStatus); }
+      if (request.enrolment) {
+        // Ignored when no year is current: there is nothing to be enrolled for.
+        const year = this.#statements.get(`SELECT id FROM academic_years WHERE isCurrent = 1 ORDER BY startDate DESC, id LIMIT 1`).get() as { id: string } | undefined;
+        if (year) {
+          clauses.push(`${request.enrolment === 'current' ? '' : 'NOT '}EXISTS (SELECT 1 FROM ${TableNames.enrollments} ce WHERE ce.studentId = s.id AND ce.academicYearId = ? AND ce.status IN ('ACTIVE', 'SUSPENDED'))`);
+          params.push(year.id);
+        }
+      }
       const join = request.classId || request.academicYearId || request.enrollmentStatus ? ` JOIN ${TableNames.enrollments} e ON e.studentId = s.id` : '';
       const where = clauses.length ? ` WHERE ${clauses.join(' AND ')}` : '';
       const order = request.sort === 'name' ? 's.lastName ASC, s.firstName ASC' : request.sort === 'nemisId' ? 's.nemisId ASC' : 's.updatedAt DESC, s.id ASC';

@@ -43,6 +43,7 @@ describe('student mapper', () => {
       id: 'stu-1',
       fullName: 'Ada M Lovelace',
       nemisId: '000000000018',
+      dateOfBirth: '2015-06-01',
       gradeLevel: GradeLevel.GRADE_1,
       isActive: true,
       gender: Gender.FEMALE,
