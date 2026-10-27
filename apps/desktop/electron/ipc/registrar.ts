@@ -41,6 +41,7 @@ import { registerTransferHandlers } from '@app/ipc/handlers/school-admin/transfe
 import type { BackendProvisioningGateway } from '@app/provisioning/BackendProvisioningGateway';
 import { registerTimetableHandlers } from '@app/ipc/handlers/school-admin/timetables';
 import { StudentSyncStatusService } from '@app/data/services/StudentSyncStatusService';
+import { YearStructureCopyService } from '@app/data/services/YearStructureCopyService';
 
 // Teacher portal's own channels — see electron/ipc/handlers/teacher/.
 import { registerTeacherDashboardHandlers } from '@app/ipc/handlers/teacher/dashboard';
@@ -118,7 +119,7 @@ export function registerIpcHandlers(
   const refresh = () => syncWorker.pullNow();
   registerRegistryHandlers(securedHandle, gateway, refresh);
   registerTransferHandlers(securedHandle, gateway, refresh);
-  registerAcademicYearHandlers(securedHandle, app, gateway, refresh);
+  registerAcademicYearHandlers(securedHandle, app, gateway, refresh, new YearStructureCopyService(workspaces));
   registerAcademicYearCloseHandlers(securedHandle, gateway, refresh, () => syncWorker.countPendingChanges());
   registerCountyDeoHandlers(securedHandle, gateway, refresh);
   registerCountyMessagingHandlers(securedHandle, app, gateway, refresh, presence);

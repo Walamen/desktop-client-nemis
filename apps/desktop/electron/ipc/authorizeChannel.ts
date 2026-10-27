@@ -29,6 +29,7 @@ const SCHOOL_ADMIN_CHANNELS = new Set<IpcChannel>([
   IpcChannels.ACADEMIC_YEAR_CREATE,
   IpcChannels.ACADEMIC_YEAR_UPDATE,
   IpcChannels.ACADEMIC_YEAR_START,
+  IpcChannels.ACADEMIC_YEAR_COPY_STRUCTURE,
   // Close Academic Year (lifecycle Stage 3): online-only commands and the
   // server reads behind the close workflow.
   IpcChannels.CLOSE_GET_READINESS,

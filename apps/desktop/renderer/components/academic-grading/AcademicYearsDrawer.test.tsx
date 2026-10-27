@@ -262,3 +262,108 @@ it('says the device will show the reopen after sync when not refreshed', async (
     );
   });
 });
+
+describe('AcademicYearsDrawer copy structure (SETUP year only)', () => {
+  const SETUP = yearRow({ id: 'y9', code: '2027/2028', isCurrent: false, status: 'SETUP', termCount: 0, classCount: 0 });
+  const CLOSED = yearRow({ id: 'y0', code: '2024/2025', isCurrent: false, status: 'CLOSED', startDate: '2024-09-01' });
+  const ACTIVE = yearRow({ id: 'y1', code: '2025/2026', isCurrent: true, status: 'ACTIVE', startDate: '2025-09-01' });
+  const COPY = 'Copy structure from another year';
+  const CONFIRM =
+    'Copy classes, subjects, teacher assignments, terms and grading periods from 2025/2026 into 2027/2028? Dates move forward by the gap between the two years; check them before starting the year.';
+  const REFUSAL = 'Copy only into a year that is being set up and has no terms or classes yet.';
+
+  const openEdit = async (code: string) => {
+    fireEvent.click(await screen.findByRole('button', { name: `Edit ${code}` }));
+    await screen.findByRole('heading', { name: 'Edit Academic Year' });
+  };
+
+  it.each(['ACTIVE', 'CLOSED', 'REOPENED'])('offers no copy on a %s year', async (status) => {
+    stubNemis({ years: [yearRow({ id: 'y8', code: '2026/2027', isCurrent: false, status }), CLOSED] });
+    await renderWithLayer(<AcademicYearsDrawer {...props()} />);
+    await openEdit('2026/2027');
+    expect(screen.queryByRole('button', { name: COPY })).toBeNull();
+  });
+
+  it('offers copy on a SETUP year, listing only non-SETUP years, newest first', async () => {
+    stubNemis({ years: [CLOSED, SETUP, ACTIVE] });
+    await renderWithLayer(<AcademicYearsDrawer {...props()} />);
+    await openEdit('2027/2028');
+    fireEvent.click(screen.getByRole('button', { name: COPY }));
+    const select = field('Copy from');
+    expect(Array.from(select.options).map((o) => o.textContent)).toEqual(['2025/2026', '2024/2025']);
+    expect(select).toHaveValue('y1');
+  });
+
+  it('works offline: the copy button is not gated on connectivity', async () => {
+    stubNemis({ years: [CLOSED, SETUP] });
+    await renderWithLayer(<AcademicYearsDrawer {...props()} />);
+    await openEdit('2027/2028');
+    expect(screen.getByRole('button', { name: COPY })).toBeEnabled();
+  });
+
+  it('confirms with the exact copy, copies, and reports success', async () => {
+    const copyStructure = vi.fn(async () => ({ classes: 2, terms: 3, gradingPeriods: 6 }));
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    stubNemis({ years: [CLOSED, SETUP, ACTIVE], academicYear: { copyStructure } });
+    await renderWithLayer(<AcademicYearsDrawer {...props()} />);
+    await openEdit('2027/2028');
+    fireEvent.click(screen.getByRole('button', { name: COPY }));
+    fireEvent.click(screen.getByRole('button', { name: 'Copy structure' }));
+    await waitFor(() => expect(copyStructure).toHaveBeenCalledWith({ targetYearId: 'y9', sourceYearId: 'y1' }));
+    expect(confirm).toHaveBeenCalledWith(CONFIRM);
+    expect(await screen.findByText('Structure copied. Check the term and period dates.')).toBeInTheDocument();
+  });
+
+  it('copies from the year picked in the select', async () => {
+    const copyStructure = vi.fn(async () => ({ classes: 0, terms: 0, gradingPeriods: 0 }));
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    stubNemis({ years: [CLOSED, SETUP, ACTIVE], academicYear: { copyStructure } });
+    await renderWithLayer(<AcademicYearsDrawer {...props()} />);
+    await openEdit('2027/2028');
+    fireEvent.click(screen.getByRole('button', { name: COPY }));
+    fireEvent.change(field('Copy from'), { target: { value: 'y0' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Copy structure' }));
+    await waitFor(() => expect(copyStructure).toHaveBeenCalledWith({ targetYearId: 'y9', sourceYearId: 'y0' }));
+  });
+
+  it('does nothing when the confirmation is declined', async () => {
+    const copyStructure = vi.fn();
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    stubNemis({ years: [CLOSED, SETUP], academicYear: { copyStructure } });
+    await renderWithLayer(<AcademicYearsDrawer {...props()} />);
+    await openEdit('2027/2028');
+    fireEvent.click(screen.getByRole('button', { name: COPY }));
+    fireEvent.click(screen.getByRole('button', { name: 'Copy structure' }));
+    expect(copyStructure).not.toHaveBeenCalled();
+  });
+
+  it('shows the refusal inline when the year already has terms or classes', async () => {
+    const copyStructure = vi.fn(async () => { throw new Error('[VALIDATION_FAILED] The provided data failed validation.'); });
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    stubNemis({ years: [CLOSED, SETUP], academicYear: { copyStructure } });
+    await renderWithLayer(<AcademicYearsDrawer {...props()} />);
+    await openEdit('2027/2028');
+    fireEvent.click(screen.getByRole('button', { name: COPY }));
+    fireEvent.click(screen.getByRole('button', { name: 'Copy structure' }));
+    expect(await screen.findByText(REFUSAL)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Edit Academic Year' })).toBeInTheDocument();
+  });
+
+  it('shows a generic failure for any other error', async () => {
+    const copyStructure = vi.fn(async () => { throw new Error('[UNEXPECTED_ERROR] An unexpected error occurred.'); });
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    stubNemis({ years: [CLOSED, SETUP], academicYear: { copyStructure } });
+    await renderWithLayer(<AcademicYearsDrawer {...props()} />);
+    await openEdit('2027/2028');
+    fireEvent.click(screen.getByRole('button', { name: COPY }));
+    fireEvent.click(screen.getByRole('button', { name: 'Copy structure' }));
+    expect(await screen.findByText('The structure could not be copied. Please try again.')).toBeInTheDocument();
+  });
+
+  it('offers nothing to copy from when every other year is still in setup', async () => {
+    stubNemis({ years: [SETUP] });
+    await renderWithLayer(<AcademicYearsDrawer {...props()} />);
+    await openEdit('2027/2028');
+    expect(screen.queryByRole('button', { name: COPY })).toBeNull();
+  });
+});

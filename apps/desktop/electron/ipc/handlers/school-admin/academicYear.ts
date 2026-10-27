@@ -1,10 +1,12 @@
 import { IpcChannels } from '@nemis-desktop/types';
 import type { ApplicationLayer } from '@nemis-desktop/application';
+import type { YearStructureCopyService } from '@app/data/services/YearStructureCopyService';
 import type { IpcHandle } from '@app/ipc/registrar';
 import type { BackendProvisioningGateway } from '@app/provisioning/BackendProvisioningGateway';
 import {
   assertNoArgs,
   assertSingleIdArg,
+  assertCopyYearStructureArgs,
   assertCreateAcademicYearArgs,
   assertUpdateAcademicYearArgs,
 } from '@app/security/validateIpc';
@@ -17,6 +19,7 @@ export function registerAcademicYearHandlers(
   app: ApplicationLayer,
   gateway: AcademicYearGateway,
   refresh: () => Promise<boolean>,
+  yearStructure: Pick<YearStructureCopyService, 'copyStructure'>,
 ): void {
   handle(IpcChannels.ACADEMIC_YEAR_GET_CURRENT, assertNoArgs, async () => {
     const res = await app.academics.getCurrentAcademicYear();
@@ -42,5 +45,10 @@ export function registerAcademicYearHandlers(
   // pull brings the new status back into local SQLite.
   handle(IpcChannels.ACADEMIC_YEAR_START, assertSingleIdArg, (id: string) =>
     runOnline(() => gateway.startAcademicYear(id), refresh),
+  );
+
+  // Offline: the rows go through the sync outbox like any other setup edit.
+  handle(IpcChannels.ACADEMIC_YEAR_COPY_STRUCTURE, assertCopyYearStructureArgs, (request) =>
+    yearStructure.copyStructure(request),
   );
 }

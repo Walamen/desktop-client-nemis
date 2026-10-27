@@ -161,3 +161,14 @@ export interface PagedListResult<T> {
 export interface DeletedResult {
   id: string;
 }
+
+/** Copy another year's structure into a year being set up (lifecycle Stage 4). */
+export interface YearStructureCopyRequest {
+  targetYearId: string;
+  sourceYearId: string;
+}
+export interface YearStructureCopyResult {
+  classes: number;
+  terms: number;
+  gradingPeriods: number;
+}

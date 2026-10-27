@@ -3,13 +3,14 @@
 import { useCallback, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import type { AcademicYearRowView } from '@nemis-desktop/presentation';
-import { Badge, Button, Drawer, Input, Textarea } from '@nemis-desktop/ui';
+import { Badge, Button, Drawer, Input, Select, Textarea } from '@nemis-desktop/ui';
 import { useViewModel } from '@/hooks/use-view-model';
 import { parseIpcError } from '@/lib/errors/parseIpcError';
 import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 import { useAcademicFoundationViewModel } from '@/lib/presentation/hooks/school-admin';
 import { useConnectivityStore } from '@/lib/presentation/hooks/shared';
 import { FormField, LoadState, statusVariant } from '@/components/academic/foundation-ui';
+import { academicYearBridge } from '@/services/nemis-bridge/school-admin/academic-year-bridge';
 import { academicYearCloseBridge } from '@/services/nemis-bridge/school-admin/academic-year-close-bridge';
 import { useEscapeCapture } from './use-escape-capture';
 import { useOpenSession, type SetupDrawerProps, type SetupNavigate } from './setup-drawers';
@@ -26,6 +27,18 @@ export function AcademicYearsDrawer({ isOpen, onClose, onNavigate }: SetupDrawer
       <AcademicYearsManager key={session} onNavigate={onNavigate} />
     </Drawer>
   );
+}
+
+const COPY_REFUSAL = 'Copy only into a year that is being set up and has no terms or classes yet.';
+const COPY_DONE = 'Structure copied. Check the term and period dates.';
+const copyConfirm = (source: string, target: string) =>
+  `Copy classes, subjects, teacher assignments, terms and grading periods from ${source} into ${target}? Dates move forward by the gap between the two years; check them before starting the year.`;
+
+/** The years a SETUP year can copy from: any other year that has started, newest first. */
+function copySources(target: AcademicYearRowView, years: readonly AcademicYearRowView[] | null): AcademicYearRowView[] {
+  return (years ?? [])
+    .filter((y) => y.id !== target.id && y.status !== 'SETUP')
+    .sort((a, b) => b.startDate.localeCompare(a.startDate));
 }
 
 const OFFLINE_MESSAGE = "You're offline. Connect to the internet to do this.";
@@ -58,6 +71,10 @@ function AcademicYearsManager({ onNavigate }: { onNavigate: SetupNavigate }) {
   const [reopenReason, setReopenReason] = useState('');
   const [reopenBusy, setReopenBusy] = useState(false);
   const [reopenError, setReopenError] = useState<string | null>(null);
+  const [copying, setCopying] = useState(false);
+  const [copySourceId, setCopySourceId] = useState('');
+  const [copyBusy, setCopyBusy] = useState(false);
+  const [copyError, setCopyError] = useState<string | null>(null);
   const backToList = useCallback(() => setView('list'), []);
   useEscapeCapture(view === 'form', backToList);
   useRevalidateOnSync(() => { void vm.loadAcademicYears(); }, [vm]);
@@ -72,7 +89,31 @@ function AcademicYearsManager({ onNavigate }: { onNavigate: SetupNavigate }) {
     setReopening(false);
     setReopenReason('');
     setReopenError(null);
+    setCopying(false);
+    setCopyError(null);
     setView('form');
+  };
+
+  /** Local and offline: the rows reach the server through the sync outbox. */
+  const copyStructure = async (target: AcademicYearRowView, sources: readonly AcademicYearRowView[]) => {
+    const source = sources.find((y) => y.id === copySourceId) ?? sources[0];
+    if (!source) return;
+    if (!window.confirm(copyConfirm(source.code, target.code))) return;
+    setCopyBusy(true);
+    setCopyError(null);
+    try {
+      await academicYearBridge.copyStructure({ targetYearId: target.id, sourceYearId: source.id });
+      setNotice(COPY_DONE);
+      setCopying(false);
+      await vm.loadAcademicYears();
+      setView('list');
+    } catch (cause) {
+      setCopyError(
+        parseIpcError(cause)?.code === 'VALIDATION_FAILED' ? COPY_REFUSAL : 'The structure could not be copied. Please try again.',
+      );
+    } finally {
+      setCopyBusy(false);
+    }
   };
 
   /** The server decides when a year starts, so this is online only. */
@@ -122,6 +163,7 @@ function AcademicYearsManager({ onNavigate }: { onNavigate: SetupNavigate }) {
   };
 
   if (view === 'form') {
+    const sources = editing?.status === 'SETUP' ? copySources(editing, years) : [];
     return (
       <div className="space-y-6">
         <form onSubmit={(e) => void submit(e)} className="space-y-4">
@@ -194,6 +236,35 @@ function AcademicYearsManager({ onNavigate }: { onNavigate: SetupNavigate }) {
               >
                 Corrections
               </Link>
+            )}
+            {editing.status === 'SETUP' && sources.length > 0 && (
+              <div className="space-y-2">
+                {!copying ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => { setCopySourceId(sources[0]?.id ?? ''); setCopyError(null); setCopying(true); }}
+                  >
+                    Copy structure from another year
+                  </Button>
+                ) : (
+                  <div className="space-y-2">
+                    <Select
+                      label="Copy from"
+                      value={copySourceId}
+                      onChange={(e) => setCopySourceId(e.target.value)}
+                      options={sources.map((y) => ({ value: y.id, label: y.code }))}
+                    />
+                    <div className="flex gap-2">
+                      <Button type="button" variant="secondary" disabled={copyBusy} onClick={() => setCopying(false)}>Cancel</Button>
+                      <Button type="button" disabled={copyBusy} onClick={() => void copyStructure(editing, sources)}>
+                        {copyBusy ? 'Copying…' : 'Copy structure'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                {copyError && <p role="alert" className="text-sm text-red-700">{copyError}</p>}
+              </div>
             )}
             {canStart(editing, years) && (
               <div className="space-y-2">

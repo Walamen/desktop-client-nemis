@@ -8,4 +8,5 @@ export const academicYearApi: AcademicYearApi = {
   create: (request) => invoke(IpcChannels.ACADEMIC_YEAR_CREATE, request),
   update: (request) => invoke(IpcChannels.ACADEMIC_YEAR_UPDATE, request),
   start: (id) => invoke(IpcChannels.ACADEMIC_YEAR_START, id),
+  copyStructure: (request) => invoke(IpcChannels.ACADEMIC_YEAR_COPY_STRUCTURE, request),
 };

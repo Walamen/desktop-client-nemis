@@ -71,7 +71,7 @@ const app = { academics } as unknown as ApplicationLayer;
 describe('academic-year IPC handlers', () => {
   it('registers every channel and returns unwrapped data', async () => {
     const { calls, handle } = makeHarness();
-    registerAcademicYearHandlers(handle, app, { startAcademicYear: vi.fn(async () => null) }, vi.fn(async () => true));
+    registerAcademicYearHandlers(handle, app, { startAcademicYear: vi.fn(async () => null) }, vi.fn(async () => true), { copyStructure: vi.fn() });
 
     const list = calls.get('academic-year:list')!;
     expect(await list.handler()).toEqual([academicYearRow]);
@@ -97,7 +97,7 @@ describe('academic-year start IPC handler', () => {
     const { calls, handle } = makeHarness();
     const gateway = { startAcademicYear: vi.fn(async () => null) };
     const refresh = vi.fn(async () => true);
-    registerAcademicYearHandlers(handle, app, gateway, refresh);
+    registerAcademicYearHandlers(handle, app, gateway, refresh, { copyStructure: vi.fn() });
     const start = calls.get('academic-year:start')!;
     expect(() => start.validate([])).toThrow(IPCError);
     expect(() => start.validate(['ay-1'])).not.toThrow();
@@ -110,9 +110,24 @@ describe('academic-year start IPC handler', () => {
     const { calls, handle } = makeHarness();
     const gateway = { startAcademicYear: vi.fn(async () => { throw new Error('409'); }) };
     const refresh = vi.fn(async () => true);
-    registerAcademicYearHandlers(handle, app, gateway, refresh);
+    registerAcademicYearHandlers(handle, app, gateway, refresh, { copyStructure: vi.fn() });
     await expect(calls.get('academic-year:start')!.handler('ay-1')).rejects.toThrow('409');
     expect(refresh).not.toHaveBeenCalled();
+  });
+});
+
+describe('academic-year copy-structure IPC handler', () => {
+  it('validates the two ids and delegates to the service', async () => {
+    const { calls, handle } = makeHarness();
+    const copyStructure = vi.fn(() => ({ classes: 2, terms: 3, gradingPeriods: 6 }));
+    registerAcademicYearHandlers(handle, app, { startAcademicYear: vi.fn(async () => null) }, vi.fn(async () => true), { copyStructure });
+    const copy = calls.get('academic-year:copy-structure')!;
+    expect(() => copy.validate([])).toThrow(IPCError);
+    expect(() => copy.validate([{ targetYearId: 'a' }])).toThrow(IPCError);
+    expect(() => copy.validate([{ targetYearId: 'a', sourceYearId: 'b', extra: 1 }])).toThrow(IPCError);
+    expect(() => copy.validate([{ targetYearId: 'a', sourceYearId: 'b' }])).not.toThrow();
+    expect(await copy.handler({ targetYearId: 'a', sourceYearId: 'b' })).toEqual({ classes: 2, terms: 3, gradingPeriods: 6 });
+    expect(copyStructure).toHaveBeenCalledWith({ targetYearId: 'a', sourceYearId: 'b' });
   });
 });
 

@@ -55,6 +55,8 @@ import type {
   UpdateClassRequest,
   UpdateSubjectRequest,
   UpdateTermRequest,
+  YearStructureCopyRequest,
+  YearStructureCopyResult,
 } from './academics';
 import type {
   AcademicYearResult,
@@ -299,6 +301,7 @@ export interface IpcContract {
     result: AcademicYearListItemResult;
   };
   'academic-year:start': { args: [id: string]; result: OnlineCommandResult<null> };
+  'academic-year:copy-structure': { args: [request: YearStructureCopyRequest]; result: YearStructureCopyResult };
   'close:get-readiness': { args: [yearId: string]; result: CloseReadiness };
   'close:fill-cells': { args: [request: CloseFillCellsIpcRequest]; result: OnlineCommandResult<null> };
   'close:get-promotion': { args: [yearId: string]; result: PromotionOverview };
@@ -528,6 +531,7 @@ export const IpcChannels = {
   ACADEMIC_YEAR_CREATE: 'academic-year:create',
   ACADEMIC_YEAR_UPDATE: 'academic-year:update',
   ACADEMIC_YEAR_START: 'academic-year:start',
+  ACADEMIC_YEAR_COPY_STRUCTURE: 'academic-year:copy-structure',
   CLOSE_GET_READINESS: 'close:get-readiness',
   CLOSE_FILL_CELLS: 'close:fill-cells',
   CLOSE_GET_PROMOTION: 'close:get-promotion',

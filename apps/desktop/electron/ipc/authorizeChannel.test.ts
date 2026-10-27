@@ -46,6 +46,17 @@ describe('authorizeChannel', () => {
     }
   });
 
+  it('lets only a school administrator copy a year structure', () => {
+    expect(() =>
+      authorizeChannel(IpcChannels.ACADEMIC_YEAR_COPY_STRUCTURE, workspace(SystemRole.INSTITUTION_ADMIN)),
+    ).not.toThrow();
+    for (const role of [SystemRole.TEACHER, SystemRole.COUNTY_ADMIN, SystemRole.DEO, SystemRole.MINISTRY_ADMIN]) {
+      expect(() => authorizeChannel(IpcChannels.ACADEMIC_YEAR_COPY_STRUCTURE, workspace(role))).toThrow(
+        /school administrator/,
+      );
+    }
+  });
+
   it('allows every county channel only for a county administrator', () => {
     const channels = [
       IpcChannels.COUNTY_GET_DASHBOARD,

@@ -38,6 +38,8 @@ import type {
   UpdateClassRequest,
   UpdateSubjectRequest,
   UpdateTermRequest,
+  YearStructureCopyRequest,
+  YearStructureCopyResult,
 } from './academics';
 import type {
   AcademicYearResult,
@@ -303,6 +305,8 @@ export interface AcademicYearApi {
   update(request: UpdateAcademicYearRequest): Promise<AcademicYearListItemResult>;
   /** Online only: the server moves a SETUP year to ACTIVE, then a forced pull follows. */
   start(id: string): Promise<OnlineCommandResult<null>>;
+  /** Offline: copies another year's classes, subjects, teacher assignments, terms and grading periods through the outbox. */
+  copyStructure(request: YearStructureCopyRequest): Promise<YearStructureCopyResult>;
 }
 export interface TermApi {
   list(academicYearId: string): Promise<TermResult[]>;

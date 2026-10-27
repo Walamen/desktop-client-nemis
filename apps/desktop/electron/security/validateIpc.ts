@@ -740,6 +740,15 @@ export function assertUpdateAcademicYearArgs(args: readonly unknown[]): void {
   assertOptionalIsoDate(request.endDate, 'endDate');
 }
 
+export function assertCopyYearStructureArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [request] = args;
+  if (!isPlainObject(request)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(request, ['targetYearId', 'sourceYearId']);
+  assertString(request.targetYearId, 'targetYearId', ID_MAX_LENGTH);
+  assertString(request.sourceYearId, 'sourceYearId', ID_MAX_LENGTH);
+}
+
 export function assertCreateTermArgs(args: readonly unknown[]): void {
   assertArity(args, 1);
   const [request] = args;

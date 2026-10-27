@@ -4,6 +4,8 @@ import type {
   CreateAcademicYearRequest,
   OnlineCommandResult,
   UpdateAcademicYearRequest,
+  YearStructureCopyRequest,
+  YearStructureCopyResult,
 } from '@nemis-desktop/types';
 import { api } from '../api';
 
@@ -15,4 +17,6 @@ export const academicYearBridge = {
   updateAcademicYear: (request: UpdateAcademicYearRequest): Promise<AcademicYearListItemResult> =>
     api().academicYear.update(request),
   start: (id: string): Promise<OnlineCommandResult<null>> => api().academicYear.start(id),
+  copyStructure: (request: YearStructureCopyRequest): Promise<YearStructureCopyResult> =>
+    api().academicYear.copyStructure(request),
 };
