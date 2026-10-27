@@ -963,6 +963,18 @@ export function assertRegistryLookupArgs(args: readonly unknown[]): void {
   assertRegistryIdentity(request);
 }
 
+const PERSON_NAME_MAX_LENGTH = 100;
+
+export function assertRegistryNameLookupArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [request] = args;
+  if (!isPlainObject(request)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(request, ['firstName', 'lastName', 'dateOfBirth']);
+  assertString(request.firstName, 'firstName', PERSON_NAME_MAX_LENGTH);
+  assertString(request.lastName, 'lastName', PERSON_NAME_MAX_LENGTH);
+  assertIsoDate(request.dateOfBirth, 'dateOfBirth');
+}
+
 export function assertRegistryClaimArgs(args: readonly unknown[]): void {
   assertArity(args, 1);
   const [request] = args;

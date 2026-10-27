@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PresentationProvider } from '@/lib/presentation/presentation-provider';
 import { createRendererPresentation } from '@/lib/presentation/create-renderer-presentation';
+import { payloadFixture } from '../../report-cards/fixtures';
 import { AddStudentWizard } from './AddStudentWizard';
 
 const { push } = vi.hoisted(() => ({ push: vi.fn() }));
@@ -38,10 +39,13 @@ const promotedHit = {
   gender: 'FEMALE',
   lastCompletion: { gradeLevel: 'GRADE_6', outcome: 'PROMOTED', nextGradeLevel: 'GRADE_7', academicYearName: '2024/2025' },
   claimPath: 'IMMEDIATE',
+  eligibleGradeLevel: 'GRADE_7',
+  finalCard: null,
 };
 const graduatedHit = {
   ...promotedHit,
   lastCompletion: { gradeLevel: 'GRADE_12', outcome: 'GRADUATED', nextGradeLevel: null, academicYearName: '2025/2026' },
+  eligibleGradeLevel: null,
 };
 
 const createdStudent = {
@@ -52,12 +56,14 @@ const createdStudent = {
 
 interface Stubs {
   lookup?: (request: unknown) => Promise<unknown>;
+  lookupByName?: (request: unknown) => Promise<unknown>;
   claim?: (request: unknown) => Promise<unknown>;
   request?: (request: unknown) => Promise<unknown>;
 }
 
 function stubNemis(stubs: Stubs = {}) {
   const lookup = vi.fn(stubs.lookup ?? (async () => ({ found: false })));
+  const lookupByName = vi.fn(stubs.lookupByName ?? (async () => ({ found: false })));
   const claim = vi.fn(stubs.claim ?? (async () => ({ data: { studentId: 's9' }, refreshed: true })));
   const request = vi.fn(
     stubs.request ?? (async () => ({ data: { id: 't1', lapsesAt: '2026-10-16T09:00:00.000Z' }, refreshed: true })),
@@ -68,10 +74,10 @@ function stubNemis(stubs: Stubs = {}) {
     academicYear: { getCurrent: vi.fn(async () => null), list: vi.fn(async () => [currentYear]) },
     term: { getCurrent: vi.fn(async () => null), list: vi.fn(async () => [term1]) },
     classes: { list: vi.fn(async () => ({ items: [jss1a, sss3a], total: 2 })) },
-    registry: { lookup, claim, request },
+    registry: { lookup, lookupByName, claim, request },
     student: { createAndEnroll },
   };
-  return { lookup, claim, request, createAndEnroll };
+  return { lookup, lookupByName, claim, request, createAndEnroll };
 }
 
 beforeEach(() => {
@@ -611,5 +617,118 @@ describe('AddStudentWizard', () => {
     expect(add).toBeDisabled();
     await user.click(add);
     expect(screen.queryByRole('heading', { name: 'Guardian 11', level: 3 })).toBeNull();
+  });
+});
+
+describe('AddStudentWizard — new-year enrolment lookup', () => {
+  afterEach(() => window.history.replaceState({}, '', '/'));
+
+  it('name search lists masked matches and Choose runs the ID lookup with that match', async () => {
+    const { lookup, lookupByName } = stubNemis({
+      lookupByName: async () => ({
+        found: true,
+        truncated: false,
+        matches: [
+          { nemisId: '482915736045', firstName: 'Ama', middleName: null, lastName: 'Kollie', schoolName: 'Paynesville Academy' },
+        ],
+      }),
+      lookup: async () => promotedHit,
+    });
+    const { user } = await renderWizard();
+
+    await user.click(screen.getByRole('button', { name: 'Search by name' }));
+    await user.type(textboxNear(/^first name/i), 'Ama');
+    await user.type(textboxNear(/^last name/i), 'Kollie');
+    await user.type(textboxNear(/^date of birth/i), '2014-03-02');
+    await user.click(screen.getByRole('button', { name: 'Search' }));
+
+    expect(await screen.findByText('Students matching this name and date of birth')).toBeInTheDocument();
+    expect(lookupByName).toHaveBeenCalledWith({ firstName: 'Ama', lastName: 'Kollie', dateOfBirth: '2014-03-02' });
+    expect(screen.getByText('Ama Kollie — Paynesville Academy — NEMIS ID •••• •••• 6045')).toBeInTheDocument();
+    expect(screen.queryByText(/482915736045/)).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: 'Choose' }));
+    expect(await screen.findByRole('heading', { name: 'Claim student', level: 2 })).toBeInTheDocument();
+    expect(lookup).toHaveBeenCalledWith({ nemisId: '482915736045', dateOfBirth: '2014-03-02' });
+  });
+
+  it('a name search with no match shows the uniform miss', async () => {
+    stubNemis({ lookupByName: async () => ({ found: false }) });
+    const { user } = await renderWizard();
+    await user.click(screen.getByRole('button', { name: 'Search by name' }));
+    await user.type(textboxNear(/^first name/i), 'Ama');
+    await user.type(textboxNear(/^last name/i), 'Kollie');
+    await user.type(textboxNear(/^date of birth/i), '2014-03-02');
+    await user.click(screen.getByRole('button', { name: 'Search' }));
+    expect(await screen.findByText('No matching student.')).toBeInTheDocument();
+  });
+
+  it('a GRADUATED final card shows the card and the graduated line, and requires a reason', async () => {
+    stubNemis({
+      lookup: async () => ({ ...graduatedHit, finalCard: { payload: payloadFixture(), version: 2 } }),
+    });
+    const { user } = await renderWizard();
+    await search(user);
+    await screen.findByRole('heading', { name: 'Claim student', level: 2 });
+    expect(screen.getByText('Last final report card')).toBeInTheDocument();
+    expect(screen.getByText('Monrovia Central High')).toBeInTheDocument();
+    expect(screen.getByText('Graduated — not eligible for a school grade')).toBeInTheDocument();
+    expect(screen.queryByText('No final report card yet')).toBeNull();
+    await user.selectOptions(selectNear(/^grade/i), 'GRADE_12');
+    expect(textboxNear(/^reason for the grade/i)).toBeInTheDocument();
+  });
+
+  it('the eligible grade is pre-selected and needs no reason; no card says so', async () => {
+    stubNemis({ lookup: async () => promotedHit });
+    const { user } = await renderWizard();
+    await search(user);
+    await screen.findByRole('heading', { name: 'Claim student', level: 2 });
+    expect(screen.getByText('Eligible grade: GRADE 7')).toBeInTheDocument();
+    expect(selectNear(/^grade/i).value).toBe('GRADE_7');
+    expect(screen.queryByText(/^reason for the grade/i)).toBeNull();
+    expect(screen.getByText('No final report card yet')).toBeInTheDocument();
+    await user.selectOptions(selectNear(/^grade/i), 'GRADE_8');
+    expect(textboxNear(/^reason for the grade/i)).toBeInTheDocument();
+  });
+
+  it('REQUIRES_APPROVAL shows the final card section too', async () => {
+    stubNemis({
+      lookup: async () => ({
+        ...promotedHit,
+        claimPath: 'REQUIRES_APPROVAL',
+        finalCard: { payload: payloadFixture(), version: 1 },
+      }),
+    });
+    const { user } = await renderWizard();
+    await search(user);
+    await screen.findByRole('heading', { name: 'Request release', level: 2 });
+    expect(screen.getByText('Last final report card')).toBeInTheDocument();
+    expect(screen.getByText('Monrovia Central High')).toBeInTheDocument();
+  });
+
+  it('ALREADY_ENROLLED shows the copy with the active year code, no claim button, and Back to search', async () => {
+    stubNemis({ lookup: async () => ({ ...promotedHit, claimPath: 'ALREADY_ENROLLED' }) });
+    const { user } = await renderWizard();
+    await search(user);
+    expect(await screen.findByText('Ama Kollie is already enrolled at your school for 2025/2026.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Claim student' })).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Back to search' }));
+    expect(await screen.findByRole('heading', { name: 'Find Student', level: 2 })).toBeInTheDocument();
+  });
+
+  it('?nemisId=&dob= runs the ID lookup on mount', async () => {
+    window.history.replaceState({}, '', '/?nemisId=482915736045&dob=2014-03-02');
+    const { lookup } = stubNemis({ lookup: async () => promotedHit });
+    await renderWizard();
+    expect(await screen.findByRole('heading', { name: 'Claim student', level: 2 })).toBeInTheDocument();
+    expect(lookup).toHaveBeenCalledTimes(1);
+    expect(lookup).toHaveBeenCalledWith({ nemisId: '482915736045', dateOfBirth: '2014-03-02' });
+  });
+
+  it('the deep link does not run offline', async () => {
+    window.history.replaceState({}, '', '/?nemisId=482915736045&dob=2014-03-02');
+    const { lookup } = stubNemis({ lookup: async () => promotedHit });
+    await renderWizard({ online: false });
+    expect(lookup).not.toHaveBeenCalled();
   });
 });

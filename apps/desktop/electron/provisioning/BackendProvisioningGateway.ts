@@ -17,6 +17,9 @@ import {
   type RegistryHit,
   type RegistryLookupRequest,
   type RegistryLookupResult,
+  type RegistryNameLookupRequest,
+  type RegistryNameLookupResult,
+  type ReportCardPayloadV1,
   type RegistryReleaseRequest,
   type RegistryReleaseResult,
   type RemoteRecordRef,
@@ -207,6 +210,24 @@ export class BackendProvisioningGateway {
       '/student-registry/lookup',
       { method: 'POST', body: JSON.stringify({ nemisId: request.nemisId, dateOfBirth: request.dateOfBirth }) },
       toLookupResult,
+      ONLINE_COMMAND,
+    );
+  }
+
+  /** Same endpoint and same budget as the ID lookup; the body decides. A miss
+   * is exactly `{ found: false }`. */
+  async lookupStudentByName(request: RegistryNameLookupRequest): Promise<RegistryNameLookupResult> {
+    return this.authorized(
+      '/student-registry/lookup',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          firstName: request.firstName,
+          lastName: request.lastName,
+          dateOfBirth: request.dateOfBirth,
+        }),
+      },
+      toNameLookupResult,
       ONLINE_COMMAND,
     );
   }
@@ -842,16 +863,32 @@ function toLookupResult(value: unknown): RegistryLookupResult {
     typeof row.firstName !== 'string' ||
     typeof row.lastName !== 'string' ||
     !isGender(row.gender) ||
-    (row.claimPath !== 'IMMEDIATE' && row.claimPath !== 'REQUIRES_APPROVAL')
+    (row.claimPath !== 'IMMEDIATE' &&
+      row.claimPath !== 'REQUIRES_APPROVAL' &&
+      row.claimPath !== 'ALREADY_ENROLLED')
   ) {
     throw malformed();
+  }
+  // A server that predates the new-year fields sends neither: no eligible
+  // grade and no card, which the screen treats as "needs a reason".
+  const eligible = row.eligibleGradeLevel ?? null;
+  if (eligible !== null && !isGrade(eligible)) throw malformed();
+  let finalCard: RegistryHit['finalCard'] = null;
+  if (row.finalCard !== null && row.finalCard !== undefined) {
+    const card = asRecord(row.finalCard);
+    const payload = asRecord(card.payload);
+    if (typeof card.version !== 'number' || typeof payload.schemaVersion !== 'number') throw malformed();
+    finalCard = { payload: payload as unknown as ReportCardPayloadV1, version: card.version };
   }
   let lastCompletion: RegistryHit['lastCompletion'] = null;
   if (row.lastCompletion !== null && row.lastCompletion !== undefined) {
     const c = asRecord(row.lastCompletion);
     if (
       !isGrade(c.gradeLevel) ||
-      (c.outcome !== 'PROMOTED' && c.outcome !== 'RETAINED' && c.outcome !== 'GRADUATED') ||
+      (c.outcome !== 'PROMOTED' &&
+        c.outcome !== 'RETAINED' &&
+        c.outcome !== 'GRADUATED' &&
+        c.outcome !== 'WITHDRAWN') ||
       !(c.nextGradeLevel === null || isGrade(c.nextGradeLevel)) ||
       typeof c.academicYearName !== 'string'
     ) {
@@ -872,7 +909,36 @@ function toLookupResult(value: unknown): RegistryLookupResult {
     gender: row.gender,
     lastCompletion,
     claimPath: row.claimPath,
+    eligibleGradeLevel: eligible,
+    finalCard,
   };
+}
+
+function toNameLookupResult(value: unknown): RegistryNameLookupResult {
+  const row = asRecord(value);
+  if (row.found !== true) return { found: false };
+  const malformed = () => new Error('Malformed registry lookup response.');
+  if (!Array.isArray(row.matches) || typeof row.truncated !== 'boolean') throw malformed();
+  const matches = row.matches.map((entry: unknown) => {
+    const m = asRecord(entry);
+    if (
+      typeof m.nemisId !== 'string' ||
+      typeof m.firstName !== 'string' ||
+      typeof m.lastName !== 'string' ||
+      typeof m.schoolName !== 'string' ||
+      !(m.middleName === null || m.middleName === undefined || typeof m.middleName === 'string')
+    ) {
+      throw malformed();
+    }
+    return {
+      nemisId: m.nemisId,
+      firstName: m.firstName,
+      middleName: m.middleName ?? null,
+      lastName: m.lastName,
+      schoolName: m.schoolName,
+    };
+  });
+  return { found: true, matches, truncated: row.truncated };
 }
 
 export interface AssignmentPushResult {

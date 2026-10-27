@@ -18,6 +18,7 @@ const SCHOOL_ADMIN_CHANNELS = new Set<IpcChannel>([
   // Mutations
   // Online-only registry and transfer commands (NEMIS ID parity §6.2).
   IpcChannels.REGISTRY_LOOKUP,
+  IpcChannels.REGISTRY_LOOKUP_BY_NAME,
   IpcChannels.REGISTRY_CLAIM,
   IpcChannels.REGISTRY_REQUEST,
   IpcChannels.STUDENT_BULK_CLAIM,

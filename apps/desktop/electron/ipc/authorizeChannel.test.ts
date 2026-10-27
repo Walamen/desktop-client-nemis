@@ -246,6 +246,7 @@ describe('authorizeChannel', () => {
 
   it.each([
     'registry:lookup',
+    'registry:lookup-by-name',
     'registry:claim',
     'registry:request',
     'registry:bulk-claim',

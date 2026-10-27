@@ -15,6 +15,8 @@ import type {
   RegistryClaimResult,
   RegistryLookupRequest,
   RegistryLookupResult,
+  RegistryNameLookupRequest,
+  RegistryNameLookupResult,
   RegistryReleaseRequest,
   RegistryReleaseResult,
   RemoteRecordRef,
@@ -419,6 +421,7 @@ export interface IpcContract {
   // Online-only commands (NEMIS ID desktop parity spec §6). These call the
   // server directly; mutations refresh local data with a forced pull.
   'registry:lookup': { args: [request: RegistryLookupRequest]; result: RegistryLookupResult };
+  'registry:lookup-by-name': { args: [request: RegistryNameLookupRequest]; result: RegistryNameLookupResult };
   'registry:claim': {
     args: [request: RegistryClaimRequest];
     result: OnlineCommandResult<RegistryClaimResult>;
@@ -603,6 +606,7 @@ export const IpcChannels = {
   SCHOOL_ADMIN_DELETE: 'school-admin:delete',
   SCHOOL_ADMIN_REVERSE_PAYMENT: 'school-admin:reverse-payment',
   REGISTRY_LOOKUP: 'registry:lookup',
+  REGISTRY_LOOKUP_BY_NAME: 'registry:lookup-by-name',
   REGISTRY_CLAIM: 'registry:claim',
   REGISTRY_REQUEST: 'registry:request',
   STUDENT_BULK_CLAIM: 'registry:bulk-claim',

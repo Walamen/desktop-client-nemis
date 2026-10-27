@@ -189,6 +189,8 @@ import type {
   RegistryClaimResult,
   RegistryLookupRequest,
   RegistryLookupResult,
+  RegistryNameLookupRequest,
+  RegistryNameLookupResult,
   RegistryReleaseRequest,
   RegistryReleaseResult,
   RemoteRecordRef,
@@ -416,6 +418,7 @@ export interface AssignmentApi {
 
 export interface RegistryApi {
   lookup(request: RegistryLookupRequest): Promise<RegistryLookupResult>;
+  lookupByName(request: RegistryNameLookupRequest): Promise<RegistryNameLookupResult>;
   claim(request: RegistryClaimRequest): Promise<OnlineCommandResult<RegistryClaimResult>>;
   request(request: RegistryReleaseRequest): Promise<OnlineCommandResult<RegistryReleaseResult>>;
   bulkClaim(request: BulkClaimRequest): Promise<OnlineCommandResult<BulkClaimResult>>;

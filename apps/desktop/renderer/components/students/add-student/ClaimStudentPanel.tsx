@@ -6,7 +6,8 @@ import { Button, Input, Select } from '@nemis-desktop/ui';
 import { registryBridge, parseIpcError } from '@/services/nemis-bridge/school-admin/registry-bridge';
 import { grades, human } from '../shared';
 import { ClassTermPicker, isClassTermComplete, type ClassTermValue } from './ClassTermPicker';
-import { claimGradeDefault, claimNeedsReason, describeCompletion } from './wizard-logic';
+import { FinalCardSection } from './FinalCardSection';
+import { claimGradeDefault,claimNeedsReason, describeCompletion } from './wizard-logic';
 
 /** An IMMEDIATE hit: the student is free to be claimed into this school. The
  * grade defaults to the stamp's next grade; any other grade (or no stamp, or
@@ -29,6 +30,11 @@ export function ClaimStudentPanel({
   const [pendingSync, setPendingSync] = useState(false);
   const needsReason = claimNeedsReason(hit, grade);
   const completion = describeCompletion(hit);
+  const eligibleLine = hit.eligibleGradeLevel
+    ? `Eligible grade: ${human(hit.eligibleGradeLevel)}`
+    : hit.lastCompletion?.outcome === 'GRADUATED'
+      ? 'Graduated — not eligible for a school grade'
+      : null;
   const ready = Boolean(grade) && isClassTermComplete(target) && (!needsReason || reason.trim().length > 0);
 
   const claim = async () => {
@@ -83,6 +89,8 @@ export function ClaimStudentPanel({
           <dd className="font-medium">{completion ?? 'No outcome recorded'}</dd>
         </div>
       </dl>
+      <FinalCardSection hit={hit} />
+      {eligibleLine && <p className="text-sm font-medium text-slate-800">{eligibleLine}</p>}
       <Select
         label="Grade"
         required

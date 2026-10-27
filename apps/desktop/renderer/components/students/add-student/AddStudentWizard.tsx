@@ -28,7 +28,7 @@ import {
 } from './CreateStudentSteps';
 import { FindStudentStep, type FindOutcome } from './FindStudentStep';
 import { RequestReleasePanel } from './RequestReleasePanel';
-import { branchForLookup, type WizardBranch } from './wizard-logic';
+import { branchForLookup, readLookupPreset, type LookupPreset, type WizardBranch } from './wizard-logic';
 
 const STEPS = [
   { number: 1, title: 'Find Student', description: 'National lookup' },
@@ -86,6 +86,22 @@ export function AddStudentWizard() {
     void settings.loadCurrentSchool();
   }, [settings]);
 
+  // The returning-student copy names the school's active year.
+  const years = useViewModel(foundation.store, (s) => s.academicYears);
+  useEffect(() => {
+    void foundation.loadAcademicYears();
+  }, [foundation]);
+  const activeYearCode =
+    years.status === 'success' || years.status === 'refreshing'
+      ? (years.data.find((y) => y.status === 'ACTIVE') ?? years.data.find((y) => y.isCurrent))?.code
+      : undefined;
+
+  // `?nemisId=&dob=` (the students directory links here): read once on mount.
+  const [preset, setPreset] = useState<LookupPreset | null>(null);
+  useEffect(() => {
+    setPreset(readLookupPreset(window.location.search));
+  }, []);
+
   const updateGuardian = (index: number, field: keyof GuardianDraft, value: string | boolean) => {
     setGuardians((prev) => prev.map((g, i) => (i === index ? { ...g, [field]: value } : g)));
   };
@@ -106,6 +122,7 @@ export function AddStudentWizard() {
 
   const onFound = (outcome: FindOutcome) => {
     setFind(outcome);
+    setPreset(null);
     setStepError('');
     if (outcome.kind === 'hit') {
       const next = branchForLookup(outcome.hit);
@@ -121,6 +138,7 @@ export function AddStudentWizard() {
   const backToSearch = () => {
     setBranch('find');
     setFind(null);
+    setPreset(null);
     setStepError('');
     setCurrentStep(1);
   };
@@ -328,10 +346,22 @@ export function AddStudentWizard() {
           {branch === 'request' && find?.kind === 'hit' && (
             <RequestReleasePanel hit={find.hit} dateOfBirth={find.dateOfBirth} onBack={backToSearch} />
           )}
+          {branch === 'enrolled' && find?.kind === 'hit' && (
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
+              <p className="text-sm text-slate-800">
+                {`${find.hit.firstName} ${find.hit.lastName} is already enrolled at your school${
+                  activeYearCode ? ` for ${activeYearCode}` : ''
+                }.`}
+              </p>
+              <Button type="button" variant="secondary" onClick={backToSearch}>
+                Back to search
+              </Button>
+            </div>
+          )}
           {onCreatePath && (
             <>
               {stepError && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{stepError}</p>}
-              {currentStep === 1 && <FindStudentStep onDone={onFound} />}
+              {currentStep === 1 && <FindStudentStep onDone={onFound} preset={preset} />}
               {currentStep === 2 && (
                 <div className="bg-white rounded-2xl border border-gray-200 p-6">
                   <h2 className="text-xl font-semibold text-gray-900 mb-6">Student Information</h2>

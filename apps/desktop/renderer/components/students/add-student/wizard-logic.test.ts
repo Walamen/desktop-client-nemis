@@ -5,7 +5,7 @@ import { branchForLookup, claimGradeDefault, claimNeedsReason, describeCompletio
 const hit = (over: Partial<RegistryHit> = {}): RegistryHit => ({
   found: true, nemisId: '482915736045', firstName: 'Musu', lastName: 'Kollie', gender: 'FEMALE' as never,
   lastCompletion: { gradeLevel: GradeLevel.GRADE_6, outcome: 'PROMOTED', nextGradeLevel: GradeLevel.GRADE_7, academicYearName: '2025/2026' },
-  claimPath: 'IMMEDIATE', ...over,
+  claimPath: 'IMMEDIATE', eligibleGradeLevel: GradeLevel.GRADE_7, finalCard: null, ...over,
 });
 
 describe('wizard logic', () => {
@@ -13,20 +13,23 @@ describe('wizard logic', () => {
     expect(branchForLookup({ found: false })).toBe('miss');
     expect(branchForLookup(hit())).toBe('claim');
     expect(branchForLookup(hit({ claimPath: 'REQUIRES_APPROVAL' }))).toBe('request');
+    expect(branchForLookup(hit({ claimPath: 'ALREADY_ENROLLED' }))).toBe('enrolled');
   });
 
   it('pre-fills the stamped next grade, but never a null one', () => {
     expect(claimGradeDefault(hit())).toBe(GradeLevel.GRADE_7);
-    expect(claimGradeDefault(hit({ lastCompletion: { gradeLevel: GradeLevel.GRADE_12, outcome: 'GRADUATED', nextGradeLevel: null, academicYearName: '2025/2026' } }))).toBe('');
-    expect(claimGradeDefault(hit({ lastCompletion: null }))).toBe('');
+    expect(claimGradeDefault(hit({ eligibleGradeLevel: null }))).toBe('');
+    // The server's eligible grade (a retained child stays put) wins over the stamp's next grade.
+    expect(claimGradeDefault(hit({ eligibleGradeLevel: GradeLevel.GRADE_6 }))).toBe(GradeLevel.GRADE_6);
   });
 
   it('requires a reason when the grade differs from the stamp, and always after GRADUATED', () => {
     expect(claimNeedsReason(hit(), GradeLevel.GRADE_7)).toBe(false);
     expect(claimNeedsReason(hit(), GradeLevel.GRADE_8)).toBe(true);
-    const graduated = hit({ lastCompletion: { gradeLevel: GradeLevel.GRADE_12, outcome: 'GRADUATED', nextGradeLevel: null, academicYearName: '2025/2026' } });
+    const graduated = hit({ eligibleGradeLevel: null, lastCompletion: { gradeLevel: GradeLevel.GRADE_12, outcome: 'GRADUATED', nextGradeLevel: null, academicYearName: '2025/2026' } });
     expect(claimNeedsReason(graduated, GradeLevel.GRADE_12)).toBe(true);
     expect(claimNeedsReason(graduated, '')).toBe(true);
+    expect(claimNeedsReason(hit({ eligibleGradeLevel: GradeLevel.GRADE_6 }), GradeLevel.GRADE_6)).toBe(false);
   });
 
   it('describes the last completion for the admin', () => {

@@ -24,6 +24,7 @@ const DASHED_ID = '4829-1573-6045';
 function registryGateway() {
   return {
     lookupStudent: vi.fn(async () => ({ found: false as const })),
+    lookupStudentByName: vi.fn(async () => ({ found: false as const })),
     claimStudent: vi.fn(async () => ({ studentId: 'student-9' })),
     requestRelease: vi.fn(async () => ({ id: 'transfer-1', lapsesAt: '2026-10-16T09:00:00.000Z' })),
     bulkClaimStudents: vi.fn(async () => ({
@@ -85,6 +86,25 @@ describe('registry IPC handlers', () => {
 
     expect(await lookup.handler({ nemisId: DASHED_ID, dateOfBirth: '2012-01-01' })).toEqual({ found: false });
     expect(gateway.lookupStudent).toHaveBeenCalledWith({ nemisId: VALID_ID, dateOfBirth: '2012-01-01' });
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it('lookup by name validates the request, forwards it, and does NOT refresh', async () => {
+    const { calls, handle } = capture();
+    const gateway = registryGateway();
+    const refresh = vi.fn(async () => true);
+    registerRegistryHandlers(handle, gateway, refresh);
+    const byName = calls.get('registry:lookup-by-name')!;
+    const ok = { firstName: 'Ama', lastName: 'Kollie', dateOfBirth: '2012-01-01' };
+
+    expect(() => byName.validate([ok])).not.toThrow();
+    expect(() => byName.validate([{ ...ok, lastName: '' }])).toThrow();
+    expect(() => byName.validate([{ ...ok, firstName: '' }])).toThrow();
+    expect(() => byName.validate([{ ...ok, dateOfBirth: 'yesterday' }])).toThrow();
+    expect(() => byName.validate([{ ...ok, nemisId: VALID_ID }])).toThrow();
+
+    expect(await byName.handler(ok)).toEqual({ found: false });
+    expect(gateway.lookupStudentByName).toHaveBeenCalledWith(ok);
     expect(refresh).not.toHaveBeenCalled();
   });
 

@@ -10,6 +10,7 @@ describe('online bridges', () => {
   it('route to window.nemis.registry and window.nemis.transfer', async () => {
     const registry = {
       lookup: vi.fn(async () => ({ found: false })),
+      lookupByName: vi.fn(async () => ({ found: false })),
       claim: vi.fn(async () => ({ data: { studentId: 's' }, refreshed: true })),
       request: vi.fn(async () => ({ data: { id: 't' }, refreshed: true })),
       bulkClaim: vi.fn(async () => ({ data: { created: [], failed: [], registryUnavailableMessage: null }, refreshed: true })),
@@ -22,6 +23,9 @@ describe('online bridges', () => {
     (window as { nemis?: unknown }).nemis = { registry, transfer };
 
     expect(await registryBridge.lookupStudent({ nemisId: '482915736045', dateOfBirth: '2012-01-01' })).toEqual({ found: false });
+    const byName = { firstName: 'Ama', lastName: 'Kollie', dateOfBirth: '2012-01-01' };
+    expect(await registryBridge.lookupStudentByName(byName)).toEqual({ found: false });
+    expect(registry.lookupByName).toHaveBeenCalledWith(byName);
     expect(await transferBridge.cancelTransfer('t-1')).toEqual({ data: { id: 't-1' }, refreshed: true });
     expect(registry.lookup).toHaveBeenCalledWith({ nemisId: '482915736045', dateOfBirth: '2012-01-01' });
     const bulk = { academicYearId: 'y', termId: 't', students: [] };

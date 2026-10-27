@@ -1,4 +1,5 @@
 import type { Gender, GradeLevel } from './enums';
+import type { ReportCardPayloadV1 } from './report-cards';
 
 /** Shapes mirror Nemis/apps/server/src/student-registry/dto/*.ts,
  * Nemis/apps/server/src/student-transfers/dto/*.ts and the client type in
@@ -12,9 +13,31 @@ export interface RegistryLookupRequest {
   dateOfBirth: string;
 }
 
+/** Name-based lookup: the same endpoint, a different body. Online only. */
+export interface RegistryNameLookupRequest {
+  firstName: string;
+  lastName: string;
+  /** YYYY-MM-DD. */
+  dateOfBirth: string;
+}
+
+/** One candidate of a name search. The full NEMIS ID is needed to continue;
+ * the screen shows it masked until the admin chooses the match. */
+export interface RegistryNameMatch {
+  nemisId: string;
+  firstName: string;
+  middleName: string | null;
+  lastName: string;
+  schoolName: string;
+}
+
+export type RegistryNameLookupResult =
+  | { found: false }
+  | { found: true; matches: RegistryNameMatch[]; truncated: boolean };
+
 export interface RegistryLastCompletion {
   gradeLevel: GradeLevel;
-  outcome: 'PROMOTED' | 'RETAINED' | 'GRADUATED';
+  outcome: 'PROMOTED' | 'RETAINED' | 'GRADUATED' | 'WITHDRAWN';
   /** Null for GRADUATED — there is nothing to pre-fill. */
   nextGradeLevel: GradeLevel | null;
   academicYearName: string;
@@ -27,7 +50,13 @@ export interface RegistryHit {
   lastName: string;
   gender: Gender;
   lastCompletion: RegistryLastCompletion | null;
-  claimPath: 'IMMEDIATE' | 'REQUIRES_APPROVAL';
+  /** ALREADY_ENROLLED: the child is live at the caller's own school. */
+  claimPath: 'IMMEDIATE' | 'REQUIRES_APPROVAL' | 'ALREADY_ENROLLED';
+  /** The grade the child may enter without an override reason; null when
+   * there is none (graduated, or no FINAL card). */
+  eligibleGradeLevel: GradeLevel | null;
+  /** The latest current FINAL report card, if any. */
+  finalCard: { payload: ReportCardPayloadV1; version: number } | null;
 }
 
 /** A miss is uniform: a wrong ID and a wrong birth date are indistinguishable. */

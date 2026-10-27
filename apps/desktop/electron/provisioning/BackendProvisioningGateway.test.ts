@@ -425,7 +425,7 @@ describe('BackendProvisioningGateway', () => {
       const hit = {
         found: true, nemisId: '482915736045', firstName: 'Musu', lastName: 'Kollie', gender: 'OTHER',
         lastCompletion: { gradeLevel: 'GRADE_12', outcome: 'GRADUATED', nextGradeLevel: null, academicYearName: '2025/2026' },
-        claimPath: 'REQUIRES_APPROVAL',
+        claimPath: 'REQUIRES_APPROVAL', eligibleGradeLevel: null, finalCard: null,
       };
       vi.stubGlobal('fetch', vi.fn(async () => response(hit)));
       expect(await buildGateway().lookupStudent({ nemisId: '482915736045', dateOfBirth: '2012-01-01' })).toEqual(hit);
@@ -455,12 +455,57 @@ describe('BackendProvisioningGateway', () => {
       expect(result).toEqual({
         found: true, nemisId: '482915736045', firstName: 'Musu', lastName: 'Kollie', gender: 'FEMALE',
         lastCompletion: { gradeLevel: 'GRADE_6', outcome: 'PROMOTED', nextGradeLevel: 'GRADE_7', academicYearName: '2025/2026' },
-        claimPath: 'IMMEDIATE',
+        claimPath: 'IMMEDIATE', eligibleGradeLevel: null, finalCard: null,
       });
       const [url, init] = fetchMock.mock.calls[0] as unknown as [URL, RequestInit];
       expect(url).toEqual(new URL('https://nemis.example/student-registry/lookup'));
       expect(init.method).toBe('POST');
       expect(JSON.parse(String(init.body))).toEqual({ nemisId: '482915736045', dateOfBirth: '2012-01-01' });
+    });
+
+    it('a hit carries the eligible grade, the claim path and the last FINAL card', async () => {
+      const payload = { schemaVersion: 1, kind: 'FINAL' };
+      vi.stubGlobal('fetch', vi.fn(async () => response({
+        found: true, nemisId: '482915736045', firstName: 'Musu', lastName: 'Kollie', gender: 'FEMALE',
+        lastCompletion: { gradeLevel: 'GRADE_6', outcome: 'WITHDRAWN', nextGradeLevel: null, academicYearName: '2025/2026' },
+        claimPath: 'ALREADY_ENROLLED', eligibleGradeLevel: 'GRADE_6', finalCard: { payload, version: 3, extra: 1 },
+      })));
+      const result = await buildGateway().lookupStudent({ nemisId: '482915736045', dateOfBirth: '2012-01-01' });
+      expect(result).toMatchObject({
+        claimPath: 'ALREADY_ENROLLED', eligibleGradeLevel: 'GRADE_6', finalCard: { payload, version: 3 },
+      });
+      expect((result as { finalCard: object }).finalCard).not.toHaveProperty('extra');
+    });
+
+    it('a hit from a server that sends neither new field reads as no eligible grade and no card', async () => {
+      vi.stubGlobal('fetch', vi.fn(async () => response({
+        found: true, nemisId: '482915736045', firstName: 'Musu', lastName: 'Kollie', gender: 'FEMALE',
+        lastCompletion: null, claimPath: 'IMMEDIATE',
+      })));
+      expect(await buildGateway().lookupStudent({ nemisId: '482915736045', dateOfBirth: '2012-01-01' }))
+        .toMatchObject({ eligibleGradeLevel: null, finalCard: null });
+    });
+
+    it('lookup by name posts the name body and builds each match field by field', async () => {
+      const fetchMock = vi.fn(async () => response({
+        found: true, truncated: true,
+        matches: [{ nemisId: '482915736045', firstName: 'Ama', middleName: null, lastName: 'Kollie', schoolName: 'Paynesville', institutionId: 'leak' }],
+      }));
+      vi.stubGlobal('fetch', fetchMock);
+      const result = await buildGateway().lookupStudentByName({ firstName: 'Ama', lastName: 'Kollie', dateOfBirth: '2012-01-01' });
+      expect(result).toEqual({
+        found: true, truncated: true,
+        matches: [{ nemisId: '482915736045', firstName: 'Ama', middleName: null, lastName: 'Kollie', schoolName: 'Paynesville' }],
+      });
+      const [url, init] = fetchMock.mock.calls[0] as unknown as [URL, RequestInit];
+      expect(url).toEqual(new URL('https://nemis.example/student-registry/lookup'));
+      expect(JSON.parse(String(init.body))).toEqual({ firstName: 'Ama', lastName: 'Kollie', dateOfBirth: '2012-01-01' });
+    });
+
+    it('a name lookup miss is exactly { found: false }', async () => {
+      vi.stubGlobal('fetch', vi.fn(async () => response({ found: false, hint: 'x' })));
+      expect(await buildGateway().lookupStudentByName({ firstName: 'A', lastName: 'B', dateOfBirth: '2012-01-01' }))
+        .toEqual({ found: false });
     });
 
     it('a malformed hit is rejected rather than half-trusted', async () => {

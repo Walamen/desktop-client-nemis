@@ -3,6 +3,7 @@ import {
   type BulkClaimRequest,
   type RegistryClaimRequest,
   type RegistryLookupRequest,
+  type RegistryNameLookupRequest,
   type RegistryReleaseRequest,
 } from '@nemis-desktop/types';
 import { normalizeNemisId } from '@nemis-desktop/shared';
@@ -12,13 +13,14 @@ import {
   assertBulkClaimArgs,
   assertRegistryClaimArgs,
   assertRegistryLookupArgs,
+  assertRegistryNameLookupArgs,
   assertRegistryReleaseArgs,
 } from '@app/security/validateIpc';
 import { runOnline } from './online';
 
 export type RegistryGateway = Pick<
   BackendProvisioningGateway,
-  'lookupStudent' | 'claimStudent' | 'requestRelease' | 'bulkClaimStudents'
+  'lookupStudent' | 'lookupStudentByName' | 'claimStudent' | 'requestRelease' | 'bulkClaimStudents'
 >;
 
 /** The validator has already proven the ID normalises; this hands the server
@@ -39,6 +41,11 @@ export function registerRegistryHandlers(
   // A lookup changes nothing on the server, so it never refreshes.
   handle(IpcChannels.REGISTRY_LOOKUP, assertRegistryLookupArgs, (request: RegistryLookupRequest) =>
     gateway.lookupStudent(canonical(request)),
+  );
+  handle(
+    IpcChannels.REGISTRY_LOOKUP_BY_NAME,
+    assertRegistryNameLookupArgs,
+    (request: RegistryNameLookupRequest) => gateway.lookupStudentByName(request),
   );
   handle(IpcChannels.REGISTRY_CLAIM, assertRegistryClaimArgs, (request: RegistryClaimRequest) =>
     runOnline(() => gateway.claimStudent(canonical(request)), refresh),

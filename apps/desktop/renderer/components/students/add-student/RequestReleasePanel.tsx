@@ -6,6 +6,7 @@ import { Button, Input, Select } from '@nemis-desktop/ui';
 import { registryBridge, parseIpcError } from '@/services/nemis-bridge/school-admin/registry-bridge';
 import { grades, human } from '../shared';
 import { ClassTermPicker, isClassTermComplete, type ClassTermValue } from './ClassTermPicker';
+import { FinalCardSection } from './FinalCardSection';
 import { claimGradeDefault } from './wizard-logic';
 
 function formatDate(iso: string): string {
@@ -79,6 +80,7 @@ export function RequestReleasePanel({
         {hit.firstName} {hit.lastName} is still enrolled at another school this year. Their current school must
         release them.
       </p>
+      <FinalCardSection hit={hit} />
       <Select
         label="Grade"
         required

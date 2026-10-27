@@ -7,6 +7,8 @@ import type {
   RegistryClaimResult,
   RegistryLookupRequest,
   RegistryLookupResult,
+  RegistryNameLookupRequest,
+  RegistryNameLookupResult,
   RegistryReleaseRequest,
   RegistryReleaseResult,
 } from '@nemis-desktop/types';
@@ -16,6 +18,8 @@ import { api } from '../api';
 export const registryBridge = {
   lookupStudent: (request: RegistryLookupRequest): Promise<RegistryLookupResult> =>
     api().registry.lookup(request),
+  lookupStudentByName: (request: RegistryNameLookupRequest): Promise<RegistryNameLookupResult> =>
+    api().registry.lookupByName(request),
   claimStudent: (request: RegistryClaimRequest): Promise<OnlineCommandResult<RegistryClaimResult>> =>
     api().registry.claim(request),
   requestRelease: (request: RegistryReleaseRequest): Promise<OnlineCommandResult<RegistryReleaseResult>> =>
