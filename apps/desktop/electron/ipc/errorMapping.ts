@@ -11,7 +11,7 @@ import {
   ReturningStudentException,
 } from '@nemis-desktop/application';
 import type { IpcErrorCode, IpcErrorPayload } from '@nemis-desktop/types';
-import { RepositoryError, ValidationError } from '../data/errors/repositoryErrors';
+import { RepositoryError, ValidationError, YearStructureNotEmptyError } from '../data/errors/repositoryErrors';
 import { DatabaseError } from '../database/errors/errors';
 
 /** Fixed renderer-facing message per code — internal text never crosses IPC. */
@@ -34,6 +34,7 @@ const CODE_MESSAGES: Record<IpcErrorCode, string> = {
     'This academic year has not started yet. Grades, attendance and assignments can be recorded once it starts.',
   ACADEMIC_YEAR_NOT_DELETABLE: 'Only an academic year that is still being set up can be deleted.',
   RETURNING_STUDENT: RETURNING_STUDENT_REFUSAL,
+  YEAR_STRUCTURE_NOT_EMPTY: 'Copy only into a year that is being set up and has no terms or classes yet.',
 };
 
 /** Violation tokens raised by the local freeze triggers (migration 040) as the
@@ -103,6 +104,7 @@ function mapError(error: unknown, remainingDepth: number): IpcErrorPayload {
   if (error instanceof RemoteRejectedError) {
     return { code: 'REMOTE_REJECTED', message: sanitizeRemoteMessage(error.remoteMessage) ?? CODE_MESSAGES.REMOTE_REJECTED };
   }
+  if (error instanceof YearStructureNotEmptyError) return payloadFor('YEAR_STRUCTURE_NOT_EMPTY');
   if (error instanceof ValidationError) {
     return {
       ...payloadFor('VALIDATION_FAILED'),

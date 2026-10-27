@@ -104,11 +104,9 @@ function AcademicYearsManager({ onNavigate }: { onNavigate: SetupNavigate }) {
     try {
       await academicYearBridge.copyStructure({ targetYearId: target.id, sourceYearId: source.id });
     } catch (cause) {
-      // Only a refusal about the target year is the "already has terms or
-      // classes" copy; a malformed stored date also fails validation.
-      const parsed = parseIpcError(cause);
+      // A malformed stored date also fails validation, with a different code.
       setCopyError(
-        parsed?.code === 'VALIDATION_FAILED' && parsed.issueFields.includes('targetYearId') ? COPY_REFUSAL : 'The structure could not be copied. Please try again.',
+        parseIpcError(cause)?.code === 'YEAR_STRUCTURE_NOT_EMPTY' ? COPY_REFUSAL : 'The structure could not be copied. Please try again.',
       );
       setCopyBusy(false);
       return;

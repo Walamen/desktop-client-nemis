@@ -650,7 +650,9 @@ export type IpcErrorCode =
   | 'ACADEMIC_YEAR_NOT_STARTED'
   | 'ACADEMIC_YEAR_NOT_DELETABLE'
   // Offline enrol refused: a returning student re-enrols through the lookup.
-  | 'RETURNING_STUDENT';
+  | 'RETURNING_STUDENT'
+  // Copying a year's structure into a year that already has terms or classes.
+  | 'YEAR_STRUCTURE_NOT_EMPTY';
 
 export interface IpcValidationIssue {
   field: string;

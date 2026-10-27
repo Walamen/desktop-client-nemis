@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { DesktopScopeType, SystemRole, type ProvisioningUser } from '@nemis-desktop/types';
 import { ForbiddenError } from '@nemis-desktop/shared';
 import { WorkspaceManager } from '@app/workspace/WorkspaceManager';
-import { ValidationError } from '@app/data/errors/repositoryErrors';
+import { YearStructureNotEmptyError } from '@app/data/errors/repositoryErrors';
 import { YearStructureCopyService } from './YearStructureCopyService';
 
 const admin: ProvisioningUser = {
@@ -197,7 +197,7 @@ describe('YearStructureCopyService', () => {
     const { service, term, count } = setup();
     term('t-new', 'y-new', 'Term 1', 1, '2026-09-15', '2026-12-15');
     const before = count('sync_queue');
-    expect(() => service.copyStructure(request)).toThrow(ValidationError);
+    expect(() => service.copyStructure(request)).toThrow(YearStructureNotEmptyError);
     expect(() => service.copyStructure(request)).toThrow(REFUSAL);
     expect(count('classes', `academicYearId='y-new'`)).toBe(0);
     expect(count('sync_queue')).toBe(before);

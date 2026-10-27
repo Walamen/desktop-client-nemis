@@ -338,7 +338,7 @@ describe('AcademicYearsDrawer copy structure (SETUP year only)', () => {
   });
 
   it('shows the refusal inline when the year already has terms or classes', async () => {
-    const copyStructure = vi.fn(async () => { throw new Error('[VALIDATION_FAILED] The provided data failed validation.\u001FtargetYearId'); });
+    const copyStructure = vi.fn(async () => { throw new Error('[YEAR_STRUCTURE_NOT_EMPTY] Copy only into a year that is being set up and has no terms or classes yet.'); });
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     stubNemis({ years: [CLOSED, SETUP], academicYear: { copyStructure } });
     await renderWithLayer(<AcademicYearsDrawer {...props()} />);
@@ -349,8 +349,8 @@ describe('AcademicYearsDrawer copy structure (SETUP year only)', () => {
     expect(screen.getByRole('heading', { name: 'Edit Academic Year' })).toBeInTheDocument();
   });
 
-  it('shows the generic failure when validation fails on something other than the target year', async () => {
-    const copyStructure = vi.fn(async () => { throw new Error('[VALIDATION_FAILED] The provided data failed validation.\u001Fdate'); });
+  it('shows the generic failure for a validation failure that is not the year-structure refusal', async () => {
+    const copyStructure = vi.fn(async () => { throw new Error('[VALIDATION_FAILED] The provided data failed validation.'); });
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     stubNemis({ years: [CLOSED, SETUP], academicYear: { copyStructure } });
     await renderWithLayer(<AcademicYearsDrawer {...props()} />);

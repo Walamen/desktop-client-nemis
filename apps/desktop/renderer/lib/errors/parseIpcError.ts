@@ -20,6 +20,7 @@ const KNOWN_CODES: Record<IpcErrorCode, true> = {
   ACADEMIC_YEAR_NOT_STARTED: true,
   ACADEMIC_YEAR_NOT_DELETABLE: true,
   RETURNING_STUDENT: true,
+  YEAR_STRUCTURE_NOT_EMPTY: true,
 };
 
 function isKnownCode(code: string): code is IpcErrorCode {
@@ -29,13 +30,10 @@ function isKnownCode(code: string): code is IpcErrorCode {
 /** Parses the `[CODE] message` text the preload bridge throws on IpcResult
  * failure. `message` is what follows the prefix. Null when the error is not in
  * that shape or the code is not a known IpcErrorCode. */
-export function parseIpcError(
-  error: unknown,
-): { code: IpcErrorCode; message: string; issueFields: string[] } | null {
+export function parseIpcError(error: unknown): { code: IpcErrorCode; message: string } | null {
   if (!(error instanceof Error)) return null;
   const match = /^\[([A-Z_]+)\]\s?([\s\S]*)$/.exec(error.message);
   const code = match?.[1];
   if (!match || !code || !isKnownCode(code)) return null;
-  const [message = '', fields = ''] = (match[2] ?? '').split('\u001F');
-  return { code, message, issueFields: fields ? fields.split(',') : [] };
+  return { code, message: match[2] ?? '' };
 }

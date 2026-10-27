@@ -12,11 +12,7 @@ export async function invoke<C extends IpcChannel>(
     IpcContract[C]['result']
   >;
   if (!result.ok) {
-    // An Error crossing the context bridge keeps only its message, so the
-    // fields of a validation refusal ride on it after a unit separator;
-    // parseIpcError strips them back off.
-    const fields = (result.error.issues ?? []).map((issue) => issue.field).join(',');
-    throw new Error(`[${result.error.code}] ${result.error.message}${fields ? `\u001F${fields}` : ''}`);
+    throw new Error(`[${result.error.code}] ${result.error.message}`);
   }
   return result.data;
 }

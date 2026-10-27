@@ -7,6 +7,7 @@ import {
   RepositoryError,
   TransactionFailureError,
   ValidationError,
+  YearStructureNotEmptyError,
 } from '../data/errors/repositoryErrors';
 import { AuthenticationUnavailableError, ReturningStudentException, UnexpectedApplicationException } from '@nemis-desktop/application';
 import {
@@ -23,6 +24,13 @@ describe('toIpcError', () => {
       code: 'RETURNING_STUDENT',
       message:
         'This student was enrolled in an earlier year. Enrol them for this year through the student lookup.',
+    });
+  });
+
+  it('maps the year-structure refusal to its own code, leaving other validation failures alone', () => {
+    expect(toIpcError(new YearStructureNotEmptyError('internal'))).toEqual({
+      code: 'YEAR_STRUCTURE_NOT_EMPTY',
+      message: 'Copy only into a year that is being set up and has no terms or classes yet.',
     });
   });
 

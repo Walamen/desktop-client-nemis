@@ -71,3 +71,12 @@ export class ValidationError extends RepositoryError {
     this.issues = issues;
   }
 }
+
+/** Copying a year's structure into a target that is not a bare SETUP year. It
+ * crosses IPC as its own code so the screen can tell it from other validation
+ * failures (a malformed stored date stays a plain ValidationError). */
+export class YearStructureNotEmptyError extends ValidationError {
+  constructor(message: string) {
+    super(message, [{ field: 'targetYearId', message }]);
+  }
+}

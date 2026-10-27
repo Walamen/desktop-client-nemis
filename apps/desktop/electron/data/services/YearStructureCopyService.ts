@@ -2,11 +2,11 @@ import { randomUUID } from 'node:crypto';
 import { ForbiddenError } from '@nemis-desktop/shared';
 import { DesktopScopeType, SystemRole } from '@nemis-desktop/types';
 import type { YearStructureCopyRequest, YearStructureCopyResult } from '@nemis-desktop/types';
-import { ValidationError } from '@app/data/errors/repositoryErrors';
+import { ValidationError, YearStructureNotEmptyError } from '@app/data/errors/repositoryErrors';
 import type { WorkspaceManager } from '@app/workspace/WorkspaceManager';
 
 const REFUSAL = 'Copy only into a year that is being set up and has no terms or classes yet.';
-const refusal = () => new ValidationError(REFUSAL, [{ field: 'targetYearId', message: REFUSAL }]);
+const refusal = () => new YearStructureNotEmptyError(REFUSAL);
 const MS_PER_DAY = 86_400_000;
 
 interface YearRow {
