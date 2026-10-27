@@ -6,6 +6,8 @@ import { useViewModel } from '@/hooks/use-view-model';
 import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 import { useAcademicFoundationViewModel } from '@/lib/presentation/hooks/school-admin';
 import { academicSetupHref } from '@/lib/academic-setup';
+import { Skeleton, ErrorState } from '@nemis-desktop/ui';
+import { CLOSED_PENDING_SYNC, CLOSE_UNAVAILABLE } from './close-copy';
 import { ConfirmCloseStep } from './ConfirmCloseStep';
 import { PromotionStep } from './PromotionStep';
 import { ReadinessStep } from './ReadinessStep';
@@ -28,13 +30,32 @@ export function CloseWorkflowPage() {
   const vm = useAcademicFoundationViewModel();
   const state = useViewModel(vm.store, (s) => s.academicYears);
   const years = state.status === 'success' || state.status === 'refreshing' ? state.data : null;
-  const code = years?.find((y) => y.id === yearId)?.code ?? '';
+  const year = years?.find((y) => y.id === yearId);
+  const code = year?.code ?? '';
   const [step, setStep] = useState<Step>('readiness');
   const [refusal, setRefusal] = useState<string | null>(null);
+  const [closedRefreshed, setClosedRefreshed] = useState(true);
   useRevalidateOnSync(() => { void vm.loadAcademicYears(); }, [vm]);
 
   if (!yearId) {
     return <p className="p-6 text-sm text-slate-600">Choose a year to close from Academic Years.</p>;
+  }
+
+  // Wait for the years list, and only offer the workflow for an open year
+  // (the done step stays visible after the close reloads the list).
+  if (step !== 'done') {
+    if (state.status === 'error') {
+      return <ErrorState message="Academic years could not be loaded." onRetry={() => void vm.loadAcademicYears()} />;
+    }
+    if (!years) return <Skeleton className="m-6 h-24" />;
+    if (!year || (year.status !== 'ACTIVE' && year.status !== 'REOPENED')) {
+      return (
+        <main className="mx-auto max-w-5xl space-y-3 p-6">
+          <p className="text-sm text-slate-700">{CLOSE_UNAVAILABLE}</p>
+          <Link href={academicSetupHref('years')} className="text-sm text-blue-700 hover:underline">Back to Academic Years</Link>
+        </main>
+      );
+    }
   }
 
   return (
@@ -59,13 +80,13 @@ export function CloseWorkflowPage() {
         <ConfirmCloseStep
           yearId={yearId}
           code={code}
-          onClosed={() => { void vm.loadAcademicYears(); setStep('done'); }}
+          onClosed={(refreshed) => { setClosedRefreshed(refreshed); void vm.loadAcademicYears(); setStep('done'); }}
           onRefused={(message) => { setRefusal(message); setStep('readiness'); }}
         />
       )}
       {step === 'done' && (
         <div role="status" className="space-y-3 rounded-card border border-green-200 bg-green-50 p-4 text-sm text-green-800">
-          <p>{code} is closed.</p>
+          <p>{closedRefreshed ? `${code} is closed.` : CLOSED_PENDING_SYNC}</p>
           <Link href={academicSetupHref('years')} className="text-blue-700 hover:underline">Back to Academic Years</Link>
         </div>
       )}

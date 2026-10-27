@@ -178,9 +178,10 @@ describe('CorrectionsPage', () => {
     fireEvent.change(form.getByLabelText('New score'), { target: { value: '81' } });
     fireEvent.change(form.getByLabelText(REASON), { target: { value: 'Fix' } });
     fireEvent.click(form.getByRole('button', { name: 'Correct mark' }));
-    expect(await screen.findByText('Saved. The card will update after the next sync.')).toBeInTheDocument();
+    expect(await screen.findByText('Saved. This device will show it after the next sync.')).toBeInTheDocument();
   });
 
+it('tells the admin corrections reach the final card on the next close', async () => {    stub();    await openStudent();    expect(screen.getByText('Corrections appear on the final report card when you close the year again.')).toBeInTheDocument();  });
   it('offers only periods with a graded value for the subject', async () => {
     stub();
     await openStudent();

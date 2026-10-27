@@ -202,3 +202,30 @@ describe('CloseWorkflowPage confirm', () => {
     expect(await screen.findByRole('heading', { name: 'Before this year can close' })).toBeInTheDocument();
   });
 });
+
+describe('CloseWorkflowPage year gate', () => {
+  it('says the device will show the close after sync when not refreshed', async () => {
+    stubClose({ closeYear: vi.fn(async () => ({ data: null, refreshed: false })) });
+    await toConfirm();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Close 2025/2026' })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: 'Close 2025/2026' }));
+    expect(await screen.findByText('Closed. This device will show it after the next sync.')).toBeInTheDocument();
+  });
+
+  it('shows loading, not the workflow, until the years list loads', async () => {
+    const close = stubClose();
+    (window as unknown as { nemis: { academicYear: { list: unknown } } }).nemis.academicYear.list = vi.fn(() => new Promise(() => {}));
+    await renderWithLayer(<CloseWorkflowPage />);
+    expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull();
+    expect(close.getReadiness).not.toHaveBeenCalled();
+  });
+
+  it('shows a notice instead of the workflow when the year is already closed', async () => {
+    stubClose();
+    stubNemis({ years: [yearRow({ id: 'y1', code: '2025/2026', status: 'CLOSED' })] });
+    (window as unknown as { nemis: Record<string, unknown> }).nemis.academicYearClose = { getReadiness: vi.fn() };
+    await renderWithLayer(<CloseWorkflowPage />);
+    expect(await screen.findByText('This year is not open for closing.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull();
+  });
+});

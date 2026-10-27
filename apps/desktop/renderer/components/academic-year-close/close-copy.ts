@@ -39,4 +39,9 @@ export const CORRECTION_REASON_LABEL = 'Reason for this correction';
 export const correctionsTitle = (code: string) => `Corrections — ${code}`;
 export const CLOSE_AGAIN_LABEL = 'Close the year again';
 export const CORRECTIONS_UNAVAILABLE = 'Corrections are only available for a reopened year.';
-export const SAVED_PENDING_SYNC = 'Saved. The card will update after the next sync.';
+export const SAVED_PENDING_SYNC = 'Saved. This device will show it after the next sync.';
+export const CORRECTIONS_FINAL_CARD_NOTE =
+  'Corrections appear on the final report card when you close the year again.';
+export const CLOSED_PENDING_SYNC = 'Closed. This device will show it after the next sync.';
+export const REOPENED_PENDING_SYNC = 'Reopened. This device will show it after the next sync.';
+export const CLOSE_UNAVAILABLE = 'This year is not open for closing.';

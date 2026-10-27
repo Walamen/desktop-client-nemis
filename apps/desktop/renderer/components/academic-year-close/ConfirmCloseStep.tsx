@@ -18,7 +18,7 @@ export function ConfirmCloseStep({
 }: {
   yearId: string;
   code: string;
-  onClosed: () => void;
+  onClosed: (refreshed: boolean) => void;
   /** The server refused: show its message and reload readiness. */
   onRefused: (message: string) => void;
 }) {
@@ -55,8 +55,8 @@ export function ConfirmCloseStep({
       return;
     }
     try {
-      await academicYearCloseBridge.closeYear(yearId);
-      onClosed();
+      const result = await academicYearCloseBridge.closeYear(yearId);
+      onClosed(result.refreshed !== false);
     } catch (cause) {
       const parsed = parseIpcError(cause);
       if (parsed?.code === 'REMOTE_REJECTED') {

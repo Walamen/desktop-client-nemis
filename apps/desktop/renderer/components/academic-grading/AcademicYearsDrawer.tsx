@@ -13,6 +13,7 @@ import { FormField, LoadState, statusVariant } from '@/components/academic/found
 import { academicYearCloseBridge } from '@/services/nemis-bridge/school-admin/academic-year-close-bridge';
 import { useEscapeCapture } from './use-escape-capture';
 import { useOpenSession, type SetupDrawerProps, type SetupNavigate } from './setup-drawers';
+import { REOPENED_PENDING_SYNC } from '../academic-year-close/close-copy';
 
 /** Academic years, managed from a drawer on the Academic Grading page.
  * Create/edit swap the drawer body to a form — a Modal can't stack inside the
@@ -99,8 +100,8 @@ function AcademicYearsManager({ onNavigate }: { onNavigate: SetupNavigate }) {
     setReopenBusy(true);
     setReopenError(null);
     try {
-      await academicYearCloseBridge.reopenYear({ yearId: year.id, reason: reopenReason.trim() });
-      setNotice(`${year.code} reopened. You can now correct records.`);
+      const result = await academicYearCloseBridge.reopenYear({ yearId: year.id, reason: reopenReason.trim() });
+      setNotice(result.refreshed === false ? REOPENED_PENDING_SYNC : `${year.code} reopened. You can now correct records.`);
       setReopening(false);
       setReopenReason('');
       await vm.loadAcademicYears();

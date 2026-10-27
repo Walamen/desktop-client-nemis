@@ -22,6 +22,7 @@ import {
   CORRECTION_REASON_LABEL,
   OFFLINE_MESSAGE,
   OUTCOME_LABEL,
+  CORRECTIONS_FINAL_CARD_NOTE,
   CORRECTIONS_UNAVAILABLE,
   SAVED_PENDING_SYNC,
   correctionsTitle,
@@ -111,6 +112,7 @@ function CorrectionsScreen({ yearId, code }: { yearId: string; code: string }) {
         </div>
       </div>
       {!online && <p className="text-sm text-slate-500">{OFFLINE_MESSAGE}</p>}
+      <p className="text-sm text-slate-600">{CORRECTIONS_FINAL_CARD_NOTE}</p>
 
       <section className="space-y-2" aria-label="Student search">
         <label className="block text-sm text-slate-700">

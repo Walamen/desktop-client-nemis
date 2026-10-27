@@ -251,6 +251,7 @@ describe('AcademicYearsDrawer close, reopen and corrections', () => {
     await waitFor(() => expect(reopenYear).toHaveBeenCalledWith({ yearId: 'y0', reason: 'Wrong mark' }));
   });
 
+it('says the device will show the reopen after sync when not refreshed', async () => {    const reopenYear = vi.fn(async () => ({ data: null, refreshed: false }));    stubNemis();    (window as unknown as { nemis: Record<string, unknown> }).nemis.academicYearClose = { reopenYear };    await renderWithLayer(<AcademicYearsDrawer {...props()} />);    await open('2024/2025');    fireEvent.click(screen.getByRole('button', { name: 'Reopen' }));    fireEvent.change(screen.getByText('Why are you reopening this year?').parentElement!.querySelector('textarea')!, { target: { value: 'Wrong mark' } });    fireEvent.click(screen.getByRole('button', { name: 'Reopen year' }));    expect(await screen.findByText('Reopened. This device will show it after the next sync.')).toBeInTheDocument();  });
   it('links Corrections on a REOPENED year to the corrections screen', async () => {
     stubNemis({ years: [yearRow({ id: 'y5', code: '2023/2024', isCurrent: false, status: 'REOPENED' })] });
     await renderWithLayer(<AcademicYearsDrawer {...props()} />);
