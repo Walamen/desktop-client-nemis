@@ -1400,6 +1400,10 @@ export function assertCountyBulkCreateUsersArgs(args: readonly unknown[]): void 
 
 // --- Close Academic Year (lifecycle Stage 3) ---------------------------------
 const MAX_CLOSE_ROWS = 5000;
+/** The server caps one fill-cells request at 2000 rows. */
+const MAX_FILL_ROWS = 2000;
+/** The server caps reopen, correction and override reasons at 1000 characters. */
+const CLOSE_REASON_MAX_LENGTH = 1000;
 
 function assertPercentage(value: unknown, field: string): void {
   if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 100) {
@@ -1421,23 +1425,23 @@ function assertCloseRequest(args: readonly unknown[], keys: readonly string[]): 
   return request;
 }
 
-function assertCloseList(value: unknown, field: string): unknown[] {
-  if (!Array.isArray(value) || value.length > MAX_CLOSE_ROWS) {
-    throw new IPCError(`Expected "${field}" to be a list of at most ${MAX_CLOSE_ROWS}.`);
+function assertCloseList(value: unknown, field: string, max: number = MAX_CLOSE_ROWS): unknown[] {
+  if (!Array.isArray(value) || value.length > max) {
+    throw new IPCError(`Expected "${field}" to be a list of at most ${max}.`);
   }
   return value;
 }
 
 export function assertCloseFillCellsArgs(args: readonly unknown[]): void {
   const request = assertCloseRequest(args, ['entries']);
-  for (const entry of assertCloseList(request.entries, 'entries')) {
+  for (const entry of assertCloseList(request.entries, 'entries', MAX_FILL_ROWS)) {
     if (!isPlainObject(entry)) throw new IPCError('Expected each entry to be an object.');
     assertKnownKeys(entry, ['studentId', 'subjectId', 'gradingPeriodId', 'score', 'reason']);
     assertString(entry.studentId, 'studentId', ID_MAX_LENGTH);
     assertString(entry.subjectId, 'subjectId', ID_MAX_LENGTH);
     assertString(entry.gradingPeriodId, 'gradingPeriodId', ID_MAX_LENGTH);
     assertPercentage(entry.score, 'score');
-    assertString(entry.reason, 'reason', DESCRIPTION_MAX_LENGTH);
+    assertString(entry.reason, 'reason', CLOSE_REASON_MAX_LENGTH);
   }
 }
 
@@ -1449,7 +1453,7 @@ export function assertCloseSavePromotionArgs(args: readonly unknown[]): void {
     assertString(decision.studentId, 'studentId', ID_MAX_LENGTH);
     assertEnumMember(decision.outcome, 'outcome', COMPLETION_OUTCOME_VALUES);
     assertNullableGradeLevel(decision.nextGradeLevel, 'nextGradeLevel');
-    assertOptionalString(decision.overrideReason, 'overrideReason', DESCRIPTION_MAX_LENGTH);
+    assertOptionalString(decision.overrideReason, 'overrideReason', CLOSE_REASON_MAX_LENGTH);
   }
   if (request.principalRemarks !== undefined) {
     for (const item of assertCloseList(request.principalRemarks, 'principalRemarks')) {
@@ -1464,7 +1468,7 @@ export function assertCloseSavePromotionArgs(args: readonly unknown[]): void {
 
 export function assertCloseReopenArgs(args: readonly unknown[]): void {
   const request = assertCloseRequest(args, ['reason']);
-  assertString(request.reason, 'reason', DESCRIPTION_MAX_LENGTH);
+  assertString(request.reason, 'reason', CLOSE_REASON_MAX_LENGTH);
 }
 
 export function assertCorrectGradeArgs(args: readonly unknown[]): void {
@@ -1473,7 +1477,7 @@ export function assertCorrectGradeArgs(args: readonly unknown[]): void {
   assertString(request.subjectId, 'subjectId', ID_MAX_LENGTH);
   assertString(request.gradingPeriodId, 'gradingPeriodId', ID_MAX_LENGTH);
   assertPercentage(request.score, 'score');
-  assertString(request.reason, 'reason', DESCRIPTION_MAX_LENGTH);
+  assertString(request.reason, 'reason', CLOSE_REASON_MAX_LENGTH);
 }
 
 export function assertCorrectOutcomeArgs(args: readonly unknown[]): void {
@@ -1481,12 +1485,12 @@ export function assertCorrectOutcomeArgs(args: readonly unknown[]): void {
   assertString(request.studentId, 'studentId', ID_MAX_LENGTH);
   assertEnumMember(request.outcome, 'outcome', COMPLETION_OUTCOME_VALUES);
   assertNullableGradeLevel(request.nextGradeLevel, 'nextGradeLevel');
-  assertString(request.reason, 'reason', DESCRIPTION_MAX_LENGTH);
+  assertString(request.reason, 'reason', CLOSE_REASON_MAX_LENGTH);
 }
 
 export function assertCorrectRemarkArgs(args: readonly unknown[]): void {
   const request = assertCloseRequest(args, ['studentId', 'remark', 'reason']);
   assertString(request.studentId, 'studentId', ID_MAX_LENGTH);
   assertString(request.remark, 'remark', DESCRIPTION_MAX_LENGTH);
-  assertString(request.reason, 'reason', DESCRIPTION_MAX_LENGTH);
+  assertString(request.reason, 'reason', CLOSE_REASON_MAX_LENGTH);
 }
