@@ -1,16 +1,24 @@
 'use client';
 import { useEffect, useState, type FormEvent } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAcademicFoundationViewModel, useEnrollmentViewModel } from '@/lib/presentation/hooks/school-admin';
+import {
+  useAcademicFoundationViewModel,
+  useEnrollmentViewModel,
+  useStudentProfileViewModel,
+} from '@/lib/presentation/hooks/school-admin';
 import { Button, Input, Select } from '@nemis-desktop/ui';
 import { useViewModel } from '@/hooks/use-view-model';
 import { human, Page, queryId } from './shared';
 import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
+import { RETURNING_STUDENT_REFUSAL } from '@nemis-desktop/shared';
 import { parseIpcError } from '@/lib/errors/parseIpcError';
 
 export function EnrollmentPage() {
   const router = useRouter();
   const students = useEnrollmentViewModel();
+  const profileVm = useStudentProfileViewModel();
+  const details = useViewModel(profileVm.store, (s) => s.details);
   const foundation = useAcademicFoundationViewModel();
   const years = useViewModel(foundation.store, (s) => s.academicYears);
   const terms = useViewModel(foundation.store, (s) => s.terms);
@@ -54,8 +62,22 @@ export function EnrollmentPage() {
     }
     // The IPC layer carries the server-authored refusal text; show it here
     // as well as in the toast so the admin sees where to go next.
-    setRefusal(parseIpcError(r.error.cause)?.message ?? r.error.userMessage);
+    const message = parseIpcError(r.error.cause)?.message ?? r.error.userMessage;
+    setRefusal(message);
+    // The lookup needs the child's NEMIS ID and date of birth; fetch them only
+    // for this refusal.
+    if (message === RETURNING_STUDENT_REFUSAL) void profileVm.loadDetails(id);
   };
+  const lookupHref =
+    refusal === RETURNING_STUDENT_REFUSAL &&
+    (details.status === 'success' || details.status === 'refreshing') &&
+    details.data.id === id &&
+    details.data.nemisId
+      ? `/government/school-admin/students/create?${new URLSearchParams({
+          nemisId: details.data.nemisId,
+          dob: details.data.rawDateOfBirth.slice(0, 10),
+        }).toString()}`
+      : null;
   const yearOptions =
     years.status === 'success' || years.status === 'refreshing'
       ? years.data.map((v) => ({ value: v.id, label: v.code }))
@@ -113,6 +135,11 @@ export function EnrollmentPage() {
           <p role="alert" className="text-sm text-red-700">
             {refusal}
           </p>
+        )}
+        {lookupHref && (
+          <Link href={lookupHref} className="block text-sm font-medium text-accent underline">
+            Find this student in the lookup
+          </Link>
         )}
         <Button type="submit">Complete enrollment</Button>
       </form>

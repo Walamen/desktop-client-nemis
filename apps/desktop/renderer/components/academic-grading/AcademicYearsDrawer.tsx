@@ -103,17 +103,22 @@ function AcademicYearsManager({ onNavigate }: { onNavigate: SetupNavigate }) {
     setCopyError(null);
     try {
       await academicYearBridge.copyStructure({ targetYearId: target.id, sourceYearId: source.id });
-      setNotice(COPY_DONE);
-      setCopying(false);
-      await vm.loadAcademicYears();
-      setView('list');
     } catch (cause) {
+      // Only a refusal about the target year is the "already has terms or
+      // classes" copy; a malformed stored date also fails validation.
+      const parsed = parseIpcError(cause);
       setCopyError(
-        parseIpcError(cause)?.code === 'VALIDATION_FAILED' ? COPY_REFUSAL : 'The structure could not be copied. Please try again.',
+        parsed?.code === 'VALIDATION_FAILED' && parsed.issueFields.includes('targetYearId') ? COPY_REFUSAL : 'The structure could not be copied. Please try again.',
       );
-    } finally {
       setCopyBusy(false);
+      return;
     }
+    setCopyBusy(false);
+    setNotice(COPY_DONE);
+    setCopying(false);
+    // The copy has happened; a failed refresh must not read as a failed copy.
+    await vm.loadAcademicYears();
+    setView('list');
   };
 
   /** The server decides when a year starts, so this is online only. */

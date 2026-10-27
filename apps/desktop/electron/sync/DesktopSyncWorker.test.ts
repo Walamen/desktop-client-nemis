@@ -11,7 +11,7 @@ import type { BackendProvisioningGateway } from '../provisioning/BackendProvisio
 import { PROVISIONING_COLLECTIONS } from '@nemis-desktop/types';
 import { ProvisioningImporter } from '../provisioning/ProvisioningImporter';
 import { DesktopSyncWorker } from './DesktopSyncWorker';
-import { RemoteRejectedError } from '@nemis-desktop/shared';
+import { RemoteRejectedError, RETURNING_STUDENT_REFUSAL } from '@nemis-desktop/shared';
 
 const TEST_DEVICE = { deviceName: 'worker-test', platform: 'win32', osVersion: '10.0', appVersion: '1.0.0' };
 const TEST_USER = {
@@ -901,6 +901,19 @@ describe('DesktopSyncWorker retry policy', () => {
       worker.resolveConflict({ conflictId: 'c-year', resolution: 'accept_remote' });
 
       expect(statusOf('c-year')).toBe('accept_remote');
+      expect(readSyncMetadata().lastFullResyncAt).toBeNull();
+      expect(pullNow).toHaveBeenCalledTimes(1);
+    });
+
+    it('discarding a refused returning-student enrolment marks a full resync due and requests a sync', () => {
+      setFullResync(new Date().toISOString());
+      seedConflict('c-returning', RETURNING_STUDENT_REFUSAL);
+      const worker = new DesktopSyncWorker(workspaces, {} as BackendProvisioningGateway, alwaysOnline());
+      const pullNow = vi.spyOn(worker, 'pullNow').mockResolvedValue(true);
+
+      worker.resolveConflict({ conflictId: 'c-returning', resolution: 'accept_remote' });
+
+      expect(statusOf('c-returning')).toBe('accept_remote');
       expect(readSyncMetadata().lastFullResyncAt).toBeNull();
       expect(pullNow).toHaveBeenCalledTimes(1);
     });

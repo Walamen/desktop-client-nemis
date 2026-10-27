@@ -26,7 +26,12 @@ import {
   SUBMISSION_DIRTY,
 } from './pendingPredicates';
 import { logger } from '@app/services/logger';
-import { hasRealDisagreement, isAcademicYearRejection, unwrapLocalPayload } from '@nemis-desktop/shared';
+import {
+  hasRealDisagreement,
+  isAcademicYearRejection,
+  RETURNING_STUDENT_REFUSAL,
+  unwrapLocalPayload,
+} from '@nemis-desktop/shared';
 
 const BACKOFF_SCHEDULE_MS = [30_000, 60_000, 300_000, 900_000] as const; // 30s, 1m, 5m, 15m
 const DEAD_LETTER_THRESHOLD = 5;
@@ -752,8 +757,12 @@ export class DesktopSyncWorker {
       db.connection.prepare(`
         UPDATE sync_conflicts SET status=?,resolvedAt=? WHERE id=?
       `).run(resolution, resolvedAt, row.id);
-      if (resolution === 'accept_remote' && isAcademicYearRejection(row.reason)) {
-        // The server refused this write for good, but the refused content is
+      if (
+        resolution === 'accept_remote' &&
+        (isAcademicYearRejection(row.reason) || row.reason === RETURNING_STUDENT_REFUSAL)
+      ) {
+        // The server refused this write for good (a closed year, or a returning
+        // student who must be enrolled through the lookup), but the refused content is
         // still in the local tables. Marking the full resync due is durable
         // (it survives being offline and a non-empty queue: the cycle only
         // pulls once the queue drains) and a full resync reloads every table.

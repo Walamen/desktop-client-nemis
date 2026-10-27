@@ -3,6 +3,7 @@ import {
   OfflineError,
   RateLimitedError,
   RemoteRejectedError,
+  RETURNING_STUDENT_REFUSAL,
   toIpcErrorPayload,
 } from '@nemis-desktop/shared';
 import {
@@ -32,8 +33,7 @@ const CODE_MESSAGES: Record<IpcErrorCode, string> = {
   ACADEMIC_YEAR_NOT_STARTED:
     'This academic year has not started yet. Grades, attendance and assignments can be recorded once it starts.',
   ACADEMIC_YEAR_NOT_DELETABLE: 'Only an academic year that is still being set up can be deleted.',
-  RETURNING_STUDENT:
-    'This student was enrolled in an earlier year. Enrol them for this year through the student lookup.',
+  RETURNING_STUDENT: RETURNING_STUDENT_REFUSAL,
 };
 
 /** Violation tokens raised by the local freeze triggers (migration 040) as the

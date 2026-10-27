@@ -13,15 +13,14 @@ import type { IIdGenerator } from '../../interfaces/id-generator';
 import type { IEventPublisher } from '../../interfaces/event-publisher';
 import type { IAppLogger } from '../../interfaces/app-logger';
 import { toEnrollmentOutput } from '../../mappers/academics/enrollment-mapper';
+import { RETURNING_STUDENT_REFUSAL } from '@nemis-desktop/shared';
 import { requireFields } from '../../validators/validate';
 import { ReturningStudentException, WorkflowException } from '../../exceptions';
 import { invokeUseCase } from '../../pipeline/use-case-invoker';
 import { assertEnrollmentTarget } from './enrollment-target';
 import type { EnrollmentRegistered } from '../../events/academics';
 
-/** Shown verbatim to the admin; identical to the server's refusal. */
-export const RETURNING_STUDENT_REFUSAL =
-  'This student was enrolled in an earlier year. Enrol them for this year through the student lookup.';
+export { RETURNING_STUDENT_REFUSAL };
 
 export interface EnrollStudentDeps {
   enrollments: IEnrollmentRepository;

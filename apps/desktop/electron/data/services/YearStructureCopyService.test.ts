@@ -79,6 +79,15 @@ describe('YearStructureCopyService', () => {
     klass('c-off', 'y-old', 'Grade 9', 0);
     staff('t-on', 1);
     staff('t-off', 0);
+    const subject = (id: string, isActive: number) =>
+      run(
+        `INSERT INTO subjects (id,institutionId,name,code,isActive,version,updatedAt) VALUES (?,?,?,?,?,1,?)`,
+        id, 'school-1', id, id, isActive, now,
+      );
+    subject('sub-1', 1);
+    subject('sub-off', 0);
+    run(`INSERT INTO class_subjects (id,classId,subjectId,assignedAt,version,updatedAt) VALUES ('cs-inactive','c-1','sub-off',?,1,?)`, now, now);
+    run(`INSERT INTO class_subject_teachers (id,classId,subjectId,staffId,assignedAt,version,updatedAt) VALUES ('cst-inactive','c-1','sub-off','t-on',?,1,?)`, now, now);
     run(`INSERT INTO class_subjects (id,classId,subjectId,assignedAt,version,updatedAt) VALUES ('cs-1','c-1','sub-1',?,1,?)`, now, now);
     run(`INSERT INTO class_subjects (id,classId,subjectId,assignedAt,version,updatedAt) VALUES ('cs-2','c-2','sub-1',?,1,?)`, now, now);
     run(`INSERT INTO class_subjects (id,classId,subjectId,assignedAt,version,updatedAt) VALUES ('cs-off','c-off','sub-1',?,1,?)`, now, now);
@@ -165,6 +174,9 @@ describe('YearStructureCopyService', () => {
     expect(count('class_teachers', `classId='${g2}'`)).toBe(0);
     expect(count('class_subject_teachers', `classId='${g2}'`)).toBe(0);
     expect(count('class_subjects', `classId='${g2}'`)).toBe(1);
+    // An inactive subject is not carried into the new year.
+    expect(count('class_subjects', `subjectId='sub-off' AND classId IN (SELECT id FROM classes WHERE academicYearId='y-new')`)).toBe(0);
+    expect(count('class_subject_teachers', `subjectId='sub-off' AND classId IN (SELECT id FROM classes WHERE academicYearId='y-new')`)).toBe(0);
     expect(count('classes', `academicYearId='y-old'`)).toBe(3);
     expect(count('terms', `academicYearId='y-old'`)).toBe(2);
   });

@@ -7,7 +7,7 @@ import { registryBridge, parseIpcError } from '@/services/nemis-bridge/school-ad
 import { grades, human } from '../shared';
 import { ClassTermPicker, isClassTermComplete, type ClassTermValue } from './ClassTermPicker';
 import { FinalCardSection } from './FinalCardSection';
-import { claimGradeDefault,claimNeedsReason, describeCompletion } from './wizard-logic';
+import { claimGradeDefault, claimNeedsReason, describeCompletion } from './wizard-logic';
 
 /** An IMMEDIATE hit: the student is free to be claimed into this school. The
  * grade defaults to the stamp's next grade; any other grade (or no stamp, or

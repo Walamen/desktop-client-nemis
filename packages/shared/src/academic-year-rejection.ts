@@ -64,3 +64,8 @@ export function academicYearTokenOf(
     (token) => ACADEMIC_YEAR_MESSAGES[token] === message,
   );
 }
+
+/** Shown verbatim to the admin when an enrolment is refused because the child
+ * was enrolled in an earlier year; identical to the server's refusal. */
+export const RETURNING_STUDENT_REFUSAL =
+  'This student was enrolled in an earlier year. Enrol them for this year through the student lookup.';

@@ -150,7 +150,11 @@ export class YearStructureCopyService {
            VALUES (?, ?, ?, ?, 1, ?, ?, NULL)`,
         );
         for (const row of db
-          .prepare(`SELECT classId, subjectId FROM class_subjects WHERE classId IN (${forClasses})`)
+          .prepare(
+            `SELECT cs.classId, cs.subjectId FROM class_subjects cs
+               JOIN subjects sub ON sub.id = cs.subjectId
+              WHERE cs.classId IN (${forClasses}) AND sub.isActive = 1`,
+          )
           .all(...sourceClassIds) as { classId: string; subjectId: string }[]) {
           insertClassSubject.run(randomUUID(), classIds.get(row.classId)!, row.subjectId, now, now, userId);
         }
@@ -179,7 +183,8 @@ export class YearStructureCopyService {
           .prepare(
             `SELECT cst.classId, cst.subjectId, cst.staffId FROM class_subject_teachers cst
                JOIN staff s ON s.id = cst.staffId
-              WHERE cst.classId IN (${forClasses}) AND s.isActive = 1`,
+               JOIN subjects sub ON sub.id = cst.subjectId
+              WHERE cst.classId IN (${forClasses}) AND s.isActive = 1 AND sub.isActive = 1`,
           )
           .all(...sourceClassIds) as { classId: string; subjectId: string; staffId: string }[]) {
           insertTeaching.run(randomUUID(), classIds.get(row.classId)!, row.subjectId, row.staffId, now, now, userId);

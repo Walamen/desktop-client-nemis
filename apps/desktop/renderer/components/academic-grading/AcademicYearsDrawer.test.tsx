@@ -338,7 +338,7 @@ describe('AcademicYearsDrawer copy structure (SETUP year only)', () => {
   });
 
   it('shows the refusal inline when the year already has terms or classes', async () => {
-    const copyStructure = vi.fn(async () => { throw new Error('[VALIDATION_FAILED] The provided data failed validation.'); });
+    const copyStructure = vi.fn(async () => { throw new Error('[VALIDATION_FAILED] The provided data failed validation.\u001FtargetYearId'); });
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     stubNemis({ years: [CLOSED, SETUP], academicYear: { copyStructure } });
     await renderWithLayer(<AcademicYearsDrawer {...props()} />);
@@ -347,6 +347,34 @@ describe('AcademicYearsDrawer copy structure (SETUP year only)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Copy structure' }));
     expect(await screen.findByText(REFUSAL)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Edit Academic Year' })).toBeInTheDocument();
+  });
+
+  it('shows the generic failure when validation fails on something other than the target year', async () => {
+    const copyStructure = vi.fn(async () => { throw new Error('[VALIDATION_FAILED] The provided data failed validation.\u001Fdate'); });
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    stubNemis({ years: [CLOSED, SETUP], academicYear: { copyStructure } });
+    await renderWithLayer(<AcademicYearsDrawer {...props()} />);
+    await openEdit('2027/2028');
+    fireEvent.click(screen.getByRole('button', { name: COPY }));
+    fireEvent.click(screen.getByRole('button', { name: 'Copy structure' }));
+    expect(await screen.findByText('The structure could not be copied. Please try again.')).toBeInTheDocument();
+    expect(screen.queryByText(REFUSAL)).not.toBeInTheDocument();
+  });
+
+  it('does not report a failed copy when only the refresh afterwards fails', async () => {
+    const copyStructure = vi.fn(async () => ({ classes: 1, terms: 1, gradingPeriods: 0 }));
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const list = vi.fn()
+      .mockResolvedValueOnce([CLOSED, SETUP])
+      .mockRejectedValue(new Error('[UNEXPECTED_ERROR] An unexpected error occurred.'));
+    stubNemis({ years: [CLOSED, SETUP], academicYear: { copyStructure, list } });
+    await renderWithLayer(<AcademicYearsDrawer {...props()} />);
+    await openEdit('2027/2028');
+    fireEvent.click(screen.getByRole('button', { name: COPY }));
+    fireEvent.click(screen.getByRole('button', { name: 'Copy structure' }));
+    await waitFor(() => expect(copyStructure).toHaveBeenCalled());
+    await waitFor(() => expect(list.mock.calls.length).toBeGreaterThan(1));
+    expect(screen.queryByText('The structure could not be copied. Please try again.')).not.toBeInTheDocument();
   });
 
   it('shows a generic failure for any other error', async () => {
