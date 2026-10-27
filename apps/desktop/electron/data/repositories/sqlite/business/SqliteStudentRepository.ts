@@ -169,8 +169,9 @@ export class SqliteStudentRepository implements IStudentRepository {
       if (request.academicYearId) { clauses.push('e.academicYearId = ?'); params.push(request.academicYearId); }
       if (request.enrollmentStatus) { clauses.push('e.status = ?'); params.push(request.enrollmentStatus); }
       if (request.enrolment) {
-        // Ignored when no year is current: there is nothing to be enrolled for.
-        const year = this.#statements.get(`SELECT id FROM academic_years WHERE isCurrent = 1 ORDER BY startDate DESC, id LIMIT 1`).get() as { id: string } | undefined;
+        // The year is current AND ACTIVE (the enrolment gate's rule). Ignored when
+        // there is none: there is nothing to be enrolled for.
+        const year = this.#statements.get(`SELECT id FROM academic_years WHERE isCurrent = 1 AND status = 'ACTIVE' ORDER BY startDate DESC, id LIMIT 1`).get() as { id: string } | undefined;
         if (year) {
           clauses.push(`${request.enrolment === 'current' ? '' : 'NOT '}EXISTS (SELECT 1 FROM ${TableNames.enrollments} ce WHERE ce.studentId = s.id AND ce.academicYearId = ? AND ce.status IN ('ACTIVE', 'SUSPENDED'))`);
           params.push(year.id);

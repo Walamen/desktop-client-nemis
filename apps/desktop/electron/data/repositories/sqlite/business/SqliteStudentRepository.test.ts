@@ -308,6 +308,12 @@ describe('SqliteStudentRepository', () => {
         expect(ids('not-current')).toEqual(['s-1', 's-2', 's-3', 's-4']);
       });
 
+      it('is ignored when the current year is not ACTIVE (REOPENED)', () => {
+        db().prepare(`UPDATE academic_years SET status = 'REOPENED'`).run();
+        expect(ids('current')).toEqual(['s-1', 's-2', 's-3', 's-4']);
+        expect(ids('not-current')).toEqual(['s-1', 's-2', 's-3', 's-4']);
+      });
+
       it('no filter returns everyone', () => {
         expect(ids(undefined)).toEqual(['s-1', 's-2', 's-3', 's-4']);
       });

@@ -26,7 +26,7 @@ import {
 } from '@nemis-desktop/presentation';
 import { useViewModel } from '@/hooks/use-view-model';
 import {
-  useAcademicYearViewModel,
+  useAcademicFoundationViewModel,
   useSettingsViewModel,
   useStudentProfileViewModel,
   useStudentSearchViewModel,
@@ -36,11 +36,27 @@ import {
 import { genders, grades, human } from './shared';
 import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 
-/** Link into the add-student lookup for a child with no place in the active year. */
-function enrolHref(s: StudentRowView): string | null {
-  if (!s.nemisId) return null;
-  const query = new URLSearchParams({ nemisId: s.nemisId, dob: s.rawDateOfBirth.slice(0, 10) });
-  return `/government/school-admin/students/create?${query.toString()}`;
+/** Link into the add-student lookup for a child with no place in the active year.
+ * Renders nothing for a child without a NEMIS ID (the lookup needs one). */
+function EnrolLink({ student, code, className }: { student: StudentRowView; code: string; className: string }) {
+  if (!student.nemisId) return null;
+  const query = new URLSearchParams({ nemisId: student.nemisId, dob: student.rawDateOfBirth.slice(0, 10) });
+  return (
+    <Link href={`/government/school-admin/students/create?${query.toString()}`} className={className}>
+      Enrol for {code}
+    </Link>
+  );
+}
+
+/** The year the read model scopes to: current AND ACTIVE (the enrolment gate's
+ * rule). Latest start wins, matching the SQL's ORDER BY. */
+function activeYearCode(
+  years: { isCurrent: boolean; status: string; code: string; startDate: string }[],
+): string | null {
+  const active = years
+    .filter((y) => y.isCurrent && y.status === 'ACTIVE')
+    .sort((a, b) => b.startDate.localeCompare(a.startDate));
+  return active[0]?.code ?? null;
 }
 
 /**
@@ -138,8 +154,8 @@ export function StudentsDirectoryPage() {
   const search = useStudentSearchViewModel();
   const stats = useStudentStatisticsViewModel();
   const settings = useSettingsViewModel();
-  const academicYear = useAcademicYearViewModel();
-  const year = useViewModel(academicYear.store, (s) => s.current);
+  const foundation = useAcademicFoundationViewModel();
+  const years = useViewModel(foundation.store, (s) => s.academicYears);
   const profileVm = useStudentProfileViewModel();
   const list = useViewModel(vm.store, (s) => s.list);
   const p = useViewModel(vm.store, (s) => s.pagination);
@@ -148,9 +164,10 @@ export function StudentsDirectoryPage() {
   const profile = useViewModel(settings.store, (s) => s.profile);
   // Tabs exist only while the school has an active year; without one the
   // enrolment filter is ignored by the read model and the whole roster shows.
-  const yearCode = year.status === 'success' || year.status === 'refreshing' ? year.data.code : null;
+  const yearCode =
+    years.status === 'success' || years.status === 'refreshing' ? activeYearCode([...years.data]) : null;
   const enrolment = filters.enrolment ?? 'current';
-  const notEnrolledView = yearCode !== null && enrolment === 'not-current';
+  const enrolCode = yearCode !== null && enrolment === 'not-current' ? yearCode : null;
   const details = useViewModel(profileVm.store, (s) => s.details);
   const schoolName =
     profile.status === 'success' || profile.status === 'refreshing' ? profile.data.name : 'School';
@@ -171,12 +188,20 @@ export function StudentsDirectoryPage() {
     };
   }, []);
   useRevalidateOnSync(() => {
-    void academicYear.loadCurrent();
-    const current = vm.store.getState().filters;
-    if (current.enrolment === undefined) search.setFilters({ ...current, enrolment: 'current' });
-    void vm.setPageSize(12);
+    void (async () => {
+      // The enrolment view applies only once the active year is known; a
+      // failed lookup or no active year means no filter and no tabs.
+      await foundation.loadAcademicYears();
+      const state = foundation.store.getState().academicYears;
+      const hasYear =
+        (state.status === 'success' || state.status === 'refreshing') && activeYearCode([...state.data]) !== null;
+      const current = vm.store.getState().filters;
+      const wanted = hasYear ? (current.enrolment ?? 'current') : undefined;
+      if (current.enrolment !== wanted) search.setFilters({ ...current, enrolment: wanted });
+      await vm.setPageSize(12);
+    })();
     void stats.loadStatistics();
-  }, [stats, vm, search, academicYear]);
+  }, [stats, vm, search, foundation]);
   const openEdit = (id: string) => {
     setEditingId(id);
     void profileVm.loadDetails(id);
@@ -491,13 +516,12 @@ export function StudentsDirectoryPage() {
                               </td>
                               <td className="px-4 py-3">
                                 <div className="flex items-center justify-center gap-1">
-                                  {notEnrolledView && enrolHref(s) && (
-                                    <Link
-                                      href={enrolHref(s)!}
+                                  {enrolCode && (
+                                    <EnrolLink
+                                      student={s}
+                                      code={enrolCode}
                                       className="px-2 py-1 text-xs rounded-button border border-slate-300 text-slate-600 hover:bg-slate-50"
-                                    >
-                                      Enrol for {yearCode}
-                                    </Link>
+                                    />
                                   )}
                                   <Link
                                     href={`/government/school-admin/students/profile?id=${s.id}`}
@@ -529,7 +553,7 @@ export function StudentsDirectoryPage() {
                           key={s.id}
                           student={s}
                           onEdit={() => openEdit(s.id)}
-                          enrol={notEnrolledView && yearCode ? { href: enrolHref(s), code: yearCode } : null}
+                          enrolCode={enrolCode}
                         />
                       ))}
                     </div>
@@ -674,11 +698,11 @@ export function StudentsDirectoryPage() {
 function StudentCard({
   student,
   onEdit,
-  enrol,
+  enrolCode,
 }: {
   student: StudentRowView;
   onEdit: () => void;
-  enrol: { href: string | null; code: string } | null;
+  enrolCode: string | null;
 }) {
   return (
     <Card hoverable bordered={false}>
@@ -723,13 +747,12 @@ function StudentCard({
             </div>
           </div>
           <div className="mt-auto pt-2 border-t border-slate-100 flex items-center justify-end gap-1">
-            {enrol?.href && (
-              <Link
-                href={enrol.href}
+            {enrolCode && (
+              <EnrolLink
+                student={student}
+                code={enrolCode}
                 className="px-3 py-0.5 text-xs rounded-button border border-slate-300 text-slate-600 hover:bg-slate-50"
-              >
-                Enrol for {enrol.code}
-              </Link>
+              />
             )}
             <Link
               href={`/government/school-admin/students/profile?id=${student.id}`}

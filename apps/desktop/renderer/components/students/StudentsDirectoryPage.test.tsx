@@ -434,7 +434,7 @@ describe('StudentsDirectoryPage enrolment view', () => {
         getStatistics: vi.fn(async () => ({ totalStudents: 1, maleStudents: 0, femaleStudents: 1, recentEnrollments: 0 })),
       },
       school: { getSummary: vi.fn(async () => null) },
-      academicYear: { getCurrent: vi.fn(async () => year), list: vi.fn(async () => []) },
+      academicYear: { getCurrent: vi.fn(async () => null), list: vi.fn(async () => (year ? [year] : [])) },
       term: { getCurrent: vi.fn(async () => null) },
       classes: { list: vi.fn(async () => ({ data: [], total: 0, page: 1, pageSize: 20, totalPages: 0 })) },
     };
@@ -484,10 +484,32 @@ describe('StudentsDirectoryPage enrolment view', () => {
     expect(screen.queryByRole('link', { name: 'Enrol for 2026/2027' })).toBeNull();
   });
 
-  it('shows no tabs and no action when the school has no active year', async () => {
-    stubWith(null);
+  it('shows no tabs and does not filter when the current year is not ACTIVE', async () => {
+    const listMock = stubWith({ ...activeYear, status: 'REOPENED' });
     renderPage();
     await screen.findByText('Mary Kollie');
+    expect(screen.queryByRole('button', { name: /Not enrolled for/ })).toBeNull();
+    for (const call of listMock.mock.calls) expect((call as unknown[])[0]).not.toHaveProperty('enrolment');
+  });
+
+  it('the grid card carries the same Enrol link', async () => {
+    stubWith(activeYear);
+    renderPage();
+    const { default: userEvent } = await import('@testing-library/user-event');
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Not enrolled for 2026/2027' }));
+    await user.click(screen.getByRole('button', { name: /grid view/i }));
+    expect(screen.queryByRole('table')).toBeNull();
+    const link = await screen.findByRole('link', { name: 'Enrol for 2026/2027' });
+    expect(link.getAttribute('href')).toBe('/government/school-admin/students/create?nemisId=482915736045&dob=2015-03-09');
+  });
+
+  it('shows no tabs and no action when the school has no active year', async () => {
+    const listMock = stubWith(null);
+    renderPage();
+    await screen.findByText('Mary Kollie');
+    expect(listMock.mock.calls.length).toBeGreaterThan(0);
+    for (const call of listMock.mock.calls) expect((call as unknown[])[0]).not.toHaveProperty('enrolment');
     expect(screen.queryByRole('button', { name: /Not enrolled for/ })).toBeNull();
     expect(screen.queryByRole('link', { name: /Enrol for/ })).toBeNull();
   });
