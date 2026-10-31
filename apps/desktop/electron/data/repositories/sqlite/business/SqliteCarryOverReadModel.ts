@@ -1,4 +1,4 @@
-import type { PendingCarryOver } from '@nemis-desktop/types';
+import type { CarriedGradeCell, PendingCarryOver } from '@nemis-desktop/types';
 import type { RepositoryContext } from '../../base/RepositoryContext';
 import { guarded } from './support';
 
@@ -27,6 +27,19 @@ export class SqliteCarryOverReadModel {
            ORDER BY t.createdAt, t.id`,
         )
         .all() as PendingCarryOver[],
+    );
+  }
+
+  /** Carried marks filling (period, subject) cells: read-only in the grade grid. */
+  carriedFor(gradingPeriodId: string, subjectId: string): CarriedGradeCell[] {
+    return guarded('SqliteCarryOverReadModel.carriedFor', () =>
+      this.#repository.connection
+        .prepare(
+          `SELECT studentId, percentage, sourceSchoolName FROM carried_grades
+           WHERE targetGradingPeriodId = ? AND targetSubjectId = ?
+           ORDER BY studentId`,
+        )
+        .all(gradingPeriodId, subjectId) as CarriedGradeCell[],
     );
   }
 }

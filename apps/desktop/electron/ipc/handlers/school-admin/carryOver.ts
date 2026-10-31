@@ -1,7 +1,18 @@
-import { IpcChannels, type PendingCarryOver, type SaveCarryOverIpcRequest } from '@nemis-desktop/types';
+import {
+  IpcChannels,
+  type CarriedGradeCell,
+  type CarriedGradesForPeriodRequest,
+  type PendingCarryOver,
+  type SaveCarryOverIpcRequest,
+} from '@nemis-desktop/types';
 import type { IpcHandle } from '@app/ipc/registrar';
 import type { BackendProvisioningGateway } from '@app/provisioning/BackendProvisioningGateway';
-import { assertCarryOverSaveArgs, assertNoArgs, assertSingleIdArg } from '@app/security/validateIpc';
+import {
+  assertCarriedGradesForPeriodArgs,
+  assertCarryOverSaveArgs,
+  assertNoArgs,
+  assertSingleIdArg,
+} from '@app/security/validateIpc';
 import { runOnline } from './online';
 
 export type CarryOverGateway = Pick<
@@ -18,9 +29,17 @@ export function registerCarryOverHandlers(
   handle: IpcHandle,
   gateway: CarryOverGateway,
   refresh: () => Promise<boolean>,
-  readLocalPending: () => PendingCarryOver[],
+  local: {
+    listPending: () => PendingCarryOver[];
+    carriedFor: (gradingPeriodId: string, subjectId: string) => CarriedGradeCell[];
+  },
 ): void {
-  handle(IpcChannels.CARRY_OVER_LIST_LOCAL_PENDING, assertNoArgs, () => readLocalPending());
+  handle(IpcChannels.CARRY_OVER_LIST_LOCAL_PENDING, assertNoArgs, () => local.listPending());
+  handle(
+    IpcChannels.CARRIED_GRADES_FOR_PERIOD,
+    assertCarriedGradesForPeriodArgs,
+    ({ gradingPeriodId, subjectId }: CarriedGradesForPeriodRequest) => local.carriedFor(gradingPeriodId, subjectId),
+  );
   handle(IpcChannels.CARRY_OVER_LIST_PENDING, assertNoArgs, () => gateway.listPendingCarryOvers());
   handle(IpcChannels.CARRY_OVER_GET, assertSingleIdArg, (id: string) => gateway.getCarryOver(id));
   handle(

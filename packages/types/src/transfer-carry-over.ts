@@ -32,3 +32,16 @@ export interface SaveCarryOverIpcRequest {
   periods: { sourceGradingPeriodId: string; targetGradingPeriodId: string | null }[];
   subjects: { sourceSubjectId: string; targetSubjectId: string | null }[];
 }
+
+/** One student's carried mark in a grading period and subject (local data):
+ * the teacher's grade grid shows it read-only. */
+export interface CarriedGradeCell {
+  studentId: string;
+  percentage: number;
+  sourceSchoolName: string;
+}
+
+export interface CarriedGradesForPeriodRequest {
+  gradingPeriodId: string;
+  subjectId: string;
+}

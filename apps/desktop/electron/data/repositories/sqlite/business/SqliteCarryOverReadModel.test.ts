@@ -51,6 +51,24 @@ describe('SqliteCarryOverReadModel', () => {
     ]);
   });
 
+  const carried = (id: string, studentId: string, subjectId: string | null, periodId: string | null) =>
+    test.context.connection
+      .prepare(
+        `INSERT INTO carried_grades (id,carryOverId,studentId,sourceSchoolName,targetSubjectId,targetGradingPeriodId,percentage,createdAt,updatedAt)
+         VALUES (?,?,?,?,?,?,?,?,?)`,
+      )
+      .run(id, 'co-1', studentId, 'Alpha School', subjectId, periodId, 72, NOW, NOW);
+
+  it('returns the carried marks of one period and subject, matched rows only', () => {
+    carried('g-1', 's-1', 'math', 'p-1');
+    carried('g-2', 's-2', 'math', 'p-2');
+    carried('g-3', 's-3', 'eng', 'p-1');
+    carried('g-4', 's-4', null, null);
+    expect(model.carriedFor('p-1', 'math')).toEqual([
+      { studentId: 's-1', percentage: 72, sourceSchoolName: 'Alpha School' },
+    ]);
+  });
+
   it('lists nothing when there are no tasks', () => {
     expect(model.listPending()).toEqual([]);
   });

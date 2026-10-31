@@ -61,6 +61,19 @@ function Fact({ label, children }: { label: string; children: React.ReactNode })
 
 /** Renders a report card payload on screen. Pure display: readers never
  * recompute a card, and there are deliberately no print or PDF controls. */
+type PriorRow = NonNullable<ReportCardPayloadV1['priorSchoolRecord']>[number];
+
+/** Unmatched carried marks grouped by the school that earned them, in order. */
+function priorBySchool(rows: ReportCardPayloadV1['priorSchoolRecord']): [string, PriorRow[]][] {
+  const groups = new Map<string, PriorRow[]>();
+  for (const row of rows ?? []) {
+    const list = groups.get(row.schoolName) ?? [];
+    list.push(row);
+    groups.set(row.schoolName, list);
+  }
+  return [...groups.entries()];
+}
+
 export function ReportCardView({ payload, status, version }: ReportCardViewProps) {
   if (payload.schemaVersion !== 1) {
     return (
@@ -177,7 +190,29 @@ export function ReportCardView({ payload, status, version }: ReportCardViewProps
             </div>
           ))}
         </dl>
+        {attendance.carriedDays > 0 && (
+          <p className="text-xs text-slate-500">
+            Includes {attendance.carriedDays} days carried from a previous school.
+          </p>
+        )}
       </section>
+
+      {priorBySchool(payload.priorSchoolRecord).map(([schoolName, rows]) => (
+        <section key={schoolName} aria-label={`Earned at ${schoolName}`} className="space-y-2">
+          <h4 className="text-sm font-semibold text-slate-900">Earned at {schoolName}</h4>
+          <table className="min-w-full text-sm">
+            <tbody>
+              {rows.map((row, i) => (
+                <tr key={i} className="border-b border-slate-200">
+                  <td className="py-1 pr-3 text-slate-800">{row.subjectName}</td>
+                  <td className="py-1 pr-3 text-slate-500">{row.periodLabel}</td>
+                  <td className="py-1 text-right font-semibold text-slate-900">{row.value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      ))}
 
       {payload.kind === 'FINAL' && (payload.outcome || payload.principalRemark) && (
         <section aria-label="Year outcome" className="space-y-2">

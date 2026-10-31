@@ -15,6 +15,8 @@ import {
   useTeachingAssignmentViewModel,
 } from '@/lib/presentation/hooks/school-admin';
 import { useViewModel } from '@/hooks/use-view-model';
+import type { CarriedGradeCell } from '@nemis-desktop/types';
+import { carryOverBridge } from '@/services/nemis-bridge/school-admin/carry-over-bridge';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
 import { DatabaseUnavailablePanel } from '@/components/dashboard/DatabaseUnavailablePanel';
 import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
@@ -265,6 +267,29 @@ export default function TeacherGradesPage() {
     else setGrades([]);
   }, [selectedPeriodId]);
 
+  // Stage 5: marks carried from a transferred student's previous school fill
+  // their cell here and are read-only (the local and server guards refuse a
+  // local mark there). A failed read shows none: the guard still holds.
+  const [carried, setCarried] = useState<Map<string, CarriedGradeCell>>(new Map());
+  useEffect(() => {
+    if (!selectedPeriodId || !selectedSubjectId) {
+      setCarried(new Map());
+      return;
+    }
+    let cancelled = false;
+    Promise.resolve()
+      .then(() => carryOverBridge.carriedGradesForPeriod({ gradingPeriodId: selectedPeriodId, subjectId: selectedSubjectId }))
+      .then((rows) => {
+        if (!cancelled) setCarried(new Map(rows.map((r) => [r.studentId, r])));
+      })
+      .catch(() => {
+        if (!cancelled) setCarried(new Map());
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedPeriodId, selectedSubjectId]);
+
   const [templates, setTemplates] = useState<AssessmentTemplateRow[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
 
@@ -401,7 +426,7 @@ export default function TeacherGradesPage() {
   const persistExamScores = async (nextStatus: 'DRAFT' | 'SUBMITTED') => {
     if (!selectedClassId || !selectedSubjectId || !selectedPeriodId) return;
     for (const student of roster) {
-      if (isLocked(student.id)) continue;
+      if (isLocked(student.id) || carried.has(student.id)) continue;
       const scores = editedScores[student.id] ?? { ca: null, test: null, exam: null };
       const { marksObtained, percentage, letterGrade } = computeTotals(scores);
       if (marksObtained === null) continue; // nothing entered for this student — skip
@@ -434,6 +459,7 @@ export default function TeacherGradesPage() {
     for (const template of templates) {
       const assessmentId = await materializeAssessment(template, selectedPeriodId);
       for (const student of roster) {
+        if (carried.has(student.id)) continue;
         const score = templateScores[student.id]?.[template.id];
         if (score === undefined) continue;
         const existingGrade = grades.find(
@@ -576,10 +602,15 @@ export default function TeacherGradesPage() {
     const subjectsInClass = selectedClass?.subjects ?? [];
     void Promise.all(
       subjectsInClass.map(async (subject) => {
-        const [subjectTemplates, instances] = await Promise.all([
+        const [subjectTemplates, instances, carriedRows] = await Promise.all([
           listTemplatesForSubject(selectedClassId, subject.id),
           listAssessmentsForPeriod(selectedClassId, subject.id, selectedPeriodId),
+          // Stage 5: a carried mark is this period's mark for that student.
+          Promise.resolve()
+            .then(() => carryOverBridge.carriedGradesForPeriod({ gradingPeriodId: selectedPeriodId, subjectId: subject.id }))
+            .catch(() => []),
         ]);
+        const carriedStudents = new Set(carriedRows.map((r) => r.studentId));
         // Same reverse-lookup shape as reloadTemplateScores: templateId ->
         // instance id, used here to check that a student has a graded
         // instance for EVERY template, not just any template.
@@ -594,7 +625,7 @@ export default function TeacherGradesPage() {
         // "Fully scored" = every roster student has a grade row for every
         // template in this subject (not just "any" template, any student).
         const studentsScored = hasTemplates
-          ? roster.filter((student) => subjectTemplates.every((template) => {
+          ? roster.filter((student) => carriedStudents.has(student.id) || subjectTemplates.every((template) => {
               const instanceId = instanceIdByTemplateId.get(template.id);
               return instanceId != null && gradedPairs.has(`${student.id}::${instanceId}`);
             })).length
@@ -879,6 +910,25 @@ export default function TeacherGradesPage() {
                     const { percentage, letterGrade } = computeTotals(scores);
                     const locked = isLocked(student.id);
                     const grade = gradeFor(student.id);
+                    const carriedCell = carried.get(student.id);
+                    if (carriedCell) {
+                      return (
+                        <tr key={student.id} className="border-b bg-slate-50">
+                          <td className="px-3 py-2 text-sm text-slate-500 border-r text-center">{index + 1}</td>
+                          <td className="px-4 py-2 text-sm font-medium text-slate-900 border-r">{student.fullName}</td>
+                          <td
+                            colSpan={isExamPeriod ? 1 : Math.max(templates.length, 1)}
+                            className="px-3 py-2 text-center text-xs text-slate-500 border-r"
+                          >
+                            From {carriedCell.sourceSchoolName}
+                          </td>
+                          <td className="px-4 py-2 text-center text-sm font-bold text-slate-800 border-r">
+                            {`${Math.round(carriedCell.percentage * 10) / 10}%`}
+                          </td>
+                          <td className="px-4 py-2 text-center text-xs text-slate-500">Carried</td>
+                        </tr>
+                      );
+                    }
                     return (
                       <tr key={student.id} className="border-b hover:bg-slate-50/70">
                         <td className="px-3 py-2 text-sm text-slate-500 border-r text-center">{index + 1}</td>

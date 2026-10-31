@@ -21,8 +21,10 @@ function setup() {
   const refresh = vi.fn(async () => true);
   const local = [{ id: 'co-1', studentId: 's1', studentName: 'Ama Kofi', fromInstitutionName: 'Alpha', createdAt: 'x' }];
   const readLocalPending = vi.fn(() => local);
-  registerCarryOverHandlers(handle, gateway as never, refresh, readLocalPending);
-  return { calls, gateway, refresh, readLocalPending, local };
+  const carried = [{ studentId: 's1', percentage: 72, sourceSchoolName: 'Alpha' }];
+  const carriedFor = vi.fn(() => carried);
+  registerCarryOverHandlers(handle, gateway as never, refresh, { listPending: readLocalPending, carriedFor });
+  return { calls, gateway, refresh, readLocalPending, local, carriedFor, carried };
 }
 
 const save = {
@@ -39,6 +41,16 @@ describe('carry-over IPC handlers', () => {
     expect(await calls.get(IpcChannels.CARRY_OVER_LIST_LOCAL_PENDING)!.handler()).toBe(local);
     expect(readLocalPending).toHaveBeenCalled();
     expect(gateway.listPendingCarryOvers).not.toHaveBeenCalled();
+  });
+
+  it('reads the carried marks of one period and subject from local data', async () => {
+    const { calls, carriedFor, carried } = setup();
+    const ch = calls.get(IpcChannels.CARRIED_GRADES_FOR_PERIOD)!;
+    expect(() => ch.validate([{ gradingPeriodId: 'p1', subjectId: 'm' }])).not.toThrow();
+    expect(() => ch.validate([{ gradingPeriodId: 'p1' }])).toThrow();
+    expect(() => ch.validate([{ gradingPeriodId: 'p1', subjectId: 'm', x: 1 }])).toThrow();
+    expect(await ch.handler({ gradingPeriodId: 'p1', subjectId: 'm' })).toBe(carried);
+    expect(carriedFor).toHaveBeenCalledWith('p1', 'm');
   });
 
   it('reads go to the server and never refresh', async () => {

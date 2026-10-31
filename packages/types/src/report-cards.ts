@@ -71,6 +71,9 @@ export interface ReportCardPayloadV1 {
   outcome: ReportCardOutcome | null;
   /** Null for PERIOD. */
   principalRemark: string | null;
+  /** Stage 5: marks from a previous school this year that fill no column
+   * here. Shown under that school, never averaged. Absent on older cards. */
+  priorSchoolRecord?: { schoolName: string; subjectName: string; periodLabel: string; value: number }[];
 }
 
 /** One row of a report card list: an issue plus the names needed to show it. */

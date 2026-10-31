@@ -123,9 +123,12 @@ export function registerIpcHandlers(
   registerTransferHandlers(securedHandle, gateway, refresh);
   registerAcademicYearHandlers(securedHandle, app, gateway, refresh, new YearStructureCopyService(workspaces));
   registerAcademicYearCloseHandlers(securedHandle, gateway, refresh, () => syncWorker.countPendingChanges());
-  registerCarryOverHandlers(securedHandle, gateway, refresh, () =>
-    new SqliteCarryOverReadModel({ connection: workspaces.active.database.connection }).listPending(),
-  );
+  const carryOverReads = () =>
+    new SqliteCarryOverReadModel({ connection: workspaces.active.database.connection });
+  registerCarryOverHandlers(securedHandle, gateway, refresh, {
+    listPending: () => carryOverReads().listPending(),
+    carriedFor: (gradingPeriodId, subjectId) => carryOverReads().carriedFor(gradingPeriodId, subjectId),
+  });
   registerCountyDeoHandlers(securedHandle, gateway, refresh);
   registerCountyMessagingHandlers(securedHandle, app, gateway, refresh, presence);
   registerCountyUserCommandHandlers(securedHandle, gateway, refresh, () => workspaces.active.user.scope.scopeId);

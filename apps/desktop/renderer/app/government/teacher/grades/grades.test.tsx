@@ -377,3 +377,58 @@ describe('Teacher grades page', () => {
     expect(screen.queryByText(/Not ready/)).toBeNull();
   });
 });
+
+describe('Teacher grades page — carried marks (Stage 5)', () => {
+  it('shows a carried mark read-only with its school and never saves it', async () => {
+    const nemis = installBaseMock();
+    (nemis as unknown as { carryOver: unknown }).carryOver = {
+      carriedForPeriod: vi.fn(async () => [{ studentId: 'student-1', percentage: 72, sourceSchoolName: 'Alpha School' }]),
+    };
+    const layer = createRendererPresentation();
+    await layer.bootstrap.run();
+    render(
+      <PresentationProvider layer={layer}>
+        <TeacherGradesPage />
+      </PresentationProvider>,
+    );
+    expect(await screen.findByText('Grade 10A')).toBeInTheDocument();
+    const [, , subjectSelect, periodSelect] = screen.getAllByRole('combobox');
+    fireEvent.change(subjectSelect!, { target: { value: 'sub-1' } });
+    fireEvent.change(periodSelect!, { target: { value: 'period-1' } });
+
+    expect(await screen.findByText('From Alpha School')).toBeInTheDocument();
+    expect(screen.getByText('72%')).toBeInTheDocument();
+    expect(screen.queryAllByRole('spinbutton')).toHaveLength(0);
+    expect(
+      (nemis as unknown as { carryOver: { carriedForPeriod: ReturnType<typeof vi.fn> } }).carryOver.carriedForPeriod,
+    ).toHaveBeenCalledWith({ gradingPeriodId: 'period-1', subjectId: 'sub-1' });
+
+    fireEvent.click(screen.getByText('Save'));
+    await new Promise((r) => setTimeout(r, 50));
+    expect(nemis.schoolAdmin.save).not.toHaveBeenCalledWith(
+      expect.objectContaining({ collection: 'grades', record: expect.objectContaining({ studentId: 'student-1' }) }),
+    );
+  });
+});
+
+describe('Teacher grades page — carried marks in Summary & Submit (Stage 5)', () => {
+  it('counts a carried student as scored, so the subject can be Ready', async () => {
+    const nemis = installBaseMock();
+    (nemis as unknown as { carryOver: unknown }).carryOver = {
+      carriedForPeriod: vi.fn(async () => [{ studentId: 'student-1', percentage: 72, sourceSchoolName: 'Alpha School' }]),
+    };
+    const layer = createRendererPresentation();
+    await layer.bootstrap.run();
+    render(<PresentationProvider layer={layer}><TeacherGradesPage /></PresentationProvider>);
+    await waitFor(() => expect(nemis.term.list).toHaveBeenCalledWith('ay-1'));
+    await screen.findByText('Grade 10A');
+    const [, , subjectSelect, periodSelect] = screen.getAllByRole('combobox');
+    fireEvent.change(subjectSelect!, { target: { value: 'sub-1' } });
+    fireEvent.change(periodSelect!, { target: { value: 'period-1' } });
+    await screen.findByText('From Alpha School');
+
+    fireEvent.click(screen.getByText('Summary & Submit'));
+    expect(await screen.findByText('Mathematics')).toBeInTheDocument();
+    expect(await screen.findByText('Ready')).toBeInTheDocument();
+  });
+});

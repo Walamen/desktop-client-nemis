@@ -110,6 +110,8 @@ const SCHOOL_ADMIN_CHANNELS = new Set<IpcChannel>([
 // Timetable and Gradebook pages need to render — not teacher- or
 // class-specific, so none of them need self-scoping.
 const SCHOOL_STAFF_CHANNELS = new Set<IpcChannel>([
+  // Stage 5: carried marks, read-only in the teacher's grade grid.
+  IpcChannels.CARRIED_GRADES_FOR_PERIOD,
   IpcChannels.ATTENDANCE_LIST,
   IpcChannels.ATTENDANCE_RECORD,
   IpcChannels.CLASS_LIST,

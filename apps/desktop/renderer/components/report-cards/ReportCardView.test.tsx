@@ -126,3 +126,34 @@ describe('ReportCardView', () => {
     expect(screen.queryByRole('table')).toBeNull();
   });
 });
+
+describe('ReportCardView prior school record (Stage 5)', () => {
+  it('lists unmatched marks under the school that earned them', () => {
+    const payload = {
+      ...payloadFixture(),
+      priorSchoolRecord: [
+        { schoolName: 'Alpha School', subjectName: 'Art', periodLabel: 'Term 1 — Period 1', value: 65 },
+        { schoolName: 'Alpha School', subjectName: 'Music', periodLabel: 'Term 1 — Period 1', value: 80 },
+      ],
+    };
+    render(<ReportCardView payload={payload} />);
+    const section = screen.getByRole('region', { name: 'Earned at Alpha School' });
+    expect(within(section).getByRole('heading', { name: 'Earned at Alpha School' })).toBeInTheDocument();
+    expect(within(section).getByText('Art')).toBeInTheDocument();
+    expect(within(section).getAllByText('Term 1 — Period 1')).toHaveLength(2);
+    expect(within(section).getByText('65')).toBeInTheDocument();
+  });
+
+  it('states the carried share of attendance', () => {
+    const base = payloadFixture();
+    render(<ReportCardView payload={{ ...base, attendance: { ...base.attendance, carriedDays: 14 } }} />);
+    expect(screen.getByText('Includes 14 days carried from a previous school.')).toBeInTheDocument();
+  });
+
+  it('adds nothing for a card with no carried data', () => {
+    const base = payloadFixture();
+    render(<ReportCardView payload={{ ...base, attendance: { ...base.attendance, carriedDays: 0 } }} />);
+    expect(screen.queryByText(/Earned at/)).toBeNull();
+    expect(screen.queryByText(/carried from a previous school/)).toBeNull();
+  });
+});

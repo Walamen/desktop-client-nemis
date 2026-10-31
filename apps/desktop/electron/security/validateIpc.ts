@@ -1542,3 +1542,12 @@ export function assertCarryOverSaveArgs(args: readonly unknown[]): void {
   rows(request.periods, 'periods', 'sourceGradingPeriodId', 'targetGradingPeriodId');
   rows(request.subjects, 'subjects', 'sourceSubjectId', 'targetSubjectId');
 }
+
+export function assertCarriedGradesForPeriodArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [request] = args;
+  if (!isPlainObject(request)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(request, ['gradingPeriodId', 'subjectId']);
+  assertString(request.gradingPeriodId, 'gradingPeriodId', ID_MAX_LENGTH);
+  assertString(request.subjectId, 'subjectId', ID_MAX_LENGTH);
+}
