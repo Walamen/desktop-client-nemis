@@ -32,13 +32,17 @@ export function registerCarryOverHandlers(
   local: {
     listPending: () => PendingCarryOver[];
     carriedFor: (gradingPeriodId: string, subjectId: string) => CarriedGradeCell[];
+    pendingStudentsFor: (gradingPeriodId: string) => string[];
   },
 ): void {
   handle(IpcChannels.CARRY_OVER_LIST_LOCAL_PENDING, assertNoArgs, () => local.listPending());
   handle(
     IpcChannels.CARRIED_GRADES_FOR_PERIOD,
     assertCarriedGradesForPeriodArgs,
-    ({ gradingPeriodId, subjectId }: CarriedGradesForPeriodRequest) => local.carriedFor(gradingPeriodId, subjectId),
+    ({ gradingPeriodId, subjectId }: CarriedGradesForPeriodRequest) => ({
+      carried: local.carriedFor(gradingPeriodId, subjectId),
+      pendingStudentIds: local.pendingStudentsFor(gradingPeriodId),
+    }),
   );
   handle(IpcChannels.CARRY_OVER_LIST_PENDING, assertNoArgs, () => gateway.listPendingCarryOvers());
   handle(IpcChannels.CARRY_OVER_GET, assertSingleIdArg, (id: string) => gateway.getCarryOver(id));

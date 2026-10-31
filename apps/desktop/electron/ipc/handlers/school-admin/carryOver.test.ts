@@ -23,7 +23,8 @@ function setup() {
   const readLocalPending = vi.fn(() => local);
   const carried = [{ studentId: 's1', percentage: 72, sourceSchoolName: 'Alpha' }];
   const carriedFor = vi.fn(() => carried);
-  registerCarryOverHandlers(handle, gateway as never, refresh, { listPending: readLocalPending, carriedFor });
+  const pendingStudentsFor = vi.fn(() => ['s2']);
+  registerCarryOverHandlers(handle, gateway as never, refresh, { listPending: readLocalPending, carriedFor, pendingStudentsFor });
   return { calls, gateway, refresh, readLocalPending, local, carriedFor, carried };
 }
 
@@ -49,7 +50,7 @@ describe('carry-over IPC handlers', () => {
     expect(() => ch.validate([{ gradingPeriodId: 'p1', subjectId: 'm' }])).not.toThrow();
     expect(() => ch.validate([{ gradingPeriodId: 'p1' }])).toThrow();
     expect(() => ch.validate([{ gradingPeriodId: 'p1', subjectId: 'm', x: 1 }])).toThrow();
-    expect(await ch.handler({ gradingPeriodId: 'p1', subjectId: 'm' })).toBe(carried);
+    expect(await ch.handler({ gradingPeriodId: 'p1', subjectId: 'm' })).toEqual({ carried, pendingStudentIds: ['s2'] });
     expect(carriedFor).toHaveBeenCalledWith('p1', 'm');
   });
 

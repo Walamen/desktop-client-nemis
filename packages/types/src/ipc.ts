@@ -1,6 +1,7 @@
 import type {
   CarriedGradeCell,
   CarriedGradesForPeriodRequest,
+  CarriedGradesForPeriodResult,
   CarryOverPreview,
   PendingCarryOver,
   SaveCarryOverIpcRequest,
@@ -312,7 +313,7 @@ export interface IpcContract {
   'close:get-readiness': { args: [yearId: string]; result: CloseReadiness };
   'carry-over:list-pending': { args: []; result: PendingCarryOver[] };
   'carry-over:list-local-pending': { args: []; result: PendingCarryOver[] };
-  'carry-over:carried-grades-for-period': { args: [request: CarriedGradesForPeriodRequest]; result: CarriedGradeCell[] };
+  'carry-over:carried-grades-for-period': { args: [request: CarriedGradesForPeriodRequest]; result: CarriedGradesForPeriodResult };
   'carry-over:get': { args: [id: string]; result: CarryOverPreview };
   'carry-over:save': { args: [request: SaveCarryOverIpcRequest]; result: OnlineCommandResult<null> };
   'close:fill-cells': { args: [request: CloseFillCellsIpcRequest]; result: OnlineCommandResult<null> };

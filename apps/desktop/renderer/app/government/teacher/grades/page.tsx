@@ -271,19 +271,28 @@ export default function TeacherGradesPage() {
   // their cell here and are read-only (the local and server guards refuse a
   // local mark there). A failed read shows none: the guard still holds.
   const [carried, setCarried] = useState<Map<string, CarriedGradeCell>>(new Map());
+  // Students whose prior record is still unmatched: their marks for a period
+  // that ended before they joined are refused until it is saved.
+  const [awaitingMatch, setAwaitingMatch] = useState<Set<string>>(new Set());
+  const notEntered = (studentId: string) => carried.has(studentId) || awaitingMatch.has(studentId);
   useEffect(() => {
     if (!selectedPeriodId || !selectedSubjectId) {
       setCarried(new Map());
+      setAwaitingMatch(new Set());
       return;
     }
     let cancelled = false;
     Promise.resolve()
       .then(() => carryOverBridge.carriedGradesForPeriod({ gradingPeriodId: selectedPeriodId, subjectId: selectedSubjectId }))
-      .then((rows) => {
-        if (!cancelled) setCarried(new Map(rows.map((r) => [r.studentId, r])));
+      .then((result) => {
+        if (cancelled) return;
+        setCarried(new Map(result.carried.map((r) => [r.studentId, r])));
+        setAwaitingMatch(new Set(result.pendingStudentIds));
       })
       .catch(() => {
-        if (!cancelled) setCarried(new Map());
+        if (cancelled) return;
+        setCarried(new Map());
+        setAwaitingMatch(new Set());
       });
     return () => {
       cancelled = true;
@@ -426,7 +435,7 @@ export default function TeacherGradesPage() {
   const persistExamScores = async (nextStatus: 'DRAFT' | 'SUBMITTED') => {
     if (!selectedClassId || !selectedSubjectId || !selectedPeriodId) return;
     for (const student of roster) {
-      if (isLocked(student.id) || carried.has(student.id)) continue;
+      if (isLocked(student.id) || notEntered(student.id)) continue;
       const scores = editedScores[student.id] ?? { ca: null, test: null, exam: null };
       const { marksObtained, percentage, letterGrade } = computeTotals(scores);
       if (marksObtained === null) continue; // nothing entered for this student — skip
@@ -459,7 +468,7 @@ export default function TeacherGradesPage() {
     for (const template of templates) {
       const assessmentId = await materializeAssessment(template, selectedPeriodId);
       for (const student of roster) {
-        if (carried.has(student.id)) continue;
+        if (notEntered(student.id)) continue;
         const score = templateScores[student.id]?.[template.id];
         if (score === undefined) continue;
         const existingGrade = grades.find(
@@ -608,9 +617,14 @@ export default function TeacherGradesPage() {
           // Stage 5: a carried mark is this period's mark for that student.
           Promise.resolve()
             .then(() => carryOverBridge.carriedGradesForPeriod({ gradingPeriodId: selectedPeriodId, subjectId: subject.id }))
-            .catch(() => []),
+            .catch(() => ({ carried: [], pendingStudentIds: [] })),
         ]);
-        const carriedStudents = new Set(carriedRows.map((r) => r.studentId));
+        // A carried mark is the student's mark; a student waiting on a
+        // matching owes nothing here yet. Neither holds the subject back.
+        const carriedStudents = new Set([
+          ...carriedRows.carried.map((r) => r.studentId),
+          ...carriedRows.pendingStudentIds,
+        ]);
         // Same reverse-lookup shape as reloadTemplateScores: templateId ->
         // instance id, used here to check that a student has a graded
         // instance for EVERY template, not just any template.
@@ -926,6 +940,20 @@ export default function TeacherGradesPage() {
                             {`${Math.round(carriedCell.percentage * 10) / 10}%`}
                           </td>
                           <td className="px-4 py-2 text-center text-xs text-slate-500">Carried</td>
+                        </tr>
+                      );
+                    }
+                    if (awaitingMatch.has(student.id)) {
+                      return (
+                        <tr key={student.id} className="border-b bg-slate-50">
+                          <td className="px-3 py-2 text-sm text-slate-500 border-r text-center">{index + 1}</td>
+                          <td className="px-4 py-2 text-sm font-medium text-slate-900 border-r">{student.fullName}</td>
+                          <td
+                            colSpan={(isExamPeriod ? 1 : Math.max(templates.length, 1)) + 2}
+                            className="px-3 py-2 text-center text-xs text-slate-500"
+                          >
+                            Waiting for the prior record to be matched.
+                          </td>
                         </tr>
                       );
                     }

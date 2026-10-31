@@ -1,6 +1,7 @@
 import type {
   CarriedGradeCell,
   CarriedGradesForPeriodRequest,
+  CarriedGradesForPeriodResult,
   CarryOverPreview,
   PendingCarryOver,
   SaveCarryOverIpcRequest,
@@ -464,7 +465,7 @@ export interface CarryOverApi {
   /** From local SQLite (pulled rows): works offline. */
   listLocalPending(): Promise<PendingCarryOver[]>;
   /** From local SQLite: teachers and admins (the grade grid). */
-  carriedForPeriod(request: CarriedGradesForPeriodRequest): Promise<CarriedGradeCell[]>;
+  carriedForPeriod(request: CarriedGradesForPeriodRequest): Promise<CarriedGradesForPeriodResult>;
   get(id: string): Promise<CarryOverPreview>;
   save(request: SaveCarryOverIpcRequest): Promise<OnlineCommandResult<null>>;
 }

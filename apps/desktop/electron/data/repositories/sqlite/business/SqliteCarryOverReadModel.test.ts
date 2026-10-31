@@ -29,6 +29,21 @@ describe('SqliteCarryOverReadModel', () => {
       )
       .run(id, studentId, 'i-1', yearId, 'Alpha School', NOW, status, createdAt, NOW);
 
+  const enrol = (studentId: string, yearId: string, status = 'ACTIVE') =>
+    test.context.connection
+      .prepare(
+        `INSERT INTO enrollments (id,studentId,classId,academicYearId,termId,enrollmentDate,status,version,updatedAt)
+         VALUES (?,?,?,?,?,?,?,1,?)`,
+      )
+      .run(`e-${studentId}-${yearId}`, studentId, 'c-1', yearId, 't-1', NOW, status, NOW);
+  const period = (id: string, yearId: string, endDate: string) =>
+    test.context.connection
+      .prepare(
+        `INSERT INTO grading_periods (id,institutionId,academicYearId,termId,name,code,periodType,sequence,maxMarks,passingMarks,startDate,endDate,isActive,createdAt,updatedAt)
+         VALUES (?,?,?,?,?,?,?,1,100,50,?,?,1,?,?)`,
+      )
+      .run(id, 'i-1', yearId, 't-1', id, id, 'REGULAR_PERIOD', '2025-09-01T00:00:00.000Z', endDate, NOW, NOW);
+
   beforeEach(() => {
     test = createTestContext();
     test.context.connection.pragma('foreign_keys = OFF');
@@ -45,6 +60,8 @@ describe('SqliteCarryOverReadModel', () => {
     carryOver('co-1', 's-1', 'y-active', 'PENDING', '2026-10-19T00:00:00.000Z');
     carryOver('co-saved', 's-1', 'y-active', 'SAVED');
     carryOver('co-old', 's-1', 'y-closed', 'PENDING');
+    enrol('s-1', 'y-active');
+    enrol('s-2', 'y-active');
     expect(model.listPending()).toEqual([
       { id: 'co-1', studentId: 's-1', studentName: 'Ama Kofi', fromInstitutionName: 'Alpha School', createdAt: '2026-10-19T00:00:00.000Z' },
       { id: 'co-2', studentId: 's-2', studentName: 'Kofi Mensah', fromInstitutionName: 'Alpha School', createdAt: '2026-10-21T00:00:00.000Z' },
@@ -67,6 +84,25 @@ describe('SqliteCarryOverReadModel', () => {
     expect(model.carriedFor('p-1', 'math')).toEqual([
       { studentId: 's-1', percentage: 72, sourceSchoolName: 'Alpha School' },
     ]);
+  });
+
+  it('hides the task of a child who has left the school that year', () => {
+    year('y-active', 'ACTIVE');
+    student('s-1', 'Ama', 'Kofi');
+    carryOver('co-1', 's-1', 'y-active', 'PENDING');
+    enrol('s-1', 'y-active', 'TRANSFERRED');
+    expect(model.listPending()).toEqual([]);
+  });
+
+  it('names the students whose pending matching blocks a period that ended before they joined', () => {
+    year('y-active', 'ACTIVE');
+    // NOW (2026-10-20) is the enrolledAt of every carry-over in this file.
+    period('p-early', 'y-active', '2025-10-15T00:00:00.000Z');
+    period('p-late', 'y-active', '2027-01-15T00:00:00.000Z');
+    carryOver('co-1', 's-1', 'y-active', 'PENDING');
+    carryOver('co-2', 's-2', 'y-active', 'SAVED');
+    expect(model.pendingStudentsFor('p-early')).toEqual(['s-1']);
+    expect(model.pendingStudentsFor('p-late')).toEqual([]);
   });
 
   it('lists nothing when there are no tasks', () => {

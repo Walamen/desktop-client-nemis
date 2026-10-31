@@ -41,6 +41,14 @@ export interface CarriedGradeCell {
   sourceSchoolName: string;
 }
 
+/** The grade grid's view of one period and subject: carried marks (read-only)
+ * and the students whose pending matching blocks the period (read-only too —
+ * the grade guard refuses their marks there until the matching is saved). */
+export interface CarriedGradesForPeriodResult {
+  carried: CarriedGradeCell[];
+  pendingStudentIds: string[];
+}
+
 export interface CarriedGradesForPeriodRequest {
   gradingPeriodId: string;
   subjectId: string;

@@ -128,6 +128,7 @@ export function registerIpcHandlers(
   registerCarryOverHandlers(securedHandle, gateway, refresh, {
     listPending: () => carryOverReads().listPending(),
     carriedFor: (gradingPeriodId, subjectId) => carryOverReads().carriedFor(gradingPeriodId, subjectId),
+    pendingStudentsFor: (gradingPeriodId) => carryOverReads().pendingStudentsFor(gradingPeriodId),
   });
   registerCountyDeoHandlers(securedHandle, gateway, refresh);
   registerCountyMessagingHandlers(securedHandle, app, gateway, refresh, presence);
