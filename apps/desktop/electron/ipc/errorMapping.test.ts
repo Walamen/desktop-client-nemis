@@ -69,6 +69,17 @@ describe('toIpcError', () => {
     expect(payload.message).toBe('The local database is currently unavailable.');
   });
 
+  it('maps the carried-cell guard tokens to their own codes and exact copy', () => {
+    expect(toIpcError(new UnexpectedApplicationException('x', { cause: new Error('TRANSFER_CARRIED_CELL') }))).toEqual({
+      code: 'TRANSFER_CARRIED_CELL',
+      message: "This mark was carried from the student's previous school and cannot be changed here.",
+    });
+    expect(toIpcError(new Error('TRANSFER_MATCH_PENDING'))).toEqual({
+      code: 'TRANSFER_MATCH_PENDING',
+      message: "Match this student's prior record before entering marks for periods before they joined.",
+    });
+  });
+
   it('maps an academic-year violation buried in the cause chain to its own code and exact message', () => {
     const wrapped = new UnexpectedApplicationException('An unexpected error occurred.', {
       cause: new Error('ACADEMIC_YEAR_CLOSED'),

@@ -1,3 +1,4 @@
+import type { CarryOverPreview, PendingCarryOver, SaveCarryOverIpcRequest } from './transfer-carry-over';
 import type { AcademicContext } from './academic-context';
 import type {
   ReportCardArchivedYear,
@@ -303,6 +304,9 @@ export interface IpcContract {
   'academic-year:start': { args: [id: string]; result: OnlineCommandResult<null> };
   'academic-year:copy-structure': { args: [request: YearStructureCopyRequest]; result: YearStructureCopyResult };
   'close:get-readiness': { args: [yearId: string]; result: CloseReadiness };
+  'carry-over:list-pending': { args: []; result: PendingCarryOver[] };
+  'carry-over:get': { args: [id: string]; result: CarryOverPreview };
+  'carry-over:save': { args: [request: SaveCarryOverIpcRequest]; result: OnlineCommandResult<null> };
   'close:fill-cells': { args: [request: CloseFillCellsIpcRequest]; result: OnlineCommandResult<null> };
   'close:get-promotion': { args: [yearId: string]; result: PromotionOverview };
   'close:save-promotion': { args: [request: CloseSavePromotionIpcRequest]; result: OnlineCommandResult<null> };
@@ -533,6 +537,9 @@ export const IpcChannels = {
   ACADEMIC_YEAR_START: 'academic-year:start',
   ACADEMIC_YEAR_COPY_STRUCTURE: 'academic-year:copy-structure',
   CLOSE_GET_READINESS: 'close:get-readiness',
+  CARRY_OVER_LIST_PENDING: 'carry-over:list-pending',
+  CARRY_OVER_GET: 'carry-over:get',
+  CARRY_OVER_SAVE: 'carry-over:save',
   CLOSE_FILL_CELLS: 'close:fill-cells',
   CLOSE_GET_PROMOTION: 'close:get-promotion',
   CLOSE_SAVE_PROMOTION: 'close:save-promotion',
@@ -649,6 +656,8 @@ export type IpcErrorCode =
   | 'ACADEMIC_YEAR_CLOSED'
   | 'ACADEMIC_YEAR_NOT_STARTED'
   | 'ACADEMIC_YEAR_NOT_DELETABLE'
+  | 'TRANSFER_CARRIED_CELL'
+  | 'TRANSFER_MATCH_PENDING'
   // Offline enrol refused: a returning student re-enrols through the lookup.
   | 'RETURNING_STUDENT'
   // Copying a year's structure into a year that already has terms or classes.

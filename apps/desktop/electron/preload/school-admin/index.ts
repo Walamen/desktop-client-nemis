@@ -22,6 +22,7 @@ import { timetableApi } from './timetable-api';
 import { registryApi } from './registry-api';
 import { transferApi } from './transfer-api';
 import { academicYearCloseApi } from './academic-year-close-api';
+import { carryOverApi } from './carry-over-api';
 
 /** The NemisApi slice the Institution Admin (school admin) portal owns.
  * `teacherDirectoryApi` (staff-directory management, exported above) is
@@ -39,4 +40,5 @@ export const schoolAdminApi = {
   registry: registryApi,
   transfer: transferApi,
   academicYearClose: academicYearCloseApi,
+  carryOver: carryOverApi,
 };

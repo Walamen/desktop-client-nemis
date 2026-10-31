@@ -97,6 +97,8 @@ export const PROVISIONING_COLLECTIONS = [
   'reportCards', 'reportCardIssues',
   // Stage 3: pull-only close archives.
   'academicYearArchives',
+  // Stage 5: pull-only carry-over tasks, then the marks they carried.
+  'transferCarryOvers', 'carriedGrades',
 ] as const;
 
 export type ProvisioningCollection = (typeof PROVISIONING_COLLECTIONS)[number];

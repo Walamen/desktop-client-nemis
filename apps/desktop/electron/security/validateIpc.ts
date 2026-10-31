@@ -1517,3 +1517,28 @@ export function assertCorrectRemarkArgs(args: readonly unknown[]): void {
   assertString(request.remark, 'remark', DESCRIPTION_MAX_LENGTH);
   assertString(request.reason, 'reason', CLOSE_REASON_MAX_LENGTH);
 }
+
+/** Stage 5: a prior-record matching. Every source appears once; targets are
+ * ids or null ("Not matched"). The server re-checks every rule. */
+const MAX_CARRY_OVER_ROWS = 200;
+
+export function assertCarryOverSaveArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [request] = args;
+  if (!isPlainObject(request)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(request, ['carryOverId', 'periods', 'subjects']);
+  assertString(request.carryOverId, 'carryOverId', ID_MAX_LENGTH);
+  const rows = (value: unknown, field: string, source: string, target: string) => {
+    if (!Array.isArray(value) || value.length > MAX_CARRY_OVER_ROWS) {
+      throw new IPCError(`Expected "${field}" to be a list of at most ${MAX_CARRY_OVER_ROWS}.`);
+    }
+    for (const row of value) {
+      if (!isPlainObject(row)) throw new IPCError(`Expected each "${field}" entry to be an object.`);
+      assertKnownKeys(row, [source, target]);
+      assertString(row[source], source, ID_MAX_LENGTH);
+      if (row[target] !== null) assertString(row[target], target, ID_MAX_LENGTH);
+    }
+  };
+  rows(request.periods, 'periods', 'sourceGradingPeriodId', 'targetGradingPeriodId');
+  rows(request.subjects, 'subjects', 'sourceSubjectId', 'targetSubjectId');
+}

@@ -4,6 +4,7 @@ import {
   RateLimitedError,
   RemoteRejectedError,
   RETURNING_STUDENT_REFUSAL,
+  ACADEMIC_YEAR_MESSAGES,
   toIpcErrorPayload,
 } from '@nemis-desktop/shared';
 import {
@@ -34,6 +35,8 @@ const CODE_MESSAGES: Record<IpcErrorCode, string> = {
     'This academic year has not started yet. Grades, attendance and assignments can be recorded once it starts.',
   ACADEMIC_YEAR_NOT_DELETABLE: 'Only an academic year that is still being set up can be deleted.',
   RETURNING_STUDENT: RETURNING_STUDENT_REFUSAL,
+  TRANSFER_CARRIED_CELL: ACADEMIC_YEAR_MESSAGES.TRANSFER_CARRIED_CELL,
+  TRANSFER_MATCH_PENDING: ACADEMIC_YEAR_MESSAGES.TRANSFER_MATCH_PENDING,
   YEAR_STRUCTURE_NOT_EMPTY: 'Copy only into a year that is being set up and has no terms or classes yet.',
 };
 
@@ -43,6 +46,9 @@ const ACADEMIC_YEAR_TOKENS = [
   'ACADEMIC_YEAR_CLOSED',
   'ACADEMIC_YEAR_NOT_STARTED',
   'ACADEMIC_YEAR_NOT_DELETABLE',
+  // Stage 5 carried-cell guard on grades (migration 044).
+  'TRANSFER_CARRIED_CELL',
+  'TRANSFER_MATCH_PENDING',
 ] as const;
 
 function payloadFor(code: IpcErrorCode): IpcErrorPayload {

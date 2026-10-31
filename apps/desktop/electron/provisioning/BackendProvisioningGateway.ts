@@ -45,6 +45,9 @@ import {
   type SchoolRegistrationPayload,
   type StudentAcademicRecord,
   type CloseReadiness,
+  type CarryOverPreview,
+  type PendingCarryOver,
+  type SaveCarryOverIpcRequest,
   type CorrectGradeRequest,
   type CorrectOutcomeRequest,
   type CorrectRemarkRequest,
@@ -386,6 +389,42 @@ export class BackendProvisioningGateway {
       remark: request.remark,
       reason: request.reason,
     });
+  }
+
+  // --- Transfer carry-over (lifecycle Stage 5) --------------------------------
+  // Online only, INSTITUTION_ADMIN only. The save response is not used: the
+  // forced pull that follows brings the carried grades and the SAVED status.
+
+  async listPendingCarryOvers(): Promise<PendingCarryOver[]> {
+    return this.authorized(
+      '/transfer-carry-overs?status=PENDING',
+      { method: 'GET' },
+      (value) => {
+        if (!Array.isArray(value)) throw new Error('Malformed server response.');
+        return value as PendingCarryOver[];
+      },
+      ONLINE_COMMAND,
+    );
+  }
+
+  async getCarryOver(id: string): Promise<CarryOverPreview> {
+    return this.authorized(
+      `/transfer-carry-overs/${encodeURIComponent(id)}`,
+      { method: 'GET' },
+      (value) => {
+        const root = asRecord(value);
+        if (!Array.isArray(root.sourcePeriods) || !Array.isArray(root.targetPeriods) || !Array.isArray(root.sourceSubjects)) {
+          throw new Error('Malformed server response.');
+        }
+        asRecord(root.suggestion);
+        return root as unknown as CarryOverPreview;
+      },
+      ONLINE_COMMAND,
+    );
+  }
+
+  async saveCarryOver(id: string, body: Omit<SaveCarryOverIpcRequest, 'carryOverId'>): Promise<null> {
+    return this.closeCommand(`/transfer-carry-overs/${encodeURIComponent(id)}`, body);
   }
 
   private async closeCommand(path: string, body?: unknown): Promise<null> {

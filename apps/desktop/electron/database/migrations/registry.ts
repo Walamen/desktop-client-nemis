@@ -42,6 +42,7 @@ import { createAcademicYearFreeze } from './040-create-academic-year-freeze';
 import { enrollmentFreezeClassYear } from './041-enrollment-freeze-class-year';
 import { createReportCards } from './042-create-report-cards';
 import { academicYearClose } from './043-academic-year-close';
+import { transferCarryOver } from './044-transfer-carry-over';
 
 /**
  * Every migration, ascending by version. Append only — never edit or reorder
@@ -91,4 +92,5 @@ export const migrations: readonly Migration[] = [
   enrollmentFreezeClassYear,
   createReportCards,
   academicYearClose,
+  transferCarryOver,
 ];

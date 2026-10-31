@@ -1,3 +1,4 @@
+import type { CarryOverPreview, PendingCarryOver, SaveCarryOverIpcRequest } from './transfer-carry-over';
 import type { AcademicContext } from './academic-context';
 import type {
   CloseCorrectGradeIpcRequest,
@@ -451,6 +452,13 @@ export interface AcademicYearCloseApi {
   pendingChangesCount(): Promise<number>;
 }
 
+/** Match prior record (lifecycle Stage 5): online only, school admin only. */
+export interface CarryOverApi {
+  listPending(): Promise<PendingCarryOver[]>;
+  get(id: string): Promise<CarryOverPreview>;
+  save(request: SaveCarryOverIpcRequest): Promise<OnlineCommandResult<null>>;
+}
+
 export interface NemisApi {
   auth: AuthenticationApi;
   provisioning: ProvisioningApi;
@@ -479,4 +487,5 @@ export interface NemisApi {
   registry: RegistryApi;
   transfer: TransferApi;
   academicYearClose: AcademicYearCloseApi;
+  carryOver: CarryOverApi;
 }

@@ -117,6 +117,9 @@ const SPECS: Record<ProvisioningCollection, TableSpec> = {
   reportCardIssues: spec('report_card_issues', ['id','reportCardId','kind','gradingPeriodId','version','status','payload','issuedBy','issuedAt','supersededAt','withdrawnAt','createdAt','updatedAt']),
   // Stage 3: pull-only close archives; summary is a JSON object.
   academicYearArchives: spec('academic_year_archives', ['id','academicYearId','institutionId','version','closedBy','closedAt','summary','reopenedBy','reopenedAt','reopenReason','createdAt','updatedAt']),
+  // Stage 5: pull-only; the local grade guard (migration 044) reads both.
+  transferCarryOvers: spec('transfer_carry_overs', ['id','studentId','institutionId','academicYearId','fromInstitutionName','enrolledAt','status','createdAt','updatedAt']),
+  carriedGrades: spec('carried_grades', ['id','carryOverId','studentId','sourceSchoolName','targetSubjectId','targetGradingPeriodId','percentage','createdAt','updatedAt']),
 };
 
 const DELETE_ORDER = [...PROVISIONING_COLLECTIONS].reverse();

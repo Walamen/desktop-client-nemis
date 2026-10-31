@@ -52,3 +52,20 @@ describe('academicYearTokenOf', () => {
     expect(academicYearTokenOf(undefined, undefined)).toBeUndefined();
   });
 });
+
+describe('carried-cell rejections (Stage 5)', () => {
+  it('classifies them with the year rejections, with their own heading and copy', () => {
+    const reason = `TRANSFER_CARRIED_CELL: ${ACADEMIC_YEAR_MESSAGES.TRANSFER_CARRIED_CELL}`;
+    expect(isAcademicYearRejection(reason)).toBe(true);
+    expect(isAcademicYearRejection('TRANSFER_MATCH_PENDING: x')).toBe(true);
+    expect(isAcademicYearRejection('TRANSFER_SOMETHING_ELSE: x')).toBe(false);
+    expect(academicYearRejectionHeading(reason)).toBe('Rejected — mark carried from another school');
+    expect(academicYearRejectionHeading('TRANSFER_MATCH_PENDING: x')).toBe('Rejected — prior record not matched yet');
+    expect(ACADEMIC_YEAR_MESSAGES.TRANSFER_CARRIED_CELL).toBe(
+      "This mark was carried from the student's previous school and cannot be changed here.",
+    );
+    expect(ACADEMIC_YEAR_MESSAGES.TRANSFER_MATCH_PENDING).toBe(
+      "Match this student's prior record before entering marks for periods before they joined.",
+    );
+  });
+});

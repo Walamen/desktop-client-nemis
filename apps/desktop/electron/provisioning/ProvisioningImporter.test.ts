@@ -612,6 +612,22 @@ describe('ProvisioningImporter', () => {
     expect(db.prepare(`SELECT reopenReason FROM academic_year_archives WHERE id='ar-1'`).get()).toEqual({ reopenReason: 'Fix a mark' });
   });
 
+  it('imports Stage 5 carry-over tasks and carried grades without queueing anything', () => {
+    const importer = new ProvisioningImporter(manager);
+    const db = manager.connection;
+    importer.import(
+      snapshotOf({
+        ...BASE_DATA,
+        transferCarryOvers: [{ id: 'co-1', studentId: 's1', institutionId: 'school-1', academicYearId: 'ay-1', fromInstitutionName: 'Alpha School', enrolledAt: '2026-10-20T00:00:00.000Z', status: 'PENDING', createdAt: '2026-10-20T00:00:00.000Z', updatedAt: '2026-10-20T00:00:00.000Z' }],
+        carriedGrades: [{ id: 'cg-1', carryOverId: 'co-1', studentId: 's1', sourceSchoolName: 'Alpha School', targetSubjectId: 'subject-1', targetGradingPeriodId: 'gp-1', percentage: 72, createdAt: '2026-10-21T00:00:00.000Z', updatedAt: '2026-10-21T00:00:00.000Z' }],
+      }),
+      CONTEXT,
+    );
+    expect(db.prepare(`SELECT status, fromInstitutionName FROM transfer_carry_overs WHERE id='co-1'`).get()).toEqual({ status: 'PENDING', fromInstitutionName: 'Alpha School' });
+    expect(db.prepare(`SELECT percentage, targetGradingPeriodId FROM carried_grades WHERE id='cg-1'`).get()).toEqual({ percentage: 72, targetGradingPeriodId: 'gp-1' });
+    expect(countRows('sync_queue')).toBe(0);
+  });
+
   it('imports the county audit trail and prunes rows older than 365 days after verification', () => {
     const day = 24 * 60 * 60 * 1000;
     const audit = (id: string, ageDays: number) => ({

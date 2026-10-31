@@ -31,10 +31,12 @@ function inPull(db: SqliteDatabase, fn: () => void): void {
   })();
 }
 
-// report_cards / report_card_issues / academic_year_archives: pull-only, no user ever writes them.
+// report_cards / report_card_issues / academic_year_archives / transfer_carry_overs /
+// carried_grades: pull-only, no user ever writes them (the server freezes the last two).
 const EXEMPT = [
   'fee_rules', 'fee_obligations', 'fee_payments', 'fee_payment_reversals', 'student_transfers',
   'report_cards', 'report_card_issues', 'academic_year_archives',
+  'transfer_carry_overs', 'carried_grades',
 ];
 const FROZEN = [
   'grades', 'attendance', 'assignments', 'assignment_submissions', 'term_averages', 'grade_completions',
