@@ -305,6 +305,7 @@ export interface IpcContract {
   'academic-year:copy-structure': { args: [request: YearStructureCopyRequest]; result: YearStructureCopyResult };
   'close:get-readiness': { args: [yearId: string]; result: CloseReadiness };
   'carry-over:list-pending': { args: []; result: PendingCarryOver[] };
+  'carry-over:list-local-pending': { args: []; result: PendingCarryOver[] };
   'carry-over:get': { args: [id: string]; result: CarryOverPreview };
   'carry-over:save': { args: [request: SaveCarryOverIpcRequest]; result: OnlineCommandResult<null> };
   'close:fill-cells': { args: [request: CloseFillCellsIpcRequest]; result: OnlineCommandResult<null> };
@@ -538,6 +539,7 @@ export const IpcChannels = {
   ACADEMIC_YEAR_COPY_STRUCTURE: 'academic-year:copy-structure',
   CLOSE_GET_READINESS: 'close:get-readiness',
   CARRY_OVER_LIST_PENDING: 'carry-over:list-pending',
+  CARRY_OVER_LIST_LOCAL_PENDING: 'carry-over:list-local-pending',
   CARRY_OVER_GET: 'carry-over:get',
   CARRY_OVER_SAVE: 'carry-over:save',
   CLOSE_FILL_CELLS: 'close:fill-cells',

@@ -19,8 +19,10 @@ function setup() {
     saveCarryOver: vi.fn(async () => null),
   };
   const refresh = vi.fn(async () => true);
-  registerCarryOverHandlers(handle, gateway as never, refresh);
-  return { calls, gateway, refresh };
+  const local = [{ id: 'co-1', studentId: 's1', studentName: 'Ama Kofi', fromInstitutionName: 'Alpha', createdAt: 'x' }];
+  const readLocalPending = vi.fn(() => local);
+  registerCarryOverHandlers(handle, gateway as never, refresh, readLocalPending);
+  return { calls, gateway, refresh, readLocalPending, local };
 }
 
 const save = {
@@ -30,6 +32,15 @@ const save = {
 };
 
 describe('carry-over IPC handlers', () => {
+  it('lists the local pending tasks offline, with no arguments', async () => {
+    const { calls, gateway, readLocalPending, local } = setup();
+    expect(() => calls.get(IpcChannels.CARRY_OVER_LIST_LOCAL_PENDING)!.validate([])).not.toThrow();
+    expect(() => calls.get(IpcChannels.CARRY_OVER_LIST_LOCAL_PENDING)!.validate(['x'])).toThrow();
+    expect(await calls.get(IpcChannels.CARRY_OVER_LIST_LOCAL_PENDING)!.handler()).toBe(local);
+    expect(readLocalPending).toHaveBeenCalled();
+    expect(gateway.listPendingCarryOvers).not.toHaveBeenCalled();
+  });
+
   it('reads go to the server and never refresh', async () => {
     const { calls, gateway, refresh } = setup();
     await calls.get(IpcChannels.CARRY_OVER_LIST_PENDING)!.handler();

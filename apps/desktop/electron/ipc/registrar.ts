@@ -32,6 +32,7 @@ import { registerSchoolHandlers } from '@app/ipc/handlers/school-admin/school';
 import { registerAcademicYearHandlers } from '@app/ipc/handlers/school-admin/academicYear';
 import { registerAcademicYearCloseHandlers } from '@app/ipc/handlers/school-admin/academicYearClose';
 import { registerCarryOverHandlers } from '@app/ipc/handlers/school-admin/carryOver';
+import { SqliteCarryOverReadModel } from '@app/data/repositories/sqlite/business/SqliteCarryOverReadModel';
 import { registerTermHandlers } from '@app/ipc/handlers/school-admin/term';
 import { registerClassHandlers } from '@app/ipc/handlers/school-admin/classes';
 import { registerSubjectHandlers } from '@app/ipc/handlers/school-admin/subject';
@@ -122,7 +123,9 @@ export function registerIpcHandlers(
   registerTransferHandlers(securedHandle, gateway, refresh);
   registerAcademicYearHandlers(securedHandle, app, gateway, refresh, new YearStructureCopyService(workspaces));
   registerAcademicYearCloseHandlers(securedHandle, gateway, refresh, () => syncWorker.countPendingChanges());
-  registerCarryOverHandlers(securedHandle, gateway, refresh);
+  registerCarryOverHandlers(securedHandle, gateway, refresh, () =>
+    new SqliteCarryOverReadModel({ connection: workspaces.active.database.connection }).listPending(),
+  );
   registerCountyDeoHandlers(securedHandle, gateway, refresh);
   registerCountyMessagingHandlers(securedHandle, app, gateway, refresh, presence);
   registerCountyUserCommandHandlers(securedHandle, gateway, refresh, () => workspaces.active.user.scope.scopeId);

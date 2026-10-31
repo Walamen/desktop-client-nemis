@@ -10,6 +10,7 @@ import { api } from '../api';
  * message; a saved matching arrives locally through the forced pull. */
 export const carryOverBridge = {
   listPendingCarryOvers: (): Promise<PendingCarryOver[]> => api().carryOver.listPending(),
+  listLocalPendingCarryOvers: (): Promise<PendingCarryOver[]> => api().carryOver.listLocalPending(),
   getCarryOver: (id: string): Promise<CarryOverPreview> => api().carryOver.get(id),
   saveCarryOver: (request: SaveCarryOverIpcRequest): Promise<OnlineCommandResult<null>> =>
     api().carryOver.save(request),

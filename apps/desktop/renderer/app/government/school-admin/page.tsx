@@ -24,6 +24,7 @@ import { DashboardGreeting } from '@/components/dashboard/DashboardGreeting';
 import QuickActionCard from '@/components/dashboard/QuickActionCard';
 import RecentActivityFeed from '@/components/dashboard/RecentActivityFeed';
 import TeachersListSection from '@/components/dashboard/TeachersListSection';
+import { PriorRecordsToMatchCard } from '@/components/transfers/PriorRecordsToMatchCard';
 
 export default function DashboardPage() {
   const dashboard = useDashboardViewModel();
@@ -100,6 +101,8 @@ export default function DashboardPage() {
             <StatCard label="Avg Class Size" value={avgClassSize} icon={UsersIcon} />
           </div>
         )}
+
+        <PriorRecordsToMatchCard />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="bg-white border border-slate-300 rounded-card p-6">

@@ -44,6 +44,7 @@ const SCHOOL_ADMIN_CHANNELS = new Set<IpcChannel>([
   IpcChannels.CLOSE_PENDING_CHANGES_COUNT,
   // Match prior record (lifecycle Stage 5): online reads and the one save.
   IpcChannels.CARRY_OVER_LIST_PENDING,
+  IpcChannels.CARRY_OVER_LIST_LOCAL_PENDING,
   IpcChannels.CARRY_OVER_GET,
   IpcChannels.CARRY_OVER_SAVE,
   IpcChannels.TERM_CREATE,

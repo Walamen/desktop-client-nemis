@@ -455,6 +455,8 @@ export interface AcademicYearCloseApi {
 /** Match prior record (lifecycle Stage 5): online only, school admin only. */
 export interface CarryOverApi {
   listPending(): Promise<PendingCarryOver[]>;
+  /** From local SQLite (pulled rows): works offline. */
+  listLocalPending(): Promise<PendingCarryOver[]>;
   get(id: string): Promise<CarryOverPreview>;
   save(request: SaveCarryOverIpcRequest): Promise<OnlineCommandResult<null>>;
 }

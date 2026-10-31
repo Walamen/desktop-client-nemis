@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState, type FormEvent } from 'react';
+import { PriorRecordBanner } from '@/components/transfers/PriorRecordBanner';
 import Link from 'next/link';
 import { ArrowLeft, Calendar, GraduationCap, Mail, MapPin, Phone, User, Users } from 'lucide-react';
 import { EnrollmentStatus } from '@nemis-desktop/types';
@@ -162,6 +163,8 @@ export function StudentProfilePage() {
           <ArrowLeft className="w-4 h-4 mr-1.5" />
           Back to Students
         </Link>
+
+        <PriorRecordBanner studentId={d.id} />
 
       <div className="bg-white border border-slate-300 rounded-card p-6">
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
