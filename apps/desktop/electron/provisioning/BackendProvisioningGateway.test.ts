@@ -579,6 +579,28 @@ describe('BackendProvisioningGateway', () => {
         expect(init.method).toBe('GET');
       });
 
+      it('a preview carries a Record-form draft and a null grade level through', async () => {
+        const withDraft = {
+          ...preview,
+          currentGradeLevel: null,
+          draft: { periods: { 'a-p1': 'b-p1' }, subjects: { 'a-m': null } },
+        };
+        vi.stubGlobal('fetch', vi.fn(async () => response(withDraft)));
+        expect(await buildGateway().getTransferRecordPreview('t-1')).toEqual(withDraft);
+      });
+
+      it('a preview with a malformed draft, grade level or student name is rejected', async () => {
+        for (const bad of [
+          { ...preview, draft: { periods: [], subjects: {} } },
+          { ...preview, draft: { periods: { a: 5 }, subjects: {} } },
+          { ...preview, currentGradeLevel: 'GRADE_99' },
+          { ...preview, student: { id: 's-1', firstName: 'Ama' } },
+        ]) {
+          vi.stubGlobal('fetch', vi.fn(async () => response(bad)));
+          await expect(buildGateway().getTransferRecordPreview('t-1')).rejects.toThrow('Malformed server response.');
+        }
+      });
+
       it('a preview with a malformed report-card payload is rejected', async () => {
         const bad = { ...preview, reportCards: [{ ...card, payload: { kind: 'PERIOD' } }] };
         vi.stubGlobal('fetch', vi.fn(async () => response(bad)));

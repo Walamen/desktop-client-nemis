@@ -1,3 +1,4 @@
+import type { GradeLevel } from './enums';
 import type { ReportCardPayloadV1 } from './report-cards';
 
 /** Stage 5: a transferred-in child's prior record, matched once by the
@@ -56,7 +57,7 @@ export interface TransferRecordPreview {
   reason: string;
   requestedAt: string;
   student: { id: string; firstName: string; lastName: string };
-  currentGradeLevel: string;
+  currentGradeLevel: GradeLevel | null;
   currentClassName: string;
   reportCards: {
     gradingPeriodId: string;
@@ -81,7 +82,7 @@ export interface TransferRecordPreview {
   };
   sourceCells: { subjectId: string; gradingPeriodId: string }[];
   forwardedCount: number;
-  draft: TransferMatchingRows | null;
+  draft: CarryOverMatching | null;
 }
 
 /** One student's carried mark in a grading period and subject (local data):

@@ -996,6 +996,18 @@ function asReportCardPayload(value: unknown): ReportCardPayloadV1 | null {
   return typeof payload.schemaVersion === 'number' ? (payload as unknown as ReportCardPayloadV1) : null;
 }
 
+/** A saved draft in the record form: `{ periods, subjects }`, each a map of
+ * source id to target id or null. */
+function isMatchingRecord(value: unknown): boolean {
+  const draft = asRecord(value);
+  const isMap = (map: unknown) =>
+    typeof map === 'object' &&
+    map !== null &&
+    !Array.isArray(map) &&
+    Object.values(map).every((target) => target === null || typeof target === 'string');
+  return isMap(draft.periods) && isMap(draft.subjects);
+}
+
 function toTransferRecordPreview(value: unknown): TransferRecordPreview {
   const root = asRecord(value);
   const matching = asRecord(root.matching);
@@ -1007,7 +1019,10 @@ function toTransferRecordPreview(value: unknown): TransferRecordPreview {
     typeof root.reason !== 'string' ||
     typeof root.requestedAt !== 'string' ||
     typeof student.id !== 'string' ||
-    typeof root.currentGradeLevel !== 'string' ||
+    typeof student.firstName !== 'string' ||
+    typeof student.lastName !== 'string' ||
+    !(root.currentGradeLevel === null || isGrade(root.currentGradeLevel)) ||
+    !(root.draft === null || root.draft === undefined || isMatchingRecord(root.draft)) ||
     typeof root.currentClassName !== 'string' ||
     typeof root.forwardedCount !== 'number' ||
     !Array.isArray(root.reportCards) ||

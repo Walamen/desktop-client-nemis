@@ -1,5 +1,4 @@
 import type {
-  CarriedGradeCell,
   CarriedGradesForPeriodRequest,
   CarriedGradesForPeriodResult,
   CarryOverPreview,
