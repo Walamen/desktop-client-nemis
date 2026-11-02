@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { CarryOverMatching, GradeLevel, TransferMatchingRows, TransferRecordPreview } from '@nemis-desktop/types';
-import { Button, ErrorState, Skeleton } from '@nemis-desktop/ui';
+import { Button, Skeleton } from '@nemis-desktop/ui';
 import { useViewModel } from '@/hooks/use-view-model';
 import { useConnectivityStore } from '@/lib/presentation/hooks/shared';
 import { parseIpcError } from '@/lib/errors/parseIpcError';
@@ -23,6 +23,7 @@ const INBOX = '/government/school-admin/students/inter-school-transfer';
 const BROUGHT_OVER = 'Approved. The record has been brought over.';
 const NOT_BROUGHT_OVER =
   "Approved. The record could not be brought over automatically — match it from the student's profile.";
+const SYNC_NOTE = 'Saved — this will appear once this device syncs.';
 const RETRY = 'The transfer could not be updated. Please try again.';
 
 type Step = 1 | 2 | 3;
@@ -57,6 +58,15 @@ function summarise(preview: TransferRecordPreview, m: CarryOverMatching) {
   return { marks, attendancePeriods: anyPeriod ? preview.attendance.length : 0 };
 }
 
+async function findLocalRow(id: string): Promise<LocalTransfer | null> {
+  try {
+    const list = await sharedBridge.listSchoolAdminRecords({ collection: 'student_transfers', limit: 250 });
+    return list.items.map(toLocalTransfer).find((r) => r?.id === id) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /** The receiving school looks over the child's current-year record at the
  * old school, optionally matches it to its own columns, then decides. Online
  * only: the record lives on the server. */
@@ -78,6 +88,9 @@ export function ReviewTransferPage() {
   const [error, setError] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<string | null>(null);
   const [hasDraft, setHasDraft] = useState(false);
+  const [syncPending, setSyncPending] = useState(false);
+  // Set when the preview was refused: the local row says whether this school can still reject.
+  const [refusedRow, setRefusedRow] = useState<LocalTransfer | null>(null);
 
   useEffect(() => {
     if (!isOnline || !id) return;
@@ -86,23 +99,19 @@ export function ReviewTransferPage() {
       try {
         const p = await transferBridge.getRecordPreview(id);
         if (cancelled) return;
-        let found: LocalTransfer | null = null;
-        if (p.initiatedBy === 'ORIGIN_SCHOOL') {
-          try {
-            const list = await sharedBridge.listSchoolAdminRecords({ collection: 'student_transfers', limit: 250 });
-            found = list.items.map(toLocalTransfer).find((r) => r?.id === id) ?? null;
-          } catch {
-            found = null;
-          }
-          if (cancelled) return;
-        }
+        const found = p.initiatedBy === 'ORIGIN_SCHOOL' ? await findLocalRow(id) : null;
+        if (cancelled) return;
         setPreview(p);
         setRow(found);
         setGrade((found?.toGradeLevel as GradeLevel | null) ?? '');
         setMatching(p.draft ?? p.matching.suggestion);
         setHasDraft(p.draft !== null);
       } catch (cause) {
-        if (!cancelled) setLoadError(parseIpcError(cause)?.message ?? 'The transfer record could not be loaded.');
+        if (cancelled) return;
+        const localRow = await findLocalRow(id);
+        if (cancelled) return;
+        setRefusedRow(localRow);
+        setLoadError(parseIpcError(cause)?.message ?? 'The transfer record could not be loaded.');
       }
     })();
     return () => {
@@ -124,7 +133,40 @@ export function ReviewTransferPage() {
       </main>
     );
   }
-  if (loadError) return <ErrorState message={loadError} />;
+  if (loadError) {
+    // A refused preview still lets the admin go back, and reject a request
+    // this school decides and that is still pending.
+    const canReject = refusedRow?.status === 'PENDING' && refusedRow.initiatedBy === 'ORIGIN_SCHOOL';
+    return (
+      <main className="mx-auto max-w-4xl space-y-4 p-6">
+        {back}
+        <h1 className="mt-2 text-xl font-semibold text-slate-900">
+          Review transfer{refusedRow?.studentName ? ` — ${refusedRow.studentName}` : ''}
+        </h1>
+        <p role="alert" className="text-sm text-red-700">
+          {loadError}
+        </p>
+        {canReject && !outcome && (
+          <RejectForm
+            id={id}
+            online={isOnline}
+            onClose={() => undefined}
+            onDone={(refreshed) => {
+              setOutcome('Transfer rejected.');
+              setSyncPending(!refreshed);
+              notifyTransfersChanged();
+            }}
+          />
+        )}
+        {outcome && (
+          <p role="status" className="text-sm text-green-800">
+            {outcome}
+          </p>
+        )}
+        {outcome && syncPending && <p className="text-sm text-green-800">{SYNC_NOTE}</p>}
+      </main>
+    );
+  }
   if (!preview) return <Skeleton className="m-6 h-40" />;
 
   const own = preview.initiatedBy === 'RECEIVING_SCHOOL';
@@ -155,19 +197,25 @@ export function ReviewTransferPage() {
         ...(skipped ? {} : { matching: toRows(preview, matching) }),
       });
       setOutcome(result.data.recordBroughtOver ? BROUGHT_OVER : NOT_BROUGHT_OVER);
+      setSyncPending(!result.refreshed);
       notifyTransfersChanged();
     });
 
   const saveDraft = () =>
     run(async () => {
-      await transferBridge.saveMatchingDraft({ transferId: preview.transferId, ...toRows(preview, matching) });
+      const result = await transferBridge.saveMatchingDraft({
+        transferId: preview.transferId,
+        ...toRows(preview, matching),
+      });
+      setSyncPending(!result.refreshed);
       setHasDraft(true);
       setOutcome(`Matching saved. It will be applied when ${preview.fromInstitutionName} approves.`);
     });
 
   const clearDraft = () =>
     run(async () => {
-      await transferBridge.clearMatchingDraft(preview.transferId);
+      const result = await transferBridge.clearMatchingDraft(preview.transferId);
+      setSyncPending(!result.refreshed);
       setHasDraft(false);
       setOutcome('Saved matching cleared.');
     });
@@ -193,15 +241,19 @@ export function ReviewTransferPage() {
       <main className="mx-auto max-w-4xl space-y-4 p-6">
         {header}
         {outcome ? (
-          <p role="status" className="text-sm text-green-800">
-            {outcome}
-          </p>
+          <>
+            <p role="status" className="text-sm text-green-800">
+              {outcome}
+            </p>
+            {syncPending && <p className="text-sm text-green-800">{SYNC_NOTE}</p>}
+          </>
         ) : (
           <RejectForm
             id={preview.transferId}
             online={isOnline}
             onClose={() => setRejecting(false)}
-            onDone={() => {
+            onDone={(refreshed) => {
+              setSyncPending(!refreshed);
               setOutcome('Transfer rejected.');
               notifyTransfersChanged();
             }}
@@ -348,9 +400,19 @@ export function ReviewTransferPage() {
               {outcome}
             </p>
           )}
+          {outcome && syncPending && <p className="text-sm text-green-800">{SYNC_NOTE}</p>}
           {(!outcome || own) && (
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="secondary" disabled={busy} onClick={() => setStep(2)}>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={busy}
+                onClick={() => {
+                  setOutcome(null);
+                  setError(null);
+                  setStep(2);
+                }}
+              >
                 Back
               </Button>
               {own ? (

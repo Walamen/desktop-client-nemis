@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import type { TransferRecordPreview } from '@nemis-desktop/types';
 import { PresentationProvider } from '@/lib/presentation/presentation-provider';
 import { createRendererPresentation } from '@/lib/presentation/create-renderer-presentation';
+import { onTransfersChanged } from '@/lib/transfers';
 import { payloadFixture } from '../report-cards/fixtures';
 import { ReviewTransferPage } from './ReviewTransferPage';
 
@@ -299,6 +300,54 @@ describe('ReviewTransferPage', () => {
     expect(screen.queryByRole('button', { name: 'Clear saved matching' })).toBeNull();
     await user.click(button('Save matching'));
     expect(await screen.findByRole('button', { name: 'Clear saved matching' })).toBeInTheDocument();
+  });
+
+  it('a refused preview keeps the page: message, back link, and Reject for a pending request we decide', async () => {
+    const { recordPreview, review } = stub();
+    recordPreview.mockRejectedValueOnce(new Error('[REMOTE_REJECTED] This request has already been decided.'));
+    const { user } = await renderPage();
+
+    expect(await screen.findByText('This request has already been decided.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Back to transfers' })).toHaveAttribute(
+      'href',
+      '/government/school-admin/students/inter-school-transfer',
+    );
+    await user.click(screen.getByRole('button', { name: 'Confirm rejection' }));
+    await waitFor(() => expect(review).toHaveBeenCalledWith({ id: 'tr-1', status: 'REJECTED' }));
+    expect(await screen.findByText('Transfer rejected.')).toBeInTheDocument();
+  });
+
+  it('a refused preview offers no Reject when the local request is not pending or not ours to decide', async () => {
+    const { recordPreview } = stub({ row: { ...ROW_WITH_PLACEMENT, initiatedBy: 'RECEIVING_SCHOOL' } });
+    recordPreview.mockRejectedValueOnce(new Error('[REMOTE_REJECTED] Not allowed.'));
+    await renderPage();
+    expect(await screen.findByText('Not allowed.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Back to transfers' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Confirm rejection' })).toBeNull();
+  });
+
+  it('refreshed: false shows the sync note and the page announces the change', async () => {
+    const { review } = stub();
+    review.mockResolvedValueOnce({ data: { id: 'tr-1', recordBroughtOver: true }, refreshed: false });
+    const changed = vi.fn();
+    const off = onTransfersChanged(changed);
+    const { user } = await renderPage();
+    await toDecide(user);
+    await user.click(button('Approve'));
+
+    expect(await screen.findByText('Saved — this will appear once this device syncs.')).toBeInTheDocument();
+    expect(changed).toHaveBeenCalled();
+    off();
+  });
+
+  it('going Back after "Matching saved" clears that message', async () => {
+    stub({ preview: { initiatedBy: 'RECEIVING_SCHOOL' } });
+    const { user } = await renderPage();
+    await toDecide(user);
+    await user.click(button('Save matching'));
+    expect(await screen.findByText(/^Matching saved./)).toBeInTheDocument();
+    await user.click(button('Back'));
+    expect(screen.queryByText(/^Matching saved./)).toBeNull();
   });
 
   it('offline: shows the connection note, no buttons, and never loads the preview', async () => {

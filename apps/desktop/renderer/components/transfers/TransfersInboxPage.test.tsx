@@ -303,6 +303,9 @@ describe('TransfersInboxPage', () => {
     for (const b of within(ama).getAllByRole('button')) expect(b).toBeDisabled();
     for (const b of within(rowOf('Comfort Doe')).getAllByRole('button')) expect(b).toBeDisabled();
     expect(screen.getByRole('button', { name: 'New transfer' })).toBeDisabled();
+    // Links to the review page are disabled offline too.
+    expect(within(ama).queryByRole('link', { name: 'Review' })).toBeNull();
+    expect(within(ama).getByText('Review')).toHaveAttribute('aria-disabled', 'true');
 
     await user.click(screen.getByRole('tab', { name: 'Our requests' }));
     for (const b of within(rowOf('Dawit Kamara')).getAllByRole('button')) expect(b).toBeDisabled();
