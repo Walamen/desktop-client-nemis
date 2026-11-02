@@ -1,19 +1,23 @@
 'use client';
+import Link from 'next/link';
 import { formatNemisId, isLapsed } from '@nemis-desktop/shared';
 import { Button } from '@nemis-desktop/ui';
 import { actionsFor, type LocalTransfer, type TransferAction } from '@/lib/transfers';
 import { human } from '../students/shared';
-import { ApproveForm, CompleteForm, ConfirmForm, RejectForm } from './TransferActionForms';
+import { CompleteForm, ConfirmForm, RejectForm } from './TransferActionForms';
 import { TransferStatusChip } from './TransferStatusChip';
 
 const LABELS: Record<TransferAction, string> = {
-  approve: 'Approve',
+  approve: 'Review',
   reject: 'Reject',
   release: 'Release',
   cancel: 'Cancel',
   complete: 'Complete',
   withdraw: 'Withdraw',
 };
+
+const reviewHref = (id: string) =>
+  `/government/school-admin/students/inter-school-transfer/review?id=${encodeURIComponent(id)}`;
 
 const day = (iso: string | null) => (iso ? iso.slice(0, 10) : null);
 
@@ -52,11 +56,20 @@ export function TransferRow({
   // Another school's pull against us that has lapsed: no action is left for
   // us, so say why the row has no buttons.
   const lapsedAgainstUs =
-    row.status === 'PENDING' && lapsed && row.initiatedBy === 'RECEIVING_SCHOOL' && row.fromInstitutionId === us;
+    row.status === 'PENDING' &&
+    lapsed &&
+    row.initiatedBy === 'RECEIVING_SCHOOL' &&
+    row.fromInstitutionId === us;
+  // The receiving school's own pending request: it can look at (and pre-match)
+  // the record it is waiting to receive.
+  const viewRecord = row.status === 'PENDING' && incoming && row.initiatedBy === 'RECEIVING_SCHOOL';
   const form = { row, online, onClose: () => onOpen(null), onDone };
 
   return (
-    <li aria-label={`Transfer of ${studentLabel}`} className="rounded-2xl border border-gray-200 bg-white p-4">
+    <li
+      aria-label={`Transfer of ${studentLabel}`}
+      className="rounded-2xl border border-gray-200 bg-white p-4"
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
           <p className="font-semibold text-slate-900">
@@ -67,9 +80,13 @@ export function TransferRow({
               </span>
             )}
           </p>
-          <p className="text-sm text-slate-700">{incoming ? `From ${otherSchool}` : `To ${otherSchool}`}</p>
+          <p className="text-sm text-slate-700">
+            {incoming ? `From ${otherSchool}` : `To ${otherSchool}`}
+          </p>
           {row.reason && <p className="text-sm text-slate-600">Reason: {row.reason}</p>}
-          {row.toGradeLevel && <p className="text-xs text-slate-500">Grade: {human(row.toGradeLevel)}</p>}
+          {row.toGradeLevel && (
+            <p className="text-xs text-slate-500">Grade: {human(row.toGradeLevel)}</p>
+          )}
           <p className="text-xs text-slate-500">
             {[
               requested && `Requested ${requested}`,
@@ -88,34 +105,56 @@ export function TransferRow({
           The 14-day window has passed — {otherSchool} can now complete this transfer.
         </p>
       )}
-      {actions.length > 0 && openAction === null && (
+      {(actions.length > 0 || viewRecord) && openAction === null && (
         <div className="mt-3 space-y-2">
           <div className="flex flex-wrap gap-2">
-            {actions.map((action) => (
-              <Button
-                key={action}
-                type="button"
-                variant={action === 'approve' || action === 'release' || action === 'complete' ? 'primary' : 'secondary'}
-                disabled={!online || (action === 'complete' && noNemisId)}
-                onClick={() => onOpen(action)}
+            {actions.map((action) =>
+              action === 'approve' ? (
+                <Link
+                  key={action}
+                  href={reviewHref(row.id)}
+                  className="inline-flex items-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white"
+                >
+                  {LABELS[action]}
+                </Link>
+              ) : (
+                <Button
+                  key={action}
+                  type="button"
+                  variant={action === 'release' || action === 'complete' ? 'primary' : 'secondary'}
+                  disabled={!online || (action === 'complete' && noNemisId)}
+                  onClick={() => onOpen(action)}
+                >
+                  {LABELS[action]}
+                </Button>
+              ),
+            )}
+            {viewRecord && (
+              <Link
+                href={reviewHref(row.id)}
+                className="inline-flex items-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-800"
               >
-                {LABELS[action]}
-              </Button>
-            ))}
+                View record
+              </Link>
+            )}
           </div>
           {actions.includes('complete') && noNemisId && (
             <p className="text-xs text-amber-700">
-              This student has no NEMIS ID on this device yet, so the transfer can&apos;t be completed here. Sync
-              this device, or complete it on the web portal.
+              This student has no NEMIS ID on this device yet, so the transfer can&apos;t be
+              completed here. Sync this device, or complete it on the web portal.
             </p>
           )}
         </div>
       )}
-      {openAction === 'approve' && <ApproveForm {...form} />}
-      {openAction === 'reject' && <RejectForm {...form} />}
+      {openAction === 'reject' && <RejectForm id={row.id} {...form} />}
       {openAction === 'complete' && <CompleteForm {...form} />}
       {(openAction === 'release' || openAction === 'cancel' || openAction === 'withdraw') && (
-        <ConfirmForm {...form} kind={openAction} otherSchool={otherSchool} studentLabel={studentLabel} />
+        <ConfirmForm
+          {...form}
+          kind={openAction}
+          otherSchool={otherSchool}
+          studentLabel={studentLabel}
+        />
       )}
     </li>
   );

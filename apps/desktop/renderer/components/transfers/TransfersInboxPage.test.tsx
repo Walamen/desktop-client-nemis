@@ -3,7 +3,6 @@ import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PresentationProvider } from '@/lib/presentation/presentation-provider';
 import { createRendererPresentation } from '@/lib/presentation/create-renderer-presentation';
-import { onTransfersChanged } from '@/lib/transfers';
 import { TransfersInboxPage } from './TransfersInboxPage';
 
 // Multi-step form walks; under a parallel run they can exceed the 5s default.
@@ -136,8 +135,6 @@ async function renderPage({ online = true }: { online?: boolean } = {}) {
   return { user, layer, ...view };
 }
 
-type User = ReturnType<typeof userEvent.setup>;
-
 const rowOf = (name: string) => screen.getByRole('listitem', { name: `Transfer of ${name}` });
 const findRow = (name: string) => screen.findByRole('listitem', { name: `Transfer of ${name}` });
 const buttonsIn = (el: HTMLElement) => within(el).queryAllByRole('button').map((b) => b.textContent);
@@ -147,13 +144,6 @@ function selectNear(labelPattern: RegExp, root: ParentNode = document): HTMLSele
   const select = label?.parentElement?.querySelector('select');
   if (!(select instanceof HTMLSelectElement)) throw new Error(`Expected a <select> near label matching ${labelPattern}`);
   return select;
-}
-
-async function pickClassAndTerm(user: User, classId = 'c1') {
-  await waitFor(() => expect(selectNear(/^class/i).querySelector(`option[value="${classId}"]`)).not.toBeNull());
-  await user.selectOptions(selectNear(/^class/i), classId);
-  await waitFor(() => expect(selectNear(/^term/i).querySelector('option[value="t1"]')).not.toBeNull());
-  await user.selectOptions(selectNear(/^term/i), 't1');
 }
 
 describe('TransfersInboxPage', () => {
@@ -188,64 +178,32 @@ describe('TransfersInboxPage', () => {
     const { user } = await renderPage();
 
     const ama = await findRow('Ama Kollie');
-    expect(buttonsIn(ama)).toEqual(['Approve', 'Reject']);
+    expect(buttonsIn(ama)).toEqual(['Reject']);
+    expect(within(ama).getByRole('link', { name: 'Review' })).toHaveAttribute(
+      'href',
+      '/government/school-admin/students/inter-school-transfer/review?id=tr-push',
+    );
     expect(within(ama).getByText('4829-1573-6045')).toBeInTheDocument();
     expect(within(ama).getByText(/Other School/)).toBeInTheDocument();
     expect(within(ama).getByText(/Family moved/)).toBeInTheDocument();
     expect(within(ama).getByText('Pending')).toBeInTheDocument();
-    expect(buttonsIn(rowOf('Bendu Sirleaf'))).toEqual(['Approve', 'Reject']);
+    expect(buttonsIn(rowOf('Bendu Sirleaf'))).toEqual(['Reject']);
     expect(buttonsIn(rowOf('Comfort Doe'))).toEqual(['Release', 'Reject']);
     expect(within(rowOf('Comfort Doe')).getByText(/Third School/)).toBeInTheDocument();
 
     await user.click(screen.getByRole('tab', { name: 'Our requests' }));
     expect(buttonsIn(rowOf('Dawit Kamara'))).toEqual(['Complete', 'Withdraw']);
     expect(buttonsIn(rowOf('Esther Weah'))).toEqual(['Cancel']);
+    // Our own pull is not an "Approve" row: it offers the record instead.
+    expect(within(rowOf('Dawit Kamara')).getByRole('link', { name: 'View record' })).toHaveAttribute(
+      'href',
+      '/government/school-admin/students/inter-school-transfer/review?id=tr-lapsed',
+    );
+    expect(within(rowOf('Esther Weah')).queryByRole('link', { name: 'View record' })).toBeNull();
+    expect(within(rowOf('Esther Weah')).queryByRole('link', { name: 'Review' })).toBeNull();
 
     await user.click(screen.getByRole('tab', { name: 'History' }));
     expect(buttonsIn(rowOf('Gbessay Newer'))).toEqual([]);
-  });
-
-  it('Approve on a row without placement requires class and term and sends them', async () => {
-    const { review, list } = stubNemis();
-    const changed = vi.fn();
-    const off = onTransfersChanged(changed);
-    const { user } = await renderPage();
-
-    const ama = await findRow('Ama Kollie');
-    await user.click(within(ama).getByRole('button', { name: 'Approve' }));
-    const confirm = () => within(rowOf('Ama Kollie')).getByRole('button', { name: 'Confirm approval' });
-    expect(confirm()).toBeDisabled();
-    await pickClassAndTerm(user);
-    await user.type(within(rowOf('Ama Kollie')).getByLabelText('Review notes'), 'Welcome');
-    expect(confirm()).toBeEnabled();
-    const loadsBefore = list.mock.calls.length;
-    await user.click(confirm());
-
-    await waitFor(() =>
-      expect(review).toHaveBeenCalledWith({
-        id: 'tr-push', status: 'APPROVED', reviewNotes: 'Welcome', classId: 'c1', termId: 't1',
-      }),
-    );
-    await waitFor(() => expect(list.mock.calls.length).toBeGreaterThan(loadsBefore));
-    expect(changed).toHaveBeenCalled();
-    off();
-  });
-
-  it('Approve on a row with placement sends neither class nor term', async () => {
-    const { review } = stubNemis();
-    const { user } = await renderPage();
-
-    const bendu = await findRow('Bendu Sirleaf');
-    await user.click(within(bendu).getByRole('button', { name: 'Approve' }));
-    expect(within(rowOf('Bendu Sirleaf')).queryByText(/^Class/)).toBeNull();
-    await user.click(within(rowOf('Bendu Sirleaf')).getByRole('button', { name: 'Confirm approval' }));
-    await waitFor(() => expect(review).toHaveBeenCalledTimes(1));
-    expect(review.mock.calls[0]?.[0]).toStrictEqual({ id: 'tr-placed', status: 'APPROVED' });
-    // refreshed: true — the local copy is already current, so no sync note.
-    await waitFor(() =>
-      expect(within(rowOf('Bendu Sirleaf')).queryByRole('button', { name: 'Confirm approval' })).toBeNull(),
-    );
-    expect(screen.queryByText(SYNC_NOTE)).toBeNull();
   });
 
   it('Reject sends no class or term and is never gated on placement', async () => {
@@ -311,35 +269,13 @@ describe('TransfersInboxPage', () => {
     expect(claim).not.toHaveBeenCalled();
   });
 
-  it('a server refusal is shown on the row and the form keeps its inputs', async () => {
-    stubNemis({
-      review: async () => {
-        throw new Error('[REMOTE_REJECTED] The selected term is not in the current academic year.');
-      },
-    });
-    const { user } = await renderPage();
-
-    const ama = await findRow('Ama Kollie');
-    await user.click(within(ama).getByRole('button', { name: 'Approve' }));
-    await pickClassAndTerm(user);
-    await user.type(within(rowOf('Ama Kollie')).getByLabelText('Review notes'), 'Welcome');
-    await user.click(within(rowOf('Ama Kollie')).getByRole('button', { name: 'Confirm approval' }));
-
-    const row = rowOf('Ama Kollie');
-    expect(await within(row).findByText('The selected term is not in the current academic year.')).toBeInTheDocument();
-    expect(selectNear(/^class/i, row).value).toBe('c1');
-    expect(selectNear(/^term/i, row).value).toBe('t1');
-    expect(within(row).getByLabelText('Review notes')).toHaveValue('Welcome');
-    expect(within(row).getByRole('button', { name: 'Confirm approval' })).toBeEnabled();
-  });
-
   it('refreshed: false shows the sync note', async () => {
     stubNemis({ review: async () => ({ data: { id: 'tr-placed' }, refreshed: false }) });
     const { user } = await renderPage();
 
     const bendu = await findRow('Bendu Sirleaf');
-    await user.click(within(bendu).getByRole('button', { name: 'Approve' }));
-    await user.click(within(rowOf('Bendu Sirleaf')).getByRole('button', { name: 'Confirm approval' }));
+    await user.click(within(bendu).getByRole('button', { name: 'Reject' }));
+    await user.click(within(rowOf('Bendu Sirleaf')).getByRole('button', { name: 'Confirm rejection' }));
     expect(await screen.findByText(SYNC_NOTE)).toBeInTheDocument();
   });
 
@@ -348,8 +284,8 @@ describe('TransfersInboxPage', () => {
     const { user, layer } = await renderPage();
 
     const bendu = await findRow('Bendu Sirleaf');
-    await user.click(within(bendu).getByRole('button', { name: 'Approve' }));
-    await user.click(within(rowOf('Bendu Sirleaf')).getByRole('button', { name: 'Confirm approval' }));
+    await user.click(within(bendu).getByRole('button', { name: 'Reject' }));
+    await user.click(within(rowOf('Bendu Sirleaf')).getByRole('button', { name: 'Confirm rejection' }));
     expect(await screen.findByText(SYNC_NOTE)).toBeInTheDocument();
 
     const loadsBefore = list.mock.calls.length;
@@ -385,7 +321,7 @@ describe('TransfersInboxPage', () => {
     const row = await findRow('s-legacy');
     expect(within(row).getByText(/inst-9/)).toBeInTheDocument();
     expect(row.textContent).not.toMatch(/undefined|null/);
-    expect(buttonsIn(row)).toEqual(['Approve', 'Reject']);
+    expect(buttonsIn(row)).toEqual(['Reject']);
   });
 
   it('New transfer sends createTransfer with the chosen student, school and reason', async () => {
@@ -442,30 +378,6 @@ describe('TransfersInboxPage', () => {
     await renderPage();
     await findRow('Ama Kollie');
     expect(screen.queryByText(/most recent of/)).toBeNull();
-  });
-
-  it('Approve on a push with no grade asks for one, filters classes by it and sends class and term', async () => {
-    const { review } = stubNemis({ rows: [{ ...pushToUs, toGradeLevel: null }] });
-    const { user } = await renderPage();
-
-    const ama = await findRow('Ama Kollie');
-    await user.click(within(ama).getByRole('button', { name: 'Approve' }));
-    const row = rowOf('Ama Kollie');
-    const grade = selectNear(/^grade/i, row);
-    expect(grade.value).toBe('');
-    const confirm = within(row).getByRole('button', { name: 'Confirm approval' });
-    expect(confirm).toBeDisabled();
-
-    await user.selectOptions(grade, 'GRADE_8');
-    await waitFor(() => expect(selectNear(/^class/i, row).querySelector('option[value="c8"]')).not.toBeNull());
-    // The class picker only offers the chosen grade's classes.
-    expect(selectNear(/^class/i, row).querySelector('option[value="c1"]')).toBeNull();
-    await pickClassAndTerm(user, 'c8');
-    expect(confirm).toBeEnabled();
-    await user.click(confirm);
-
-    await waitFor(() => expect(review).toHaveBeenCalledTimes(1));
-    expect(review.mock.calls[0]?.[0]).toStrictEqual({ id: 'tr-push', status: 'APPROVED', classId: 'c8', termId: 't1' });
   });
 
   it('a lapsed pull against us explains that the other school can now complete it', async () => {

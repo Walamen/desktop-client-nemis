@@ -3,15 +3,14 @@ import { useState, type ReactNode } from 'react';
 import type { GradeLevel } from '@nemis-desktop/types';
 import { Button, Input, Select, Textarea } from '@nemis-desktop/ui';
 import type { LocalTransfer } from '@/lib/transfers';
-import { needsPlacement } from '@/lib/transfers';
 import { transferBridge } from '@/services/nemis-bridge/school-admin/transfer-bridge';
 import { registryBridge } from '@/services/nemis-bridge/school-admin/registry-bridge';
 import { grades, human } from '../students/shared';
 import { ClassTermPicker, isClassTermComplete, type ClassTermValue } from '../students/add-student/ClassTermPicker';
 import { useTransferCommand } from './use-transfer-command';
 
-const EMPTY_TARGET: ClassTermValue = { academicYearId: '', classId: '', termId: '' };
-const RETRY = 'The transfer could not be updated. Please try again.';
+export const EMPTY_TARGET: ClassTermValue = { academicYearId: '', classId: '', termId: '' };
+export const RETRY = 'The transfer could not be updated. Please try again.';
 
 interface FormProps {
   row: LocalTransfer;
@@ -53,7 +52,7 @@ function FormShell({
   );
 }
 
-function NotesField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+export function NotesField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
     <Textarea
       label="Notes (optional)"
@@ -88,63 +87,52 @@ function GradeField({
   );
 }
 
-const withNotes = (notes: string) => (notes.trim() ? { reviewNotes: notes.trim() } : {});
+export const withNotes = (notes: string) => (notes.trim() ? { reviewNotes: notes.trim() } : {});
 
-/** Approve a push sent to us. Class and term are asked only when the row has
- * none stored; the server prefers stored ones (portal-web's rule). */
-export function ApproveForm({ row, online, onClose, onDone }: FormProps) {
-  const placement = needsPlacement(row);
-  const [grade, setGrade] = useState<GradeLevel | ''>((row.toGradeLevel as GradeLevel | null) ?? '');
-  const [target, setTarget] = useState<ClassTermValue>(EMPTY_TARGET);
-  const [notes, setNotes] = useState('');
-  const { submitting, error, run } = useTransferCommand(onDone, RETRY);
-  const ready = online && (!placement || (Boolean(grade) && isClassTermComplete(target)));
-
-  const submit = () =>
-    void run(() =>
-      transferBridge.reviewTransfer({
-        id: row.id,
-        status: 'APPROVED',
-        ...withNotes(notes),
-        ...(placement ? { classId: target.classId, termId: target.termId } : {}),
-      }),
-    );
-
+/** The class-and-term choice for approving a push that has none stored (the
+ * server prefers stored ones, portal-web's rule). Used by the review page's
+ * Decide step. A stored grade is shown; otherwise one is asked for. */
+export function PlacementFields({
+  storedGrade,
+  grade,
+  onGrade,
+  target,
+  onTarget,
+}: {
+  storedGrade: string | null;
+  grade: GradeLevel | '';
+  onGrade: (g: GradeLevel) => void;
+  target: ClassTermValue;
+  onTarget: (value: ClassTermValue) => void;
+}) {
   return (
-    <FormShell
-      error={error}
-      submitting={submitting}
-      ready={ready}
-      submitLabel="Confirm approval"
-      onSubmit={submit}
-      onClose={onClose}
-    >
-      {placement && (
-        <>
-          <p className="text-sm text-slate-700">Choose the class and term this student joins.</p>
-          <GradeField
-            stored={row.toGradeLevel}
-            value={grade}
-            onChange={(g) => {
-              // A class belongs to one grade; the term is kept.
-              setGrade(g);
-              setTarget((t) => ({ ...t, classId: '' }));
-            }}
-          />
-          <ClassTermPicker gradeLevel={grade} value={target} onChange={setTarget} />
-        </>
-      )}
-      <NotesField value={notes} onChange={setNotes} />
-    </FormShell>
+    <>
+      <p className="text-sm text-slate-700">Choose the class and term this student joins.</p>
+      <GradeField
+        stored={storedGrade}
+        value={grade}
+        onChange={(g) => {
+          // A class belongs to one grade; the term is kept.
+          onGrade(g);
+          onTarget({ ...target, classId: '' });
+        }}
+      />
+      <ClassTermPicker gradeLevel={grade} value={target} onChange={onTarget} />
+    </>
   );
 }
 
 /** Reject never needs a placement. */
-export function RejectForm({ row, online, onClose, onDone }: FormProps) {
+export function RejectForm({
+  id,
+  online,
+  onClose,
+  onDone,
+}: Omit<FormProps, 'row'> & { id: string }) {
   const [notes, setNotes] = useState('');
   const { submitting, error, run } = useTransferCommand(onDone, RETRY);
   const submit = () =>
-    void run(() => transferBridge.reviewTransfer({ id: row.id, status: 'REJECTED', ...withNotes(notes) }));
+    void run(() => transferBridge.reviewTransfer({ id, status: 'REJECTED', ...withNotes(notes) }));
   return (
     <FormShell
       error={error}

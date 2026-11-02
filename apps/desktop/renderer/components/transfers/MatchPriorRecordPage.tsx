@@ -7,46 +7,13 @@ import { Button, ErrorState, Skeleton } from '@nemis-desktop/ui';
 import { useViewModel } from '@/hooks/use-view-model';
 import { useConnectivityStore } from '@/lib/presentation/hooks/shared';
 import { parseIpcError } from '@/lib/errors/parseIpcError';
+import { MatchingFields } from './MatchingFields';
 import { carryOverBridge } from '@/services/nemis-bridge/school-admin/carry-over-bridge';
 
 const queryId = () =>
   typeof window === 'undefined' ? '' : (new URLSearchParams(window.location.search).get('id') ?? '');
 
 const CONFIRM = 'Save this matching? It cannot be changed afterwards.';
-
-function MatchSelect({
-  label,
-  value,
-  options,
-  disabled,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  options: { id: string; label: string }[];
-  disabled: boolean;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <label className="grid grid-cols-2 items-center gap-3 text-sm">
-      <span className="text-slate-700">{label}</span>
-      <select
-        aria-label={label}
-        className="rounded border border-slate-300 px-2 py-1"
-        value={value}
-        disabled={disabled}
-        onChange={(e) => onChange(e.target.value)}
-      >
-        <option value="">Not matched</option>
-        {options.map((o) => (
-          <option key={o.id} value={o.id}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
-}
 
 /** Stage 5: the receiving school matches a transferred child's prior record
  * (the old school's grading periods and subjects) to its own columns, once.
@@ -121,9 +88,6 @@ export function MatchPriorRecordPage() {
       setSaving(false);
     }
   };
-  const targetPeriods = preview.targetPeriods.map((p) => ({ id: p.id, label: `${p.termName} — ${p.name}` }));
-  const targetSubjects = preview.targetSubjects.map((s) => ({ id: s.id, label: s.name }));
-
   return (
     <main className="mx-auto max-w-4xl space-y-6 p-6">
       <div>
@@ -133,32 +97,15 @@ export function MatchPriorRecordPage() {
         </h1>
         <p className="text-sm text-slate-600">From {preview.fromInstitutionName}</p>
       </div>
-      <section className="space-y-2 rounded-card border border-slate-300 bg-white p-4">
-        <h2 className="text-sm font-semibold text-slate-900">Grading periods</h2>
-        {preview.sourcePeriods.map((p) => (
-          <MatchSelect
-            key={p.id}
-            label={`${p.termName} — ${p.name}`}
-            value={matching.periods[p.id] ?? ''}
-            options={targetPeriods}
-            disabled={readOnly}
-            onChange={(v) => setMatching((m) => ({ ...m, periods: { ...m.periods, [p.id]: v || null } }))}
-          />
-        ))}
-      </section>
-      <section className="space-y-2 rounded-card border border-slate-300 bg-white p-4">
-        <h2 className="text-sm font-semibold text-slate-900">Subjects</h2>
-        {preview.sourceSubjects.map((s) => (
-          <MatchSelect
-            key={s.id}
-            label={s.name}
-            value={matching.subjects[s.id] ?? ''}
-            options={targetSubjects}
-            disabled={readOnly}
-            onChange={(v) => setMatching((m) => ({ ...m, subjects: { ...m.subjects, [s.id]: v || null } }))}
-          />
-        ))}
-      </section>
+      <MatchingFields
+        sourcePeriods={preview.sourcePeriods}
+        sourceSubjects={preview.sourceSubjects}
+        targetPeriods={preview.targetPeriods}
+        targetSubjects={preview.targetSubjects}
+        matching={matching}
+        onChange={setMatching}
+        disabled={readOnly}
+      />
       {saveError && (
         <p role="alert" className="text-sm text-red-700">
           {saveError}
