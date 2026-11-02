@@ -9,10 +9,13 @@ import type { IpcHandle } from '@app/ipc/registrar';
 
 export function registerSyncHandlers(handle: IpcHandle, worker: DesktopSyncWorker): void {
   handle(IpcChannels.SYNC_RUN, assertNoArgs, async () => {
-    // A person pressing "Sync now" expects everything to be attempted, so
-    // backed-off rows go now instead of waiting out their timers.
+    // A person pressing "Sync now" expects everything to be attempted and
+    // fresh data to come back, so backed-off rows go now instead of waiting
+    // out their timers. pullNow waits for a cycle already running instead of
+    // skipping, forces the pull, is time-bounded, and never throws: a failed
+    // cycle is reported through getStatus().status === 'failed'.
     worker.releaseBackoff({ manual: true });
-    await worker.syncActive();
+    await worker.pullNow();
     return worker.getStatus();
   });
   handle(IpcChannels.SYNC_GET_STATUS, assertNoArgs, () => worker.getStatus());

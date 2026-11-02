@@ -19,18 +19,30 @@ function makeHarness() {
 }
 
 describe('registerSyncHandlers', () => {
-  it('releases backoff before a manual sync', async () => {
+  it('releases backoff, then forces a full sync, then reports status', async () => {
     const order: string[] = [];
     const worker = {
       releaseBackoff: vi.fn(() => order.push('release')),
-      syncActive: vi.fn(async () => { order.push('sync'); }),
-      getStatus: vi.fn(() => ({ pending: 0 })),
+      pullNow: vi.fn(async () => { order.push('pull'); return true; }),
+      getStatus: vi.fn(() => { order.push('status'); return { pending: 0 }; }),
     } as unknown as DesktopSyncWorker;
     const { calls, handle } = makeHarness();
     registerSyncHandlers(handle, worker);
-    await calls.get(IpcChannels.SYNC_RUN)!.handler();
-    expect(order).toEqual(['release', 'sync']);
+    expect(await calls.get(IpcChannels.SYNC_RUN)!.handler()).toEqual({ pending: 0 });
+    expect(order).toEqual(['release', 'pull', 'status']);
     expect(worker.releaseBackoff).toHaveBeenCalledWith({ manual: true });
+    expect(worker.pullNow).toHaveBeenCalledWith();
+  });
+
+  it('reports status instead of rejecting when the sync could not finish', async () => {
+    const worker = {
+      releaseBackoff: vi.fn(),
+      pullNow: vi.fn(async () => false),
+      getStatus: vi.fn(() => ({ status: 'failed' })),
+    } as unknown as DesktopSyncWorker;
+    const { calls, handle } = makeHarness();
+    registerSyncHandlers(handle, worker);
+    expect(await calls.get(IpcChannels.SYNC_RUN)!.handler()).toEqual({ status: 'failed' });
   });
 
   it('serves the pending summary and validated record pages', async () => {
