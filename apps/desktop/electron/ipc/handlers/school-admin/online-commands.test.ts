@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { IpcChannel } from '@nemis-desktop/types';
+import type { IpcChannel, TransferRecordPreview } from '@nemis-desktop/types';
 import { RemoteRejectedError } from '@nemis-desktop/shared';
 import type { IpcHandle, IpcValidator } from '@app/ipc/registrar';
 import { registerRegistryHandlers } from './registry';
@@ -38,7 +38,10 @@ function registryGateway() {
 function transferGateway() {
   return {
     createTransfer: vi.fn(async () => ({ id: 'transfer-2' })),
-    reviewTransfer: vi.fn(async () => ({ id: 'transfer-3' })),
+    reviewTransfer: vi.fn(async () => ({ id: 'transfer-3', recordBroughtOver: true })),
+    getTransferRecordPreview: vi.fn(async () => ({ transferId: 't-1' }) as unknown as TransferRecordPreview),
+    saveTransferMatchingDraft: vi.fn(async () => null),
+    clearTransferMatchingDraft: vi.fn(async () => null),
     cancelTransfer: vi.fn(async (id: string) => ({ id })),
     searchSchools: vi.fn(async () => [{ id: 'i1', name: 'Central High', code: 'CH' }]),
   };
@@ -228,8 +231,81 @@ describe('transfer IPC handlers', () => {
     expect(() => review.validate([{ id: 't-1', status: 'APPROVED', classId: 'c', termId: 't' }])).not.toThrow();
     expect(() => review.validate([{ id: 't-1', status: 'PENDING' }])).toThrow();
     expect(await review.handler({ id: 't-1', status: 'REJECTED', reviewNotes: 'Wrong child' }))
-      .toEqual({ data: { id: 'transfer-3' }, refreshed: true });
+      .toEqual({ data: { id: 'transfer-3', recordBroughtOver: true }, refreshed: true });
     expect(gateway.reviewTransfer).toHaveBeenCalledWith({ id: 't-1', status: 'REJECTED', reviewNotes: 'Wrong child' });
+  });
+
+  it('review forwards a matching and returns recordBroughtOver', async () => {
+    const { calls, handle } = capture();
+    const gateway = transferGateway();
+    registerTransferHandlers(handle, gateway, vi.fn(async () => true));
+    const review = calls.get('transfer:review')!;
+    const matching = {
+      periods: [{ sourceGradingPeriodId: 'a-p1', targetGradingPeriodId: 'b-p1' }],
+      subjects: [{ sourceSubjectId: 'a-m', targetSubjectId: null }],
+    };
+    const request = { id: 't-1', status: 'APPROVED', matching };
+    expect(() => review.validate([request])).not.toThrow();
+    expect(await review.handler(request)).toEqual({
+      data: { id: 'transfer-3', recordBroughtOver: true },
+      refreshed: true,
+    });
+    expect(gateway.reviewTransfer).toHaveBeenCalledWith(request);
+  });
+
+  it.each([
+    ['a non-object matching', 'x'],
+    ['a matching without subjects', { periods: [] }],
+    ['a matching with an extra key', { periods: [], subjects: [], extra: 1 }],
+    ['a period without its target key', { periods: [{ sourceGradingPeriodId: 'a' }], subjects: [] }],
+    ['a non-string target', { periods: [], subjects: [{ sourceSubjectId: 'a', targetSubjectId: 5 }] }],
+    ['an oversized list', { periods: Array.from({ length: 201 }, () => ({ sourceGradingPeriodId: 'a', targetGradingPeriodId: null })), subjects: [] }],
+  ])('review refuses %s', (_label, matching) => {
+    const { calls, handle } = capture();
+    registerTransferHandlers(handle, transferGateway(), vi.fn(async () => true));
+    expect(() => calls.get('transfer:review')!.validate([{ id: 't-1', status: 'APPROVED', matching }])).toThrow();
+  });
+
+  it('the record preview takes a single id, calls the gateway and does not refresh', async () => {
+    const { calls, handle } = capture();
+    const gateway = transferGateway();
+    const refresh = vi.fn(async () => true);
+    registerTransferHandlers(handle, gateway, refresh);
+    const preview = calls.get('transfer:record-preview')!;
+    expect(() => preview.validate(['t-1'])).not.toThrow();
+    expect(() => preview.validate([])).toThrow();
+    expect(await preview.handler('t-1')).toEqual({ transferId: 't-1' });
+    expect(gateway.getTransferRecordPreview).toHaveBeenCalledWith('t-1');
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it('saving a draft validates the matching, sends it without the id and refreshes', async () => {
+    const { calls, handle } = capture();
+    const gateway = transferGateway();
+    registerTransferHandlers(handle, gateway, vi.fn(async () => true));
+    const save = calls.get('transfer:matching-draft-save')!;
+    const request = {
+      transferId: 't-1',
+      periods: [{ sourceGradingPeriodId: 'a-p1', targetGradingPeriodId: 'b-p1' }],
+      subjects: [{ sourceSubjectId: 'a-m', targetSubjectId: null }],
+    };
+    expect(() => save.validate([request])).not.toThrow();
+    expect(() => save.validate([{ ...request, transferId: undefined }])).toThrow();
+    expect(() => save.validate([{ ...request, subjects: 'x' }])).toThrow();
+    expect(() => save.validate([{ ...request, extra: 1 }])).toThrow();
+    expect(await save.handler(request)).toEqual({ data: null, refreshed: true });
+    expect(gateway.saveTransferMatchingDraft).toHaveBeenCalledWith('t-1', { periods: request.periods, subjects: request.subjects });
+  });
+
+  it('clearing a draft takes a single id and refreshes', async () => {
+    const { calls, handle } = capture();
+    const gateway = transferGateway();
+    registerTransferHandlers(handle, gateway, vi.fn(async () => true));
+    const clear = calls.get('transfer:matching-draft-clear')!;
+    expect(() => clear.validate(['t-1'])).not.toThrow();
+    expect(() => clear.validate([])).toThrow();
+    expect(await clear.handler('t-1')).toEqual({ data: null, refreshed: true });
+    expect(gateway.clearTransferMatchingDraft).toHaveBeenCalledWith('t-1');
   });
 
   it('cancel takes a single id and refreshes', async () => {

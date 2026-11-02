@@ -5,6 +5,8 @@ import type {
   CarryOverPreview,
   PendingCarryOver,
   SaveCarryOverIpcRequest,
+  TransferMatchingDraftRequest,
+  TransferRecordPreview,
 } from './transfer-carry-over';
 import type { AcademicContext } from './academic-context';
 import type {
@@ -207,6 +209,7 @@ import type {
   SchoolSearchResult,
   TransferCreateRequest,
   TransferReviewRequest,
+  TransferReviewResult,
 } from './registry';
 
 export interface AuthenticationApi {
@@ -438,7 +441,10 @@ export interface RegistryApi {
 
 export interface TransferApi {
   create(request: TransferCreateRequest): Promise<OnlineCommandResult<RemoteRecordRef>>;
-  review(request: TransferReviewRequest): Promise<OnlineCommandResult<RemoteRecordRef>>;
+  review(request: TransferReviewRequest): Promise<OnlineCommandResult<TransferReviewResult>>;
+  recordPreview(transferId: string): Promise<TransferRecordPreview>;
+  saveMatchingDraft(request: TransferMatchingDraftRequest): Promise<OnlineCommandResult<null>>;
+  clearMatchingDraft(transferId: string): Promise<OnlineCommandResult<null>>;
   cancel(id: string): Promise<OnlineCommandResult<RemoteRecordRef>>;
   searchSchools(query: string): Promise<SchoolSearchResult[]>;
 }

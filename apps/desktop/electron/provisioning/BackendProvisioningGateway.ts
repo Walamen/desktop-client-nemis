@@ -36,7 +36,10 @@ import {
   type CountyCreateUserResult,
   type CountySetUserActiveRequest,
   type TransferCreateRequest,
+  type TransferMatchingRows,
+  type TransferRecordPreview,
   type TransferReviewRequest,
+  type TransferReviewResult,
   type DeviceIdentity,
   type ProvisioningSnapshot,
   type RegisteredDevice,
@@ -274,14 +277,47 @@ export class BackendProvisioningGateway {
     );
   }
 
-  async reviewTransfer(request: TransferReviewRequest): Promise<RemoteRecordRef> {
+  async reviewTransfer(request: TransferReviewRequest): Promise<TransferReviewResult> {
     const { id, ...body } = request;
     return this.authorized(
       `/student-transfers/${encodeURIComponent(id)}/review`,
       { method: 'PATCH', body: JSON.stringify(body) },
-      (value) => ({ id: requireId(value) }),
+      (value) => ({ id: requireId(value), recordBroughtOver: asRecord(value).recordBroughtOver === true }),
       ONLINE_COMMAND,
     );
+  }
+
+  /** The origin's record the receiving school reviews before deciding (online
+   * only; the server refuses anyone but the receiving school's admins, and a
+   * decided request). Each report card's payload gets the same check as the
+   * registry lookup's final card. */
+  async getTransferRecordPreview(transferId: string): Promise<TransferRecordPreview> {
+    return this.authorized(
+      `/student-transfers/${encodeURIComponent(transferId)}/record-preview`,
+      { method: 'GET' },
+      toTransferRecordPreview,
+      ONLINE_COMMAND,
+    );
+  }
+
+  async saveTransferMatchingDraft(transferId: string, body: TransferMatchingRows): Promise<null> {
+    await this.authorized(
+      `/student-transfers/${encodeURIComponent(transferId)}/matching-draft`,
+      { method: 'PUT', body: JSON.stringify({ periods: body.periods, subjects: body.subjects }) },
+      () => undefined,
+      ONLINE_COMMAND,
+    );
+    return null;
+  }
+
+  async clearTransferMatchingDraft(transferId: string): Promise<null> {
+    await this.authorized(
+      `/student-transfers/${encodeURIComponent(transferId)}/matching-draft`,
+      { method: 'DELETE' },
+      () => undefined,
+      ONLINE_COMMAND,
+    );
+    return null;
   }
 
   async cancelTransfer(id: string): Promise<RemoteRecordRef> {
@@ -915,9 +951,9 @@ function toLookupResult(value: unknown): RegistryLookupResult {
   let finalCard: RegistryHit['finalCard'] = null;
   if (row.finalCard !== null && row.finalCard !== undefined) {
     const card = asRecord(row.finalCard);
-    const payload = asRecord(card.payload);
-    if (typeof card.version !== 'number' || typeof payload.schemaVersion !== 'number') throw malformed();
-    finalCard = { payload: payload as unknown as ReportCardPayloadV1, version: card.version };
+    const payload = asReportCardPayload(card.payload);
+    if (typeof card.version !== 'number' || payload === null) throw malformed();
+    finalCard = { payload, version: card.version };
   }
   let lastCompletion: RegistryHit['lastCompletion'] = null;
   if (row.lastCompletion !== null && row.lastCompletion !== undefined) {
@@ -951,6 +987,53 @@ function toLookupResult(value: unknown): RegistryLookupResult {
     eligibleGradeLevel: eligible,
     finalCard,
   };
+}
+
+/** A report-card payload is trusted only when it is an object carrying its
+ * schema version; the renderer reads the rest field for field. */
+function asReportCardPayload(value: unknown): ReportCardPayloadV1 | null {
+  const payload = asRecord(value);
+  return typeof payload.schemaVersion === 'number' ? (payload as unknown as ReportCardPayloadV1) : null;
+}
+
+function toTransferRecordPreview(value: unknown): TransferRecordPreview {
+  const root = asRecord(value);
+  const matching = asRecord(root.matching);
+  const student = asRecord(root.student);
+  if (
+    typeof root.transferId !== 'string' ||
+    (root.initiatedBy !== 'ORIGIN_SCHOOL' && root.initiatedBy !== 'RECEIVING_SCHOOL') ||
+    typeof root.fromInstitutionName !== 'string' ||
+    typeof root.reason !== 'string' ||
+    typeof root.requestedAt !== 'string' ||
+    typeof student.id !== 'string' ||
+    typeof root.currentGradeLevel !== 'string' ||
+    typeof root.currentClassName !== 'string' ||
+    typeof root.forwardedCount !== 'number' ||
+    !Array.isArray(root.reportCards) ||
+    !Array.isArray(root.attendance) ||
+    !Array.isArray(root.sourceCells) ||
+    !Array.isArray(matching.sourcePeriods) ||
+    !Array.isArray(matching.sourceSubjects) ||
+    !Array.isArray(matching.targetPeriods) ||
+    !Array.isArray(matching.targetSubjects) ||
+    typeof matching.suggestion !== 'object' ||
+    matching.suggestion === null
+  ) {
+    throw new Error('Malformed server response.');
+  }
+  for (const card of root.reportCards) {
+    const entry = asRecord(card);
+    if (
+      typeof entry.gradingPeriodId !== 'string' ||
+      typeof entry.gradingPeriodName !== 'string' ||
+      typeof entry.version !== 'number' ||
+      asReportCardPayload(entry.payload) === null
+    ) {
+      throw new Error('Malformed server response.');
+    }
+  }
+  return { ...root, draft: root.draft ?? null } as unknown as TransferRecordPreview;
 }
 
 function toNameLookupResult(value: unknown): RegistryNameLookupResult {

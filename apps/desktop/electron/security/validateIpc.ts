@@ -1334,12 +1334,13 @@ export function assertTransferReviewArgs(args: readonly unknown[]): void {
   assertArity(args, 1);
   const [request] = args;
   if (!isPlainObject(request)) throw new IPCError('Expected a request object.');
-  assertKnownKeys(request, ['id', 'status', 'reviewNotes', 'classId', 'termId']);
+  assertKnownKeys(request, ['id', 'status', 'reviewNotes', 'classId', 'termId', 'matching']);
   assertString(request.id, 'id', ID_MAX_LENGTH);
   assertEnumMember(request.status, 'status', ['APPROVED', 'REJECTED']);
   assertOptionalString(request.reviewNotes, 'reviewNotes', DESCRIPTION_MAX_LENGTH);
   assertOptionalString(request.classId, 'classId', ID_MAX_LENGTH);
   assertOptionalString(request.termId, 'termId', ID_MAX_LENGTH);
+  if (request.matching !== undefined) assertMatchingRows(request.matching);
 }
 
 const COMPLETION_OUTCOME_VALUES: readonly string[] = COMPLETION_OUTCOMES;
@@ -1522,25 +1523,46 @@ export function assertCorrectRemarkArgs(args: readonly unknown[]): void {
  * ids or null ("Not matched"). The server re-checks every rule. */
 const MAX_CARRY_OVER_ROWS = 200;
 
+function assertMatchingList(value: unknown, field: string, source: string, target: string): void {
+  if (!Array.isArray(value) || value.length > MAX_CARRY_OVER_ROWS) {
+    throw new IPCError(`Expected "${field}" to be a list of at most ${MAX_CARRY_OVER_ROWS}.`);
+  }
+  for (const row of value) {
+    if (!isPlainObject(row)) throw new IPCError(`Expected each "${field}" entry to be an object.`);
+    assertKnownKeys(row, [source, target]);
+    assertString(row[source], source, ID_MAX_LENGTH);
+    if (row[target] !== null) assertString(row[target], target, ID_MAX_LENGTH);
+  }
+}
+
+function assertMatchingPeriodsAndSubjects(value: Record<string, unknown>): void {
+  assertMatchingList(value.periods, 'periods', 'sourceGradingPeriodId', 'targetGradingPeriodId');
+  assertMatchingList(value.subjects, 'subjects', 'sourceSubjectId', 'targetSubjectId');
+}
+
+/** The `{ periods, subjects }` rows of a matching, as a review's `matching`. */
+function assertMatchingRows(value: unknown): void {
+  if (!isPlainObject(value)) throw new IPCError('Expected "matching" to be an object.');
+  assertKnownKeys(value, ['periods', 'subjects']);
+  assertMatchingPeriodsAndSubjects(value);
+}
+
 export function assertCarryOverSaveArgs(args: readonly unknown[]): void {
   assertArity(args, 1);
   const [request] = args;
   if (!isPlainObject(request)) throw new IPCError('Expected a request object.');
   assertKnownKeys(request, ['carryOverId', 'periods', 'subjects']);
   assertString(request.carryOverId, 'carryOverId', ID_MAX_LENGTH);
-  const rows = (value: unknown, field: string, source: string, target: string) => {
-    if (!Array.isArray(value) || value.length > MAX_CARRY_OVER_ROWS) {
-      throw new IPCError(`Expected "${field}" to be a list of at most ${MAX_CARRY_OVER_ROWS}.`);
-    }
-    for (const row of value) {
-      if (!isPlainObject(row)) throw new IPCError(`Expected each "${field}" entry to be an object.`);
-      assertKnownKeys(row, [source, target]);
-      assertString(row[source], source, ID_MAX_LENGTH);
-      if (row[target] !== null) assertString(row[target], target, ID_MAX_LENGTH);
-    }
-  };
-  rows(request.periods, 'periods', 'sourceGradingPeriodId', 'targetGradingPeriodId');
-  rows(request.subjects, 'subjects', 'sourceSubjectId', 'targetSubjectId');
+  assertMatchingPeriodsAndSubjects(request);
+}
+
+export function assertTransferMatchingDraftArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [request] = args;
+  if (!isPlainObject(request)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(request, ['transferId', 'periods', 'subjects']);
+  assertString(request.transferId, 'transferId', ID_MAX_LENGTH);
+  assertMatchingPeriodsAndSubjects(request);
 }
 
 export function assertCarriedGradesForPeriodArgs(args: readonly unknown[]): void {

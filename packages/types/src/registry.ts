@@ -1,5 +1,6 @@
 import type { Gender, GradeLevel } from './enums';
 import type { ReportCardPayloadV1 } from './report-cards';
+import type { TransferMatchingRows } from './transfer-carry-over';
 
 /** Shapes mirror Nemis/apps/server/src/student-registry/dto/*.ts,
  * Nemis/apps/server/src/student-transfers/dto/*.ts and the client type in
@@ -131,6 +132,14 @@ export interface TransferReviewRequest {
   reviewNotes?: string;
   classId?: string;
   termId?: string;
+  /** Approve with the prior record matched (the receiving school's decision). */
+  matching?: TransferMatchingRows;
+}
+
+/** A review's reply: whether the origin's record came over with the approval. */
+export interface TransferReviewResult {
+  id: string;
+  recordBroughtOver: boolean;
 }
 
 /** Every online mutation reports whether the post-command pull ran. When
