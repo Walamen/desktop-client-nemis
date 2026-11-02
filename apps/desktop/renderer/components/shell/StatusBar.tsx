@@ -8,6 +8,7 @@ import {
   WifiOff,
   Database,
   RefreshCw,
+  History,
   CloudUpload,
   AlertTriangle,
   ChevronRight,
@@ -18,19 +19,21 @@ import {
   selectConnectivityPresentation,
   selectSyncPresentation,
 } from '@nemis-desktop/presentation';
-import { useConnectivityStore } from '../../lib/presentation/hooks/shared';
+import { useConnectivityStore, useNotificationStore } from '../../lib/presentation/hooks/shared';
 import { useViewModel } from '../../hooks/use-view-model';
 import { useAppVersion } from '../../hooks/useAppVersion';
 import { nemisBridge } from '@/services/nemis-bridge';
 
 export function StatusBar() {
   const connectivity = useConnectivityStore();
+  const notifications = useNotificationStore();
   const isOnline = useViewModel(connectivity.store, (s) => s.isOnline);
   const connLabel = useViewModel(connectivity.store, (s) => selectConnectivityPresentation(s).label);
   const syncLabel = useViewModel(connectivity.store, (s) => selectSyncPresentation(s).label);
   const { version } = useAppVersion();
   const pathname = usePathname();
   const [localSync, setLocalSync] = useState<DesktopSyncStatus | null>(null);
+  const [busy, setBusy] = useState(false);
   // Also the trigger for useRevalidateOnSync: writing a new lastSyncAt into
   // the shared ConnectivityStore is how every other screen in the app finds
   // out a background/manual sync just landed fresh data, since the
@@ -52,6 +55,21 @@ export function StatusBar() {
       setLocalSync(null);
     }
   }, [applyStatus]);
+  const syncNow = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const status = await nemisBridge.runSync();
+      applyStatus(status);
+      const outcome = describeManualSync(status);
+      notifications[outcome.kind](outcome.message);
+    } catch {
+      notifications.error(SYNC_FAILED_MESSAGE);
+      refresh();
+    } finally {
+      setBusy(false);
+    }
+  };
   useEffect(() => {
     refresh();
     const timer = window.setInterval(refresh, 5_000);
@@ -72,13 +90,19 @@ export function StatusBar() {
           {isOnline ? <Wifi className="w-3.5 h-3.5 text-active" /> : <WifiOff className="w-3.5 h-3.5 text-error" />}
           {connLabel}
         </span>
+        <span className="flex items-center gap-1.5">
+          <History className="w-3.5 h-3.5" />
+          {localSync?.status === 'syncing' ? 'Syncing' : syncLabel}
+        </span>
         <button
           type="button"
-          className="flex items-center gap-1.5 hover:text-blue-700"
-          onClick={() => void nemisBridge.runSync().then(applyStatus).catch(refresh)}
+          className="flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-2 py-0.5 font-medium text-slate-700 hover:border-blue-400 hover:text-blue-700 disabled:opacity-60 disabled:cursor-wait"
+          aria-busy={busy}
+          disabled={busy}
+          onClick={() => void syncNow()}
         >
-          <RefreshCw className="w-3.5 h-3.5" />
-          {localSync?.status === 'syncing' ? 'Syncing' : syncLabel}
+          <RefreshCw className={`w-3.5 h-3.5 ${busy ? 'animate-spin' : ''}`} />
+          {busy ? 'Syncing…' : 'Sync now'}
         </button>
         <span className="flex items-center gap-1.5">
           <Database className="w-3.5 h-3.5 text-active" />
@@ -158,6 +182,37 @@ function StatusBarLink({
       <ChevronRight aria-hidden="true" className="w-3 h-3" />
     </Link>
   );
+}
+
+const SYNC_FAILED_MESSAGE =
+  'Sync could not finish. Your changes are still saved on this computer and will be retried.';
+
+/** The toast a manual "Sync now" shows, picked from the status the cycle
+ * resolved with. Order matters: offline and failed outrank a pending count. */
+export function describeManualSync(
+  status: DesktopSyncStatus,
+): { kind: 'success' | 'info' | 'warning' | 'error'; message: string } {
+  if (!status.isOnline) {
+    return {
+      kind: 'warning',
+      message: "You're offline. Your changes are saved on this computer and will sync when you reconnect.",
+    };
+  }
+  if (status.status === 'failed') return { kind: 'error', message: SYNC_FAILED_MESSAGE };
+  if (status.status === 'syncing') {
+    return {
+      kind: 'info',
+      message: 'Still syncing in the background. This can take a moment on a slow connection.',
+    };
+  }
+  if (status.pending > 0) {
+    const verb = status.pending === 1 ? 'change is' : 'changes are';
+    return {
+      kind: 'info',
+      message: `Synced. ${formatCount(status.pending)} ${verb} still waiting and will be retried.`,
+    };
+  }
+  return { kind: 'success', message: 'Everything is up to date.' };
 }
 
 function formatCount(count: number): string {
