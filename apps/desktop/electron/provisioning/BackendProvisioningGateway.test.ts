@@ -514,22 +514,143 @@ describe('BackendProvisioningGateway', () => {
         .rejects.toThrow('Malformed registry lookup response.');
     });
 
-    it('claim returns the moved student id', async () => {
+    it('claim returns the moved student id, and recordBroughtOver false when the server omits it', async () => {
       vi.stubGlobal('fetch', vi.fn(async () => response({ id: 'student-9', institutionId: 'school-1', gradeLevel: 'GRADE_7' })));
       expect(await buildGateway().claimStudent({
         nemisId: '482915736045', dateOfBirth: '2012-01-01', classId: 'c', termId: 't', gradeLevel: 'GRADE_7' as never,
-      })).toEqual({ studentId: 'student-9' });
+      })).toEqual({ studentId: 'student-9', recordBroughtOver: false });
+    });
+
+    it('claim carries recordBroughtOver true only when the server sends exactly true', async () => {
+      vi.stubGlobal('fetch', vi.fn(async () => response({ id: 'student-9', recordBroughtOver: true })));
+      const request = {
+        nemisId: '482915736045', dateOfBirth: '2012-01-01', classId: 'c', termId: 't', gradeLevel: 'GRADE_7' as never,
+      };
+      expect(await buildGateway().claimStudent(request)).toEqual({ studentId: 'student-9', recordBroughtOver: true });
+      vi.stubGlobal('fetch', vi.fn(async () => response({ id: 'student-9', recordBroughtOver: 'yes' })));
+      expect(await buildGateway().claimStudent(request)).toEqual({ studentId: 'student-9', recordBroughtOver: false });
     });
 
     it('review PATCHes the id path with a body that excludes id', async () => {
       const fetchMock = vi.fn(async () => response({ id: 't-1', status: 'APPROVED' }));
       vi.stubGlobal('fetch', fetchMock);
       expect(await buildGateway().reviewTransfer({ id: 't-1', status: 'APPROVED', classId: 'c', termId: 't' }))
-        .toEqual({ id: 't-1' });
+        .toEqual({ id: 't-1', recordBroughtOver: false });
       const [url, init] = fetchMock.mock.calls[0] as unknown as [URL, RequestInit];
       expect(url).toEqual(new URL('https://nemis.example/student-transfers/t-1/review'));
       expect(init.method).toBe('PATCH');
       expect(JSON.parse(String(init.body))).toEqual({ status: 'APPROVED', classId: 'c', termId: 't' });
+    });
+
+    describe('transfer record review', () => {
+      const card = { gradingPeriodId: 'p1', gradingPeriodName: 'Period 1', version: 1, payload: { schemaVersion: 1, kind: 'PERIOD' } };
+      const preview = {
+        transferId: 't-1',
+        initiatedBy: 'ORIGIN_SCHOOL',
+        fromInstitutionName: 'Paynesville',
+        reason: 'Relocation',
+        requestedAt: '2026-11-01T09:00:00.000Z',
+        student: { id: 's-1', firstName: 'Ama', lastName: 'Kollie' },
+        currentGradeLevel: 'GRADE_7',
+        currentClassName: '7A',
+        reportCards: [card],
+        attendance: [{ gradingPeriodName: 'Period 1', present: 40, absent: 2, late: 1, excused: 0, sick: 1 }],
+        matching: {
+          sourcePeriods: [{ id: 'a-p1', name: 'Period 1', termName: 'Term 1' }],
+          sourceSubjects: [{ id: 'a-m', name: 'Maths', code: 'MTH' }],
+          targetPeriods: [{ id: 'b-p1', name: 'P1', termName: 'T1' }],
+          targetSubjects: [{ id: 'b-m', name: 'Mathematics', code: 'MATH' }],
+          suggestion: { periods: { 'a-p1': 'b-p1' }, subjects: { 'a-m': null } },
+        },
+        sourceCells: [{ subjectId: 'a-m', gradingPeriodId: 'a-p1' }],
+        forwardedCount: 0,
+        draft: null,
+      };
+
+      it('review forwards matching in the body and returns recordBroughtOver', async () => {
+        const fetchMock = vi.fn(async () => response({ id: 't-1', status: 'APPROVED', recordBroughtOver: true }));
+        vi.stubGlobal('fetch', fetchMock);
+        const matching = {
+          periods: [{ sourceGradingPeriodId: 'a-p1', targetGradingPeriodId: 'b-p1' }],
+          subjects: [{ sourceSubjectId: 'a-m', targetSubjectId: null }],
+        };
+        expect(await buildGateway().reviewTransfer({ id: 't-1', status: 'APPROVED', matching }))
+          .toEqual({ id: 't-1', recordBroughtOver: true });
+        const [, init] = fetchMock.mock.calls[0] as unknown as [URL, RequestInit];
+        expect(JSON.parse(String(init.body))).toEqual({ status: 'APPROVED', matching });
+      });
+
+      it('the preview GETs the record-preview path and returns the validated body', async () => {
+        const fetchMock = vi.fn(async () => response(preview));
+        vi.stubGlobal('fetch', fetchMock);
+        expect(await buildGateway().getTransferRecordPreview('t 1')).toEqual(preview);
+        const [url, init] = fetchMock.mock.calls[0] as unknown as [URL, RequestInit];
+        expect(url).toEqual(new URL('https://nemis.example/student-transfers/t%201/record-preview'));
+        expect(init.method).toBe('GET');
+      });
+
+      it('a preview carries a Record-form draft and a null grade level through', async () => {
+        const withDraft = {
+          ...preview,
+          currentGradeLevel: null,
+          draft: { periods: { 'a-p1': 'b-p1' }, subjects: { 'a-m': null } },
+        };
+        vi.stubGlobal('fetch', vi.fn(async () => response(withDraft)));
+        expect(await buildGateway().getTransferRecordPreview('t-1')).toEqual(withDraft);
+      });
+
+      it('a preview with a malformed draft, grade level or student name is rejected', async () => {
+        for (const bad of [
+          { ...preview, draft: { periods: [], subjects: {} } },
+          { ...preview, draft: { periods: { a: 5 }, subjects: {} } },
+          { ...preview, currentGradeLevel: 'GRADE_99' },
+          { ...preview, student: { id: 's-1', firstName: 'Ama' } },
+        ]) {
+          vi.stubGlobal('fetch', vi.fn(async () => response(bad)));
+          await expect(buildGateway().getTransferRecordPreview('t-1')).rejects.toThrow('Malformed server response.');
+        }
+      });
+
+      it('a preview with a malformed report-card payload is rejected', async () => {
+        const bad = { ...preview, reportCards: [{ ...card, payload: { kind: 'PERIOD' } }] };
+        vi.stubGlobal('fetch', vi.fn(async () => response(bad)));
+        await expect(buildGateway().getTransferRecordPreview('t-1')).rejects.toThrow('Malformed server response.');
+      });
+
+      it('a preview missing its matching lists is rejected', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => response({ ...preview, matching: { sourcePeriods: [] } })));
+        await expect(buildGateway().getTransferRecordPreview('t-1')).rejects.toThrow('Malformed server response.');
+      });
+
+      it('a refusal reaches the caller with the server message', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => errorResponse(403, { success: false, message: 'This request has already been decided.' })));
+        const error = await buildGateway().getTransferRecordPreview('t-1').catch((e: unknown) => e);
+        expect(error).toBeInstanceOf(RemoteRejectedError);
+        expect((error as RemoteRejectedError).remoteMessage).toBe('This request has already been decided.');
+      });
+
+      it('saving a draft PUTs periods and subjects to the matching-draft path', async () => {
+        const fetchMock = vi.fn(async () => response({}));
+        vi.stubGlobal('fetch', fetchMock);
+        const body = {
+          periods: [{ sourceGradingPeriodId: 'a-p1', targetGradingPeriodId: null }],
+          subjects: [{ sourceSubjectId: 'a-m', targetSubjectId: 'b-m' }],
+        };
+        expect(await buildGateway().saveTransferMatchingDraft('t-1', body)).toBeNull();
+        const [url, init] = fetchMock.mock.calls[0] as unknown as [URL, RequestInit];
+        expect(url).toEqual(new URL('https://nemis.example/student-transfers/t-1/matching-draft'));
+        expect(init.method).toBe('PUT');
+        expect(JSON.parse(String(init.body))).toEqual(body);
+      });
+
+      it('clearing a draft DELETEs the matching-draft path', async () => {
+        const fetchMock = vi.fn(async () => response({}));
+        vi.stubGlobal('fetch', fetchMock);
+        expect(await buildGateway().clearTransferMatchingDraft('t-1')).toBeNull();
+        const [url, init] = fetchMock.mock.calls[0] as unknown as [URL, RequestInit];
+        expect(url).toEqual(new URL('https://nemis.example/student-transfers/t-1/matching-draft'));
+        expect(init.method).toBe('DELETE');
+      });
     });
 
     it('assignDistrictOfficer POSTs replaceExisting to the district officers endpoint', async () => {

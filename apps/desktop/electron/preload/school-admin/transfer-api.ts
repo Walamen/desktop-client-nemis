@@ -5,6 +5,9 @@ import { invoke } from '../invoke';
 export const transferApi: TransferApi = {
   create: (request) => invoke(IpcChannels.TRANSFER_CREATE, request),
   review: (request) => invoke(IpcChannels.TRANSFER_REVIEW, request),
+  recordPreview: (transferId) => invoke(IpcChannels.TRANSFER_RECORD_PREVIEW, transferId),
+  saveMatchingDraft: (request) => invoke(IpcChannels.TRANSFER_MATCHING_DRAFT_SAVE, request),
+  clearMatchingDraft: (transferId) => invoke(IpcChannels.TRANSFER_MATCHING_DRAFT_CLEAR, transferId),
   cancel: (id) => invoke(IpcChannels.TRANSFER_CANCEL, id),
   searchSchools: (query) => invoke(IpcChannels.TRANSFER_SEARCH_SCHOOLS, query),
 };

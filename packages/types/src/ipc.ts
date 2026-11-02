@@ -1,9 +1,10 @@
 import type {
-  CarriedGradeCell,
   CarriedGradesForPeriodRequest,
   CarriedGradesForPeriodResult,
   CarryOverPreview,
   PendingCarryOver,
+  TransferMatchingDraftRequest,
+  TransferRecordPreview,
   SaveCarryOverIpcRequest,
 } from './transfer-carry-over';
 import type { AcademicContext } from './academic-context';
@@ -31,6 +32,7 @@ import type {
   SchoolSearchResult,
   TransferCreateRequest,
   TransferReviewRequest,
+  TransferReviewResult,
 } from './registry';
 import type {
   CloseCorrectGradeIpcRequest,
@@ -456,8 +458,14 @@ export interface IpcContract {
   };
   'transfer:review': {
     args: [request: TransferReviewRequest];
-    result: OnlineCommandResult<RemoteRecordRef>;
+    result: OnlineCommandResult<TransferReviewResult>;
   };
+  'transfer:record-preview': { args: [transferId: string]; result: TransferRecordPreview };
+  'transfer:matching-draft-save': {
+    args: [request: TransferMatchingDraftRequest];
+    result: OnlineCommandResult<null>;
+  };
+  'transfer:matching-draft-clear': { args: [transferId: string]; result: OnlineCommandResult<null> };
   'transfer:cancel': { args: [id: string]; result: OnlineCommandResult<RemoteRecordRef> };
   'transfer:search-schools': { args: [query: string]; result: SchoolSearchResult[] };
 }
@@ -635,6 +643,9 @@ export const IpcChannels = {
   TRANSFER_CREATE: 'transfer:create',
   TRANSFER_REVIEW: 'transfer:review',
   TRANSFER_CANCEL: 'transfer:cancel',
+  TRANSFER_RECORD_PREVIEW: 'transfer:record-preview',
+  TRANSFER_MATCHING_DRAFT_SAVE: 'transfer:matching-draft-save',
+  TRANSFER_MATCHING_DRAFT_CLEAR: 'transfer:matching-draft-clear',
   TRANSFER_SEARCH_SCHOOLS: 'transfer:search-schools',
 } as const satisfies Record<string, IpcChannel>;
 

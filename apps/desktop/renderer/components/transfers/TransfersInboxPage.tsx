@@ -93,10 +93,10 @@ export function TransfersInboxPage() {
   const pendingCount = countPendingDecisions(split.requestsToUs, now);
   const oursIds = new Set(split.ourRequests.map((r) => r.id));
 
-  const onDone = (refreshed: boolean) => {
+  const onDone = (refreshed: boolean, message?: string) => {
     setOpen(null);
     setCreating(false);
-    setNotice(refreshed ? null : SYNC_NOTE);
+    setNotice([message, refreshed ? null : SYNC_NOTE].filter(Boolean).join(' ') || null);
     setReloadKey((k) => k + 1);
     notifyTransfersChanged();
   };

@@ -57,6 +57,20 @@ describe('authorizeChannel', () => {
     }
   });
 
+  it('lets only a school administrator use the transfer record review channels', () => {
+    for (const channel of [
+      IpcChannels.TRANSFER_REVIEW,
+      IpcChannels.TRANSFER_RECORD_PREVIEW,
+      IpcChannels.TRANSFER_MATCHING_DRAFT_SAVE,
+      IpcChannels.TRANSFER_MATCHING_DRAFT_CLEAR,
+    ]) {
+      expect(() => authorizeChannel(channel, workspace(SystemRole.INSTITUTION_ADMIN))).not.toThrow();
+      for (const role of [SystemRole.TEACHER, SystemRole.COUNTY_ADMIN, SystemRole.DEO, SystemRole.MINISTRY_ADMIN]) {
+        expect(() => authorizeChannel(channel, workspace(role))).toThrow(/school administrator/);
+      }
+    }
+  });
+
   it('allows every county channel only for a county administrator', () => {
     const channels = [
       IpcChannels.COUNTY_GET_DASHBOARD,

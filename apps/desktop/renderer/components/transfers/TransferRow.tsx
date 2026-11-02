@@ -1,19 +1,42 @@
 'use client';
+import Link from 'next/link';
 import { formatNemisId, isLapsed } from '@nemis-desktop/shared';
 import { Button } from '@nemis-desktop/ui';
 import { actionsFor, type LocalTransfer, type TransferAction } from '@/lib/transfers';
 import { human } from '../students/shared';
-import { ApproveForm, CompleteForm, ConfirmForm, RejectForm } from './TransferActionForms';
+import { CompleteForm, ConfirmForm, RejectForm } from './TransferActionForms';
 import { TransferStatusChip } from './TransferStatusChip';
 
 const LABELS: Record<TransferAction, string> = {
-  approve: 'Approve',
+  approve: 'Review',
   reject: 'Reject',
   release: 'Release',
   cancel: 'Cancel',
   complete: 'Complete',
   withdraw: 'Withdraw',
 };
+
+const reviewHref = (id: string) =>
+  `/government/school-admin/students/inter-school-transfer/review?id=${encodeURIComponent(id)}`;
+
+const linkClass = 'inline-flex items-center rounded px-4 py-2 text-base font-medium';
+
+/** A link to the review page; plain disabled text while offline. */
+function ReviewLink({ id, label, online, primary }: { id: string; label: string; online: boolean; primary: boolean }) {
+  const look = primary ? 'bg-primary text-white' : 'border-2 border-gray-300 bg-white text-primary';
+  if (!online) {
+    return (
+      <span aria-disabled="true" className={`${linkClass} ${look} opacity-50 cursor-not-allowed`}>
+        {label}
+      </span>
+    );
+  }
+  return (
+    <Link href={reviewHref(id)} className={`${linkClass} ${look}`}>
+      {label}
+    </Link>
+  );
+}
 
 const day = (iso: string | null) => (iso ? iso.slice(0, 10) : null);
 
@@ -36,7 +59,7 @@ export function TransferRow({
   online: boolean;
   openAction: TransferAction | null;
   onOpen: (action: TransferAction | null) => void;
-  onDone: (refreshed: boolean) => void;
+  onDone: (refreshed: boolean, notice?: string) => void;
 }) {
   const studentLabel = row.studentName ?? row.studentId;
   const incoming = row.toInstitutionId === us;
@@ -53,6 +76,9 @@ export function TransferRow({
   // us, so say why the row has no buttons.
   const lapsedAgainstUs =
     row.status === 'PENDING' && lapsed && row.initiatedBy === 'RECEIVING_SCHOOL' && row.fromInstitutionId === us;
+  // The receiving school's own pending request: it can look at (and pre-match)
+  // the record it is waiting to receive.
+  const viewRecord = row.status === 'PENDING' && incoming && row.initiatedBy === 'RECEIVING_SCHOOL';
   const form = { row, online, onClose: () => onOpen(null), onDone };
 
   return (
@@ -88,20 +114,25 @@ export function TransferRow({
           The 14-day window has passed — {otherSchool} can now complete this transfer.
         </p>
       )}
-      {actions.length > 0 && openAction === null && (
+      {(actions.length > 0 || viewRecord) && openAction === null && (
         <div className="mt-3 space-y-2">
           <div className="flex flex-wrap gap-2">
-            {actions.map((action) => (
+            {actions.map((action) =>
+              action === 'approve' ? (
+                <ReviewLink key={action} id={row.id} label={LABELS[action]} online={online} primary />
+              ) : (
               <Button
                 key={action}
                 type="button"
-                variant={action === 'approve' || action === 'release' || action === 'complete' ? 'primary' : 'secondary'}
+                variant={action === 'release' || action === 'complete' ? 'primary' : 'secondary'}
                 disabled={!online || (action === 'complete' && noNemisId)}
                 onClick={() => onOpen(action)}
               >
                 {LABELS[action]}
               </Button>
-            ))}
+              ),
+            )}
+            {viewRecord && <ReviewLink id={row.id} label="View record" online={online} primary={false} />}
           </div>
           {actions.includes('complete') && noNemisId && (
             <p className="text-xs text-amber-700">
@@ -111,8 +142,7 @@ export function TransferRow({
           )}
         </div>
       )}
-      {openAction === 'approve' && <ApproveForm {...form} />}
-      {openAction === 'reject' && <RejectForm {...form} />}
+      {openAction === 'reject' && <RejectForm id={row.id} {...form} />}
       {openAction === 'complete' && <CompleteForm {...form} />}
       {(openAction === 'release' || openAction === 'cancel' || openAction === 'withdraw') && (
         <ConfirmForm {...form} kind={openAction} otherSchool={otherSchool} studentLabel={studentLabel} />
