@@ -19,6 +19,7 @@ import { relativeTime, retryCountdown } from './shared';
 const PAGE_SIZE = 50;
 const MAX_REQUEST = 200;
 const POLL_MS = 5_000;
+const SYNC_FAILED_MESSAGE = 'Sync could not finish. Your changes are still saved on this computer and will be retried.';
 
 const STATE_ORDER: readonly PendingItemState[] = ['sending', 'waiting', 'retrying', 'held'];
 const CHIP_VARIANT: Record<PendingItemState, 'primary' | 'neutral' | 'warning'> = {
@@ -86,9 +87,10 @@ export function SyncPendingPage() {
     setSyncing(true);
     setSyncError(null);
     try {
-      await nemisBridge.runSync();
+      const result = await nemisBridge.runSync();
+      if (result.status === 'failed') setSyncError(SYNC_FAILED_MESSAGE);
     } catch {
-      setSyncError('Sync could not finish. Your changes are still saved on this computer and will be retried.');
+      setSyncError(SYNC_FAILED_MESSAGE);
     } finally {
       setSyncing(false);
       load();

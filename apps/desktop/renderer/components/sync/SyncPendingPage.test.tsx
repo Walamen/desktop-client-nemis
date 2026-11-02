@@ -23,6 +23,7 @@ import { SyncPendingPage } from './SyncPendingPage';
 import { retryCountdown } from './shared';
 
 const ONLINE: DesktopSyncStatus = { pending: 41, inFlight: 0, conflicts: 0, lastSyncAt: null, status: 'idle', isOnline: true };
+const SYNC_FAILED_MESSAGE = 'Sync could not finish. Your changes are still saved on this computer and will be retried.';
 const SUMMARY: PendingSummary = {
   groups: [{
     groupKey: 'outbox:attendance', source: 'outbox', label: 'Attendance', total: 41,
@@ -135,6 +136,24 @@ describe('SyncPendingPage', () => {
     await user.click(screen.getByRole('button', { name: 'Sync now' }));
     expect(bridge.runSync).toHaveBeenCalledOnce();
     await waitFor(() => expect(bridge.listPendingChanges).toHaveBeenCalledTimes(2));
+  });
+
+  it('shows the sync error when the sync finishes as failed', async () => {
+    bridge.runSync.mockResolvedValue({ ...ONLINE, status: 'failed' });
+    const user = userEvent.setup();
+    render(<SyncPendingPage />);
+    await screen.findByRole('button', { name: /Attendance/ });
+    await user.click(screen.getByRole('button', { name: 'Sync now' }));
+    expect(await screen.findByText(SYNC_FAILED_MESSAGE)).toBeInTheDocument();
+  });
+
+  it('shows the sync error when the sync call fails', async () => {
+    bridge.runSync.mockRejectedValue(new Error('[NO_WORKSPACE] x'));
+    const user = userEvent.setup();
+    render(<SyncPendingPage />);
+    await screen.findByRole('button', { name: /Attendance/ });
+    await user.click(screen.getByRole('button', { name: 'Sync now' }));
+    expect(await screen.findByText(SYNC_FAILED_MESSAGE)).toBeInTheDocument();
   });
 
   it('opens a group from the keyboard', async () => {
