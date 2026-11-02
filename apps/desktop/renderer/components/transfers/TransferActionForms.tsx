@@ -16,8 +16,10 @@ interface FormProps {
   row: LocalTransfer;
   online: boolean;
   onClose: () => void;
-  onDone: (refreshed: boolean) => void;
+  onDone: (refreshed: boolean, notice?: string) => void;
 }
+
+export const RECORD_BROUGHT_OVER = 'Approved. The record has been brought over.';
 
 function FormShell({
   children,
@@ -204,7 +206,11 @@ export function CompleteForm({ row, online, onClose, onDone }: FormProps) {
     if (!nemisId || !grade) return;
     const classId = useStored ? (row.classId ?? '') : target.classId;
     const termId = useStored ? (row.termId ?? '') : target.termId;
-    void run(() => registryBridge.claimStudent({ nemisId, dateOfBirth: dob, classId, termId, gradeLevel: grade }));
+    void run(async () => {
+      const result = await registryBridge.claimStudent({ nemisId, dateOfBirth: dob, classId, termId, gradeLevel: grade });
+      // Only a record that came over is announced; a draft that never existed must not raise a false alarm.
+      return { refreshed: result.refreshed, ...(result.data.recordBroughtOver ? { notice: RECORD_BROUGHT_OVER } : {}) };
+    });
   };
 
   return (

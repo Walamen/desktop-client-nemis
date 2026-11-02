@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { CarryOverMatching, GradeLevel, TransferMatchingRows, TransferRecordPreview } from '@nemis-desktop/types';
 import { Button, Skeleton } from '@nemis-desktop/ui';
@@ -50,12 +50,11 @@ function toRows(preview: TransferRecordPreview, m: CarryOverMatching): TransferM
   };
 }
 
-/** What the matching will carry: a cell counts when both its period and its
- * subject are matched; attendance comes over when any period is matched. */
-function summarise(preview: TransferRecordPreview, m: CarryOverMatching) {
-  const marks = preview.sourceCells.filter((c) => m.periods[c.gradingPeriodId] && m.subjects[c.subjectId]).length;
-  const anyPeriod = Object.values(m.periods).some(Boolean);
-  return { marks, attendancePeriods: anyPeriod ? preview.attendance.length : 0 };
+/** What the server carries once a matching is sent: every published mark
+ * (matched ones into columns, the rest under "Earned at <School>"), every
+ * forwarded row, and every attendance period, whatever the matching. */
+function summarise(preview: TransferRecordPreview) {
+  return { marks: preview.sourceCells.length + preview.forwardedCount, attendancePeriods: preview.attendance.length };
 }
 
 async function findLocalRow(id: string): Promise<LocalTransfer | null> {
@@ -91,10 +90,14 @@ export function ReviewTransferPage() {
   const [syncPending, setSyncPending] = useState(false);
   // Set when the preview was refused: the local row says whether this school can still reject.
   const [refusedRow, setRefusedRow] = useState<LocalTransfer | null>(null);
+  // The matching and grade are seeded once; a reload (the connection coming back) keeps the admin's edits.
+  const seeded = useRef(false);
 
   useEffect(() => {
     if (!isOnline || !id) return;
     let cancelled = false;
+    setLoadError(null);
+    setRefusedRow(null);
     (async () => {
       try {
         const p = await transferBridge.getRecordPreview(id);
@@ -103,8 +106,11 @@ export function ReviewTransferPage() {
         if (cancelled) return;
         setPreview(p);
         setRow(found);
-        setGrade((found?.toGradeLevel as GradeLevel | null) ?? '');
-        setMatching(p.draft ?? p.matching.suggestion);
+        if (!seeded.current) {
+          seeded.current = true;
+          setGrade((found?.toGradeLevel as GradeLevel | null) ?? '');
+          setMatching(p.draft ?? p.matching.suggestion);
+        }
         setHasDraft(p.draft !== null);
       } catch (cause) {
         if (cancelled) return;
@@ -172,7 +178,7 @@ export function ReviewTransferPage() {
   const own = preview.initiatedBy === 'RECEIVING_SCHOOL';
   const placement = !own && (row === null || needsPlacement(row));
   const placementReady = !placement || (Boolean(grade) && isClassTermComplete(target));
-  const summary = summarise(preview, matching);
+  const summary = summarise(preview);
   const name = `${preview.student.firstName} ${preview.student.lastName}`;
 
   const run = async (command: () => Promise<void>) => {

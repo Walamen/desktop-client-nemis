@@ -514,11 +514,21 @@ describe('BackendProvisioningGateway', () => {
         .rejects.toThrow('Malformed registry lookup response.');
     });
 
-    it('claim returns the moved student id', async () => {
+    it('claim returns the moved student id, and recordBroughtOver false when the server omits it', async () => {
       vi.stubGlobal('fetch', vi.fn(async () => response({ id: 'student-9', institutionId: 'school-1', gradeLevel: 'GRADE_7' })));
       expect(await buildGateway().claimStudent({
         nemisId: '482915736045', dateOfBirth: '2012-01-01', classId: 'c', termId: 't', gradeLevel: 'GRADE_7' as never,
-      })).toEqual({ studentId: 'student-9' });
+      })).toEqual({ studentId: 'student-9', recordBroughtOver: false });
+    });
+
+    it('claim carries recordBroughtOver true only when the server sends exactly true', async () => {
+      vi.stubGlobal('fetch', vi.fn(async () => response({ id: 'student-9', recordBroughtOver: true })));
+      const request = {
+        nemisId: '482915736045', dateOfBirth: '2012-01-01', classId: 'c', termId: 't', gradeLevel: 'GRADE_7' as never,
+      };
+      expect(await buildGateway().claimStudent(request)).toEqual({ studentId: 'student-9', recordBroughtOver: true });
+      vi.stubGlobal('fetch', vi.fn(async () => response({ id: 'student-9', recordBroughtOver: 'yes' })));
+      expect(await buildGateway().claimStudent(request)).toEqual({ studentId: 'student-9', recordBroughtOver: false });
     });
 
     it('review PATCHes the id path with a body that excludes id', async () => {

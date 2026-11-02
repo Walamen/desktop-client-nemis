@@ -169,4 +169,7 @@ export interface RemoteRecordRef {
 
 export interface RegistryClaimResult {
   studentId: string;
+  /** True when a saved matching was applied and the prior record came over
+   * (a lapsed completion of the school's own request). Missing means false. */
+  recordBroughtOver: boolean;
 }

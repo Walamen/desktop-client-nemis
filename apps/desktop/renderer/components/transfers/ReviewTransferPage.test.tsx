@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { TransferRecordPreview } from '@nemis-desktop/types';
 import { PresentationProvider } from '@/lib/presentation/presentation-provider';
@@ -104,7 +104,7 @@ async function renderPage({ online = true } = {}) {
       <ReviewTransferPage />
     </PresentationProvider>,
   );
-  return { user };
+  return { user, layer };
 }
 
 const button = (name: string) => screen.getByRole('button', { name });
@@ -180,8 +180,8 @@ describe('ReviewTransferPage', () => {
     const { user } = await renderPage();
     await toDecide(user);
 
-    // Only (Mathematics, 1st Period) has both a period and a subject matched.
-    expect(screen.getByText('1 marks and 2 attendance periods will come over.')).toBeInTheDocument();
+    // The server carries every published mark (3 cells, 0 forwarded) and every attendance period.
+    expect(screen.getByText('3 marks and 2 attendance periods will come over.')).toBeInTheDocument();
     await user.click(button('Approve'));
     await waitFor(() => expect(review).toHaveBeenCalledTimes(1));
     expect(review.mock.calls[0]?.[0]).toStrictEqual({
@@ -201,11 +201,44 @@ describe('ReviewTransferPage', () => {
     expect(await screen.findByText('Approved. The record has been brought over.')).toBeInTheDocument();
   });
 
-  it('counts no attendance when no period is matched', async () => {
-    stub({ preview: { matching: { ...PREVIEW.matching, suggestion: { periods: {}, subjects: { 'a-m': 'b-m' } } } } });
+  it('still counts what the server carries when every period is "Not matched"', async () => {
+    stub({
+      preview: {
+        matching: { ...PREVIEW.matching, suggestion: { periods: {}, subjects: { 'a-m': 'b-m' } } },
+        forwardedCount: 2,
+      },
+    });
     const { user } = await renderPage();
     await toDecide(user);
-    expect(screen.getByText('0 marks and 0 attendance periods will come over.')).toBeInTheDocument();
+    // 3 published cells + 2 forwarded rows; both attendance periods.
+    expect(screen.getByText('5 marks and 2 attendance periods will come over.')).toBeInTheDocument();
+  });
+
+  it('clears a load error once the connection returns and the preview loads', async () => {
+    const { recordPreview } = stub();
+    recordPreview.mockRejectedValueOnce(new Error('[REMOTE_REJECTED] Connection dropped.'));
+    const { layer } = await renderPage();
+    expect(await screen.findByRole('alert')).toHaveTextContent('Connection dropped.');
+
+    act(() => layer.stores.connectivity.setOnline(false));
+    act(() => layer.stores.connectivity.setOnline(true));
+
+    expect(await screen.findByRole('heading', { name: 'Review transfer — Ama Kofi' })).toBeInTheDocument();
+    expect(screen.queryByText('Connection dropped.')).not.toBeInTheDocument();
+  });
+
+  it("keeps the admin's matching edits when the connection drops and returns", async () => {
+    const { recordPreview } = stub();
+    const { user, layer } = await renderPage();
+    await user.click(await screen.findByRole('button', { name: 'Next: match the record' }));
+    await user.selectOptions(screen.getByLabelText('Mathematics'), '');
+    expect((screen.getByLabelText('Mathematics') as HTMLSelectElement).value).toBe('');
+
+    act(() => layer.stores.connectivity.setOnline(false));
+    act(() => layer.stores.connectivity.setOnline(true));
+    await waitFor(() => expect(recordPreview).toHaveBeenCalledTimes(2));
+
+    expect(((await screen.findByLabelText('Mathematics')) as HTMLSelectElement).value).toBe('');
   });
 
   it('shows the not-brought-over copy when the server skipped the matching', async () => {

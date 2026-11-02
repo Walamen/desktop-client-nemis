@@ -25,7 +25,7 @@ function registryGateway() {
   return {
     lookupStudent: vi.fn(async () => ({ found: false as const })),
     lookupStudentByName: vi.fn(async () => ({ found: false as const })),
-    claimStudent: vi.fn(async () => ({ studentId: 'student-9' })),
+    claimStudent: vi.fn(async () => ({ studentId: 'student-9', recordBroughtOver: true })),
     requestRelease: vi.fn(async () => ({ id: 'transfer-1', lapsesAt: '2026-10-16T09:00:00.000Z' })),
     bulkClaimStudents: vi.fn(async () => ({
       created: [{ index: 0, nemisId: '482915736045' }],
@@ -123,7 +123,10 @@ describe('registry IPC handlers', () => {
     expect(() => claim.validate([{ ...request, gradeLevel: 'GRADE_99' }])).toThrow();
     expect(() => claim.validate([{ ...request, classId: undefined }])).toThrow();
 
-    expect(await claim.handler(request)).toEqual({ data: { studentId: 'student-9' }, refreshed: true });
+    expect(await claim.handler(request)).toEqual({
+      data: { studentId: 'student-9', recordBroughtOver: true },
+      refreshed: true,
+    });
     expect(gateway.claimStudent).toHaveBeenCalledWith({ ...request, nemisId: VALID_ID });
     expect(refresh).toHaveBeenCalledTimes(1);
   });

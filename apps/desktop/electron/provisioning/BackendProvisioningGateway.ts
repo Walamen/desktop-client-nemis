@@ -242,7 +242,7 @@ export class BackendProvisioningGateway {
     return this.authorized(
       '/student-registry/claim',
       { method: 'POST', body: JSON.stringify(request) },
-      (value) => ({ studentId: requireId(value) }),
+      (value) => ({ studentId: requireId(value), recordBroughtOver: asRecord(value).recordBroughtOver === true }),
       ONLINE_COMMAND,
     );
   }

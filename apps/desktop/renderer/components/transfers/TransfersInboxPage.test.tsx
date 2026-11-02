@@ -99,7 +99,7 @@ function stubNemis(stubs: Stubs = {}) {
     { id: US, name: 'Test School', code: 'S1' },
     { id: 'inst-3', name: 'Third School', code: 'S3' },
   ]);
-  const claim = vi.fn(stubs.claim ?? (async () => ({ data: { studentId: 's4' }, refreshed: true })));
+  const claim = vi.fn(stubs.claim ?? (async () => ({ data: { studentId: 's4', recordBroughtOver: false }, refreshed: true })));
   const studentList = vi.fn(async () => ({
     items: [{ id: 's5', fullName: 'Esther Weah', nemisId: '444455556666', gender: 'FEMALE', isActive: true, updatedAt: '' }],
     total: 1, limit: 20, offset: 0,
@@ -257,6 +257,28 @@ describe('TransfersInboxPage', () => {
         nemisId: '333344445555', dateOfBirth: '2014-03-02', classId: 'c1', termId: 't1', gradeLevel: 'GRADE_7',
       }),
     );
+  });
+
+  async function completeLapsed(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByRole('tab', { name: 'Our requests' }));
+    await user.click(within(rowOf('Dawit Kamara')).getByRole('button', { name: 'Complete' }));
+    await user.type(within(rowOf('Dawit Kamara')).getByLabelText('Date of birth'), '2014-03-02');
+    await user.click(within(rowOf('Dawit Kamara')).getByRole('button', { name: 'Confirm completion' }));
+  }
+
+  it('Complete says the record has been brought over when the server reports it', async () => {
+    stubNemis({ claim: async () => ({ data: { studentId: 's4', recordBroughtOver: true }, refreshed: true }) });
+    const { user } = await renderPage();
+    await completeLapsed(user);
+    expect(await screen.findByText('Approved. The record has been brought over.')).toBeInTheDocument();
+  });
+
+  it('Complete shows no record message when nothing was brought over', async () => {
+    const { claim } = stubNemis();
+    const { user } = await renderPage();
+    await completeLapsed(user);
+    await waitFor(() => expect(claim).toHaveBeenCalled());
+    expect(screen.queryByText(/Approved./)).not.toBeInTheDocument();
   });
 
   it('Complete is unavailable with an explanation when the row has no NEMIS ID', async () => {

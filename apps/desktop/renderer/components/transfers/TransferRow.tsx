@@ -59,7 +59,7 @@ export function TransferRow({
   online: boolean;
   openAction: TransferAction | null;
   onOpen: (action: TransferAction | null) => void;
-  onDone: (refreshed: boolean) => void;
+  onDone: (refreshed: boolean, notice?: string) => void;
 }) {
   const studentLabel = row.studentName ?? row.studentId;
   const incoming = row.toInstitutionId === us;
