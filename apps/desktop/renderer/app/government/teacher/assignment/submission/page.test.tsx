@@ -93,13 +93,23 @@ describe('Assignment submission route', () => {
     expect(screen.queryByText('Alpha Student')).toBeNull();
   });
 
-  it('makes no call when either id is missing', async () => {
-    mockSearch('assignmentId=a-1');
-    window.history.pushState({}, '', '/government/teacher/assignment/submission?assignmentId=a-1');
-    render(wrap(<Page />));
-    await waitFor(() => undefined);
-    await new Promise((r) => setTimeout(r, 50));
-    expect(nemis().assignment.get).not.toHaveBeenCalled();
-    expect(nemis().assignment.listSubmissions).not.toHaveBeenCalled();
+  it('makes no call when either id is missing (and does when both are present)', async () => {
+    // Positive control: with the current user bootstrapped, both ids present => calls happen.
+    const layer = await presentation();
+    const control = render(<PresentationProvider layer={layer}><Page /></PresentationProvider>);
+    await waitFor(() => expect(nemis().assignment.get).toHaveBeenCalledWith('a-1'));
+    expect(nemis().assignment.listSubmissions).toHaveBeenCalledWith('a-1');
+    control.unmount();
+    nemis().assignment.get.mockClear();
+    nemis().assignment.listSubmissions.mockClear();
+
+    for (const query of ['assignmentId=a-1', 'studentId=s-1', '']) {
+      mockSearch(query);
+      const view = render(<PresentationProvider layer={layer}><Page /></PresentationProvider>);
+      await new Promise((r) => setTimeout(r, 50));
+      expect(nemis().assignment.get).not.toHaveBeenCalled();
+      expect(nemis().assignment.listSubmissions).not.toHaveBeenCalled();
+      view.unmount();
+    }
   });
 });
