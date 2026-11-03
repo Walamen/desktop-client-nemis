@@ -61,12 +61,59 @@ describe('StudentProfilePage own address', () => {
     expect(nemis().student.listEnrollments).not.toHaveBeenCalledWith('class-1');
   });
 
-  it('follows a changed id', async () => {
+  const person = (id: string, name: string) => ({
+    id, institutionId: 'inst-1', firstName: name, lastName: 'Toe', fullName: name + ' Toe',
+    nemisId: '482915736045', dateOfBirth: '2015-01-01T00:00:00.000Z', gender: 'FEMALE', gradeLevel: 'GRADE_1',
+    isActive: true, version: 1, updatedAt: '2026-07-01T00:00:00.000Z', guardians: [],
+  });
+  const enrolment = (id: string, classId: string) => ({
+    id, studentId: 'x', academicYearId: 'ay', termId: 'term0001', classId, status: 'ACTIVE',
+    enrollmentDate: '2026-09-01T00:00:00.000Z',
+  });
+
+  it("follows a changed id: shows the new student and only the new student's enrolments", async () => {
     mockSearch('id=stu-1');
+    let releaseB: (rows: unknown[]) => void = () => undefined;
+    nemis().student.get.mockImplementation(async (id: string) =>
+      id === 'stu-2' ? person('stu-2', 'Second') : person('stu-1', 'First'),
+    );
+    nemis().student.listEnrollments.mockImplementation((id: string) =>
+      id === 'stu-1'
+        ? Promise.resolve([enrolment('e-a', 'classAAAA1')])
+        : new Promise((r) => { releaseB = r; }),
+    );
     render(wrap(<Navigator to="id=stu-2" page={() => <StudentProfilePage />} />));
-    await waitFor(() => expect(nemis().student.get).toHaveBeenCalledWith('stu-1'));
+    expect(await screen.findByText('First Toe')).toBeInTheDocument();
+    expect(await screen.findByText('Class classAAA')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'go' }));
-    await waitFor(() => expect(nemis().student.get).toHaveBeenCalledWith('stu-2'));
+    expect(await screen.findByText('Second Toe')).toBeInTheDocument();
+    expect(screen.queryByText('First Toe')).toBeNull();
+    // B's enrolments are still loading: A's rows must not be on screen.
+    expect(screen.queryByText('Class classAAA')).toBeNull();
+    releaseB([enrolment('e-b', 'classBBBB1')]);
+    expect(await screen.findByText('Class classBBB')).toBeInTheDocument();
+    expect(screen.queryByText('Class classAAA')).toBeNull();
+  });
+
+  it("never lets a late response for the previous student replace the new student's enrolments", async () => {
+    mockSearch('id=stu-1');
+    let releaseA: (rows: unknown[]) => void = () => undefined;
+    nemis().student.get.mockImplementation(async (id: string) =>
+      id === 'stu-2' ? person('stu-2', 'Second') : person('stu-1', 'First'),
+    );
+    nemis().student.listEnrollments.mockImplementation((id: string) =>
+      id === 'stu-1'
+        ? new Promise((r) => { releaseA = r; })
+        : Promise.resolve([enrolment('e-b', 'classBBBB1')]),
+    );
+    render(wrap(<Navigator to="id=stu-2" page={() => <StudentProfilePage />} />));
+    await waitFor(() => expect(nemis().student.listEnrollments).toHaveBeenCalledWith('stu-1'));
+    fireEvent.click(screen.getByRole('button', { name: 'go' }));
+    expect(await screen.findByText('Class classBBB')).toBeInTheDocument();
+    releaseA([enrolment('e-a', 'classAAAA1')]);
+    await new Promise((r) => setTimeout(r, 50));
+    expect(screen.queryByText('Class classAAA')).toBeNull();
+    expect(screen.getByText('Class classBBB')).toBeInTheDocument();
   });
 
   it('makes no student or report-card call without an id', async () => {
@@ -74,8 +121,11 @@ describe('StudentProfilePage own address', () => {
     mockSearch('');
     const listForStudent = vi.fn(async () => []);
     nemis().reportCards = { listForStudent };
+    const isCreateSynced = vi.fn(async () => ({ synced: true }));
+    (nemis().student as Record<string, unknown>).isCreateSynced = isCreateSynced;
     render(wrap(<StudentProfilePage />));
     await new Promise((r) => setTimeout(r, 50));
+    expect(isCreateSynced).not.toHaveBeenCalled();
     expect(nemis().student.get).not.toHaveBeenCalled();
     expect(nemis().student.listEnrollments).not.toHaveBeenCalled();
     expect(listForStudent).not.toHaveBeenCalled();

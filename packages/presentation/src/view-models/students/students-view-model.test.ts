@@ -165,3 +165,43 @@ describe('StudentsViewModel', () => {
     expect(vm.store.getState().submission).toBe('failed');
   });
 });
+
+describe('StudentsViewModel enrollments belong to one student', () => {
+  function withEnrollments(rowsFor: (id: string) => Promise<unknown>) {
+    const { app, notifications, session } = build();
+    const students = Object.create(app.students) as typeof app.students;
+    students.listEnrollments = (async (id: string) => ({
+      data: await rowsFor(id),
+    })) as unknown as typeof students.listEnrollments;
+    return new StudentsViewModel({ students, notifications, session });
+  }
+
+  it('drops the previous student rows at once and records whose they are', async () => {
+    let release: (v: unknown) => void = () => undefined;
+    const vm = withEnrollments((id) =>
+      id === 'a' ? Promise.resolve([{ id: 'ea' }]) : new Promise((r) => (release = r)),
+    );
+    await vm.loadEnrollments('a');
+    expect(vm.store.getState().enrollmentsFor).toBe('a');
+    expect(vm.store.getState().enrollments.status).toBe('success');
+    const pending = vm.loadEnrollments('b');
+    expect(vm.store.getState().enrollmentsFor).toBe('b');
+    expect(vm.store.getState().enrollments.status).toBe('loading');
+    release([{ id: 'eb' }]);
+    await pending;
+    expect(vm.store.getState().enrollments).toMatchObject({ status: 'success', data: [{ id: 'eb' }] });
+  });
+
+  it('ignores an earlier student response that lands after the later one', async () => {
+    const releases: Record<string, (v: unknown) => void> = {};
+    const vm = withEnrollments((id) => new Promise((r) => (releases[id] = r)));
+    const a = vm.loadEnrollments('a');
+    const b = vm.loadEnrollments('b');
+    releases.b?.([{ id: 'eb' }]);
+    await b;
+    releases.a?.([{ id: 'ea' }]);
+    await a;
+    expect(vm.store.getState().enrollmentsFor).toBe('b');
+    expect(vm.store.getState().enrollments).toMatchObject({ status: 'success', data: [{ id: 'eb' }] });
+  });
+});

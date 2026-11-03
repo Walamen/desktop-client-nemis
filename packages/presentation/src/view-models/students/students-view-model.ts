@@ -45,6 +45,8 @@ export interface StudentsState {
   readonly submission: SubmissionStatus;
   readonly filters: Omit<ListStudentsDto, 'limit' | 'offset'>;
   readonly enrollments: AsyncState<readonly EnrollmentOutput[]>;
+  /** The student `enrollments` belongs to; consumers render them only for that student. */
+  readonly enrollmentsFor: string | null;
 }
 
 export interface StudentsViewModelDeps {
@@ -63,7 +65,9 @@ export class StudentsViewModel {
     submission: 'idle',
     filters: {},
     enrollments: idleState(),
+    enrollmentsFor: null,
   }));
+  private enrollmentsSeq = 0;
 
   private readonly listQuery: ListStudentsUiQuery;
   private readonly detailsQuery: GetStudentByIdUiQuery;
@@ -237,10 +241,18 @@ export class StudentsViewModel {
     return outcome;
   }
   async loadEnrollments(studentId: string): Promise<void> {
+    const seq = ++this.enrollmentsSeq;
+    // Another student's rows are dropped at once; a late response from an
+    // earlier call (seq no longer latest) is ignored.
+    if (this.store.getState().enrollmentsFor !== studentId) {
+      this.store.setState({ enrollments: idleState(), enrollmentsFor: studentId });
+    }
     await trackQuery({
       access: {
         get: () => this.store.getState().enrollments,
-        set: (enrollments) => this.store.setState({ enrollments }),
+        set: (enrollments) => {
+          if (seq === this.enrollmentsSeq) this.store.setState({ enrollments });
+        },
       },
       fetch: () => this.deps.students.listEnrollments(studentId),
       map: (rows) => rows,

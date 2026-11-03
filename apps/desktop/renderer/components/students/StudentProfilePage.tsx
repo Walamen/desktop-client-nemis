@@ -67,7 +67,10 @@ function StudentProfileBody({ id }: { id: string }) {
   const schoolName =
     profile.status === 'success' || profile.status === 'refreshing' ? profile.data.name : 'School';
   const details = useViewModel(vm.store, (s) => s.details);
-  const enrollments = useViewModel(vm.store, (s) => s.enrollments);
+  const enrollmentsAll = useViewModel(vm.store, (s) => s.enrollments);
+  const enrollmentsFor = useViewModel(vm.store, (s) => s.enrollmentsFor);
+  // Shared store: only this student's rows, never another's.
+  const enrollments = enrollmentsFor === id ? enrollmentsAll : ({ status: 'loading' } as const);
   const classes = useViewModel(foundation.store, (s) => s.classes);
   const [guardianOpen, setGuardianOpen] = useState(false);
   const [gFirst, setGFirst] = useState('');
