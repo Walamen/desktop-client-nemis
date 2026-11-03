@@ -5,6 +5,7 @@ import { logger } from '@app/services/logger';
 import type { DataLayer } from '@app/data/factories/createDataLayer';
 import type { ProvisioningService } from '@app/provisioning/ProvisioningService';
 import { toIpcError } from './errorMapping';
+import { describeIpcFailure } from './describeIpcFailure';
 import type { DesktopSyncWorker } from '@app/sync/DesktopSyncWorker';
 import type { SchoolAdminModuleService } from '@app/data/services/SchoolAdminModuleService';
 import type { WorkspaceManager } from '@app/workspace/WorkspaceManager';
@@ -169,7 +170,9 @@ function bind<C extends IpcChannel>(
       // enforced this channel's exact argument count and shapes.
       return { ok: true, data: await handler(...(args as IpcContract[C]['args'])) };
     } catch (error) {
-      logger.error(`IPC handler failed for channel "${channel}"`, error);
+      const details = describeIpcFailure(error);
+      if (details) logger.error(`IPC handler failed for channel "${channel}"`, error, details);
+      else logger.error(`IPC handler failed for channel "${channel}"`, error);
       return { ok: false, error: toIpcError(error) };
     }
   });
