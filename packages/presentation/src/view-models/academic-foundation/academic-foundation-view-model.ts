@@ -44,8 +44,8 @@ export interface AcademicFoundationState {
   readonly yearClassesYearId: string;
   readonly subjects: AsyncState<readonly SubjectRowView[]>;
   readonly classSubjects: AsyncState<readonly ClassSubjectRowView[]>;
-  /** The class `classSubjects` belongs to ('' before any); consumers render the rows only for that class. */
-  readonly classSubjectsFor: string;
+  /** The class `classSubjects` belongs to (null before any); consumers render the rows only for that class. */
+  readonly classSubjectsFor: string | null;
   readonly gradeLevels: AsyncState<readonly GradeLevelCountView[]>;
   readonly classPagination: PaginationState;
   readonly subjectPagination: PaginationState;
@@ -78,7 +78,7 @@ const subjectCount = (n: number): string => `${n} subject${n === 1 ? '' : 's'}`;
 export class AcademicFoundationViewModel {
   readonly store = createStore<AcademicFoundationState>(() => ({
     academicYears: idleState(), terms: idleState(), currentTerm: idleState(),
-    classes: idleState(), yearClasses: idleState(), yearClassesYearId: '', subjects: idleState(), classSubjects: idleState(), classSubjectsFor: '', gradeLevels: idleState(),
+    classes: idleState(), yearClasses: idleState(), yearClassesYearId: '', subjects: idleState(), classSubjects: idleState(), classSubjectsFor: null, gradeLevels: idleState(),
     classPagination: createPagination(), subjectPagination: createPagination(),
     classFilters: {}, subjectFilters: {},
   }));
@@ -188,7 +188,7 @@ export class AcademicFoundationViewModel {
    * response, leaving its page on loading. */
   private async reloadClassSubjectsIfShown(classId: string): Promise<void> {
     const held = this.store.getState().classSubjectsFor;
-    if (held && held !== classId) return;
+    if (held !== null && held !== classId) return;
     await this.loadClassSubjects(classId);
   }
 

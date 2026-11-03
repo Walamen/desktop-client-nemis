@@ -324,6 +324,11 @@ describe('AcademicFoundationViewModel.loadClassSubjects belongs to one class', (
     return new AcademicFoundationViewModel({ academics: academics as unknown as AcademicsApplicationService, notifications: new NotificationStore() });
   }
 
+  it('belongs to no class before any load, like the other per-record slots', () => {
+    const vm = withClassSubjects(async () => []);
+    expect(vm.store.getState().classSubjectsFor).toBeNull();
+  });
+
   it('drops the previous class rows at once and records whose they are', async () => {
     let release: (v: unknown) => void = () => undefined;
     const vm = withClassSubjects((id) => (id === 'a' ? Promise.resolve([{ id: 'sa' }]) : new Promise((r) => (release = r))));
