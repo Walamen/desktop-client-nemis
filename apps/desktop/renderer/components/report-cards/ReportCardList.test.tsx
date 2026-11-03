@@ -39,6 +39,13 @@ afterEach(() => {
 });
 
 describe('ReportCardList', () => {
+  it('does not request report cards for an empty student id', async () => {
+    const rc = install();
+    renderIn(<ReportCardList studentId="" />);
+    await new Promise((res) => setTimeout(res, 50));
+    expect(rc.listForStudent).not.toHaveBeenCalled();
+  });
+
   it('groups the issues by academic year', async () => {
     install();
     renderIn(<ReportCardList studentId="st-1" />);

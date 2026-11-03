@@ -6,11 +6,6 @@ export const genders = Object.values(Gender);
 
 export const human = (v: string) => v.replaceAll('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
-export const queryId = () =>
-  typeof window === 'undefined'
-    ? ''
-    : (new URLSearchParams(window.location.search).get('id') ?? '');
-
 export function Page({
   title,
   action,

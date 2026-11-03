@@ -1,7 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));
+vi.mock('next/navigation', async () => ({
+  ...(await import('@/test-utils/search-params')).navigationMock,
+  useRouter: () => ({ push: vi.fn() }),
+}));
+import { mockSearch } from '@/test-utils/search-params';
+import { Navigator } from '@/test-utils/navigator';
 vi.mock('@/services/nemis-bridge/shared', () => ({
   sharedBridge: { listSchoolAdminRecords: vi.fn(async () => ({ items: [], total: 0 })) },
 }));
@@ -34,6 +39,7 @@ function stubWithEnroll(enroll: ReturnType<typeof vi.fn>, withNemisId = true) {
 
 beforeEach(() => {
   window.history.pushState({}, '', '/government/school-admin/students/enroll?id=s-1');
+  mockSearch('id=s-1');
 });
 afterEach(() => {
   clearNemis();
@@ -87,5 +93,40 @@ describe('EnrollmentPage', () => {
       expect((window as unknown as { nemis: { student: { get: ReturnType<typeof vi.fn> } } }).nemis.student.get).toHaveBeenCalled(),
     );
     expect(screen.queryByRole('link', { name: 'Find this student in the lookup' })).not.toBeInTheDocument();
+  });
+});
+
+describe('EnrollmentPage own address', () => {
+  async function fillAndSubmit() {
+    await waitFor(() => expect(field('Term').querySelectorAll('option').length).toBeGreaterThan(1));
+    await waitFor(() => expect(field('Class / section').querySelectorAll('option').length).toBeGreaterThan(1));
+    fireEvent.change(field('Term'), { target: { value: 't1' } });
+    fireEvent.change(field('Class / section'), { target: { value: 'c1' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Complete enrollment' }));
+  }
+
+  it("enrols the student named by its own address, not the previous page's", async () => {
+    window.history.pushState({}, '', '/government/school-admin/classes/detail?id=class-1');
+    mockSearch('id=stu-1');
+    const enroll = vi.fn(async () => ({}));
+    stubWithEnroll(enroll);
+    await renderWithLayer(<EnrollmentPage />);
+    await fillAndSubmit();
+    await waitFor(() => expect(enroll).toHaveBeenCalledTimes(1));
+    expect(enroll).toHaveBeenCalledWith(expect.objectContaining({ studentId: 'stu-1' }));
+  });
+
+  it('follows a changed id', async () => {
+    mockSearch('id=stu-1');
+    const enroll = vi.fn(async () => ({}));
+    stubWithEnroll(enroll);
+    await renderWithLayer(
+      <Navigator to="id=stu-2" page={() => <EnrollmentPage />} />,
+    );
+    await waitFor(() => expect(field('Term').querySelectorAll('option').length).toBeGreaterThan(1));
+    fireEvent.click(screen.getByRole('button', { name: 'go' }));
+    await fillAndSubmit();
+    await waitFor(() => expect(enroll).toHaveBeenCalledTimes(1));
+    expect(enroll).toHaveBeenCalledWith(expect.objectContaining({ studentId: 'stu-2' }));
   });
 });

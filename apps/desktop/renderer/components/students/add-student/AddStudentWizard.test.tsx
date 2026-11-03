@@ -5,13 +5,15 @@ import { PresentationProvider } from '@/lib/presentation/presentation-provider';
 import { createRendererPresentation } from '@/lib/presentation/create-renderer-presentation';
 import { payloadFixture } from '../../report-cards/fixtures';
 import { AddStudentWizard } from './AddStudentWizard';
+import { mockSearch } from '@/test-utils/search-params';
 
 const { push } = vi.hoisted(() => ({ push: vi.fn() }));
 // Multi-step wizard walks type into many fields; under a parallel run they
 // can exceed the 5s default without anything being wrong.
 vi.setConfig({ testTimeout: 20_000 });
 
-vi.mock('next/navigation', () => ({
+vi.mock('next/navigation', async () => ({
+  ...(await import('@/test-utils/search-params')).navigationMock,
   useRouter: () => ({ push }),
 }));
 
@@ -716,8 +718,19 @@ describe('AddStudentWizard — new-year enrolment lookup', () => {
     expect(await screen.findByRole('heading', { name: 'Find Student', level: 2 })).toBeInTheDocument();
   });
 
+  it('applies the preset from its own address, not a stale window address', async () => {
+    window.history.replaceState({}, '', '/government/school-admin/students?nemisId=999999999999&dob=2001-01-01');
+    mockSearch('nemisId=482915736045&dob=2014-03-02');
+    const { lookup } = stubNemis({ lookup: async () => promotedHit });
+    await renderWizard();
+    expect(await screen.findByRole('heading', { name: 'Claim student', level: 2 })).toBeInTheDocument();
+    expect(lookup).toHaveBeenCalledTimes(1);
+    expect(lookup).toHaveBeenCalledWith({ nemisId: '482915736045', dateOfBirth: '2014-03-02' });
+  });
+
   it('?nemisId=&dob= runs the ID lookup on mount', async () => {
     window.history.replaceState({}, '', '/?nemisId=482915736045&dob=2014-03-02');
+    mockSearch('nemisId=482915736045&dob=2014-03-02');
     const { lookup } = stubNemis({ lookup: async () => promotedHit });
     await renderWizard();
     expect(await screen.findByRole('heading', { name: 'Claim student', level: 2 })).toBeInTheDocument();
@@ -727,6 +740,7 @@ describe('AddStudentWizard — new-year enrolment lookup', () => {
 
   it('the deep link does not run offline', async () => {
     window.history.replaceState({}, '', '/?nemisId=482915736045&dob=2014-03-02');
+    mockSearch('nemisId=482915736045&dob=2014-03-02');
     const { lookup } = stubNemis({ lookup: async () => promotedHit });
     await renderWizard({ online: false });
     expect(lookup).not.toHaveBeenCalled();

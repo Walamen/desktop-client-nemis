@@ -15,6 +15,7 @@ import {
   useSettingsViewModel,
   useStudentsListViewModel,
 } from '@/lib/presentation/hooks/school-admin';
+import { useQueryParam } from '@/hooks/use-query-param';
 import { genders, grades, human } from '../shared';
 import { ClaimStudentPanel } from './ClaimStudentPanel';
 import { ClassTermPicker, isClassTermComplete, type ClassTermValue } from './ClassTermPicker';
@@ -96,11 +97,15 @@ export function AddStudentWizard() {
       ? (years.data.find((y) => y.status === 'ACTIVE') ?? years.data.find((y) => y.isCurrent))?.code
       : undefined;
 
-  // `?nemisId=&dob=` (the students directory links here): read once on mount.
+  // `?nemisId=&dob=` (the students directory links here), from this page's own
+  // address. Applied when the address first has them (or they change), never on
+  // an ordinary re-render, so an in-progress wizard is not clobbered.
+  const presetNemisId = useQueryParam('nemisId');
+  const presetDob = useQueryParam('dob');
   const [preset, setPreset] = useState<LookupPreset | null>(null);
   useEffect(() => {
-    setPreset(readLookupPreset(window.location.search));
-  }, []);
+    setPreset(readLookupPreset(new URLSearchParams({ nemisId: presetNemisId, dob: presetDob }).toString()));
+  }, [presetNemisId, presetDob]);
 
   const updateGuardian = (index: number, field: keyof GuardianDraft, value: string | boolean) => {
     setGuardians((prev) => prev.map((g, i) => (i === index ? { ...g, [field]: value } : g)));

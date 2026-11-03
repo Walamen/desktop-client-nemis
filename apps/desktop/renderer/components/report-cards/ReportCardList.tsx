@@ -71,6 +71,13 @@ export function ReportCardList({ studentId }: { studentId: string }) {
   const load = useCallback(() => {
     let cancelled = false;
     setError(null);
+    // No id yet (or any more): nothing to ask the main process for.
+    if (!studentId) {
+      setItems(null);
+      return () => {
+        cancelled = true;
+      };
+    }
     void (async () => {
       try {
         const result = await reportCardsBridge.listReportCardsForStudent(studentId);

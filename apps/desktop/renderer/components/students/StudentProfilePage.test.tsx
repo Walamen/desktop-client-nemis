@@ -1,11 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { PresentationProvider } from '@/lib/presentation/presentation-provider';
 import { createRendererPresentation } from '@/lib/presentation/create-renderer-presentation';
 import { StudentProfilePage } from './StudentProfilePage';
+import { mockSearch } from '@/test-utils/search-params';
+import { Navigator } from '@/test-utils/navigator';
+
+vi.mock('next/navigation', async () => (await import('@/test-utils/search-params')).navigationMock);
 
 beforeEach(() => {
   window.history.pushState({}, '', '/government/school-admin/students/profile?id=s-1');
+  mockSearch('id=s-1');
   (window as unknown as { nemis: unknown }).nemis = {
     student: {
       get: vi.fn(async () => ({
@@ -37,9 +42,50 @@ describe('StudentProfilePage', () => {
   });
 });
 
+describe('StudentProfilePage own address', () => {
+  type Nemis = {
+    student: { get: ReturnType<typeof vi.fn>; listEnrollments: ReturnType<typeof vi.fn> };
+    reportCards?: unknown;
+  };
+  const nemis = () => (window as unknown as { nemis: Nemis }).nemis;
+  const wrap = (ui: React.ReactNode) => (
+    <PresentationProvider layer={createRendererPresentation()}>{ui}</PresentationProvider>
+  );
+
+  it("loads the student named by its own address, not the previous page's", async () => {
+    window.history.pushState({}, '', '/government/school-admin/classes/detail?id=class-1');
+    mockSearch('id=stu-1');
+    render(wrap(<StudentProfilePage />));
+    await waitFor(() => expect(nemis().student.get).toHaveBeenCalledWith('stu-1'));
+    expect(nemis().student.get).not.toHaveBeenCalledWith('class-1');
+    expect(nemis().student.listEnrollments).not.toHaveBeenCalledWith('class-1');
+  });
+
+  it('follows a changed id', async () => {
+    mockSearch('id=stu-1');
+    render(wrap(<Navigator to="id=stu-2" page={() => <StudentProfilePage />} />));
+    await waitFor(() => expect(nemis().student.get).toHaveBeenCalledWith('stu-1'));
+    fireEvent.click(screen.getByRole('button', { name: 'go' }));
+    await waitFor(() => expect(nemis().student.get).toHaveBeenCalledWith('stu-2'));
+  });
+
+  it('makes no student or report-card call without an id', async () => {
+    window.history.pushState({}, '', '/government/school-admin/students/profile');
+    mockSearch('');
+    const listForStudent = vi.fn(async () => []);
+    nemis().reportCards = { listForStudent };
+    render(wrap(<StudentProfilePage />));
+    await new Promise((r) => setTimeout(r, 50));
+    expect(nemis().student.get).not.toHaveBeenCalled();
+    expect(nemis().student.listEnrollments).not.toHaveBeenCalled();
+    expect(listForStudent).not.toHaveBeenCalled();
+  });
+});
+
 describe('StudentProfilePage enrollment/guardians', () => {
   it('shows titled Enrollment History and Guardians cards matching the personal-info card style', async () => {
     window.history.pushState({}, '', '/government/school-admin/students/profile?id=s-1');
+    mockSearch('id=s-1');
     (window as unknown as { nemis: unknown }).nemis = {
       student: {
         get: vi.fn(async () => ({

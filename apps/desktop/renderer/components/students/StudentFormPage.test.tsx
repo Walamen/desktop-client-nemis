@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { mockSearch } from '@/test-utils/search-params';
+import { Navigator } from '@/test-utils/navigator';
 import userEvent from '@testing-library/user-event';
 import { PresentationProvider } from '@/lib/presentation/presentation-provider';
 import { createRendererPresentation } from '@/lib/presentation/create-renderer-presentation';
@@ -9,7 +11,8 @@ import { StudentFormPage } from './StudentFormPage';
 // can exceed the 5s default without anything being wrong.
 vi.setConfig({ testTimeout: 20_000 });
 
-vi.mock('next/navigation', () => ({
+vi.mock('next/navigation', async () => ({
+  ...(await import('@/test-utils/search-params')).navigationMock,
   useRouter: () => ({ push: vi.fn() }),
 }));
 
@@ -245,5 +248,49 @@ describe('StudentFormPage edit mode', () => {
     expect(await screen.findByRole('heading', { name: 'Edit Student', level: 1 })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Find Student' })).toBeNull();
+  });
+});
+
+describe('StudentFormPage edit mode own address', () => {
+  const studentRow = (id: string, firstName: string) => ({
+    id, institutionId: 'inst-1', firstName, lastName: 'Toe', fullName: `${firstName} Toe`,
+    dateOfBirth: '2015-01-01T00:00:00.000Z', gender: 'FEMALE', isActive: true, version: 1,
+    updatedAt: '2026-07-01T00:00:00.000Z', guardians: [],
+  });
+  const get = vi.fn(async (id: string) => studentRow(id, id === 'stu-2' ? 'Second' : 'First'));
+  const mountEdit = (ui: React.ReactNode) =>
+    render(<PresentationProvider layer={createRendererPresentation()}>{ui}</PresentationProvider>);
+  beforeEach(() => {
+    get.mockClear();
+    (window as unknown as { nemis: unknown }).nemis = { ...baseNemis(), student: { get } };
+  });
+  afterEach(() => {
+    delete (window as unknown as { nemis?: unknown }).nemis;
+    window.history.pushState({}, '', '/');
+  });
+
+  it("loads the student named by its own address, not the previous page's", async () => {
+    window.history.pushState({}, '', '/government/school-admin/classes/detail?id=class-1');
+    mockSearch('id=stu-1');
+    mountEdit(<StudentFormPage edit />);
+    await waitFor(() => expect(get).toHaveBeenCalledWith('stu-1'));
+    expect(get).not.toHaveBeenCalledWith('class-1');
+  });
+
+  it('follows a changed id and shows the new record', async () => {
+    mockSearch('id=stu-1');
+    mountEdit(<Navigator to="id=stu-2" page={() => <StudentFormPage edit />} />);
+    expect(await screen.findByDisplayValue('First')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'go' }));
+    await waitFor(() => expect(get).toHaveBeenCalledWith('stu-2'));
+    expect(await screen.findByDisplayValue('Second')).toBeInTheDocument();
+    expect(screen.queryByDisplayValue('First')).toBeNull();
+  });
+
+  it('makes no call without an id', async () => {
+    mockSearch('');
+    mountEdit(<StudentFormPage edit />);
+    await new Promise((r) => setTimeout(r, 50));
+    expect(get).not.toHaveBeenCalled();
   });
 });

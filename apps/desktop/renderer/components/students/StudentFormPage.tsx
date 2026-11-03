@@ -14,7 +14,8 @@ import {
   useStudentProfileViewModel,
 } from '@/lib/presentation/hooks/school-admin';
 import { AddStudentWizard } from './add-student/AddStudentWizard';
-import { genders, grades, human, Page, queryId } from './shared';
+import { useQueryParam } from '@/hooks/use-query-param';
+import { genders, grades, human, Page } from './shared';
 
 /** Create mode is the lookup-first wizard; edit mode is the plain form. The
  * branch happens before any hook so neither component's hooks are conditional. */
@@ -22,12 +23,17 @@ export function StudentFormPage({ edit = false }: { edit?: boolean }) {
   return edit ? <EditStudentForm /> : <AddStudentWizard />;
 }
 
+/** Reads its own `?id=`; the form is keyed on it so another student starts clean. */
 function EditStudentForm() {
+  const id = useQueryParam('id');
+  return <EditStudentFormBody key={id} id={id} />;
+}
+
+function EditStudentFormBody({ id }: { id: string }) {
   const router = useRouter();
   const profileVm = useStudentProfileViewModel();
   const settings = useSettingsViewModel();
   const details = useViewModel(profileVm.store, (s) => s.details);
-  const [id, setId] = useState('');
   const [firstName, setFirst] = useState('');
   const [middleName, setMiddle] = useState('');
   const [lastName, setLast] = useState('');
@@ -39,12 +45,11 @@ function EditStudentForm() {
   const [address, setAddress] = useState('');
   useEffect(() => {
     void settings.loadCurrentSchool();
-    const value = queryId();
-    setId(value);
-    if (value) void profileVm.loadDetails(value);
-  }, [settings, profileVm]);
+    if (id) void profileVm.loadDetails(id);
+  }, [settings, profileVm, id]);
   useEffect(() => {
-    if (details.status === 'success' || details.status === 'refreshing') {
+    // The store is shared across pages: seed only from this page's student.
+    if ((details.status === 'success' || details.status === 'refreshing') && details.data.id === id) {
       const d = details.data;
       setFirst(d.firstName);
       setMiddle(d.middleName ?? '');
@@ -56,9 +61,10 @@ function EditStudentForm() {
       setEmail(d.email ?? '');
       setAddress(d.address ?? '');
     }
-  }, [details]);
+  }, [details, id]);
   const submit = async (e?: FormEvent) => {
     e?.preventDefault();
+    if (!id) return;
     const r = await profileVm.updateStudent({
       studentId: id,
       firstName,

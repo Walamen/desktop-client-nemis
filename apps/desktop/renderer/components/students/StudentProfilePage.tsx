@@ -26,7 +26,8 @@ import {
   useStudentProfileViewModel,
 } from '@/lib/presentation/hooks/school-admin';
 import { ReportCardList } from '@/components/report-cards/ReportCardList';
-import { human, queryId } from './shared';
+import { useQueryParam } from '@/hooks/use-query-param';
+import { human } from './shared';
 
 function DetailRow({
   icon,
@@ -50,7 +51,14 @@ function DetailRow({
   );
 }
 
+/** Reads its own `?id=`. The body is keyed on it, so another student's profile
+ * (an in-page link) starts from clean per-record state. */
 export function StudentProfilePage() {
+  const id = useQueryParam('id');
+  return <StudentProfileBody key={id} id={id} />;
+}
+
+function StudentProfileBody({ id }: { id: string }) {
   const vm = useStudentProfileViewModel();
   const enrollmentVm = useEnrollmentViewModel();
   const foundation = useAcademicFoundationViewModel();
@@ -61,7 +69,6 @@ export function StudentProfilePage() {
   const details = useViewModel(vm.store, (s) => s.details);
   const enrollments = useViewModel(vm.store, (s) => s.enrollments);
   const classes = useViewModel(foundation.store, (s) => s.classes);
-  const [id, setId] = useState('');
   const [guardianOpen, setGuardianOpen] = useState(false);
   const [gFirst, setGFirst] = useState('');
   const [gLast, setGLast] = useState('');
@@ -90,14 +97,23 @@ export function StudentProfilePage() {
     };
   }, [id]);
   useEffect(() => {
-    const value = queryId();
-    setId(value);
-    if (value) {
-      void vm.loadDetails(value);
-      void vm.loadEnrollments(value);
-    }
-  }, [vm]);
-  if (details.status === 'loading' || details.status === 'idle')
+    if (!id) return;
+    void vm.loadDetails(id);
+    void vm.loadEnrollments(id);
+  }, [vm, id]);
+  // The view-model store is shared across pages: without an id, or while it
+  // still holds another student, show not-found / loading, never that record.
+  if (!id)
+    return (
+      <div className="p-6 space-y-5">
+        <EmptyState title="Student not found." />
+      </div>
+    );
+  if (
+    details.status === 'loading' ||
+    details.status === 'idle' ||
+    ((details.status === 'success' || details.status === 'refreshing') && details.data.id !== id)
+  )
     return (
       <div className="p-6 space-y-5">
         <Skeleton className="h-64 w-full" />

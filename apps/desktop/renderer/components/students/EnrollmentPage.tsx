@@ -9,12 +9,19 @@ import {
 } from '@/lib/presentation/hooks/school-admin';
 import { Button, Input, Select } from '@nemis-desktop/ui';
 import { useViewModel } from '@/hooks/use-view-model';
-import { human, Page, queryId } from './shared';
+import { useQueryParam } from '@/hooks/use-query-param';
+import { human, Page } from './shared';
 import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 import { RETURNING_STUDENT_REFUSAL } from '@nemis-desktop/shared';
 import { parseIpcError } from '@/lib/errors/parseIpcError';
 
+/** Reads its own `?id=`; the body is keyed on it so a new student starts clean. */
 export function EnrollmentPage() {
+  const id = useQueryParam('id');
+  return <EnrollmentBody key={id} id={id} />;
+}
+
+function EnrollmentBody({ id }: { id: string }) {
   const router = useRouter();
   const students = useEnrollmentViewModel();
   const profileVm = useStudentProfileViewModel();
@@ -23,14 +30,12 @@ export function EnrollmentPage() {
   const years = useViewModel(foundation.store, (s) => s.academicYears);
   const terms = useViewModel(foundation.store, (s) => s.terms);
   const classes = useViewModel(foundation.store, (s) => s.classes);
-  const [id, setId] = useState('');
   const [year, setYear] = useState('');
   const [term, setTerm] = useState('');
   const [clazz, setClazz] = useState('');
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [refusal, setRefusal] = useState<string | null>(null);
   useRevalidateOnSync(() => {
-    setId(queryId());
     void foundation.loadAcademicYears();
   }, [foundation]);
   useEffect(() => {
@@ -48,6 +53,7 @@ export function EnrollmentPage() {
   }, [foundation, year]);
   const submit = async (e: FormEvent) => {
     e.preventDefault();
+    if (!id) return;
     setRefusal(null);
     const r = await students.enrollStudent({
       studentId: id,
