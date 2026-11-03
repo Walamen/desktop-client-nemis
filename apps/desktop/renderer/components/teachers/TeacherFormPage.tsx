@@ -17,6 +17,8 @@ import { useQueryParam } from '@/hooks/use-query-param';
 import { useSettingsViewModel, useTeacherProfileViewModel, useTeachersListViewModel } from '@/lib/presentation/hooks/school-admin';
 import { human } from './shared';
 
+const LOADING_STATE = { status: 'loading' } as const;
+
 function SectionCard({
   title,
   icon,
@@ -53,7 +55,8 @@ function TeacherForm({ id, edit }: { id: string; edit: boolean }) {
   const profileVm = useTeacherProfileViewModel();
   const settings = useSettingsViewModel();
   const school = useViewModel(settings.store, (s) => s.profile);
-  const profileState = useViewModel(profileVm.store, (s) => s.profile);
+  // The profile store is shared: another teacher's profile is never read for this one.
+  const profileState = useViewModel(profileVm.store, (s) => (s.profileFor === id ? s.profile : LOADING_STATE));
 
   const [first, setFirst] = useState('');
   const [middle, setMiddle] = useState('');
@@ -77,8 +80,8 @@ function TeacherForm({ id, edit }: { id: string; edit: boolean }) {
   }, []);
 
   useEffect(() => {
-    // The profile store is shared: seed only from this teacher's own record.
-    if (edit && (profileState.status === 'success' || profileState.status === 'refreshing') && profileState.data.id === id) {
+    // Seed only from this teacher's own record (profileState is gated on profileFor above).
+    if (edit && (profileState.status === 'success' || profileState.status === 'refreshing')) {
       const d = profileState.data;
       setFirst(d.firstName);
       setMiddle(d.middleName ?? '');
