@@ -1,11 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { clearNemis, renderWithLayer, stubNemis, yearRow } from '@/components/academic-grading/setup-test-support';
+import { mockSearch } from '@/test-utils/search-params';
 import { payloadFixture, summaryFixture } from '@/components/report-cards/fixtures';
 
 const push = vi.fn();
 let online = true;
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push, replace: vi.fn() }) }));
+vi.mock('next/navigation', async () => ({
+  ...(await import('@/test-utils/search-params')).navigationMock,
+  useRouter: () => ({ push, replace: vi.fn() }),
+}));
 vi.mock('@/lib/presentation/hooks/shared', async (orig) => {
   const actual = await orig<typeof import('@/lib/presentation/hooks/shared')>();
   return {
@@ -17,6 +21,18 @@ vi.mock('@/lib/presentation/hooks/shared', async (orig) => {
 });
 
 import { CorrectionsPage } from './CorrectionsPage';
+import { useState } from 'react';
+
+/** Re-renders the page after the address changes, inside the test's provider. */
+function Navigator() {
+  const [, bump] = useState(0);
+  return (
+    <>
+      <button type="button" onClick={() => { mockSearch('yearId=y2'); bump((n) => n + 1); }}>go y2</button>
+      <CorrectionsPage />
+    </>
+  );
+}
 
 const REASON = 'Reason for this correction';
 const student = (over: Record<string, unknown> = {}) => ({
@@ -36,7 +52,7 @@ function stub(status = 'REOPENED', studentOver: Record<string, unknown> = {}) {
     listForStudent: vi.fn(async () => [final]),
     getIssue: vi.fn(async () => ({ summary: final, payload: { ...payloadFixture(), kind: 'FINAL' as const } })),
   };
-  stubNemis({ years: [yearRow({ id: 'y1', code: '2025/2026', status })] });
+  stubNemis({ years: [yearRow({ id: 'y1', code: '2025/2026', status }), yearRow({ id: 'y2', code: '2026/2027', status })] });
   Object.assign((window as unknown as { nemis: Record<string, unknown> }).nemis, { academicYearClose: close, reportCards });
   return Object.assign(close, { reportCards });
 }
@@ -52,6 +68,7 @@ beforeEach(() => {
   online = true;
   push.mockClear();
   window.history.pushState({}, '', '/government/school-admin/academic-years/corrections?yearId=y1');
+  mockSearch('yearId=y1');
 });
 afterEach(() => {
   clearNemis();
@@ -147,6 +164,8 @@ describe('CorrectionsPage', () => {
   it('shows the unavailable message for an unknown year', async () => {
     stub();
     window.history.pushState({}, '', '/government/school-admin/academic-years/corrections?yearId=nope');
+    mockSearch('yearId=nope');
+    mockSearch('yearId=nope');
     await renderWithLayer(<CorrectionsPage />);
     expect(await screen.findByText('Corrections are only available for a reopened year.')).toBeInTheDocument();
   });
@@ -154,6 +173,7 @@ describe('CorrectionsPage', () => {
   it('shows the unavailable message without a year id', async () => {
     stub();
     window.history.pushState({}, '', '/government/school-admin/academic-years/corrections');
+    mockSearch('');
     await renderWithLayer(<CorrectionsPage />);
     expect(await screen.findByText('Corrections are only available for a reopened year.')).toBeInTheDocument();
   });
@@ -195,5 +215,36 @@ it('tells the admin corrections reach the final card on the next close', async (
     await openStudent();
     const form = within(screen.getByRole('region', { name: 'Change outcome' }));
     expect((form.getByLabelText('Outcome') as HTMLSelectElement).value).toBe('RETAINED');
+  });
+});
+
+describe('CorrectionsPage year from the address', () => {
+  it('uses its own year, not the previous page address', async () => {
+    const close = stub();
+    window.history.pushState({}, '', '/government/school-admin/academic-years?yearId=old-year');
+    mockSearch('yearId=y1');
+    await renderWithLayer(<CorrectionsPage />);
+    expect(await screen.findByLabelText('Find a student')).toBeInTheDocument();
+    expect(close.getPromotion).toHaveBeenCalledWith('y1');
+    expect(close.getPromotion).not.toHaveBeenCalledWith('old-year');
+  });
+
+  it('makes no call without a year id', async () => {
+    const close = stub();
+    mockSearch('');
+    await renderWithLayer(<CorrectionsPage />);
+    expect(await screen.findByText('Corrections are only available for a reopened year.')).toBeInTheDocument();
+    expect(close.getPromotion).not.toHaveBeenCalled();
+  });
+
+  it('reloads and clears the open student when the year changes while mounted', async () => {
+    const close = stub();
+    await renderWithLayer(<Navigator />);
+    fireEvent.change(await screen.findByLabelText('Find a student'), { target: { value: 'grace' } });
+    fireEvent.click(await screen.findByRole('button', { name: /Grace Toe/ }));
+    await screen.findByRole('region', { name: 'Correct a mark' });
+    fireEvent.click(screen.getByRole('button', { name: 'go y2' }));
+    await waitFor(() => expect(close.getPromotion).toHaveBeenCalledWith('y2'));
+    expect(screen.queryByRole('region', { name: 'Correct a mark' })).toBeNull();
   });
 });

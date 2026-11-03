@@ -9,7 +9,7 @@ import { useViewModel } from '@/hooks/use-view-model';
 import { useAcademicFoundationViewModel, useStudentsViewModel } from '@/lib/presentation/hooks/school-admin';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
 import type { SchoolAdminRecord } from '@nemis-desktop/types';
-import { queryId } from '@/components/classes/shared';
+import { useQueryParam } from '@/hooks/use-query-param';
 import { GRADE_STATUS_STYLE, listGradesForPeriod, pctTone } from './shared';
 import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 import { academicSetupHref } from '@/lib/academic-setup';
@@ -21,7 +21,7 @@ import { academicSetupHref } from '@/lib/academic-setup';
  * reads that real data directly instead of re-deriving a per-assessment
  * matrix the desktop backend doesn't have (assessments repo is unbuilt). */
 export function WindowGradesPage() {
-  const windowId = queryId();
+  const windowId = useQueryParam('id');
   const foundation = useAcademicFoundationViewModel();
   const students = useStudentsViewModel();
   const classesState = useViewModel(foundation.store, (s) => s.classes);
@@ -35,6 +35,16 @@ export function WindowGradesPage() {
   const [selectedSubjectId, setSelectedSubjectId] = useState('');
   const [search, setSearch] = useState('');
 
+  // A different window while mounted: drop everything derived from the old
+  // one. Declared before the load below so the reset lands first.
+  useEffect(() => {
+    setWin(null);
+    setGrades([]);
+    setSelectedClassId('');
+    setSelectedSubjectId('');
+    setSearch('');
+  }, [windowId]);
+
   useRevalidateOnSync(() => {
     void foundation.loadClasses();
     void foundation.loadSubjects();
@@ -46,14 +56,18 @@ export function WindowGradesPage() {
       return;
     }
     setLoading(true);
+    let cancelled = false;
     void (async () => {
       const result = await sharedBridge.listSchoolAdminRecords({ collection: 'grade_entry_windows', limit: 250 });
+      if (cancelled) return;
       const found = result.items.find((item) => item.id === windowId) ?? null;
-      setWin(found);
       const rows = found?.gradingPeriodId ? await listGradesForPeriod(String(found.gradingPeriodId)) : [];
+      if (cancelled) return;
+      setWin(found);
       setGrades(rows);
       setLoading(false);
     })();
+    return () => { cancelled = true; };
   }, [windowId]);
 
   const classIds = useMemo(

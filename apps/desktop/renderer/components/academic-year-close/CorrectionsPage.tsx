@@ -10,6 +10,7 @@ import type {
 } from '@nemis-desktop/types';
 import { Button, ErrorState, Skeleton } from '@nemis-desktop/ui';
 import { useViewModel } from '@/hooks/use-view-model';
+import { useQueryParam } from '@/hooks/use-query-param';
 import { parseIpcError } from '@/lib/errors/parseIpcError';
 import { academicSetupHref } from '@/lib/academic-setup';
 import { useAcademicFoundationViewModel } from '@/lib/presentation/hooks/school-admin';
@@ -31,9 +32,6 @@ import {
   outcomesFor,
 } from './close-copy';
 
-const queryYearId = () =>
-  typeof window === 'undefined' ? '' : (new URLSearchParams(window.location.search).get('yearId') ?? '');
-
 const closeHref = (yearId: string) =>
   `/government/school-admin/academic-years/close?yearId=${encodeURIComponent(yearId)}`;
 
@@ -52,7 +50,7 @@ function ReasonField({ value, onChange }: { value: string; onChange: (v: string)
  * correct a mark, an outcome or the principal's remark. Online only; every
  * action needs a reason. */
 export function CorrectionsPage() {
-  const yearId = queryYearId();
+  const yearId = useQueryParam('yearId');
   const vm = useAcademicFoundationViewModel();
   const yearsState = useViewModel(vm.store, (s) => s.academicYears);
   const years = yearsState.status === 'success' || yearsState.status === 'refreshing' ? yearsState.data : null;
@@ -71,7 +69,7 @@ export function CorrectionsPage() {
   if (!years) return <Skeleton className="m-6 h-24" />;
   const year = years.find((y) => y.id === yearId);
   if (!year || year.status !== 'REOPENED') return unavailable;
-  return <CorrectionsScreen yearId={yearId} code={year.code} />;
+  return <CorrectionsScreen key={yearId} yearId={yearId} code={year.code} />;
 }
 
 function CorrectionsScreen({ yearId, code }: { yearId: string; code: string }) {

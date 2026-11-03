@@ -1,7 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { useState } from 'react';
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { clearNemis, renderWithLayer, stubNemis, yearRow } from '@/components/academic-grading/setup-test-support';
+import { mockSearch } from '@/test-utils/search-params';
 import { CloseWorkflowPage } from './CloseWorkflowPage';
+
+/** Re-renders the page after the address changes, inside the test's provider. */
+function Navigator() {
+  const [, bump] = useState(0);
+  return (
+    <>
+      <button type="button" onClick={() => { mockSearch('yearId=y2'); bump((n) => n + 1); }}>go y2</button>
+      <CloseWorkflowPage />
+    </>
+  );
+}
+
+vi.mock('next/navigation', async () => (await import('@/test-utils/search-params')).navigationMock);
 
 // Capture the sync-driven reload so a test can fire it; mount still loads once.
 const revalidate = vi.hoisted(() => ({ load: null as null | (() => void) }));
@@ -40,12 +55,15 @@ function stubClose(over: Record<string, unknown> = {}) {
     pendingChangesCount: vi.fn(async () => 0),
     ...over,
   };
-  stubNemis({ years: [yearRow({ id: 'y1', code: '2025/2026' })] });
+  stubNemis({ years: [yearRow({ id: 'y1', code: '2025/2026' }), yearRow({ id: 'y2', code: '2026/2027' })] });
   (window as unknown as { nemis: Record<string, unknown> }).nemis.academicYearClose = close;
   return close;
 }
 
-beforeEach(() => window.history.pushState({}, '', '/government/school-admin/academic-years/close?yearId=y1'));
+beforeEach(() => {
+  window.history.pushState({}, '', '/government/school-admin/academic-years/close?yearId=y1');
+  mockSearch('yearId=y1');
+});
 afterEach(() => {
   clearNemis();
   vi.restoreAllMocks();
@@ -258,5 +276,38 @@ describe('CloseWorkflowPage reload during the workflow', () => {
     expect(screen.getByText('Kofi Mensah')).toBeInTheDocument();
     expect((screen.getByLabelText('Principal remark for all students') as HTMLInputElement).value).toBe('Well done');
     expect(screen.getByRole('heading', { name: 'Close 2025/2026' })).toBeInTheDocument();
+  });
+});
+
+describe('CloseWorkflowPage year from the address', () => {
+  it('uses its own year, not the previous page address', async () => {
+    const close = stubClose();
+    window.history.pushState({}, '', '/government/school-admin/academic-years?yearId=old-year');
+    mockSearch('yearId=y1');
+    await renderWithLayer(<CloseWorkflowPage />);
+    expect(await screen.findByRole('button', { name: 'Continue' })).toBeInTheDocument();
+    expect(close.getReadiness).toHaveBeenCalledWith('y1');
+    expect(close.getReadiness).not.toHaveBeenCalledWith('old-year');
+  });
+
+  it('makes no call without a year id', async () => {
+    const close = stubClose();
+    mockSearch('');
+    await renderWithLayer(<CloseWorkflowPage />);
+    expect(await screen.findByText('Choose a year to close from Academic Years.')).toBeInTheDocument();
+    expect(close.getReadiness).not.toHaveBeenCalled();
+  });
+
+  it('starts afresh when the year changes while mounted', async () => {
+    const close = stubClose();
+    await renderWithLayer(<Navigator />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Continue' }));
+    await screen.findByLabelText('Principal remark for all students');
+    expect(close.getPromotion).toHaveBeenCalledWith('y1');
+    fireEvent.click(screen.getByRole('button', { name: 'go y2' }));
+    expect(await screen.findByRole('heading', { name: 'Close 2026/2027' })).toBeInTheDocument();
+    await waitFor(() => expect(close.getReadiness).toHaveBeenCalledWith('y2'));
+    expect(screen.queryByLabelText('Principal remark for all students')).toBeNull();
+    expect(await screen.findByRole('button', { name: 'Continue' })).toBeInTheDocument();
   });
 });

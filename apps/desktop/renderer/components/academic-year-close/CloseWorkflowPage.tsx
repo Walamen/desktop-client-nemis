@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useViewModel } from '@/hooks/use-view-model';
+import { useQueryParam } from '@/hooks/use-query-param';
 import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 import { useAcademicFoundationViewModel } from '@/lib/presentation/hooks/school-admin';
 import { academicSetupHref } from '@/lib/academic-setup';
@@ -20,13 +21,16 @@ const STEPS: { id: Exclude<Step, 'done'>; label: string }[] = [
   { id: 'confirm', label: '3. Confirm' },
 ];
 
-const queryYearId = () =>
-  typeof window === 'undefined' ? '' : (new URLSearchParams(window.location.search).get('yearId') ?? '');
-
 /** Close Academic Year: readiness, promotion, confirm. Online only; every
- * step reads from the server again when it opens. */
+ * step reads from the server again when it opens. The workflow is keyed on
+ * the year, so a different `?yearId=` starts it afresh (step, refusal,
+ * admitted code and every step's own state). */
 export function CloseWorkflowPage() {
-  const yearId = queryYearId();
+  const yearId = useQueryParam('yearId');
+  return <CloseWorkflow key={yearId} yearId={yearId} />;
+}
+
+function CloseWorkflow({ yearId }: { yearId: string }) {
   const vm = useAcademicFoundationViewModel();
   const state = useViewModel(vm.store, (s) => s.academicYears);
   const years = state.status === 'success' || state.status === 'refreshing' ? state.data : null;
