@@ -114,6 +114,18 @@ describe('MatchPriorRecordPage', () => {
 });
 
 describe('MatchPriorRecordPage address handling', () => {
+  // A fresh element per call: React skips re-rendering an identical one.
+  function mountPage() {
+    const layer = createRendererPresentation();
+    const ui = () => (
+      <PresentationProvider layer={layer}>
+        <MatchPriorRecordPage />
+      </PresentationProvider>
+    );
+    const { rerender } = render(ui());
+    return { ui, rerender };
+  }
+
   it("loads the carry-over named by its own address, not the previous page's", async () => {
     window.history.pushState({}, '', '/government/school-admin/students/profile?id=student-1');
     mockSearch('id=co-1');
@@ -124,14 +136,7 @@ describe('MatchPriorRecordPage address handling', () => {
   });
 
   it('follows a changed id', async () => {
-    const layer = createRendererPresentation();
-    // A fresh element each time: React skips re-rendering an identical one.
-    const ui = () => (
-      <PresentationProvider layer={layer}>
-        <MatchPriorRecordPage />
-      </PresentationProvider>
-    );
-    const { rerender } = render(ui());
+    const { ui, rerender } = mountPage();
     await waitFor(() => expect(carryOver.get).toHaveBeenCalledWith('co-1'));
     mockSearch('id=co-2');
     rerender(ui());
@@ -140,19 +145,32 @@ describe('MatchPriorRecordPage address handling', () => {
 
   it('shows no old error behind a corrected id', async () => {
     carryOver.get!.mockRejectedValueOnce(new Error('[REMOTE_REJECTED] Not found.'));
-    const layer = createRendererPresentation();
-    // A fresh element each time: React skips re-rendering an identical one.
-    const ui = () => (
-      <PresentationProvider layer={layer}>
-        <MatchPriorRecordPage />
-      </PresentationProvider>
-    );
-    const { rerender } = render(ui());
+    const { ui, rerender } = mountPage();
     expect(await screen.findByText('Not found.')).toBeInTheDocument();
     mockSearch('id=co-2');
     rerender(ui());
     expect(await screen.findByRole('heading', { name: 'Match prior record — Ama Kofi' })).toBeInTheDocument();
     expect(screen.queryByText('Not found.')).toBeNull();
+  });
+
+  it('shows no old record once the id goes away', async () => {
+    const { ui, rerender } = mountPage();
+    expect(await screen.findByRole('heading', { name: 'Match prior record — Ama Kofi' })).toBeInTheDocument();
+    mockSearch('');
+    rerender(ui());
+    await waitFor(() => expect(screen.queryByRole('heading', { name: /Match prior record/ })).toBeNull());
+  });
+
+  it('does not show a changed id as already saved', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const { ui, rerender } = mountPage();
+    fireEvent.click(await screen.findByRole('button', { name: 'Save matching' }));
+    expect(await screen.findByText('Prior record matched.')).toBeInTheDocument();
+    mockSearch('id=co-2');
+    rerender(ui());
+    await waitFor(() => expect(carryOver.get).toHaveBeenCalledWith('co-2'));
+    expect(await screen.findByRole('button', { name: 'Save matching' })).toBeInTheDocument();
+    expect(screen.queryByText('Prior record matched.')).toBeNull();
   });
 
   it('makes no call without an id', async () => {

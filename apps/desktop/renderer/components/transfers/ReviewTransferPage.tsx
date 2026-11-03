@@ -91,6 +91,28 @@ export function ReviewTransferPage() {
   // The matching and grade are seeded once; a reload (the connection coming back) keeps the admin's edits.
   const seeded = useRef(false);
 
+  // A new id starts clean, even when it is empty: nothing of the previous
+  // record may show for it, and seeding runs again for the new one.
+  useEffect(() => {
+    seeded.current = false;
+    setPreview(null);
+    setRow(null);
+    setLoadError(null);
+    setRefusedRow(null);
+    setStep(1);
+    setMatching({ periods: {}, subjects: {} });
+    setSkipped(false);
+    setGrade('');
+    setTarget(EMPTY_TARGET);
+    setNotes('');
+    setRejecting(false);
+    setBusy(false);
+    setError(null);
+    setOutcome(null);
+    setHasDraft(false);
+    setSyncPending(false);
+  }, [id]);
+
   useEffect(() => {
     if (!isOnline || !id) return;
     let cancelled = false;

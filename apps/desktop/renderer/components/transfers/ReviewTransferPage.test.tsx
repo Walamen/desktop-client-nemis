@@ -70,7 +70,7 @@ const ROW_WITH_PLACEMENT = {
 const ROW_WITHOUT_PLACEMENT = { ...ROW_WITH_PLACEMENT, classId: null, termId: null, toGradeLevel: null };
 
 function stub(opts: { preview?: Partial<TransferRecordPreview>; row?: Record<string, unknown> } = {}) {
-  const recordPreview = vi.fn(async () => ({ ...PREVIEW, ...opts.preview }));
+  const recordPreview = vi.fn<(id: string) => Promise<TransferRecordPreview>>(async () => ({ ...PREVIEW, ...opts.preview }));
   const review = vi.fn<(req: unknown) => Promise<{ data: { id: string; recordBroughtOver: boolean }; refreshed: boolean }>>(
     async () => ({ data: { id: 'tr-1', recordBroughtOver: true }, refreshed: true }),
   );
@@ -134,6 +134,40 @@ describe('ReviewTransferPage', () => {
     expect(await screen.findByRole('heading', { name: 'Review transfer — Ama Kofi' })).toBeInTheDocument();
     expect(recordPreview).toHaveBeenCalledWith('tr-1');
     expect(recordPreview).not.toHaveBeenCalledWith('student-1');
+  });
+
+  it('follows a changed id: loads the new record, drops the old one, seeds again', async () => {
+    const { recordPreview } = stub();
+    recordPreview.mockImplementation(async (id: string) =>
+      id === 'tr-2'
+        ? {
+            ...PREVIEW,
+            transferId: 'tr-2',
+            student: { id: 's-2', firstName: 'Kwame', lastName: 'Mensah' },
+            matching: { ...PREVIEW.matching, suggestion: { periods: {}, subjects: { 'a-m': null, 'a-e': 'b-m' } } },
+          }
+        : PREVIEW,
+    );
+    const layer = createRendererPresentation();
+    await layer.bootstrap.run();
+    const user = userEvent.setup({ delay: null });
+    const ui = () => (
+      <PresentationProvider layer={layer}>
+        <ReviewTransferPage />
+      </PresentationProvider>
+    );
+    const { rerender } = render(ui());
+    await user.click(await screen.findByRole('button', { name: 'Next: match the record' }));
+    expect((screen.getByLabelText('Mathematics') as HTMLSelectElement).value).toBe('b-m');
+
+    mockSearch('id=tr-2');
+    rerender(ui());
+    expect(await screen.findByRole('heading', { name: 'Review transfer — Kwame Mensah' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Review transfer — Ama Kofi' })).toBeNull();
+    expect(recordPreview).toHaveBeenCalledWith('tr-2');
+    await user.click(screen.getByRole('button', { name: 'Next: match the record' }));
+    expect((screen.getByLabelText('Mathematics') as HTMLSelectElement).value).toBe('');
+    expect((screen.getByLabelText('English') as HTMLSelectElement).value).toBe('b-m');
   });
 
   it('makes no call without an id', async () => {

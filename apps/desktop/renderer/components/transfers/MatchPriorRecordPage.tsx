@@ -27,12 +27,20 @@ export function MatchPriorRecordPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
+  // A new id starts clean, even when it is empty: the old record, error and
+  // saved state must never show for it.
+  useEffect(() => {
+    setPreview(null);
+    setLoadError(null);
+    setMatching({ periods: {}, subjects: {} });
+    setSaving(false);
+    setSaveError(null);
+    setSaved(false);
+  }, [id]);
+
   useEffect(() => {
     if (!isOnline || !id) return;
     let cancelled = false;
-    // A new id starts clean: an old error or record must not hide it.
-    setLoadError(null);
-    setPreview(null);
     carryOverBridge
       .getCarryOver(id)
       .then((p) => {
