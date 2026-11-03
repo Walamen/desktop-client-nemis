@@ -183,6 +183,15 @@ export class AcademicFoundationViewModel {
     });
   }
 
+  /** A mutation's refresh: skipped once another class holds the rows slot.
+   * Reloading then would claim the slot back and drop that class's own
+   * response, leaving its page on loading. */
+  private async reloadClassSubjectsIfShown(classId: string): Promise<void> {
+    const held = this.store.getState().classSubjectsFor;
+    if (held && held !== classId) return;
+    await this.loadClassSubjects(classId);
+  }
+
   async loadGradeLevels(): Promise<void> {
     await trackQuery({
       access: { get: () => this.store.getState().gradeLevels, set: (gradeLevels) => this.store.setState({ gradeLevels }) },
@@ -290,10 +299,10 @@ export class AcademicFoundationViewModel {
     return this.command(() => this.deps.academics.setSubjectActive({ id, isActive }), isActive ? 'Subject restored.' : 'Subject deactivated.', () => this.loadSubjects());
   }
   async assignSubject(classId: string, subjectId: string): Promise<CommandOutcome<ClassSubjectOutput>> {
-    return this.command(() => this.deps.academics.assignSubjectToClass({ classId, subjectId }), 'Subject assigned to class.', async () => { await this.loadClassSubjects(classId); await this.loadClasses(); });
+    return this.command(() => this.deps.academics.assignSubjectToClass({ classId, subjectId }), 'Subject assigned to class.', async () => { await this.reloadClassSubjectsIfShown(classId); await this.loadClasses(); });
   }
   async unassignSubject(classId: string, subjectId: string): Promise<CommandOutcome<{ id: string }>> {
-    return this.command(() => this.deps.academics.unassignSubjectFromClass({ classId, subjectId }), 'Subject removed from class.', async () => { await this.loadClassSubjects(classId); await this.loadClasses(); });
+    return this.command(() => this.deps.academics.unassignSubjectFromClass({ classId, subjectId }), 'Subject removed from class.', async () => { await this.reloadClassSubjectsIfShown(classId); await this.loadClasses(); });
   }
 
   /** code → isActive for every subject on the device, ignoring the on-screen

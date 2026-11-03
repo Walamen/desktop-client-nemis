@@ -351,3 +351,50 @@ describe('AcademicFoundationViewModel.loadClassSubjects belongs to one class', (
     expect(vm.store.getState().classSubjects).toMatchObject({ status: 'success', data: [{ id: 'sb' }] });
   });
 });
+
+describe('AcademicFoundationViewModel assign/unassign reload only the class still shown', () => {
+  function withMutation(kind: 'assignSubjectToClass' | 'unassignSubjectFromClass') {
+    let finishMutation: () => void = () => undefined;
+    let finishB: () => void = () => undefined;
+    const listClassSubjects = vi.fn(({ classId }: { classId: string }) =>
+      classId === 'b'
+        ? new Promise((r) => (finishB = () => r({ data: [{ id: 'sb' }] })))
+        : Promise.resolve({ data: [{ id: 'sa' }] }),
+    );
+    const academics = {
+      listClassSubjects,
+      listClasses: vi.fn(async () => ({ data: { items: [], total: 0, limit: 25, offset: 0 } })),
+      [kind]: vi.fn(() => new Promise((r) => (finishMutation = () => r({ data: { id: 'cs-1' } })))),
+    };
+    const vm = new AcademicFoundationViewModel({ academics: academics as unknown as AcademicsApplicationService, notifications: new NotificationStore() });
+    return { vm, listClassSubjects, finishMutation: () => finishMutation(), finishB: () => finishB() };
+  }
+
+  for (const [label, run] of [
+    ['assignSubject', (vm: AcademicFoundationViewModel) => vm.assignSubject('a', 'math')],
+    ['unassignSubject', (vm: AcademicFoundationViewModel) => vm.unassignSubject('a', 'math')],
+  ] as const) {
+    it(`${label} on class A finishing after class B opened leaves B's rows to land`, async () => {
+      const ctx = withMutation(label === 'assignSubject' ? 'assignSubjectToClass' : 'unassignSubjectFromClass');
+      await ctx.vm.loadClassSubjects('a');
+      const mutation = run(ctx.vm);
+      const loadB = ctx.vm.loadClassSubjects('b');
+      ctx.finishMutation();
+      await mutation;
+      ctx.finishB();
+      await loadB;
+      expect(ctx.vm.store.getState().classSubjectsFor).toBe('b');
+      expect(ctx.vm.store.getState().classSubjects).toMatchObject({ status: 'success', data: [{ id: 'sb' }] });
+      expect(ctx.listClassSubjects.mock.calls.filter(([i]) => i.classId === 'a')).toHaveLength(1);
+    });
+  }
+
+  it('still reloads the class rows when that class is the one shown', async () => {
+    const ctx = withMutation('assignSubjectToClass');
+    await ctx.vm.loadClassSubjects('a');
+    const mutation = ctx.vm.assignSubject('a', 'math');
+    ctx.finishMutation();
+    await mutation;
+    expect(ctx.listClassSubjects.mock.calls.filter(([i]) => i.classId === 'a')).toHaveLength(2);
+  });
+});

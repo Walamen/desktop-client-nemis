@@ -149,7 +149,10 @@ export class AssignmentsViewModel {
     const outcome = await this.updateCommand.execute(dto);
     this.store.setState({ mutationStatus: outcome.ok ? 'submitted' : 'failed' });
     if (outcome.ok) {
-      this.store.setState({ detail: { status: 'success', data: outcome.data } });
+      // Not when another assignment now holds the detail slot.
+      if (this.slotIsFor(this.store.getState().detailFor, dto.id)) {
+        this.store.setState({ detail: { status: 'success', data: outcome.data }, detailFor: dto.id });
+      }
       await this.loadAssignments(dto.teacherId);
     } else {
       // A background sync can rewrite this assignment's id between the page
@@ -158,8 +161,9 @@ export class AssignmentsViewModel {
       // 'error' detail state a fresh page load would if the id is now
       // genuinely gone, which is what drives AssignmentForm's existing
       // auto-redirect. A failure for any other reason just refreshes detail
-      // back to its current server state.
-      await this.loadAssignment(dto.id, dto.teacherId);
+      // back to its current server state. Only while it is still the one
+      // shown: see reloadDetailIfShown.
+      await this.reloadDetailIfShown(dto.id, dto.teacherId);
     }
     return outcome;
   }
@@ -172,7 +176,7 @@ export class AssignmentsViewModel {
       await this.loadAssignments(dto.teacherId);
     } else {
       // Same stale-id reasoning as updateAssignment's failure branch above.
-      await this.loadAssignment(dto.id, dto.teacherId);
+      await this.reloadDetailIfShown(dto.id, dto.teacherId);
     }
     return outcome;
   }
@@ -187,8 +191,23 @@ export class AssignmentsViewModel {
     // on failure it surfaces a stale-id 'error' state the same way a fresh
     // load would (driving SubmissionsTable's existing auto-redirect) if the
     // assignment is genuinely gone, or just leaves the table as-is if the
-    // failure was for some other reason (e.g. a permission check).
-    await this.loadSubmissions(dto.assignmentId, dto.teacherId);
+    // failure was for some other reason (e.g. a permission check). Only
+    // while that assignment's rows are still the ones shown.
+    if (this.slotIsFor(this.store.getState().submissionsFor, dto.assignmentId)) {
+      await this.loadSubmissions(dto.assignmentId, dto.teacherId);
+    }
     return outcome;
+  }
+
+  /** A mutation's refresh: skipped once another assignment holds the detail
+   * slot. Reloading then would claim the slot back and drop that assignment's
+   * own response, leaving its page on loading. */
+  private async reloadDetailIfShown(id: string, teacherId: string): Promise<void> {
+    if (this.slotIsFor(this.store.getState().detailFor, id)) await this.loadAssignment(id, teacherId);
+  }
+
+  /** True while a per-assignment slot is empty or still belongs to `id`. */
+  private slotIsFor(held: string | null, id: string): boolean {
+    return held === null || held === id;
   }
 }

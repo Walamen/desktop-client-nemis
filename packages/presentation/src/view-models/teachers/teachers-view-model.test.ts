@@ -44,6 +44,61 @@ describe('TeachersViewModel profile belongs to one teacher', () => {
   });
 });
 
+describe('TeachersViewModel assignment mutations refresh only the teacher still shown', () => {
+  function withMutations() {
+    let finishMutation: () => void = () => undefined;
+    const releases: Record<string, () => void> = {};
+    const calls = { profile: [] as string[], assignments: [] as string[] };
+    const teachers = {
+      getProfile: (id: string) => { calls.profile.push(id); return id === 'b' ? new Promise((r) => (releases.profileB = () => r({ data: person('b') }))) : Promise.resolve({ data: person(id) }); },
+      getAssignments: (id: string) => { calls.assignments.push(id); return id === 'b' ? new Promise((r) => (releases.assignmentsB = () => r({ data: [{ id: 'xb' }] }))) : Promise.resolve({ data: [{ id: `x${id}` }] }); },
+      dashboard: async () => ({ data: {} }),
+      assign: () => new Promise((r) => (finishMutation = () => r({ data: { id: 'ta-1' } }))),
+      updateAssignment: () => new Promise((r) => (finishMutation = () => r({ data: { id: 'ta-1' } }))),
+      removeAssignment: () => new Promise((r) => (finishMutation = () => r({ data: { id: 'ta-1' } }))),
+    };
+    const vm = new TeachersViewModel({ teachers: teachers as never, notifications: new NotificationStore() });
+    return { vm, calls, releases, finishMutation: () => finishMutation() };
+  }
+
+  const mutations = [
+    ['assign', (vm: TeachersViewModel) => vm.assign({ teacherId: 'a' } as never)],
+    ['updateAssignment', (vm: TeachersViewModel) => vm.updateAssignment({ assignmentId: 'ta-1' } as never, 'a')],
+    ['removeAssignment', (vm: TeachersViewModel) => vm.removeAssignment('ta-1', 'a')],
+  ] as const;
+
+  for (const [label, run] of mutations) {
+    it(`${label} for teacher A finishing after teacher B opened leaves B's profile and assignments to land`, async () => {
+      const ctx = withMutations();
+      await Promise.all([ctx.vm.loadProfile('a'), ctx.vm.loadAssignments('a')]);
+      const mutation = run(ctx.vm);
+      const loadB = Promise.all([ctx.vm.loadProfile('b'), ctx.vm.loadAssignments('b')]);
+      ctx.finishMutation();
+      await mutation;
+      ctx.releases.profileB?.();
+      ctx.releases.assignmentsB?.();
+      await loadB;
+      const s = ctx.vm.store.getState();
+      expect(s.profileFor).toBe('b');
+      expect(s.profile).toMatchObject({ status: 'success', data: { id: 'b' } });
+      expect(s.assignmentsFor).toBe('b');
+      expect(s.assignments).toMatchObject({ status: 'success', data: [{ id: 'xb' }] });
+      expect(ctx.calls.profile.filter((id) => id === 'a')).toHaveLength(1);
+      expect(ctx.calls.assignments.filter((id) => id === 'a')).toHaveLength(1);
+    });
+  }
+
+  it('still refreshes the profile and assignments of the teacher shown', async () => {
+    const ctx = withMutations();
+    await Promise.all([ctx.vm.loadProfile('a'), ctx.vm.loadAssignments('a')]);
+    const mutation = ctx.vm.assign({ teacherId: 'a' } as never);
+    ctx.finishMutation();
+    await mutation;
+    expect(ctx.calls.profile.filter((id) => id === 'a')).toHaveLength(2);
+    expect(ctx.calls.assignments.filter((id) => id === 'a')).toHaveLength(2);
+  });
+});
+
 describe('TeachersViewModel assignments belong to one teacher', () => {
   it('drops the previous teacher rows at once and records whose they are', async () => {
     let release: (v: unknown) => void = () => undefined;

@@ -43,7 +43,10 @@ export class TeachersViewModel {
   async removeAssignment(assignmentId:string,teacherId:string):Promise<CommandOutcome<{id:string}>>{const o=await executeCommand({run:()=>this.deps.teachers.removeAssignment({assignmentId}),map:v=>v,notifications:this.deps.notifications,successMessage:'Teaching assignment removed.'});if(o.ok)await this.refreshAssignmentViews(teacherId);return o;}
   async bulkArchive(ids:readonly string[]):Promise<void>{for(const id of ids)await this.deps.teachers.setActive({teacherId:id,isActive:false});this.deps.notifications.success(`${ids.length} teacher(s) archived.`);await this.loadTeachers();}
   private async command(run:()=>ReturnType<TeacherApplicationService['create']>,message:string):Promise<CommandOutcome<TeacherProfileView>>{const o=await executeCommand({run,map:v=>profile({...v,assignments:[]}),notifications:this.deps.notifications,successMessage:message});if(o.ok)await this.loadTeachers();return o;}
-  private async refreshAssignmentViews(id:string):Promise<void>{await Promise.all([this.loadAssignments(id),this.loadProfile(id),this.loadDashboard()]);}
+  /** A mutation's refresh: the profile and assignments are skipped once another
+   * teacher holds their slot. Reloading then would claim the slot back and drop
+   * that teacher's own response, leaving its page on loading. */
+  private async refreshAssignmentViews(id:string):Promise<void>{const s=this.store.getState();const mine=(held:string|null)=>held===null||held===id;await Promise.all([mine(s.assignmentsFor)?this.loadAssignments(id):undefined,mine(s.profileFor)?this.loadProfile(id):undefined,this.loadDashboard()]);}
 }
 
 export class TeachersListViewModel { readonly store; readonly selection=createStore<{selectedIds:ReadonlySet<string>}>(()=>({selectedIds:new Set()})); constructor(private core:TeachersViewModel){this.store=core.store;} loadTeachers=()=>this.core.loadTeachers();goToPage=(p:number)=>this.core.goToPage(p);createTeacher=(d:CreateTeacherDto)=>this.core.createTeacher(d);bulkArchive=(ids:readonly string[])=>this.core.bulkArchive(ids);toggleSelection(id:string){this.selection.setState(s=>{const n=new Set(s.selectedIds);if(n.has(id))n.delete(id);else n.add(id);return{selectedIds:n};});}clearSelection(){this.selection.setState({selectedIds:new Set()});}}

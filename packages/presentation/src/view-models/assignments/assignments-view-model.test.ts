@@ -211,6 +211,104 @@ describe('AssignmentsViewModel detail and submissions belong to one assignment',
     expect(detail.status === 'success' && detail.data.id).toBe(b);
   });
 
+  /** Holds the detail query for `held` until released; every other id goes straight through. */
+  function holdDetail(vm: AssignmentsViewModel, held: string) {
+    const query = (vm as unknown as { getQuery: { execute: (i: { id: string; teacherId: string }) => Promise<unknown> } }).getQuery;
+    const real = query.execute.bind(query);
+    const calls: string[] = [];
+    let release: () => void = () => undefined;
+    query.execute = (input) => {
+      calls.push(input.id);
+      return input.id === held ? new Promise((resolve) => (release = () => resolve(real(input)))) : real(input);
+    };
+    return { calls, release: () => release() };
+  }
+
+  /** Replaces a command with one that fails once `finish` is called. */
+  function holdFailure(vm: AssignmentsViewModel, command: 'updateCommand' | 'deleteCommand' | 'gradeCommand') {
+    let finish: () => void = () => undefined;
+    (vm as unknown as Record<string, { execute: () => Promise<unknown> }>)[command] = {
+      execute: () =>
+        new Promise((resolve) => (finish = () => resolve({ ok: false, error: { code: 'X', message: 'refused' } }))),
+    };
+    return () => finish();
+  }
+
+  for (const [label, command, run] of [
+    ['update', 'updateCommand', (vm: AssignmentsViewModel, id: string) => vm.updateAssignment({ id, teacherId: 'staff-1', title: 'x' } as never)],
+    ['delete', 'deleteCommand', (vm: AssignmentsViewModel, id: string) => vm.deleteAssignment({ id, teacherId: 'staff-1' } as never)],
+  ] as const) {
+    it(`a failed ${label} of A finishing after B opened leaves B's detail to land`, async () => {
+      const { vm, a, b } = await twoAssignments();
+      await vm.loadAssignment(a, 'staff-1');
+      const finish = holdFailure(vm, command);
+      const held = holdDetail(vm, b);
+      const mutation = run(vm, a);
+      const loadB = vm.loadAssignment(b, 'staff-1');
+      finish();
+      await mutation;
+      held.release();
+      await loadB;
+      const detail = vm.store.getState().detail;
+      expect(vm.store.getState().detailFor).toBe(b);
+      expect(detail.status === 'success' && detail.data.id).toBe(b);
+      expect(held.calls).not.toContain(a);
+    });
+  }
+
+  it("a successful update of A finishing after B opened does not write A's detail into B's slot", async () => {
+    const { vm, a, b } = await twoAssignments();
+    await vm.loadAssignment(a, 'staff-1');
+    const command = (vm as unknown as { updateCommand: { execute: (d: unknown) => Promise<unknown> } }).updateCommand;
+    const real = command.execute.bind(command);
+    let finish: () => void = () => undefined;
+    command.execute = (dto) => new Promise((resolve) => (finish = () => resolve(real(dto))));
+    const held = holdDetail(vm, b);
+    const mutation = vm.updateAssignment({ id: a, teacherId: 'staff-1', title: 'Renamed' } as never);
+    const loadB = vm.loadAssignment(b, 'staff-1');
+    finish();
+    await mutation;
+    expect(vm.store.getState().detail.status).toBe('loading');
+    held.release();
+    await loadB;
+    const detail = vm.store.getState().detail;
+    expect(detail.status === 'success' && detail.data.id).toBe(b);
+  });
+
+  it('a failed update of the assignment shown still reloads it', async () => {
+    const { vm, a } = await twoAssignments();
+    await vm.loadAssignment(a, 'staff-1');
+    const finish = holdFailure(vm, 'updateCommand');
+    const held = holdDetail(vm, 'none');
+    const mutation = vm.updateAssignment({ id: a, teacherId: 'staff-1', title: 'x' } as never);
+    finish();
+    await mutation;
+    expect(held.calls).toEqual([a]);
+  });
+
+  it("grading on A finishing after B's submissions opened leaves B's rows to land", async () => {
+    const { vm, a, b } = await twoAssignments();
+    await vm.loadSubmissions(a, 'staff-1');
+    const finish = holdFailure(vm, 'gradeCommand');
+    const query = (vm as unknown as { listSubmissionsQuery: { execute: (i: { assignmentId: string; teacherId: string }) => Promise<unknown> } }).listSubmissionsQuery;
+    const real = query.execute.bind(query);
+    const calls: string[] = [];
+    let releaseB: () => void = () => undefined;
+    query.execute = (input) => {
+      calls.push(input.assignmentId);
+      return input.assignmentId === b ? new Promise((resolve) => (releaseB = () => resolve(real(input)))) : real(input);
+    };
+    const mutation = vm.gradeSubmission({ assignmentId: a, teacherId: 'staff-1', submissionId: 'sub-1' } as never);
+    const loadB = vm.loadSubmissions(b, 'staff-1');
+    finish();
+    await mutation;
+    releaseB();
+    await loadB;
+    expect(vm.store.getState().submissionsFor).toBe(b);
+    expect(vm.store.getState().submissions.status).not.toBe('loading');
+    expect(calls).not.toContain(a);
+  });
+
   it('drops the previous assignment submissions at once and records whose they are', async () => {
     const { vm, a, b } = await twoAssignments();
     await vm.loadSubmissions(a, 'staff-1');
