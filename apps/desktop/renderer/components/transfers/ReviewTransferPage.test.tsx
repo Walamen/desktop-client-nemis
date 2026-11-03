@@ -7,6 +7,7 @@ import { createRendererPresentation } from '@/lib/presentation/create-renderer-p
 import { onTransfersChanged } from '@/lib/transfers';
 import { payloadFixture } from '../report-cards/fixtures';
 import { mockSearch } from '@/test-utils/search-params';
+import { Navigator } from '@/test-utils/navigator';
 import { ReviewTransferPage } from './ReviewTransferPage';
 
 vi.mock('next/navigation', async () => (await import('@/test-utils/search-params')).navigationMock);
@@ -168,6 +169,41 @@ describe('ReviewTransferPage', () => {
     await user.click(screen.getByRole('button', { name: 'Next: match the record' }));
     expect((screen.getByLabelText('Mathematics') as HTMLSelectElement).value).toBe('');
     expect((screen.getByLabelText('English') as HTMLSelectElement).value).toBe('b-m');
+  });
+
+  it('an in-flight approve for the old id does not mark the new record approved', async () => {
+    const { recordPreview, review } = stub();
+    recordPreview.mockImplementation(async (id: string) =>
+      id === 'tr-2'
+        ? { ...PREVIEW, transferId: 'tr-2', student: { id: 's-2', firstName: 'Kwame', lastName: 'Mensah' } }
+        : PREVIEW,
+    );
+    let finishReview: (v: { data: { id: string; recordBroughtOver: boolean }; refreshed: boolean }) => void = () =>
+      undefined;
+    review.mockImplementation(() => new Promise((r) => (finishReview = r)));
+    const layer = createRendererPresentation();
+    await layer.bootstrap.run();
+    const user = userEvent.setup({ delay: null });
+    render(
+      <PresentationProvider layer={layer}>
+        <Navigator to="id=tr-2" page={() => <ReviewTransferPage />} />
+      </PresentationProvider>,
+    );
+    await toDecide(user);
+    await user.click(button('Approve'));
+    await waitFor(() => expect(review).toHaveBeenCalledTimes(1));
+
+    await user.click(button('go'));
+    expect(await screen.findByRole('heading', { name: 'Review transfer — Kwame Mensah' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Review transfer — Ama Kofi' })).toBeNull();
+    await act(async () => {
+      finishReview({ data: { id: 'tr-1', recordBroughtOver: true }, refreshed: true });
+      await Promise.resolve();
+    });
+    await toDecide(user);
+    expect(screen.queryByText(/^Approved\./)).toBeNull();
+    // Still undecided: the Approve button is offered (tr-2 has no local row, so it waits for a placement).
+    expect(button('Approve')).toBeInTheDocument();
   });
 
   it('makes no call without an id', async () => {

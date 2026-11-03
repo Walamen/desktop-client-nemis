@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { PresentationProvider } from '@/lib/presentation/presentation-provider';
 import { createRendererPresentation } from '@/lib/presentation/create-renderer-presentation';
 import { mockSearch } from '@/test-utils/search-params';
+import { Navigator } from '@/test-utils/navigator';
 import { MatchPriorRecordPage } from './MatchPriorRecordPage';
 import { PriorRecordsToMatchCard } from './PriorRecordsToMatchCard';
 import { PriorRecordBanner } from './PriorRecordBanner';
@@ -171,6 +172,32 @@ describe('MatchPriorRecordPage address handling', () => {
     await waitFor(() => expect(carryOver.get).toHaveBeenCalledWith('co-2'));
     expect(await screen.findByRole('button', { name: 'Save matching' })).toBeInTheDocument();
     expect(screen.queryByText('Prior record matched.')).toBeNull();
+  });
+
+  it('an in-flight save for the old id does not mark the new record saved', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    carryOver.get!.mockImplementation(async (id: string) =>
+      id === 'co-2' ? { ...PREVIEW, id: 'co-2', student: { id: 's-2', firstName: 'Kwame', lastName: 'Mensah' } } : PREVIEW,
+    );
+    let finishSave: (v: unknown) => void = () => undefined;
+    carryOver.save!.mockImplementation(() => new Promise((r) => (finishSave = r)));
+    render(
+      <PresentationProvider layer={createRendererPresentation()}>
+        <Navigator to="id=co-2" page={() => <MatchPriorRecordPage />} />
+      </PresentationProvider>,
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Save matching' }));
+    await waitFor(() => expect(carryOver.save).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole('button', { name: 'go' }));
+    expect(await screen.findByRole('heading', { name: 'Match prior record — Kwame Mensah' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Match prior record — Ama Kofi' })).toBeNull();
+    await act(async () => {
+      finishSave({ data: null, refreshed: true });
+      await Promise.resolve();
+    });
+    expect(screen.queryByText('Prior record matched.')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Save matching' })).toBeEnabled();
+    expect(screen.getByLabelText('Mathematics')).toBeEnabled();
   });
 
   it('makes no call without an id', async () => {

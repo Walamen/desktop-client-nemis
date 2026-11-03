@@ -15,9 +15,15 @@ const CONFIRM = 'Save this matching? It cannot be changed afterwards.';
 
 /** Stage 5: the receiving school matches a transferred child's prior record
  * (the old school's grading periods and subjects) to its own columns, once.
- * Online only: the record lives on the server. */
+ * Online only: the record lives on the server. Keyed on the id, so a new
+ * `?id=` starts clean (no old record, error or saved state) and a save still
+ * in flight for the old id cannot mark the new one saved. */
 export function MatchPriorRecordPage() {
   const id = useQueryParam('id');
+  return <MatchPriorRecord key={id} id={id} />;
+}
+
+function MatchPriorRecord({ id }: { id: string }) {
   const connectivity = useConnectivityStore();
   const isOnline = useViewModel(connectivity.store, (s) => s.isOnline);
   const [preview, setPreview] = useState<CarryOverPreview | null>(null);
@@ -26,17 +32,6 @@ export function MatchPriorRecordPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
-
-  // A new id starts clean, even when it is empty: the old record, error and
-  // saved state must never show for it.
-  useEffect(() => {
-    setPreview(null);
-    setLoadError(null);
-    setMatching({ periods: {}, subjects: {} });
-    setSaving(false);
-    setSaveError(null);
-    setSaved(false);
-  }, [id]);
 
   useEffect(() => {
     if (!isOnline || !id) return;

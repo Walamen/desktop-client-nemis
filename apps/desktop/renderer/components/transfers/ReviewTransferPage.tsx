@@ -66,9 +66,16 @@ async function findLocalRow(id: string): Promise<LocalTransfer | null> {
 
 /** The receiving school looks over the child's current-year record at the
  * old school, optionally matches it to its own columns, then decides. Online
- * only: the record lives on the server. */
+ * only: the record lives on the server. Keyed on the id, so a new `?id=`
+ * starts clean (nothing of the previous record shows, seeding runs again) and
+ * an approve, reject or draft save still in flight for the old id cannot
+ * write its outcome into the new one. */
 export function ReviewTransferPage() {
   const id = useQueryParam('id');
+  return <ReviewTransfer key={id} id={id} />;
+}
+
+function ReviewTransfer({ id }: { id: string }) {
   const connectivity = useConnectivityStore();
   const isOnline = useViewModel(connectivity.store, (s) => s.isOnline);
   const [preview, setPreview] = useState<TransferRecordPreview | null>(null);
@@ -90,28 +97,6 @@ export function ReviewTransferPage() {
   const [refusedRow, setRefusedRow] = useState<LocalTransfer | null>(null);
   // The matching and grade are seeded once; a reload (the connection coming back) keeps the admin's edits.
   const seeded = useRef(false);
-
-  // A new id starts clean, even when it is empty: nothing of the previous
-  // record may show for it, and seeding runs again for the new one.
-  useEffect(() => {
-    seeded.current = false;
-    setPreview(null);
-    setRow(null);
-    setLoadError(null);
-    setRefusedRow(null);
-    setStep(1);
-    setMatching({ periods: {}, subjects: {} });
-    setSkipped(false);
-    setGrade('');
-    setTarget(EMPTY_TARGET);
-    setNotes('');
-    setRejecting(false);
-    setBusy(false);
-    setError(null);
-    setOutcome(null);
-    setHasDraft(false);
-    setSyncPending(false);
-  }, [id]);
 
   useEffect(() => {
     if (!isOnline || !id) return;
