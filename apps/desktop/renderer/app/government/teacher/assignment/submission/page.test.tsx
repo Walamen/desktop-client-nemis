@@ -20,7 +20,6 @@ const submissionRow = (assignmentId: string, studentId: string, studentName: str
 
 type Nemis = { assignment: { get: ReturnType<typeof vi.fn>; listSubmissions: ReturnType<typeof vi.fn> } };
 const nemis = () => (window as unknown as { nemis: Nemis }).nemis;
-const wrap = (ui: React.ReactNode) => <PresentationProvider layer={createRendererPresentation()}>{ui}</PresentationProvider>;
 
 beforeEach(() => {
   window.history.pushState({}, '', '/government/teacher/assignment/submission?assignmentId=a-1&studentId=s-1');
