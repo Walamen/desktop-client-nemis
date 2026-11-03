@@ -1,14 +1,20 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense } from 'react';
 import { AssignmentDetailPage } from '@/components/assignment/AssignmentDetailPage';
-import { queryId } from '@/components/teachers/shared';
+import { useQueryParam } from '@/hooks/use-query-param';
+
+function DetailRoute() {
+  const id = useQueryParam('id');
+  if (!id) return null;
+  // Keyed on the assignment: a different `?id=` starts the page afresh.
+  return <AssignmentDetailPage key={id} assignmentId={id} />;
+}
 
 export default function Page() {
-  const [id, setId] = useState('');
-  useEffect(() => {
-    setId(queryId());
-  }, []);
-  if (!id) return null;
-  return <AssignmentDetailPage assignmentId={id} />;
+  return (
+    <Suspense fallback={null}>
+      <DetailRoute />
+    </Suspense>
+  );
 }

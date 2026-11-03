@@ -172,3 +172,52 @@ describe('AssignmentsViewModel', () => {
     expect(vm.store.getState().submissions.status).toBe('error');
   });
 });
+
+describe('AssignmentsViewModel detail and submissions belong to one assignment', () => {
+  async function twoAssignments() {
+    const ctx = build();
+    const a = await ctx.vm.createAssignment(createDto);
+    const b = await ctx.vm.createAssignment({ ...createDto, title: 'Second' });
+    if (!a.ok || !b.ok) throw new Error('setup failed');
+    return { ...ctx, a: a.data.id, b: b.data.id };
+  }
+
+  it('drops the previous assignment detail at once and records whose it is', async () => {
+    const { vm, a, b } = await twoAssignments();
+    await vm.loadAssignment(a, 'staff-1');
+    expect(vm.store.getState().detailFor).toBe(a);
+    const pending = vm.loadAssignment(b, 'staff-1');
+    expect(vm.store.getState().detailFor).toBe(b);
+    expect(vm.store.getState().detail.status).toBe('loading');
+    await pending;
+    const detail = vm.store.getState().detail;
+    expect(detail.status === 'success' && detail.data.id).toBe(b);
+  });
+
+  it('ignores an earlier detail response that lands after the later one', async () => {
+    const { vm, a, b } = await twoAssignments();
+    const query = (vm as unknown as { getQuery: { execute: (i: { id: string; teacherId: string }) => Promise<unknown> } }).getQuery;
+    const real = query.execute.bind(query);
+    const releases: Record<string, () => void> = {};
+    query.execute = (input) => new Promise((resolve) => { releases[input.id] = () => resolve(real(input)); });
+    const first = vm.loadAssignment(a, 'staff-1');
+    const second = vm.loadAssignment(b, 'staff-1');
+    releases[b]!();
+    await second;
+    releases[a]!();
+    await first;
+    const detail = vm.store.getState().detail;
+    expect(vm.store.getState().detailFor).toBe(b);
+    expect(detail.status === 'success' && detail.data.id).toBe(b);
+  });
+
+  it('drops the previous assignment submissions at once and records whose they are', async () => {
+    const { vm, a, b } = await twoAssignments();
+    await vm.loadSubmissions(a, 'staff-1');
+    expect(vm.store.getState().submissionsFor).toBe(a);
+    const pending = vm.loadSubmissions(b, 'staff-1');
+    expect(vm.store.getState().submissionsFor).toBe(b);
+    expect(vm.store.getState().submissions.status).toBe('loading');
+    await pending;
+  });
+});

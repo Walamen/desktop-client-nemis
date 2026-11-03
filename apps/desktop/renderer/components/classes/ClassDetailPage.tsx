@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import type { StudentListItemResult } from '@nemis-desktop/types';
 import { GradeLevel, type GradeLevel as GradeLevelValue } from '@nemis-desktop/types';
@@ -7,12 +7,16 @@ import { Drawer, EmptyState, ErrorState, Input, Select, Skeleton } from '@nemis-
 import { formatNemisId } from '@nemis-desktop/shared';
 import { ArrowLeft, Users, BookOpen, UserCheck, Plus, Trash2, AlertTriangle } from 'lucide-react';
 import { useViewModel } from '@/hooks/use-view-model';
+import { useQueryParam } from '@/hooks/use-query-param';
 import { useAcademicFoundationViewModel, useTeachersListViewModel, useTeachingAssignmentViewModel } from '@/lib/presentation/hooks/school-admin';
 import { schoolAdminBridge } from '@/services/nemis-bridge/school-admin';
 import { ClassReportCardsPage } from '@/components/report-cards/ClassReportCardsPage';
-import { fetchAllPages, formatGrade, getClassTeacherRoster, queryId, type TeacherOnClass } from './shared';
+import { fetchAllPages, formatGrade, getClassTeacherRoster, type TeacherOnClass } from './shared';
 
 type Tab = 'students' | 'subjects' | 'reportCards' | 'settings';
+
+/** Shown for a class whose own data the shared view-model store has not loaded yet. */
+const LOADING_STATE = { status: 'loading' } as const;
 
 function StatChip({ label, value }: { label: string; value: number | string }) {
   return (
@@ -34,14 +38,21 @@ function StatChip({ label, value }: { label: string; value: number | string }) {
  * mutation, this domain ties one assignment to exactly one subject, so the
  * drawer here assigns one class-subject at a time (call it again for another). */
 export function ClassDetailPage() {
+  const id = useQueryParam('id');
+  // Keyed on the class: a different `?id=` starts the page afresh (tab,
+  // drawers, form fields, roster), as a new mount would.
+  return <ClassDetail key={id} id={id} />;
+}
+
+function ClassDetail({ id }: { id: string }) {
   const vm = useAcademicFoundationViewModel();
   const teachersVm = useTeachersListViewModel();
   const assignVm = useTeachingAssignmentViewModel();
-  const classSubjects = useViewModel(vm.store, (s) => s.classSubjects);
+  // The store is shared: another class's subjects are never shown for this one.
+  const classSubjects = useViewModel(vm.store, (s) => (s.classSubjectsFor === id ? s.classSubjects : LOADING_STATE));
   const subjects = useViewModel(vm.store, (s) => s.subjects);
   const teacherList = useViewModel(teachersVm.store, (s) => s.list);
 
-  const [id, setId] = useState('');
   const [activeTab, setActiveTab] = useState<Tab>('students');
   const [cls, setCls] = useState<{ id: string; name: string; gradeLevel: GradeLevelValue; section?: string; capacity?: number; isActive: boolean } | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -65,12 +76,17 @@ export function ClassDetailPage() {
   const [saving, setSaving] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  // False once this class's page is gone, so a late response cannot touch
+  // the shared stores or state on behalf of a class no longer shown.
+  const alive = useRef(true);
   useEffect(() => {
-    const value = queryId();
-    setId(value);
-    if (value) void loadClass(value);
+    alive.current = true;
+    if (id) void loadClass(id);
     void vm.loadSubjects();
     void teachersVm.loadTeachers();
+    return () => {
+      alive.current = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -79,6 +95,7 @@ export function ClassDetailPage() {
     const allClasses = await fetchAllPages((limit, offset) =>
       schoolAdminBridge.listClasses({ limit, offset, includeInactive: true }),
     );
+    if (!alive.current) return;
     const found = allClasses.find((c) => c.id === classId);
     if (!found) {
       setLoadError('Class not found.');
@@ -97,11 +114,12 @@ export function ClassDetailPage() {
     const items = await fetchAllPages((limit, offset) =>
       schoolAdminBridge.listStudents({ classId, enrollmentStatus: 'ACTIVE', limit, offset }),
     );
-    setStudents(items);
+    if (alive.current) setStudents(items);
   }
 
   async function refreshTeachers(classId: string) {
-    setTeachers(await getClassTeacherRoster(classId));
+    const roster = await getClassTeacherRoster(classId);
+    if (alive.current) setTeachers(roster);
   }
 
   const subjectsData = subjects.status === 'success' || subjects.status === 'refreshing' ? subjects.data : [];

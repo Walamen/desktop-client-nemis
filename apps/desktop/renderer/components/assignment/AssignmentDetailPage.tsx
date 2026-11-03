@@ -12,6 +12,7 @@ import { useAssignmentsViewModel } from '@/lib/presentation/hooks/teacher';
 import { assignmentBridge } from '@/services/nemis-bridge/teacher/assignment-bridge';
 import { SubmissionsTable } from './SubmissionsTable';
 import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
+import { LOADING_STATE } from './shared';
 
 const TYPE_LABELS: Record<string, string> = {
   HOMEWORK: 'Homework',
@@ -31,7 +32,7 @@ export function AssignmentDetailPage({ assignmentId }: { assignmentId: string })
   const assignmentsVm = useAssignmentsViewModel();
 
   const user = useViewModel(currentUser.store, (s) => s.user);
-  const detail = useViewModel(assignmentsVm.store, (s) => s.detail);
+  const detail = useViewModel(assignmentsVm.store, (s) => (s.detailFor === assignmentId ? s.detail : LOADING_STATE));
 
   const teacherId = user.status === 'success' ? user.data.id : undefined;
   const [activeTab, setActiveTab] = useState<'details' | 'submissions'>('details');

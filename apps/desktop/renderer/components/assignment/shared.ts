@@ -31,3 +31,7 @@ export function groupClassesWithSubjects(
   }
   return Array.from(byClass.values());
 }
+
+/** A not-yet-loaded query state: what a page shows for an assignment while the
+ * shared store still holds another assignment's record. */
+export const LOADING_STATE = { status: 'loading' } as const;

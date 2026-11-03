@@ -317,3 +317,37 @@ describe('AcademicFoundationViewModel.startAcademicYear', () => {
     await expect(vm.startAcademicYear('year-1')).rejects.toThrow();
   });
 });
+
+describe('AcademicFoundationViewModel.loadClassSubjects belongs to one class', () => {
+  function withClassSubjects(rowsFor: (classId: string) => Promise<unknown>) {
+    const academics = { listClassSubjects: vi.fn(async ({ classId }: { classId: string }) => ({ data: await rowsFor(classId) })) };
+    return new AcademicFoundationViewModel({ academics: academics as unknown as AcademicsApplicationService, notifications: new NotificationStore() });
+  }
+
+  it('drops the previous class rows at once and records whose they are', async () => {
+    let release: (v: unknown) => void = () => undefined;
+    const vm = withClassSubjects((id) => (id === 'a' ? Promise.resolve([{ id: 'sa' }]) : new Promise((r) => (release = r))));
+    await vm.loadClassSubjects('a');
+    expect(vm.store.getState().classSubjectsFor).toBe('a');
+    expect(vm.store.getState().classSubjects.status).toBe('success');
+    const pending = vm.loadClassSubjects('b');
+    expect(vm.store.getState().classSubjectsFor).toBe('b');
+    expect(vm.store.getState().classSubjects.status).toBe('loading');
+    release([{ id: 'sb' }]);
+    await pending;
+    expect(vm.store.getState().classSubjects).toMatchObject({ status: 'success', data: [{ id: 'sb' }] });
+  });
+
+  it('ignores an earlier class response that lands after the later one', async () => {
+    const releases: Record<string, (v: unknown) => void> = {};
+    const vm = withClassSubjects((id) => new Promise((r) => (releases[id] = r)));
+    const a = vm.loadClassSubjects('a');
+    const b = vm.loadClassSubjects('b');
+    releases.b?.([{ id: 'sb' }]);
+    await b;
+    releases.a?.([{ id: 'sa' }]);
+    await a;
+    expect(vm.store.getState().classSubjectsFor).toBe('b');
+    expect(vm.store.getState().classSubjects).toMatchObject({ status: 'success', data: [{ id: 'sb' }] });
+  });
+});

@@ -9,6 +9,7 @@ import { useViewModel } from '@/hooks/use-view-model';
 import { useCurrentUserViewModel } from '@/lib/presentation/hooks/shared';
 import { useAssignmentsViewModel } from '@/lib/presentation/hooks/teacher';
 import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
+import { LOADING_STATE } from './shared';
 
 interface RowState {
   grade: string;
@@ -28,7 +29,7 @@ export function SubmissionsTable({ assignmentId, totalMarks }: { assignmentId: s
   const currentUser = useCurrentUserViewModel();
   const assignmentsVm = useAssignmentsViewModel();
   const user = useViewModel(currentUser.store, (s) => s.user);
-  const submissions = useViewModel(assignmentsVm.store, (s) => s.submissions);
+  const submissions = useViewModel(assignmentsVm.store, (s) => (s.submissionsFor === assignmentId ? s.submissions : LOADING_STATE));
   const teacherId = user.status === 'success' ? user.data.id : undefined;
 
   useRevalidateOnSync(() => {

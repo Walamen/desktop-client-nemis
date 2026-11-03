@@ -44,6 +44,8 @@ export interface AcademicFoundationState {
   readonly yearClassesYearId: string;
   readonly subjects: AsyncState<readonly SubjectRowView[]>;
   readonly classSubjects: AsyncState<readonly ClassSubjectRowView[]>;
+  /** The class `classSubjects` belongs to ('' before any); consumers render the rows only for that class. */
+  readonly classSubjectsFor: string;
   readonly gradeLevels: AsyncState<readonly GradeLevelCountView[]>;
   readonly classPagination: PaginationState;
   readonly subjectPagination: PaginationState;
@@ -76,13 +78,15 @@ const subjectCount = (n: number): string => `${n} subject${n === 1 ? '' : 's'}`;
 export class AcademicFoundationViewModel {
   readonly store = createStore<AcademicFoundationState>(() => ({
     academicYears: idleState(), terms: idleState(), currentTerm: idleState(),
-    classes: idleState(), yearClasses: idleState(), yearClassesYearId: '', subjects: idleState(), classSubjects: idleState(), gradeLevels: idleState(),
+    classes: idleState(), yearClasses: idleState(), yearClassesYearId: '', subjects: idleState(), classSubjects: idleState(), classSubjectsFor: '', gradeLevels: idleState(),
     classPagination: createPagination(), subjectPagination: createPagination(),
     classFilters: {}, subjectFilters: {},
   }));
 
   /** Sequence of loadYearClasses calls: only the latest may write its result. */
   private yearClassesSeq = 0;
+  /** Sequence of loadClassSubjects calls: only the latest may write its result. */
+  private classSubjectsSeq = 0;
 
   constructor(private readonly deps: AcademicFoundationViewModelDeps) {}
 
@@ -163,8 +167,17 @@ export class AcademicFoundationViewModel {
   }
 
   async loadClassSubjects(classId: string): Promise<void> {
+    const seq = ++this.classSubjectsSeq;
+    // Another class's rows are dropped at once; a late response from an
+    // earlier call (seq no longer latest) is ignored.
+    if (this.store.getState().classSubjectsFor !== classId) {
+      this.store.setState({ classSubjects: idleState(), classSubjectsFor: classId });
+    }
     await trackQuery({
-      access: { get: () => this.store.getState().classSubjects, set: (classSubjects) => this.store.setState({ classSubjects }) },
+      access: {
+        get: () => this.store.getState().classSubjects,
+        set: (classSubjects) => { if (seq === this.classSubjectsSeq) this.store.setState({ classSubjects }); },
+      },
       fetch: () => this.deps.academics.listClassSubjects({ classId }), map: identity,
       isEmpty: (rows) => rows.length === 0,
     });

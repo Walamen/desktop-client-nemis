@@ -9,11 +9,6 @@ export const formatGrade = (v: string): string => v.replace('_', ' ').replace('G
 
 export const human = (v: string) => v.replaceAll('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
-export const queryId = () =>
-  typeof window === 'undefined'
-    ? ''
-    : (new URLSearchParams(window.location.search).get('id') ?? '');
-
 interface GradeGroup {
   label: string;
   grades: GradeLevelValue[];

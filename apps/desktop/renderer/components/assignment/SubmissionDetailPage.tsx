@@ -11,6 +11,7 @@ import { useCurrentUserViewModel } from '@/lib/presentation/hooks/shared';
 import { useAssignmentsViewModel } from '@/lib/presentation/hooks/teacher';
 import { assignmentBridge } from '@/services/nemis-bridge/teacher/assignment-bridge';
 import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
+import { LOADING_STATE } from './shared';
 
 const BADGE_VARIANT: Record<string, 'neutral' | 'primary' | 'success' | 'warning'> = {
   Pending: 'neutral',
@@ -24,8 +25,8 @@ export function SubmissionDetailPage({ assignmentId, studentId }: { assignmentId
   const assignmentsVm = useAssignmentsViewModel();
 
   const user = useViewModel(currentUser.store, (s) => s.user);
-  const detail = useViewModel(assignmentsVm.store, (s) => s.detail);
-  const submissions = useViewModel(assignmentsVm.store, (s) => s.submissions);
+  const detail = useViewModel(assignmentsVm.store, (s) => (s.detailFor === assignmentId ? s.detail : LOADING_STATE));
+  const submissions = useViewModel(assignmentsVm.store, (s) => (s.submissionsFor === assignmentId ? s.submissions : LOADING_STATE));
 
   const teacherId = user.status === 'success' ? user.data.id : undefined;
 

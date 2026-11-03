@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   ArrowLeft, Award, BookOpen, Calendar, ClipboardCheck, GraduationCap, Users,
@@ -11,9 +11,10 @@ import { Button, EmptyState, Skeleton, Spinner } from '@nemis-desktop/ui';
 import { useCurrentUserViewModel } from '@/lib/presentation/hooks/shared';
 import { useTeachingAssignmentViewModel } from '@/lib/presentation/hooks/school-admin';
 import { useViewModel } from '@/hooks/use-view-model';
+import { useQueryParam } from '@/hooks/use-query-param';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
 import { studentBridge } from '@/services/nemis-bridge/school-admin/student-bridge';
-import { genderBadgeClass, genderLabel, human, queryId } from '@/components/teachers/shared';
+import { genderBadgeClass, genderLabel, human } from '@/components/teachers/shared';
 import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 import { ClassReportCardsPage } from '@/components/report-cards/ClassReportCardsPage';
 
@@ -38,13 +39,28 @@ function todayIso(): string {
  * leaking another teacher's roster).
  *
  * Follows the desktop convention of a static route + `?id=` query param
- * (see components/teachers/shared.tsx `queryId()`) rather than a Next.js
+ * (read with `useQueryParam('id')`, see hooks/use-query-param.ts) rather than a Next.js
  * `[id]` dynamic segment, matching school-admin/classes/detail.
  *
  * The web page's "Attendance Rate" stat is a hardcoded 95% for every class;
  * here it's computed from today's actual attendance records (or reported as
  * not-yet-recorded) rather than carrying the placeholder over. */
 export default function ClassDetailPage() {
+  return (
+    <Suspense fallback={null}>
+      <ClassDetailRoute />
+    </Suspense>
+  );
+}
+
+function ClassDetailRoute() {
+  const classId = useQueryParam('id');
+  // Keyed on the class: a different `?id=` starts the page afresh (roster,
+  // attendance rate), as a new mount would.
+  return <ClassDetail key={classId} classId={classId} />;
+}
+
+function ClassDetail({ classId }: { classId: string }) {
   const currentUser = useCurrentUserViewModel();
   const teachingAssignments = useTeachingAssignmentViewModel();
 
@@ -52,11 +68,6 @@ export default function ClassDetailPage() {
   const assignments = useViewModel(teachingAssignments.store, (s) => s.assignments);
 
   const userId = user.status === 'success' ? user.data.id : undefined;
-  const [classId, setClassId] = useState('');
-
-  useEffect(() => {
-    setClassId(queryId());
-  }, []);
 
   // The signed-in identity (`userId`, the `users` table) and the id every
   // teaching-assignment record is keyed by (`staff.id`) are different id

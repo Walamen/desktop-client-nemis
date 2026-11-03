@@ -1,14 +1,20 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense } from 'react';
 import { AssignmentForm } from '@/components/assignment/AssignmentForm';
-import { queryId } from '@/components/teachers/shared';
+import { useQueryParam } from '@/hooks/use-query-param';
+
+function EditRoute() {
+  const id = useQueryParam('id');
+  if (!id) return null;
+  // Keyed on the assignment: a different `?id=` re-seeds the form afresh.
+  return <AssignmentForm key={id} mode="edit" assignmentId={id} />;
+}
 
 export default function Page() {
-  const [id, setId] = useState('');
-  useEffect(() => {
-    setId(queryId());
-  }, []);
-  if (!id) return null;
-  return <AssignmentForm mode="edit" assignmentId={id} />;
+  return (
+    <Suspense fallback={null}>
+      <EditRoute />
+    </Suspense>
+  );
 }

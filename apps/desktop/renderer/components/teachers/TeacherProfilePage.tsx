@@ -12,12 +12,13 @@ import {
   Phone,
 } from 'lucide-react';
 import { useViewModel } from '@/hooks/use-view-model';
+import { useQueryParam } from '@/hooks/use-query-param';
 import {
   useAcademicFoundationViewModel,
   useTeacherProfileViewModel,
   useTeachingAssignmentViewModel,
 } from '@/lib/presentation/hooks/school-admin';
-import { human, queryId, rows } from './shared';
+import { human, rows } from './shared';
 
 function DetailRow({
   icon,
@@ -45,26 +46,34 @@ function DetailRow({
  * band, back link, Contact/Employment cards with icons, assignments table,
  * honest empty-state placeholders for phases not yet built). */
 export function TeacherProfilePage() {
+  const id = useQueryParam('id');
+  // Keyed on the teacher: a different `?id=` starts the page afresh (form
+  // fields, open modal), as a new mount would.
+  return <TeacherProfile key={id} id={id} />;
+}
+
+/** Shown for a teacher whose own data the shared view-model store has not loaded yet. */
+const LOADING_STATE = { status: 'loading' } as const;
+
+function TeacherProfile({ id }: { id: string }) {
   const profileVm = useTeacherProfileViewModel();
   const assignVm = useTeachingAssignmentViewModel();
   const foundation = useAcademicFoundationViewModel();
-  const state = useViewModel(profileVm.store, (s) => s.profile);
-  const assignments = useViewModel(assignVm.store, (s) => s.assignments);
+  // The stores are shared: another teacher's record is never shown for this one.
+  const state = useViewModel(profileVm.store, (s) => (s.profileFor === id ? s.profile : LOADING_STATE));
+  const assignments = useViewModel(assignVm.store, (s) => (s.assignmentsFor === id ? s.assignments : LOADING_STATE));
   const classes = useViewModel(foundation.store, (s) => s.classes);
   const subjects = useViewModel(foundation.store, (s) => s.subjects);
 
-  const [id, setId] = useState('');
   const [open, setOpen] = useState(false);
   const [classId, setClassId] = useState('');
   const [subjectId, setSubjectId] = useState('');
   const [homeroom, setHomeroom] = useState(false);
 
   useEffect(() => {
-    const value = queryId();
-    setId(value);
-    if (value) {
-      void profileVm.loadProfile(value);
-      void assignVm.load(value);
+    if (id) {
+      void profileVm.loadProfile(id);
+      void assignVm.load(id);
     }
     void foundation.loadClasses();
     void foundation.loadSubjects();

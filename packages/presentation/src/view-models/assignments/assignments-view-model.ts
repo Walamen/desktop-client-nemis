@@ -39,6 +39,9 @@ export interface AssignmentsState {
   readonly list: AsyncState<readonly AssignmentRowView[]>;
   readonly detail: AsyncState<AssignmentDetailView>;
   readonly submissions: AsyncState<readonly AssignmentSubmissionRowView[]>;
+  /** The assignment `detail` / `submissions` belong to (null before any); consumers render them only for that assignment. */
+  readonly detailFor: string | null;
+  readonly submissionsFor: string | null;
   /** Named to avoid colliding with "submission" the domain noun (a
    * student's assignment submission) — this is the generic
    * create/update/delete/grade command-in-flight lifecycle. */
@@ -56,8 +59,13 @@ export class AssignmentsViewModel {
     list: idleState(),
     detail: idleState(),
     submissions: idleState(),
+    detailFor: null,
+    submissionsFor: null,
     mutationStatus: 'idle',
   }));
+
+  private detailSeq = 0;
+  private submissionsSeq = 0;
 
   private readonly listQuery: ListAssignmentsUiQuery;
   private readonly getQuery: GetAssignmentUiQuery;
@@ -96,10 +104,16 @@ export class AssignmentsViewModel {
   }
 
   async loadAssignment(id: string, teacherId: string): Promise<void> {
+    const seq = ++this.detailSeq;
+    // Another assignment's detail is dropped at once; a late response from an
+    // earlier call (seq no longer latest) is ignored.
+    if (this.store.getState().detailFor !== id) {
+      this.store.setState({ detail: idleState(), detailFor: id });
+    }
     await trackQuery({
       access: {
         get: () => this.store.getState().detail,
-        set: (detail) => this.store.setState({ detail }),
+        set: (detail) => { if (seq === this.detailSeq) this.store.setState({ detail }); },
       },
       fetch: () => this.getQuery.execute({ id, teacherId }),
       map: toAssignmentDetailView,
@@ -107,10 +121,14 @@ export class AssignmentsViewModel {
   }
 
   async loadSubmissions(assignmentId: string, teacherId: string): Promise<void> {
+    const seq = ++this.submissionsSeq;
+    if (this.store.getState().submissionsFor !== assignmentId) {
+      this.store.setState({ submissions: idleState(), submissionsFor: assignmentId });
+    }
     await trackQuery({
       access: {
         get: () => this.store.getState().submissions,
-        set: (submissions) => this.store.setState({ submissions }),
+        set: (submissions) => { if (seq === this.submissionsSeq) this.store.setState({ submissions }); },
       },
       fetch: () => this.listSubmissionsQuery.execute({ assignmentId, teacherId }),
       map: (rows) => rows.map(toAssignmentSubmissionRowView),

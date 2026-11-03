@@ -17,16 +17,20 @@ export interface TeacherProfileView extends TeacherProfileResult { fullName: str
 export interface TeachersState {
   list: AsyncState<readonly TeacherRowView[]>; profile: AsyncState<TeacherProfileView>;
   assignments: AsyncState<readonly TeachingAssignmentResult[]>; dashboard: AsyncState<TeacherDashboardResult>;
+  /** The teacher `profile` / `assignments` belong to (null before any); consumers render them only for that teacher. */
+  profileFor: string | null; assignmentsFor: string | null;
   pagination: PaginationState; search: SearchState; filters: Omit<ListTeachersDto,'limit'|'offset'>;
 }
 const row=(v:TeacherResult):TeacherRowView=>({...v,fullName:[v.firstName,v.middleName,v.lastName].filter(Boolean).join(' ')});
 const profile=(v:TeacherProfileResult):TeacherProfileView=>({...v,fullName:[v.firstName,v.middleName,v.lastName].filter(Boolean).join(' ')});
 export class TeachersViewModel {
-  readonly store=createStore<TeachersState>(()=>({list:idleState(),profile:idleState(),assignments:idleState(),dashboard:idleState(),pagination:createPagination(),search:createSearch(),filters:{isActive:true}}));
+  readonly store=createStore<TeachersState>(()=>({list:idleState(),profile:idleState(),assignments:idleState(),dashboard:idleState(),profileFor:null,assignmentsFor:null,pagination:createPagination(),search:createSearch(),filters:{isActive:true}}));
   constructor(private readonly deps:{teachers:TeacherApplicationService;notifications:NotificationStore}){}
   async loadTeachers():Promise<void>{await trackQuery({access:{get:()=>this.store.getState().list,set:list=>this.store.setState({list})},fetch:()=>this.deps.teachers.list({...this.store.getState().filters,...toPageRequest(this.store.getState().pagination)}),map:p=>p.items.map(row),onData:p=>this.store.setState(s=>({pagination:withTotal(s.pagination,p.total)})),isEmpty:r=>r.length===0});}
-  async loadProfile(id:string):Promise<void>{await trackQuery({access:{get:()=>this.store.getState().profile,set:profile=>this.store.setState({profile})},fetch:()=>this.deps.teachers.getProfile(id),map:profile});}
-  async loadAssignments(id:string,options?:{activeYearOnly?:boolean}):Promise<void>{await trackQuery({access:{get:()=>this.store.getState().assignments,set:assignments=>this.store.setState({assignments})},fetch:()=>this.deps.teachers.getAssignments(id,options),map:v=>v,isEmpty:v=>v.length===0});}
+  private profileSeq=0;
+  private assignmentsSeq=0;
+  async loadProfile(id:string):Promise<void>{const seq=++this.profileSeq;if(this.store.getState().profileFor!==id)this.store.setState({profile:idleState(),profileFor:id});await trackQuery({access:{get:()=>this.store.getState().profile,set:profile=>{if(seq===this.profileSeq)this.store.setState({profile});}},fetch:()=>this.deps.teachers.getProfile(id),map:profile});}
+  async loadAssignments(id:string,options?:{activeYearOnly?:boolean}):Promise<void>{const seq=++this.assignmentsSeq;if(this.store.getState().assignmentsFor!==id)this.store.setState({assignments:idleState(),assignmentsFor:id});await trackQuery({access:{get:()=>this.store.getState().assignments,set:assignments=>{if(seq===this.assignmentsSeq)this.store.setState({assignments});}},fetch:()=>this.deps.teachers.getAssignments(id,options),map:v=>v,isEmpty:v=>v.length===0});}
   async loadDashboard():Promise<void>{await trackQuery({access:{get:()=>this.store.getState().dashboard,set:dashboard=>this.store.setState({dashboard})},fetch:()=>this.deps.teachers.dashboard(),map:v=>v});}
   setKeyword(keyword:string):void{this.store.setState(s=>({search:withKeyword(s.search,keyword),filters:{...s.filters,keyword},pagination:{...s.pagination,page:1}}));}
   setFilters(filters:Omit<ListTeachersDto,'limit'|'offset'>):void{this.store.setState(s=>({filters,pagination:{...s.pagination,page:1}}));}

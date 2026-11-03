@@ -12,7 +12,7 @@ import { useAssignmentsViewModel } from '@/lib/presentation/hooks/teacher';
 import { assignmentBridge } from '@/services/nemis-bridge/teacher/assignment-bridge';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
 import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
-import { groupClassesWithSubjects } from './shared';
+import { groupClassesWithSubjects, LOADING_STATE } from './shared';
 
 const ASSIGNMENT_TYPES: { value: AssignmentType; label: string }[] = [
   { value: AssignmentType.HOMEWORK, label: 'Homework' },
@@ -70,7 +70,7 @@ export function AssignmentForm({ mode, assignmentId }: AssignmentFormProps) {
 
   const user = useViewModel(currentUser.store, (s) => s.user);
   const teachingRows = useViewModel(teachingAssignments.store, (s) => s.assignments);
-  const detail = useViewModel(assignmentsVm.store, (s) => s.detail);
+  const detail = useViewModel(assignmentsVm.store, (s) => (s.detailFor === assignmentId ? s.detail : LOADING_STATE));
 
   const teacherId = user.status === 'success' ? user.data.id : undefined;
 

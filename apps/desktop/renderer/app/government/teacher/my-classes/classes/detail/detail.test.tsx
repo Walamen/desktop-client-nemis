@@ -1,8 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { PresentationProvider } from '@/lib/presentation/presentation-provider';
 import { createRendererPresentation } from '@/lib/presentation/create-renderer-presentation';
+import { mockSearch } from '@/test-utils/search-params';
+import { Navigator } from '@/test-utils/navigator';
 import ClassDetailPage from './page';
+
+vi.mock('next/navigation', async () => (await import('@/test-utils/search-params')).navigationMock);
 
 // Regression coverage: this page passed the signed-in identity (`users.id`)
 // straight to TEACHER_LIST_ASSIGNMENTS, which requires the caller's
@@ -48,6 +52,7 @@ function installBaseMock() {
 }
 
 beforeEach(() => {
+  mockSearch('id=class-1');
   window.history.replaceState({}, '', '/government/teacher/my-classes/classes/detail?id=class-1');
 });
 
@@ -110,5 +115,68 @@ describe('Teacher class detail page', () => {
     expect(nemis.reportCards!.listForClass).toHaveBeenCalledWith('class-1');
     expect(nemis.reportCards!.listArchivedYears).toBeUndefined();
     expect(nemis.schoolAdmin!.list).not.toHaveBeenCalledWith(expect.objectContaining({ collection: 'report_cards' }));
+  });
+
+  it("loads the class named by its own address, not the previous page's", async () => {
+    const nemis = installBaseMock() as unknown as { student: { list: ReturnType<typeof vi.fn> }; attendance: { list: ReturnType<typeof vi.fn> } };
+    window.history.pushState({}, '', '/government/teacher/my-classes?id=stale');
+    mockSearch('id=class-1');
+    const layer = createRendererPresentation();
+    await layer.bootstrap.run();
+    render(
+      <PresentationProvider layer={layer}>
+        <ClassDetailPage />
+      </PresentationProvider>,
+    );
+    expect(await screen.findByText('Grade 10A')).toBeInTheDocument();
+    await waitFor(() => expect(nemis.student.list).toHaveBeenCalledWith(expect.objectContaining({ classId: 'class-1' })));
+    expect(nemis.student.list).not.toHaveBeenCalledWith(expect.objectContaining({ classId: 'stale' }));
+    expect(nemis.attendance.list).not.toHaveBeenCalledWith(expect.objectContaining({ classId: 'stale' }));
+  });
+
+  it('follows a changed id: shows the new class and roster, and none of the old', async () => {
+    const nemis = installBaseMock() as unknown as {
+      teacher: { listAssignments: ReturnType<typeof vi.fn> };
+      student: { list: ReturnType<typeof vi.fn> };
+    };
+    const row = (classId: string, className: string) => ({
+      id: 'a-' + classId, teacherId: STAFF_ID, institutionId: 'inst-1', academicYearId: 'ay-1', academicYearName: '2025/2026',
+      classId, className, gradeLevel: 'GRADE_10', subjectId: 'sub-1', subjectName: 'Mathematics', isClassTeacher: false, assignedAt: '2025-01-01T00:00:00.000Z',
+    });
+    nemis.teacher.listAssignments.mockImplementation(async () => [row('class-1', 'Grade 10A'), row('class-2', 'Grade 10B')]);
+    nemis.student.list.mockImplementation(async (r: { classId: string }) => ({
+      items: [{ id: 's-' + r.classId, fullName: r.classId === 'class-1' ? 'Alpha Pupil' : 'Beta Pupil', gender: 'FEMALE', isActive: true }],
+      total: 1, limit: 200, offset: 0,
+    }));
+    const layer = createRendererPresentation();
+    await layer.bootstrap.run();
+    render(
+      <PresentationProvider layer={layer}>
+        <Navigator to="id=class-2" page={() => <ClassDetailPage />} />
+      </PresentationProvider>,
+    );
+    expect(await screen.findByText('Grade 10A')).toBeInTheDocument();
+    expect(await screen.findByText('Alpha Pupil')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'go' }));
+    expect(await screen.findByText('Grade 10B')).toBeInTheDocument();
+    expect(screen.queryByText('Grade 10A')).toBeNull();
+    expect(await screen.findByText('Beta Pupil')).toBeInTheDocument();
+    expect(screen.queryByText('Alpha Pupil')).toBeNull();
+  });
+
+  it('makes no roster or attendance call without an id', async () => {
+    const nemis = installBaseMock() as unknown as { student: { list: ReturnType<typeof vi.fn> }; attendance: { list: ReturnType<typeof vi.fn> } };
+    window.history.pushState({}, '', '/government/teacher/my-classes/classes/detail');
+    mockSearch('');
+    const layer = createRendererPresentation();
+    await layer.bootstrap.run();
+    render(
+      <PresentationProvider layer={layer}>
+        <ClassDetailPage />
+      </PresentationProvider>,
+    );
+    await new Promise((r) => setTimeout(r, 50));
+    expect(nemis.student.list).not.toHaveBeenCalled();
+    expect(nemis.attendance.list).not.toHaveBeenCalled();
   });
 });

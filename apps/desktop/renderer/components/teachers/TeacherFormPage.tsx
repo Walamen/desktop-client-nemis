@@ -13,8 +13,9 @@ import {
 import { Button, Input, Select } from '@nemis-desktop/ui';
 import { ArrowLeft, Briefcase, Phone, User } from 'lucide-react';
 import { useViewModel } from '@/hooks/use-view-model';
+import { useQueryParam } from '@/hooks/use-query-param';
 import { useSettingsViewModel, useTeacherProfileViewModel, useTeachersListViewModel } from '@/lib/presentation/hooks/school-admin';
-import { human, queryId } from './shared';
+import { human } from './shared';
 
 function SectionCard({
   title,
@@ -40,6 +41,13 @@ function SectionCard({
  * (dark header band, sectioned cards, primary/secondary action pair) while
  * keeping the desktop's real offline create/update flow unchanged. */
 export function TeacherFormPage({ edit = false }: { edit?: boolean }) {
+  const id = useQueryParam('id');
+  // Keyed on the teacher: a different `?id=` starts the form afresh (fields,
+  // saving flag), as a new mount would.
+  return <TeacherForm key={id} id={id} edit={edit} />;
+}
+
+function TeacherForm({ id, edit }: { id: string; edit: boolean }) {
   const router = useRouter();
   const list = useTeachersListViewModel();
   const profileVm = useTeacherProfileViewModel();
@@ -47,7 +55,6 @@ export function TeacherFormPage({ edit = false }: { edit?: boolean }) {
   const school = useViewModel(settings.store, (s) => s.profile);
   const profileState = useViewModel(profileVm.store, (s) => s.profile);
 
-  const [id, setId] = useState('');
   const [first, setFirst] = useState('');
   const [middle, setMiddle] = useState('');
   const [last, setLast] = useState('');
@@ -65,14 +72,13 @@ export function TeacherFormPage({ edit = false }: { edit?: boolean }) {
 
   useEffect(() => {
     void settings.loadCurrentSchool();
-    const value = queryId();
-    setId(value);
-    if (edit && value) void profileVm.loadProfile(value);
+    if (edit && id) void profileVm.loadProfile(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    if (edit && (profileState.status === 'success' || profileState.status === 'refreshing')) {
+    // The profile store is shared: seed only from this teacher's own record.
+    if (edit && (profileState.status === 'success' || profileState.status === 'refreshing') && profileState.data.id === id) {
       const d = profileState.data;
       setFirst(d.firstName);
       setMiddle(d.middleName ?? '');
@@ -88,7 +94,7 @@ export function TeacherFormPage({ edit = false }: { edit?: boolean }) {
       setJoining(d.dateOfJoining.slice(0, 10));
       setQualification(typeof d.qualifications?.summary === 'string' ? d.qualifications.summary : '');
     }
-  }, [edit, profileState]);
+  }, [edit, id, profileState]);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();

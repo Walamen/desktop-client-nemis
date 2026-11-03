@@ -1,13 +1,6 @@
 export const human = (v: string) =>
   v.replaceAll('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
-export const queryId = () => queryParam('id');
-
-export const queryParam = (name: string) =>
-  typeof window === 'undefined'
-    ? ''
-    : (new URLSearchParams(window.location.search).get(name) ?? '');
-
 export function rows<T>(state: { status: string; data?: readonly T[] }): readonly T[] {
   return state.status === 'success' || state.status === 'refreshing' ? state.data ?? [] : [];
 }
