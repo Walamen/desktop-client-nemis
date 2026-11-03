@@ -4,14 +4,12 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { CarryOverMatching, CarryOverPreview } from '@nemis-desktop/types';
 import { Button, ErrorState, Skeleton } from '@nemis-desktop/ui';
+import { useQueryParam } from '@/hooks/use-query-param';
 import { useViewModel } from '@/hooks/use-view-model';
 import { useConnectivityStore } from '@/lib/presentation/hooks/shared';
 import { parseIpcError } from '@/lib/errors/parseIpcError';
 import { MatchingFields } from './MatchingFields';
 import { carryOverBridge } from '@/services/nemis-bridge/school-admin/carry-over-bridge';
-
-const queryId = () =>
-  typeof window === 'undefined' ? '' : (new URLSearchParams(window.location.search).get('id') ?? '');
 
 const CONFIRM = 'Save this matching? It cannot be changed afterwards.';
 
@@ -19,7 +17,7 @@ const CONFIRM = 'Save this matching? It cannot be changed afterwards.';
  * (the old school's grading periods and subjects) to its own columns, once.
  * Online only: the record lives on the server. */
 export function MatchPriorRecordPage() {
-  const id = queryId();
+  const id = useQueryParam('id');
   const connectivity = useConnectivityStore();
   const isOnline = useViewModel(connectivity.store, (s) => s.isOnline);
   const [preview, setPreview] = useState<CarryOverPreview | null>(null);
@@ -32,6 +30,9 @@ export function MatchPriorRecordPage() {
   useEffect(() => {
     if (!isOnline || !id) return;
     let cancelled = false;
+    // A new id starts clean: an old error or record must not hide it.
+    setLoadError(null);
+    setPreview(null);
     carryOverBridge
       .getCarryOver(id)
       .then((p) => {

@@ -2,9 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { PresentationProvider } from '@/lib/presentation/presentation-provider';
 import { createRendererPresentation } from '@/lib/presentation/create-renderer-presentation';
+import { mockSearch } from '@/test-utils/search-params';
 import { MatchPriorRecordPage } from './MatchPriorRecordPage';
 import { PriorRecordsToMatchCard } from './PriorRecordsToMatchCard';
 import { PriorRecordBanner } from './PriorRecordBanner';
+
+vi.mock('next/navigation', async () => (await import('@/test-utils/search-params')).navigationMock);
 
 const PREVIEW = {
   id: 'co-1',
@@ -26,6 +29,7 @@ let carryOver: Record<string, ReturnType<typeof vi.fn>>;
 
 beforeEach(() => {
   window.history.pushState({}, '', '/government/school-admin/students/match-prior-record?id=co-1');
+  mockSearch('id=co-1');
   carryOver = {
     get: vi.fn(async () => PREVIEW),
     save: vi.fn(async () => ({ data: null, refreshed: true })),
@@ -105,6 +109,56 @@ describe('MatchPriorRecordPage', () => {
   it('offline: shows the note and does not load', async () => {
     await renderWith(<MatchPriorRecordPage />, { online: false });
     expect(await screen.findByText('Matching a prior record needs a connection.')).toBeInTheDocument();
+    expect(carryOver.get).not.toHaveBeenCalled();
+  });
+});
+
+describe('MatchPriorRecordPage address handling', () => {
+  it("loads the carry-over named by its own address, not the previous page's", async () => {
+    window.history.pushState({}, '', '/government/school-admin/students/profile?id=student-1');
+    mockSearch('id=co-1');
+    await renderWith(<MatchPriorRecordPage />);
+    expect(await screen.findByRole('heading', { name: 'Match prior record — Ama Kofi' })).toBeInTheDocument();
+    expect(carryOver.get).toHaveBeenCalledWith('co-1');
+    expect(carryOver.get).not.toHaveBeenCalledWith('student-1');
+  });
+
+  it('follows a changed id', async () => {
+    const layer = createRendererPresentation();
+    // A fresh element each time: React skips re-rendering an identical one.
+    const ui = () => (
+      <PresentationProvider layer={layer}>
+        <MatchPriorRecordPage />
+      </PresentationProvider>
+    );
+    const { rerender } = render(ui());
+    await waitFor(() => expect(carryOver.get).toHaveBeenCalledWith('co-1'));
+    mockSearch('id=co-2');
+    rerender(ui());
+    await waitFor(() => expect(carryOver.get).toHaveBeenCalledWith('co-2'));
+  });
+
+  it('shows no old error behind a corrected id', async () => {
+    carryOver.get!.mockRejectedValueOnce(new Error('[REMOTE_REJECTED] Not found.'));
+    const layer = createRendererPresentation();
+    // A fresh element each time: React skips re-rendering an identical one.
+    const ui = () => (
+      <PresentationProvider layer={layer}>
+        <MatchPriorRecordPage />
+      </PresentationProvider>
+    );
+    const { rerender } = render(ui());
+    expect(await screen.findByText('Not found.')).toBeInTheDocument();
+    mockSearch('id=co-2');
+    rerender(ui());
+    expect(await screen.findByRole('heading', { name: 'Match prior record — Ama Kofi' })).toBeInTheDocument();
+    expect(screen.queryByText('Not found.')).toBeNull();
+  });
+
+  it('makes no call without an id', async () => {
+    mockSearch('');
+    await renderWith(<MatchPriorRecordPage />);
+    await new Promise((r) => setTimeout(r, 20));
     expect(carryOver.get).not.toHaveBeenCalled();
   });
 });

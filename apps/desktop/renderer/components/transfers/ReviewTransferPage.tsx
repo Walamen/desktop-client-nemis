@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { CarryOverMatching, GradeLevel, TransferMatchingRows, TransferRecordPreview } from '@nemis-desktop/types';
 import { Button, Skeleton } from '@nemis-desktop/ui';
+import { useQueryParam } from '@/hooks/use-query-param';
 import { useViewModel } from '@/hooks/use-view-model';
 import { useConnectivityStore } from '@/lib/presentation/hooks/shared';
 import { parseIpcError } from '@/lib/errors/parseIpcError';
@@ -15,9 +16,6 @@ import { human } from '../students/shared';
 import { isClassTermComplete, type ClassTermValue } from '../students/add-student/ClassTermPicker';
 import { MatchingFields } from './MatchingFields';
 import { EMPTY_TARGET, NotesField, PlacementFields, RejectForm, withNotes } from './TransferActionForms';
-
-const queryId = () =>
-  typeof window === 'undefined' ? '' : (new URLSearchParams(window.location.search).get('id') ?? '');
 
 const INBOX = '/government/school-admin/students/inter-school-transfer';
 const BROUGHT_OVER = 'Approved. The record has been brought over.';
@@ -70,7 +68,7 @@ async function findLocalRow(id: string): Promise<LocalTransfer | null> {
  * old school, optionally matches it to its own columns, then decides. Online
  * only: the record lives on the server. */
 export function ReviewTransferPage() {
-  const id = queryId();
+  const id = useQueryParam('id');
   const connectivity = useConnectivityStore();
   const isOnline = useViewModel(connectivity.store, (s) => s.isOnline);
   const [preview, setPreview] = useState<TransferRecordPreview | null>(null);

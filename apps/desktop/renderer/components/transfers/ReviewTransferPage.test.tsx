@@ -6,7 +6,10 @@ import { PresentationProvider } from '@/lib/presentation/presentation-provider';
 import { createRendererPresentation } from '@/lib/presentation/create-renderer-presentation';
 import { onTransfersChanged } from '@/lib/transfers';
 import { payloadFixture } from '../report-cards/fixtures';
+import { mockSearch } from '@/test-utils/search-params';
 import { ReviewTransferPage } from './ReviewTransferPage';
+
+vi.mock('next/navigation', async () => (await import('@/test-utils/search-params')).navigationMock);
 
 vi.setConfig({ testTimeout: 20_000 });
 
@@ -87,6 +90,7 @@ function stub(opts: { preview?: Partial<TransferRecordPreview>; row?: Record<str
 
 beforeEach(() => {
   window.history.pushState({}, '', '/government/school-admin/students/inter-school-transfer/review?id=tr-1');
+  mockSearch('id=tr-1');
 });
 afterEach(() => {
   delete (window as unknown as { nemis?: unknown }).nemis;
@@ -122,6 +126,24 @@ function selectNear(labelPattern: RegExp): HTMLSelectElement {
 }
 
 describe('ReviewTransferPage', () => {
+  it("loads the transfer named by its own address, not the previous page's", async () => {
+    const { recordPreview } = stub();
+    window.history.pushState({}, '', '/government/school-admin/students/profile?id=student-1');
+    mockSearch('id=tr-1');
+    await renderPage();
+    expect(await screen.findByRole('heading', { name: 'Review transfer — Ama Kofi' })).toBeInTheDocument();
+    expect(recordPreview).toHaveBeenCalledWith('tr-1');
+    expect(recordPreview).not.toHaveBeenCalledWith('student-1');
+  });
+
+  it('makes no call without an id', async () => {
+    const { recordPreview } = stub();
+    mockSearch('');
+    await renderPage();
+    await new Promise((r) => setTimeout(r, 20));
+    expect(recordPreview).not.toHaveBeenCalled();
+  });
+
   it('step 1 shows the heading, where the child is now, the cards and the attendance', async () => {
     stub();
     await renderPage();
