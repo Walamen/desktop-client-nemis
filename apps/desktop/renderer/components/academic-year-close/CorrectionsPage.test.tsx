@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { clearNemis, renderWithLayer, stubNemis, yearRow } from '@/components/academic-grading/setup-test-support';
 import { mockSearch } from '@/test-utils/search-params';
+import { Navigator } from '@/test-utils/navigator';
 import { payloadFixture, summaryFixture } from '@/components/report-cards/fixtures';
 
 const push = vi.fn();
@@ -21,18 +22,6 @@ vi.mock('@/lib/presentation/hooks/shared', async (orig) => {
 });
 
 import { CorrectionsPage } from './CorrectionsPage';
-import { useState } from 'react';
-
-/** Re-renders the page after the address changes, inside the test's provider. */
-function Navigator() {
-  const [, bump] = useState(0);
-  return (
-    <>
-      <button type="button" onClick={() => { mockSearch('yearId=y2'); bump((n) => n + 1); }}>go y2</button>
-      <CorrectionsPage />
-    </>
-  );
-}
 
 const REASON = 'Reason for this correction';
 const student = (over: Record<string, unknown> = {}) => ({
@@ -165,7 +154,6 @@ describe('CorrectionsPage', () => {
     stub();
     window.history.pushState({}, '', '/government/school-admin/academic-years/corrections?yearId=nope');
     mockSearch('yearId=nope');
-    mockSearch('yearId=nope');
     await renderWithLayer(<CorrectionsPage />);
     expect(await screen.findByText('Corrections are only available for a reopened year.')).toBeInTheDocument();
   });
@@ -239,7 +227,7 @@ describe('CorrectionsPage year from the address', () => {
 
   it('reloads and clears the open student when the year changes while mounted', async () => {
     const close = stub();
-    await renderWithLayer(<Navigator />);
+    await renderWithLayer(<Navigator to="yearId=y2" label="go y2" page={() => <CorrectionsPage />} />);
     fireEvent.change(await screen.findByLabelText('Find a student'), { target: { value: 'grace' } });
     fireEvent.click(await screen.findByRole('button', { name: /Grace Toe/ }));
     await screen.findByRole('region', { name: 'Correct a mark' });

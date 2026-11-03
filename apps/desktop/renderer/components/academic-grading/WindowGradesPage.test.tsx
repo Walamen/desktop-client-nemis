@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useState } from 'react';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 
 vi.mock('next/navigation', async () => (await import('@/test-utils/search-params')).navigationMock);
@@ -20,6 +19,7 @@ vi.mock('@/services/nemis-bridge/shared', () => ({
 
 import { sharedBridge } from '@/services/nemis-bridge/shared';
 import { mockSearch } from '@/test-utils/search-params';
+import { Navigator } from '@/test-utils/navigator';
 import { clearNemis, renderWithLayer, stubNemis } from './setup-test-support';
 import { WindowGradesPage } from './WindowGradesPage';
 
@@ -45,18 +45,6 @@ afterEach(() => {
   list().mockClear();
 });
 
-/** Re-renders the page after the address changes, inside the test's provider. */
-function Navigator() {
-  const [, bump] = useState(0);
-  return (
-    <>
-      <button type="button" onClick={() => { mockSearch('id=win-2'); bump((n) => n + 1); }}>go win-2</button>
-      <button type="button" onClick={() => { mockSearch(''); bump((n) => n + 1); }}>go none</button>
-      <WindowGradesPage />
-    </>
-  );
-}
-
 describe('WindowGradesPage', () => {
   it('uses its own window, not the previous page\'s address', async () => {
     window.history.pushState({}, '', '/government/school-admin/academic-grading?id=old-window');
@@ -75,7 +63,13 @@ describe('WindowGradesPage', () => {
   });
 
   it('follows a changed window id and drops the old window\'s selections', async () => {
-    await renderWithLayer(<Navigator />);
+    await renderWithLayer(
+      <Navigator
+        to=""
+        label="go none"
+        page={() => <Navigator to="id=win-2" label="go win-2" page={() => <WindowGradesPage />} />}
+      />,
+    );
     expect(await screen.findByRole('heading', { name: 'Window One' })).toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole('button', { name: /c1/ })).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: 'go win-2' }));

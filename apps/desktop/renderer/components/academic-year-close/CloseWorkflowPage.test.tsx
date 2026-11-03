@@ -1,20 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useState } from 'react';
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { clearNemis, renderWithLayer, stubNemis, yearRow } from '@/components/academic-grading/setup-test-support';
 import { mockSearch } from '@/test-utils/search-params';
+import { Navigator } from '@/test-utils/navigator';
 import { CloseWorkflowPage } from './CloseWorkflowPage';
-
-/** Re-renders the page after the address changes, inside the test's provider. */
-function Navigator() {
-  const [, bump] = useState(0);
-  return (
-    <>
-      <button type="button" onClick={() => { mockSearch('yearId=y2'); bump((n) => n + 1); }}>go y2</button>
-      <CloseWorkflowPage />
-    </>
-  );
-}
 
 vi.mock('next/navigation', async () => (await import('@/test-utils/search-params')).navigationMock);
 
@@ -300,7 +289,7 @@ describe('CloseWorkflowPage year from the address', () => {
 
   it('starts afresh when the year changes while mounted', async () => {
     const close = stubClose();
-    await renderWithLayer(<Navigator />);
+    await renderWithLayer(<Navigator to="yearId=y2" label="go y2" page={() => <CloseWorkflowPage />} />);
     fireEvent.click(await screen.findByRole('button', { name: 'Continue' }));
     await screen.findByLabelText('Principal remark for all students');
     expect(close.getPromotion).toHaveBeenCalledWith('y1');
