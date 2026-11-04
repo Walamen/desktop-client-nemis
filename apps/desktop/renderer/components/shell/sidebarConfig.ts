@@ -12,7 +12,6 @@ import { PiClockUserBold } from "react-icons/pi";
 import type { ComponentType } from 'react';
 import { DESKTOP_PORTALS, SystemRole, type DesktopPortalRole } from '@nemis-desktop/types';
 import type { AvatarRole } from '@nemis-desktop/ui';
-import { academicSetupHref } from '@/lib/academic-setup';
 
 export type SidebarBadge = 'transfers';
 
@@ -73,9 +72,10 @@ export const sidebarConfigs: Record<DesktopPortalRole, SidebarConfig> = {
         ],
       },
       {
-        label: 'STUDENTS',
+        label: 'STUDENTS & FAMILIES',
         items: [
           { name: 'Students', href: '/government/school-admin/students', icon: GraduationCap },
+          { name: 'Parents & Guardians', href: '/government/school-admin/parents-guardians', icon: Users },
           {
             name: 'Student Transfers',
             href: '/government/school-admin/students/inter-school-transfer',
@@ -85,33 +85,25 @@ export const sidebarConfigs: Record<DesktopPortalRole, SidebarConfig> = {
         ],
       },
       {
-        label: 'STAFF & FAMILIES',
+        label: 'STAFF',
         items: [
           { name: 'Teachers & Staff', href: '/government/school-admin/teachers-staff', icon: UserCog },
-          { name: 'Parents & Guardians', href: '/government/school-admin/parents-guardians', icon: Users },
         ],
       },
       {
-        label: 'TEACHING',
+        label: 'TEACHING WORKFLOW',
         items: [
           { name: 'Classes', href: '/government/school-admin/classes', icon: School },
           { name: 'Timetable', href: '/government/school-admin/timetable', icon: Clock },
           { name: 'Attendance', href: '/government/school-admin/attendance', icon: CalendarCheck },
-          {
-            name: 'Grade Entry & Results',
-            href: academicSetupHref('windows'),
-            icon: ClipboardCheck,
-            // Active-item matching ignores query strings; this keeps the item
-            // highlighted on the View Grades results page under /windows/grades.
-            alsoActiveOn: ['/government/school-admin/academic-grading/windows'],
-          },
+         
         ],
       },
       {
         label: 'FINANCE',
         items: [
           { name: 'Record Payment', href: '/government/school-admin/financial/record-payment', icon: CreditCard },
-          { name: 'Fees & Billing', href: '/government/school-admin/financial', icon: Receipt },
+          { name: 'Payment Plan', href: '/government/school-admin/financial', icon: Receipt },
         ],
       },
       {

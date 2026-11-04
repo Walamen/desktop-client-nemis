@@ -56,7 +56,7 @@ afterEach(() => {
 describe('Sidebar', () => {
   it('renders the school-admin groups in order, with correct hrefs', () => {
     render(<Sidebar role={SystemRole.INSTITUTION_ADMIN} />);
-    const labels = ['ACADEMIC SETUP', 'STUDENTS', 'STAFF & FAMILIES', 'TEACHING', 'FINANCE', 'REPORTS & MESSAGES', 'SCHOOL'];
+    const labels = ['ACADEMIC SETUP', 'STUDENTS & FAMILIES', 'STAFF', 'TEACHING WORKFLOW', 'FINANCE', 'REPORTS & MESSAGES', 'SCHOOL'];
     const rendered = labels.map((l) => screen.getByText(l));
     for (let i = 1; i < rendered.length; i += 1) {
       expect(rendered[i - 1]!.compareDocumentPosition(rendered[i]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -65,11 +65,12 @@ describe('Sidebar', () => {
     expect(href('Overview')).toBe('/government/school-admin');
     expect(href('Academic Grading')).toBe('/government/school-admin/academic-grading');
     expect(href('Subjects')).toBe('/government/school-admin/subjects');
-    for (const gone of ['Grading System', 'Academic Years', 'Terms', 'Assessment Periods']) {
+    for (const gone of ['Grading System', 'Academic Years', 'Terms', 'Assessment Periods', 'Grade Entry & Results', 'Fees & Billing']) {
       expect(screen.queryByRole('link', { name: gone })).toBeNull();
     }
+    expect(href('Parents & Guardians')).toBe('/government/school-admin/parents-guardians');
     expect(href('Attendance')).toBe('/government/school-admin/attendance');
-    expect(href('Grade Entry & Results')).toBe('/government/school-admin/academic-grading?open=windows');
+    expect(href('Payment Plan')).toBe('/government/school-admin/financial');
     expect(href('Grade Levels')).toBe('/government/school-admin/grade-levels');
     expect(href('Infrastructure & Alerts')).toBe('/government/school-admin/infrastructure');
     expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
@@ -150,11 +151,10 @@ describe('Sidebar', () => {
     expect(screen.getByRole('link', { name: 'Overview' })).not.toHaveAttribute('aria-current');
   });
 
-  it('keeps Grade Entry & Results active on the View Grades results page', () => {
+  it('highlights Academic Grading on the View Grades results page', () => {
     vi.mocked(usePathname).mockReturnValue('/government/school-admin/academic-grading/windows/grades');
     render(<Sidebar role={SystemRole.INSTITUTION_ADMIN} />);
-    expect(screen.getByRole('link', { name: 'Grade Entry & Results' })).toHaveAttribute('aria-current', 'page');
-    expect(screen.getByRole('link', { name: 'Academic Grading' })).not.toHaveAttribute('aria-current');
+    expect(screen.getByRole('link', { name: 'Academic Grading' })).toHaveAttribute('aria-current', 'page');
   });
 
   it('keeps Settings highlighted on the school profile page', () => {
@@ -213,17 +213,18 @@ describe('Sidebar collapsible groups', () => {
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('denied'); });
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     render(<Sidebar role={SystemRole.INSTITUTION_ADMIN} />);
-    expect(groupToggle('STUDENTS')).toHaveAttribute('aria-expanded', 'true');
-    fireEvent.click(groupToggle('STUDENTS'));
-    expect(groupToggle('STUDENTS')).toHaveAttribute('aria-expanded', 'false');
+    expect(groupToggle('STUDENTS & FAMILIES')).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.click(groupToggle('STUDENTS & FAMILIES'));
+    expect(groupToggle('STUDENTS & FAMILIES')).toHaveAttribute('aria-expanded', 'false');
     expect(warn).toHaveBeenCalled();
   });
 
-  it('shows the transfers badge total on a collapsed STUDENTS header', async () => {
+  it('shows the transfers badge total on a collapsed STUDENTS & FAMILIES header', async () => {
     stubRows([pushToUs('a'), pushToUs('b')]);
-    window.localStorage.setItem(STORE_KEY, JSON.stringify(['STUDENTS']));
+    window.localStorage.setItem(STORE_KEY, JSON.stringify(['STUDENTS & FAMILIES']));
     render(<Sidebar role={SystemRole.INSTITUTION_ADMIN} />);
-    await waitFor(() => expect(groupToggle('STUDENTS')).toHaveTextContent('2'));
+    await waitFor(() => expect(groupToggle('STUDENTS & FAMILIES')).toHaveAttribute('aria-expanded', 'false'));
+    await waitFor(() => expect(groupToggle('STUDENTS & FAMILIES')).toHaveTextContent('2'));
   });
 
   it('renders plain, non-button group headers for a role without collapsibleGroups', () => {

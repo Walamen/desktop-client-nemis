@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { Search, ChevronDown, LogOut, User2, Settings } from 'lucide-react';
-import { Avatar, Breadcrumbs, Dropdown, DropdownItem, Input } from '@nemis-desktop/ui';
+import { ChevronDown, LogOut, User2, Settings } from 'lucide-react';
+import { Avatar, Breadcrumbs, Dropdown, DropdownItem } from '@nemis-desktop/ui';
 import { useCurrentUserViewModel } from '../../lib/presentation/hooks/shared';
 import { useViewModel } from '../../hooks/use-view-model';
 import { useRevalidateOnSync } from '../../hooks/use-revalidate-on-sync';
@@ -73,15 +73,7 @@ export function Header({ role }: { role: DesktopPortalRole }) {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="hidden md:block w-70">
-            <Input
-              type="text"
-              placeholder="Quick Search..."
-              aria-label="Quick search (coming soon)"
-              disabled
-              icon={<Search className="w-4 h-4 text-gray-400" />}
-            />
-          </div>
+          
 
           {(role === SystemRole.INSTITUTION_ADMIN || role === SystemRole.TEACHER) && <AcademicYearLabel />}
 
