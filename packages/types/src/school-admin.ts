@@ -15,7 +15,6 @@ export const SCHOOL_ADMIN_COLLECTIONS = [
   'institution_grading_configs',
   'grading_periods',
   'grade_entry_windows',
-  'grade_entry_window_classes',
   'grades',
   'fee_rules',
   'fee_obligations',

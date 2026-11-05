@@ -42,7 +42,7 @@ const FROZEN = [
   'grades', 'attendance', 'assignments', 'assignment_submissions', 'term_averages', 'grade_completions',
   'terms', 'classes', 'class_teachers', 'class_subject_teachers', 'class_subjects', 'enrollments',
   'assessment_templates', 'assessments', 'timetable_entries', 'grading_periods', 'grade_entry_windows',
-  'grade_entry_window_classes', 'class_resources',
+  'class_resources',
 ];
 
 describe('migration 040 create-academic-year-freeze', () => {
@@ -123,9 +123,6 @@ describe('migration 040 create-academic-year-freeze', () => {
     inPull(db, () => insert(db, 'grading_periods', { id: 'gp-closed', academicYearId: 'y-closed' }));
     expect(() => insert(db, 'grade_entry_windows', { id: 'w1', gradingPeriodId: 'gp-closed' })).toThrow(/CLOSED/);
     inPull(db, () => insert(db, 'grade_entry_windows', { id: 'w-closed', gradingPeriodId: 'gp-closed' }));
-    expect(() =>
-      insert(db, 'grade_entry_window_classes', { id: 'wc1', windowId: 'w-closed', classId: 'c-active' }),
-    ).toThrow(/CLOSED/);
     inPull(db, () => insert(db, 'assignments', { id: 'as-c', classId: 'c-closed' }));
     expect(() => insert(db, 'assignment_submissions', { id: 's1', assignmentId: 'as-c' })).toThrow(/CLOSED/);
     inPull(db, () => insert(db, 'terms', { id: 't-c', academicYearId: 'y-closed' }));

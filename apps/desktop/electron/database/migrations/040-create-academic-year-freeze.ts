@@ -47,8 +47,6 @@ export const RESOLVERS: Record<string, YearResolver> = {
   timetable_entries: YEAR_OF_CLASS,
   grading_periods: (a) => `${a}.academicYearId`,
   grade_entry_windows: YEAR_OF_PERIOD,
-  grade_entry_window_classes: (a) =>
-    `(SELECT g.academicYearId FROM grade_entry_windows w JOIN grading_periods g ON g.id = w.gradingPeriodId WHERE w.id = ${a}.windowId)`,
   class_resources: YEAR_OF_CLASS,
 };
 

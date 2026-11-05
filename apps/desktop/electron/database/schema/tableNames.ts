@@ -45,7 +45,6 @@ export const TableNames = {
   institutionGradingConfigs: 'institution_grading_configs',
   gradingPeriods: 'grading_periods',
   gradeEntryWindows: 'grade_entry_windows',
-  gradeEntryWindowClasses: 'grade_entry_window_classes',
   grades: 'grades',
   feeRules: 'fee_rules',
   feeObligations: 'fee_obligations',

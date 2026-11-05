@@ -121,10 +121,6 @@ const CONFIG: Record<
     ],
     scope: 'institution',
   },
-  grade_entry_window_classes: {
-    columns: ['windowId', 'classId', 'status', 'openedBy', 'openedAt', 'closedBy', 'closedAt'],
-    scope: 'student',
-  },
   grades: {
     columns: [
       'studentId',
@@ -274,7 +270,6 @@ const ROLE_READ_COLLECTIONS: Readonly<Record<string, ReadonlySet<SchoolAdminColl
     'institution_grading_configs',
     'grading_periods',
     'grade_entry_windows',
-    'grade_entry_window_classes',
     'announcements',
     'conversations',
     'messages',
