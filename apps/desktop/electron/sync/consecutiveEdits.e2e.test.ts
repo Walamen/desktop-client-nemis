@@ -68,15 +68,28 @@ class FakeApplierServer {
     this.rows.set(`${entityType}/${id}`, { ...stored, ...changes, updatedAt: this.#tick() });
   }
 
-  /** The next batch is applied, but its acknowledgement never reaches the desktop. */
-  loseNextAcknowledgement = false;
+  /** The next batch is applied, but its acknowledgement never reaches the
+   * desktop: the push throws this message instead. */
+  loseNextAcknowledgement: string | null = null;
+
+  /** Like the real server: an operationId it has already applied gets its
+   * stored receipt back, and the payload sent with it is not applied. */
+  replayReceipts = false;
+  readonly #receipts = new Map<string, DesktopSyncOperationResult>();
 
   push(operations: DesktopSyncOperation[]): { processedAt: string; results: DesktopSyncOperationResult[] } {
     this.batches.push(operations);
-    const results = operations.map((operation) => this.#apply(operation));
+    const results = operations.map((operation) => {
+      const stored = this.replayReceipts ? this.#receipts.get(operation.operationId) : undefined;
+      if (stored) return stored;
+      const result = this.#apply(operation);
+      this.#receipts.set(operation.operationId, result);
+      return result;
+    });
     if (this.loseNextAcknowledgement) {
-      this.loseNextAcknowledgement = false;
-      throw new Error('connection reset');
+      const message = this.loseNextAcknowledgement;
+      this.loseNextAcknowledgement = null;
+      throw new Error(message);
     }
     return { processedAt: new Date(this.#clock).toISOString(), results };
   }
@@ -332,7 +345,7 @@ describe('consecutive offline edits, end to end', () => {
 
   it('a window create the server already applied (lost acknowledgement) is not raised as a conflict', async () => {
     const id = createWindow();
-    server.loseNextAcknowledgement = true;
+    server.loseNextAcknowledgement = 'connection reset';
     await expect(worker.syncActive()).rejects.toThrow('connection reset');
     // Retry now rather than after the backoff.
     db().prepare(`UPDATE sync_queue SET nextAttemptAt=NULL WHERE entityId=?`).run(id);
@@ -344,6 +357,33 @@ describe('consecutive offline edits, end to end', () => {
     expect(server.batches.map((batch) => batch.map((op) => op.operationType))).toEqual([['create'], ['create']]);
     expect(conflicts()).toEqual([]);
     expect(unsentQueue()).toBe(0);
+  });
+
+  it('an edit made after a push the server applied but never acknowledged still reaches the server', async () => {
+    server.replayReceipts = true;
+    const id = createWindow();
+    await worker.syncActive();
+    transition(id, { status: 'OPEN', openedAt: now() });
+
+    // Applied on the server; the desktop only sees an unreachable server, so
+    // the row goes back to pending with no backoff.
+    server.loseNextAcknowledgement = 'The NEMIS server could not be reached.';
+    await expect(worker.syncActive()).rejects.toThrow('The NEMIS server could not be reached.');
+    expect(server.row('grade_entry_windows', id)?.status).toBe('OPEN');
+    const unacknowledged = server.batches.at(-1)![0]!.operationId;
+
+    transition(id, { status: 'CLOSED', closedAt: now() });
+    await worker.syncActive();
+
+    // The sent row is repeated as it was (its receipt is replayed), and the
+    // new edit goes as its own operation in the next round, rebased onto the
+    // token from that receipt.
+    const [replayed, follower] = server.batches.slice(-2);
+    expect(replayed!.map((op) => op.operationId)).toEqual([unacknowledged]);
+    expect(follower!.map((op) => op.operationId)).not.toContain(unacknowledged);
+    expect(conflicts()).toEqual([]);
+    expect(unsentQueue()).toBe(0);
+    expect(server.row('grade_entry_windows', id)?.status).toBe('CLOSED');
   });
 
   it('a web edit in between yields exactly one conflict; keep mine then syncs', async () => {

@@ -39,7 +39,9 @@ export const mergeOutboxEdits: Migration = {
         DROP TRIGGER IF EXISTS outbox_${table}_update;
         DROP TRIGGER IF EXISTS outbox_${table}_delete;
       `);
-      installMergingOutboxTriggers(db, table, columns);
+      // 046 predates sync_queue.sentAt: it keeps installing exactly what it
+      // always did. 047 adds the column and regenerates with the guard.
+      installMergingOutboxTriggers(db, table, columns, { neverMergeIntoSentRows: false });
     }
   },
 };

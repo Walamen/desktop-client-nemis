@@ -7,7 +7,13 @@ import type { Database as SqliteDatabase } from 'better-sqlite3';
  *
  * A record's "mergeable target" is its newest queue row among those that are
  * pending or in flight, when that row is a pending update that is not
- * dead-lettered and not backed off. An update or delete of a record with a
+ * dead-lettered, not backed off, and has never been sent (`sentAt IS NULL`,
+ * migration 047). A row that was ever sent can come back to pending (an
+ * unreachable server, in_flight recovery, a released backoff, a dead-letter
+ * retry) still carrying its id, which is the server's operationId: the server
+ * answers a repeat of that id with its first receipt and does not apply the
+ * payload sent with it, so an edit merged into it would be lost. An update
+ * or delete of a record with a
  * mergeable target rewrites that row (keeping its original `base`, the token
  * the server issued) and moves it to the end of the queue; otherwise a new row
  * is inserted exactly as the migration-010 triggers did. Creates are never
@@ -51,12 +57,17 @@ export function capturedOutboxColumns(db: SqliteDatabase, table: string): string
 }
 
 /** Creates `outbox_<table>_insert`, `_update`, `_update_merge`, `_delete` and
- * `_delete_merge` capturing `columns`. Requires `sync_queue.seq` (026). The
- * table must have none of these triggers yet. */
+ * `_delete_merge` capturing `columns`. Requires `sync_queue.seq` (026) and,
+ * unless `neverMergeIntoSentRows` is false, `sync_queue.sentAt` (047). The
+ * table must have none of these triggers yet.
+ *
+ * `neverMergeIntoSentRows: false` exists only so migration 046, which ran
+ * before `sentAt` existed, keeps installing exactly what it always did. */
 export function installMergingOutboxTriggers(
   db: SqliteDatabase,
   table: string,
   columns: readonly string[],
+  { neverMergeIntoSentRows = true }: { neverMergeIntoSentRows?: boolean } = {},
 ): void {
   const newJson = jsonObject('NEW', columns);
   const oldJson = jsonObject('OLD', columns);
@@ -67,7 +78,11 @@ export function installMergingOutboxTriggers(
     SELECT rowid FROM sync_queue
      WHERE entityType = '${table}' AND entityId = ${row}.id AND status IN ('pending', 'in_flight')
      ORDER BY seq DESC, rowid DESC LIMIT 1)`;
-  const unsent = `status = 'pending' AND deadLetter = 0 AND nextAttemptAt IS NULL`;
+  // Shared by both merge targets and the delete trigger's guard, so each
+  // pair stays order-independent (see the header).
+  const unsent = `status = 'pending' AND deadLetter = 0 AND nextAttemptAt IS NULL${
+    neverMergeIntoSentRows ? ' AND sentAt IS NULL' : ''
+  }`;
   const mergeTarget = (row: 'NEW' | 'OLD') =>
     `rowid = ${latestActive(row)} AND operationType = 'update' AND ${unsent}`;
   const enqueue = (row: 'NEW' | 'OLD', operation: string, payload: string) => `

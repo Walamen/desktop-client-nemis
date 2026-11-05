@@ -142,6 +142,36 @@ describe('SqliteSyncQueueRepository', () => {
     expect(secondClaim).toHaveLength(1);
   });
 
+  // A row that was ever sent must never become an outbox merge target: the
+  // server replays its first receipt for the same operationId (migration 047).
+  const sentAt = (id: string) =>
+    (test.context.connection.prepare(`SELECT sentAt FROM sync_queue WHERE id = ?`).get(id) as {
+      sentAt: string | null;
+    }).sentAt;
+
+  it('claimBatch stamps sentAt once and keeps the first stamp on a later claim', () => {
+    const item = repo.enqueue(op('c1'));
+    expect(sentAt(item.id)).toBeNull();
+
+    repo.claimBatch(5);
+    expect(sentAt(item.id)).toBe('2026-07-16T00:00:00.000Z');
+
+    // Back to pending (unreachable server / in_flight recovery), claimed again later.
+    test.context.connection.prepare(`UPDATE sync_queue SET status = 'pending' WHERE id = ?`).run(item.id);
+    vi.advanceTimersByTime(60_000);
+    repo.claimBatch(5);
+    expect(sentAt(item.id)).toBe('2026-07-16T00:00:00.000Z');
+  });
+
+  it('markInFlight stamps sentAt only where it is not set yet', () => {
+    const a = repo.enqueue(op('e1'));
+    const b = repo.enqueue(op('e2'));
+    test.context.connection.prepare(`UPDATE sync_queue SET sentAt = 'earlier' WHERE id = ?`).run(a.id);
+    repo.markInFlight([a.id, b.id]);
+    expect(sentAt(a.id)).toBe('earlier');
+    expect(sentAt(b.id)).toBe('2026-07-16T00:00:00.000Z');
+  });
+
   it('claimBatch on an empty queue returns [] without writes', () => {
     expect(repo.claimBatch(10)).toEqual([]);
     expect(repo.count()).toBe(0);

@@ -11,6 +11,7 @@ import {
 } from '../../mappers/platformMappers';
 import type { SyncError, SyncQueueItem, SyncQueueStatus } from '../../models/platform';
 import { deleteFrom, insertInto, select } from '../../queries/builders';
+import { chunkArray, DEFAULT_PARAMETER_CHUNK_SIZE } from '../../queries/chunk';
 import { and, eq, inList, isNull, lt, lte, or } from '../../queries/predicates';
 import { validateEnqueue, validatePurge, validateRecordSyncError } from '../../validators/platform';
 import { BaseRepository } from '../base/BaseRepository';
@@ -146,7 +147,7 @@ export class SqliteSyncQueueRepository
           return [];
         }
         const ids = pending.map((item) => item.id);
-        this.updateByIds(ids, { status: 'in_flight', updatedAt: nowIso() });
+        this.#markSent(ids, 'claimBatch');
         // One re-read for the whole batch instead of N findByIdOrThrow round
         // trips; same seq,createdAt,id ordering as nextBatch so return order stays stable.
         return this.selectWhere('claimBatch', inList('id', ids), {
@@ -161,7 +162,7 @@ export class SqliteSyncQueueRepository
   }
 
   markInFlight(ids: readonly string[]): number {
-    return this.#setStatus(ids, 'in_flight', 'markInFlight');
+    return this.#markSent(ids, 'markInFlight');
   }
 
   markCompleted(ids: readonly string[]): number {
@@ -234,6 +235,27 @@ export class SqliteSyncQueueRepository
       const rows = this.statements.get(built.sql).all(...built.params) as SyncErrorRow[];
       return rows.map((row) => syncErrorMapper.toModel(row));
     });
+  }
+
+  /** Marks rows in_flight and stamps `sentAt` on those never sent before. A
+   * row that was ever sent is never an outbox merge target again (migration
+   * 047): its id is the server's operationId, and the server answers a
+   * repeated operationId with its first receipt without applying the payload. */
+  #markSent(ids: readonly string[], operation: string): number {
+    return this.query(operation, () =>
+      this.context.transactions.runImmediate(() => {
+        const now = nowIso();
+        const changed = this.updateByIds(ids, { status: 'in_flight', updatedAt: now });
+        for (const chunk of chunkArray(ids, DEFAULT_PARAMETER_CHUNK_SIZE)) {
+          this.statements
+            .get(
+              `UPDATE sync_queue SET sentAt = ? WHERE sentAt IS NULL AND id IN (${chunk.map(() => '?').join(',')})`,
+            )
+            .run(now, ...chunk);
+        }
+        return changed;
+      }),
+    );
   }
 
   #setStatus(ids: readonly string[], status: SyncQueueStatus, operation: string): number {
