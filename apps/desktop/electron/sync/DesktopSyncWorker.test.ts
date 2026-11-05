@@ -1283,6 +1283,33 @@ describe('DesktopSyncWorker retry policy', () => {
       expect(keepMine()).toEqual({ operationType: 'delete', payload: { base: { updatedAt: SERVER } } });
     });
 
+    it("keep mine on an update with no local timestamps uses the server's token", () => {
+      insertConflict(
+        'update',
+        { base: { firstName: 'x' }, record: { firstName: 'y' } },
+        { id: 's1', firstName: 'Web', updatedAt: SERVER },
+      );
+      expect(keepMine()).toEqual({
+        operationType: 'update',
+        payload: { base: { firstName: 'x', updatedAt: SERVER }, record: { firstName: 'y' } },
+      });
+    });
+
+    it("keep mine on a create whose record has no createdAt uses the server's token", () => {
+      insertConflict(
+        'create',
+        { record: { id: 's1', firstName: 'Ada' } },
+        { id: 's1', firstName: 'Web', createdAt: SERVER },
+      );
+      expect(keepMine()).toEqual({
+        operationType: 'update',
+        payload: {
+          base: { id: 's1', firstName: 'Web', createdAt: SERVER },
+          record: { id: 's1', firstName: 'Ada' },
+        },
+      });
+    });
+
     it('keep mine with no remote payload re-queues as-is', () => {
       insertConflict('update', { base: { updatedAt: now }, record: { firstName: 'Ada' } }, null);
       expect(keepMine()).toEqual({

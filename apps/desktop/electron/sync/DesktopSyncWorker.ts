@@ -899,7 +899,7 @@ function keepMineRequeue(row: RawConflict): { operationType: string; payload: st
     tokenFromRemote(localRow, remote) ??
     // Nothing on the local side to pair with (e.g. an empty delete payload):
     // the server's own token is all there is.
-    (Object.keys(localRow).length === 0 || !('base' in local) ? tokenFromRemoteAlone(remote) : null);
+    tokenFromRemoteAlone(remote);
   if (!token) return asIs;
 
   if (row.operationType === 'create') {
