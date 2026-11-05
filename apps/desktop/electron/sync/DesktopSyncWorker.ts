@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type {
   DesktopSyncOperation,
   DesktopSyncStatus,
+  DesktopSyncToken,
   ListPendingRecordsRequest,
   ListPendingRecordsResult,
   PendingSummary,
@@ -817,20 +818,34 @@ export class DesktopSyncWorker {
             `Cannot keep the local version of this ${row.entityType} conflict — it does not sync through the generic queue. Accept the remote version instead.`,
           );
         }
-        const requeue = keepMineRequeue(row);
-        db.connection.prepare(`
-          INSERT INTO sync_queue
-            (id,entityType,entityId,operationType,payload,retryCount,status,createdAt,updatedAt,seq)
-          VALUES (?,?,?,?,?,0,'pending',?,?,(SELECT COALESCE(MAX(seq), 0) + 1 FROM sync_queue))
-        `).run(
-          randomUUID(),
-          row.entityType,
-          row.entityId,
-          requeue.operationType,
-          requeue.payload,
-          resolvedAt,
-          resolvedAt,
-        );
+        // Edited again since the conflict was recorded: those waiting rows
+        // already carry a newer local version than the conflict shows.
+        // Re-queuing the conflict's version after them would make it the
+        // latest, and a refusal of the waiting row would fold onto it and
+        // lose the newer edit. Rebase the waiting rows onto the server's
+        // version instead, so the newest edit is what goes out.
+        const waiting = db.connection
+          .prepare(`SELECT COUNT(*) n FROM sync_queue WHERE entityType=? AND entityId=? AND status='pending'`)
+          .get(row.entityType, row.entityId) as { n: number };
+        if (waiting.n > 0) {
+          const token = keepMineToken(row);
+          if (token) rebaseQueued(db.connection, row.entityType, row.entityId, token);
+        } else {
+          const requeue = keepMineRequeue(row);
+          db.connection.prepare(`
+            INSERT INTO sync_queue
+              (id,entityType,entityId,operationType,payload,retryCount,status,createdAt,updatedAt,seq)
+            VALUES (?,?,?,?,?,0,'pending',?,?,(SELECT COALESCE(MAX(seq), 0) + 1 FROM sync_queue))
+          `).run(
+            randomUUID(),
+            row.entityType,
+            row.entityId,
+            requeue.operationType,
+            requeue.payload,
+            resolvedAt,
+            resolvedAt,
+          );
+        }
       }
       db.connection.prepare(`
         UPDATE sync_conflicts SET status=?,resolvedAt=? WHERE id=?
@@ -883,6 +898,22 @@ function parseRecord(json: string | null): Record<string, unknown> | null {
   }
 }
 
+/** The server's token "keep mine" rebases onto: the conflict's remote version,
+ *  paired with the local side's token field, or the remote's own token when
+ *  the local side has none. Null when there is nothing to rebase onto. */
+function keepMineToken(row: RawConflict): DesktopSyncToken | null {
+  const remote = parseRecord(row.remotePayload);
+  const local = parseRecord(row.localPayload);
+  if (!remote || !local) return null;
+  const localRow = { ...asRecord(local.base), ...asRecord(local.record) };
+  return (
+    tokenFromRemote(localRow, remote) ??
+    // Nothing on the local side to pair with (e.g. an empty delete payload):
+    // the server's own token is all there is.
+    tokenFromRemoteAlone(remote)
+  );
+}
+
 /** "Keep mine": re-queue the local change rebased onto the server's current
  *  version, so the server's concurrency check accepts it. Anything we cannot
  *  rebase (no remote row, no shared token, unparseable payload) goes back as-is. */
@@ -890,17 +921,11 @@ function keepMineRequeue(row: RawConflict): { operationType: string; payload: st
   const asIs = { operationType: row.operationType, payload: row.localPayload };
   const remote = parseRecord(row.remotePayload);
   const local = parseRecord(row.localPayload);
-  if (!remote || !local) return asIs;
+  const token = keepMineToken(row);
+  if (!remote || !local || !token) return asIs;
 
   const base = asRecord(local.base);
   const record = asRecord(local.record);
-  const localRow = { ...base, ...record };
-  const token =
-    tokenFromRemote(localRow, remote) ??
-    // Nothing on the local side to pair with (e.g. an empty delete payload):
-    // the server's own token is all there is.
-    tokenFromRemoteAlone(remote);
-  if (!token) return asIs;
 
   if (row.operationType === 'create') {
     return {

@@ -415,4 +415,32 @@ describe('consecutive offline edits, end to end', () => {
     expect(unsentQueue()).toBe(0);
     expect(server.row('grade_entry_windows', id)?.status).toBe('CLOSED');
   });
+
+  it('keep mine after a newer local edit sends the newer edit, not the conflict’s older version', async () => {
+    const id = createWindow();
+    await worker.syncActive();
+
+    transition(id, { status: 'OPEN', openedAt: now() });
+    server.editOnWeb('grade_entry_windows', id, { description: 'Changed on the web' });
+    await worker.syncActive();
+    const [raised] = conflicts();
+    expect(raised).toMatchObject({ entityId: id, status: 'unresolved' });
+
+    // Edited again while the conflict (showing OPEN) waits for a decision.
+    transition(id, { status: 'CLOSED', closedAt: now() });
+    worker.resolveConflict({ conflictId: raised!.id, resolution: 'keep_local' });
+    // Nothing re-queued: the waiting edit is rebased onto the server's version.
+    const waiting = db().prepare(`SELECT payload FROM sync_queue WHERE status = 'pending'`).all() as {
+      payload: string;
+    }[];
+    expect(waiting).toHaveLength(1);
+    const payload = JSON.parse(waiting[0]!.payload) as { base: Row; record: Row };
+    expect(payload.record.status).toBe('CLOSED');
+    expect(payload.base.updatedAt).toBe(server.row('grade_entry_windows', id)?.updatedAt);
+    await worker.syncActive();
+
+    expect(conflicts()).toEqual([expect.objectContaining({ entityId: id, status: 'keep_local' })]);
+    expect(unsentQueue()).toBe(0);
+    expect(server.row('grade_entry_windows', id)?.status).toBe('CLOSED');
+  });
 });
