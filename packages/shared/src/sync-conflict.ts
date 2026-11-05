@@ -57,13 +57,34 @@ function toComparableBoolean(value: unknown): boolean | null {
   return null;
 }
 
+/** A list or object stored as JSON text (SQLite has no array type, so e.g. a
+ * grade window's `allowedRoles` is `'["TEACHER"]'`), parsed; null otherwise. */
+function parseJsonContainer(value: unknown): object | null {
+  if (typeof value !== 'string') return null;
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return typeof parsed === 'object' && parsed !== null ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 /** True when two values represent the same real-world fact even though they
  * don't look identical — "" vs null, "2026-08-17" vs its ISO datetime form,
- * SQLite's `1` vs a real `true`. Avoids flagging formatting differences
- * between SQLite and Postgres as if they were actual disagreements. */
+ * SQLite's `1` vs a real `true`, SQLite's JSON text vs the server's real
+ * list/object. Avoids flagging formatting differences between SQLite and
+ * Postgres as if they were actual disagreements. */
 export function valuesEqual(a: unknown, b: unknown): boolean {
   if (isEmptyish(a) && isEmptyish(b)) return true;
   if (JSON.stringify(a) === JSON.stringify(b)) return true;
+  if (typeof b === 'object' && b !== null) {
+    const parsedA = parseJsonContainer(a);
+    if (parsedA !== null) return JSON.stringify(parsedA) === JSON.stringify(b);
+  }
+  if (typeof a === 'object' && a !== null) {
+    const parsedB = parseJsonContainer(b);
+    if (parsedB !== null) return JSON.stringify(a) === JSON.stringify(parsedB);
+  }
   const dateA = toComparableDate(a);
   const dateB = toComparableDate(b);
   if (dateA !== null && dateB !== null) return dateA === dateB;

@@ -49,6 +49,20 @@ describe('valuesEqual', () => {
   it('reports genuinely different values as unequal', () => {
     expect(valuesEqual('Ada', 'Grace')).toBe(false);
   });
+
+  it('treats JSON text and the list or object it encodes as equal (SQLite text vs server JSON)', () => {
+    expect(valuesEqual('["TEACHER"]', ['TEACHER'])).toBe(true);
+    expect(valuesEqual(['TEACHER'], '["TEACHER"]')).toBe(true);
+    expect(valuesEqual('{"a":1}', { a: 1 })).toBe(true);
+  });
+
+  it('still reports different lists as unequal when one side is JSON text', () => {
+    expect(valuesEqual('["A"]', ['B'])).toBe(false);
+  });
+
+  it('falls back to the existing rules when the text is not JSON', () => {
+    expect(valuesEqual('[TEACHER', ['TEACHER'])).toBe(false);
+  });
 });
 
 describe('hasRealDisagreement', () => {
@@ -71,6 +85,18 @@ describe('hasRealDisagreement', () => {
     const local = { id: 's1', firstName: 'Ada', lastName: 'Learner' };
     const remote = { id: 's1', firstName: 'Adaeze', lastName: 'Learner' };
     expect(hasRealDisagreement(local, remote)).toBe(true);
+  });
+
+  it('returns false for a grade window that differs only in how allowedRoles is represented', () => {
+    const local = { id: 'w1', name: 'Term 1', status: 'OPEN', allowedRoles: '["TEACHER"]' };
+    const remote = {
+      id: 'w1',
+      name: 'Term 1',
+      status: 'OPEN',
+      allowedRoles: ['TEACHER'],
+      updatedAt: '2026-11-05T10:00:00.000Z',
+    };
+    expect(hasRealDisagreement(local, remote)).toBe(false);
   });
 
   it('returns null (cannot tell) when either side is not a plain record', () => {
