@@ -381,6 +381,40 @@ describe('DesktopSyncWorker retry policy', () => {
       expect(waiting()).toBe(0);
     });
 
+    it('a follower that matches the server closes an older unresolved conflict', async () => {
+      manager.connection.prepare(`
+        INSERT INTO sync_conflicts
+          (id,operationId,entityType,entityId,operationType,localPayload,remotePayload,reason,status,createdAt,resolvedAt)
+        VALUES ('c-old',NULL,'students','s1','update',?,?,'old reason','unresolved','2026-11-04T00:00:00.000Z',NULL)
+      `).run(JSON.stringify({ base: BASE, record: { ...BASE, firstName: 'Old' } }), JSON.stringify(BASE));
+      await queueEdit('Bea');
+      await queueEdit('Chinwe');
+      const { gateway } = refusingGateway('Chinwe');
+
+      await new DesktopSyncWorker(workspaces, gateway, alwaysOnline()).syncActive();
+
+      const row = manager.connection
+        .prepare(`SELECT status, resolvedAt FROM sync_conflicts WHERE id='c-old'`)
+        .get() as { status: string; resolvedAt: string | null };
+      expect(row.status).toBe('accept_remote');
+      expect(row.resolvedAt).not.toBeNull();
+      expect(conflicts()).toHaveLength(1);
+      expect(waiting()).toBe(0);
+    });
+
+    it('a refused delete is never auto-resolved, even when a later edit matches the server', async () => {
+      await queueEdit('', 'delete');
+      await queueEdit('Chinwe');
+      const { gateway } = refusingGateway('Chinwe');
+
+      await new DesktopSyncWorker(workspaces, gateway, alwaysOnline()).syncActive();
+
+      const rows = conflicts();
+      expect(rows).toHaveLength(1);
+      expect(rows[0]!.status).toBe('unresolved');
+      expect(waiting()).toBe(0);
+    });
+
     it('a second refusal for the same record updates the existing conflict', async () => {
       manager.connection.prepare(`
         INSERT INTO sync_conflicts

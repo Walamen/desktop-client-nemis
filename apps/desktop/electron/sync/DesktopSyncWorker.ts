@@ -221,11 +221,21 @@ export class DesktopSyncWorker {
             // recorded below for a human decision.
             // A year-closed rejection is never a false positive: it is always
             // recorded so the user sees their offline change was refused.
+            // A delete on either side of the fold (the refused change or the
+            // folded result) is never auto-resolved.
             if (
               !isAcademicYearRejection(result.reason) &&
+              queued?.operationType !== 'delete' &&
               operationType !== 'delete' &&
               hasRealDisagreement(unwrapLocalPayload(local).edited, result.remotePayload) === false
             ) {
+              // An older unresolved conflict for this record shows a local
+              // version the latest edit has since replaced; leaving it open
+              // would let "keep mine" resurrect it. The server's version won.
+              workspace.database.connection.prepare(`
+                UPDATE sync_conflicts SET status='accept_remote', resolvedAt=?
+                 WHERE entityType=? AND entityId=? AND status='unresolved'
+              `).run(new Date().toISOString(), result.entityType, result.entityId);
               logger.info(
                 `DesktopSyncWorker: auto-resolved a false-positive conflict for ${result.entityType}/${result.entityId} in favor of the server (${result.reason ?? 'no reason given'}).`,
               );
