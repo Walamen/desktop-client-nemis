@@ -60,6 +60,20 @@ describe('valuesEqual', () => {
     expect(valuesEqual('["A"]', ['B'])).toBe(false);
   });
 
+  it('ignores object key order (Postgres jsonb reorders keys), at any depth', () => {
+    expect(valuesEqual('{"b":1,"a":2}', { a: 2, b: 1 })).toBe(true);
+    expect(valuesEqual({ a: 2, b: 1 }, '{"b":1,"a":2}')).toBe(true);
+    expect(valuesEqual({ b: 1, a: 2 }, { a: 2, b: 1 })).toBe(true);
+    expect(valuesEqual('[{"max":100,"grade":"A"}]', [{ grade: 'A', max: 100 }])).toBe(true);
+    expect(valuesEqual('{"b":1,"a":2}', { a: 2, b: 3 })).toBe(false);
+    expect(valuesEqual('{"a":1}', { a: 1, b: 2 })).toBe(false);
+  });
+
+  it('keeps list order significant', () => {
+    expect(valuesEqual('["A","B"]', ['B', 'A'])).toBe(false);
+    expect(valuesEqual(['A', 'B'], ['B', 'A'])).toBe(false);
+  });
+
   it('falls back to the existing rules when the text is not JSON', () => {
     expect(valuesEqual('[TEACHER', ['TEACHER'])).toBe(false);
   });

@@ -69,6 +69,30 @@ function parseJsonContainer(value: unknown): object | null {
   }
 }
 
+function isJsonObject(value: object): value is Record<string, unknown> {
+  const prototype: unknown = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+/** Deep equality of JSON values where object key order does not matter
+ * (Postgres jsonb hands keys back in its own order) but list order does.
+ * Keys holding `undefined` count as absent, as in JSON. */
+function jsonDeepEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (typeof a !== 'object' || a === null || typeof b !== 'object' || b === null) return false;
+  if (Array.isArray(a) || Array.isArray(b)) {
+    if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+    return a.every((item, index) => jsonDeepEqual(item, b[index]));
+  }
+  // Anything else (a Date, say) has no JSON keys to compare; the caller's
+  // JSON.stringify check has already matched the equal ones.
+  if (!isJsonObject(a) || !isJsonObject(b)) return false;
+  const keysA = Object.keys(a).filter((key) => a[key] !== undefined);
+  const keysB = Object.keys(b).filter((key) => b[key] !== undefined);
+  if (keysA.length !== keysB.length) return false;
+  return keysA.every((key) => b[key] !== undefined && jsonDeepEqual(a[key], b[key]));
+}
+
 /** True when two values represent the same real-world fact even though they
  * don't look identical — "" vs null, "2026-08-17" vs its ISO datetime form,
  * SQLite's `1` vs a real `true`, SQLite's JSON text vs the server's real
@@ -77,13 +101,14 @@ function parseJsonContainer(value: unknown): object | null {
 export function valuesEqual(a: unknown, b: unknown): boolean {
   if (isEmptyish(a) && isEmptyish(b)) return true;
   if (JSON.stringify(a) === JSON.stringify(b)) return true;
+  if (typeof a === 'object' && a !== null && typeof b === 'object' && b !== null) return jsonDeepEqual(a, b);
   if (typeof b === 'object' && b !== null) {
     const parsedA = parseJsonContainer(a);
-    if (parsedA !== null) return JSON.stringify(parsedA) === JSON.stringify(b);
+    if (parsedA !== null) return jsonDeepEqual(parsedA, b);
   }
   if (typeof a === 'object' && a !== null) {
     const parsedB = parseJsonContainer(b);
-    if (parsedB !== null) return JSON.stringify(a) === JSON.stringify(parsedB);
+    if (parsedB !== null) return jsonDeepEqual(a, parsedB);
   }
   const dateA = toComparableDate(a);
   const dateB = toComparableDate(b);
