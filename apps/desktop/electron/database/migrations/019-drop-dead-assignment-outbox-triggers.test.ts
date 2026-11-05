@@ -36,7 +36,8 @@ describe('drop-dead-assignment-outbox-triggers migration', () => {
     const triggers = manager.connection
       .prepare(`SELECT name FROM sqlite_master WHERE type='trigger' AND name LIKE 'outbox_class_resources_%'`)
       .all();
-    expect(triggers).toHaveLength(3);
+    // insert, update, delete — plus the two merge triggers migration 046 adds.
+    expect(triggers).toHaveLength(5);
   });
 
   it('inserting into assignments no longer queues a sync_queue row', () => {

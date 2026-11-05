@@ -44,6 +44,7 @@ import { createReportCards } from './042-create-report-cards';
 import { academicYearClose } from './043-academic-year-close';
 import { transferCarryOver } from './044-transfer-carry-over';
 import { dropGradeEntryWindowClasses } from './045-drop-grade-entry-window-classes';
+import { mergeOutboxEdits } from './046-merge-outbox-edits';
 
 /**
  * Every migration, ascending by version. Append only — never edit or reorder
@@ -95,4 +96,5 @@ export const migrations: readonly Migration[] = [
   academicYearClose,
   transferCarryOver,
   dropGradeEntryWindowClasses,
+  mergeOutboxEdits,
 ];

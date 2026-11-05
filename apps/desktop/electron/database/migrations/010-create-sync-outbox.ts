@@ -55,6 +55,14 @@ export const createSyncOutbox: Migration = {
   },
 };
 
+/**
+ * The original outbox triggers: every write inserts a new sync_queue row and
+ * the columns are snapshotted from the live table. Kept for migrations 010–027,
+ * which call it. Since migration 046 every outbox table uses
+ * installMergingOutboxTriggers (../outbox/mergingOutboxTriggers), which merges
+ * an edit into the unsent queued update — new migrations must use that, never
+ * this, or the table loses merging.
+ */
 export function installOutboxTriggers(
   db: SqliteDatabase,
   tables: readonly string[],
