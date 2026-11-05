@@ -252,6 +252,26 @@ describe('GradeEntryWindowsDrawer save feedback', () => {
     expect(field('Window Name')).toHaveValue('Another Entry');
   });
 
+  it('keeps Create Window disabled until the window list has loaded', async () => {
+    type Page = { items: Record<string, unknown>[]; total: number };
+    let release: (value: Page) => void = () => {};
+    const gate = new Promise<Page>((resolve) => { release = resolve; });
+    const impl = vi.mocked(sharedBridge.listSchoolAdminRecords).getMockImplementation()!;
+    vi.mocked(sharedBridge.listSchoolAdminRecords).mockImplementation((async (arg: never) =>
+      (arg as { collection: string }).collection === 'grade_entry_windows' ? gate : impl(arg)) as unknown as typeof impl,
+    );
+    await renderDrawer([win()]);
+    fireEvent.click(await screen.findByRole('button', { name: 'Create Window' }));
+    await screen.findByRole('option', { name: 'Term 1' });
+    fireEvent.change(field('Term'), { target: { value: 't1' } });
+    await screen.findByRole('option', { name: 'Period 1' });
+    fireEvent.change(field('Grading Period'), { target: { value: 'p1' } });
+    expect(screen.getByRole('button', { name: 'Create Window' })).toBeDisabled();
+    release({ items: [win()], total: 1 });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Create Window' })).toBeEnabled());
+    vi.mocked(sharedBridge.listSchoolAdminRecords).mockImplementation(impl);
+  });
+
   it('keeps the unpublish confirmation after a failed save', async () => {
     await renderDrawer([win({ status: 'PUBLISHED' })]);
     fireEvent.click(await screen.findByRole('button', { name: 'Unpublish' }));

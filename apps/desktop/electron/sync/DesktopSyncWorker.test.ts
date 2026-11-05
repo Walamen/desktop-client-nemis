@@ -11,7 +11,7 @@ import type { BackendProvisioningGateway } from '../provisioning/BackendProvisio
 import { PROVISIONING_COLLECTIONS } from '@nemis-desktop/types';
 import { ProvisioningImporter } from '../provisioning/ProvisioningImporter';
 import { DesktopSyncWorker } from './DesktopSyncWorker';
-import { RemoteRejectedError, RETURNING_STUDENT_REFUSAL } from '@nemis-desktop/shared';
+import { RemoteRejectedError, RETURNING_STUDENT_REFUSAL, GRADE_WINDOW_DUPLICATE_REFUSAL } from '@nemis-desktop/shared';
 
 const TEST_DEVICE = { deviceName: 'worker-test', platform: 'win32', osVersion: '10.0', appVersion: '1.0.0' };
 const TEST_USER = {
@@ -914,6 +914,20 @@ describe('DesktopSyncWorker retry policy', () => {
       worker.resolveConflict({ conflictId: 'c-returning', resolution: 'accept_remote' });
 
       expect(statusOf('c-returning')).toBe('accept_remote');
+      expect(readSyncMetadata().lastFullResyncAt).toBeNull();
+      expect(pullNow).toHaveBeenCalledTimes(1);
+    });
+
+    it('discarding a refused duplicate grade entry window marks a full resync due and requests a sync', () => {
+      setFullResync(new Date().toISOString());
+      seedConflict('c-window', 'This grading period already has a grade entry window.');
+      const worker = new DesktopSyncWorker(workspaces, {} as BackendProvisioningGateway, alwaysOnline());
+      const pullNow = vi.spyOn(worker, 'pullNow').mockResolvedValue(true);
+
+      worker.resolveConflict({ conflictId: 'c-window', resolution: 'accept_remote' });
+
+      expect(GRADE_WINDOW_DUPLICATE_REFUSAL).toBe('This grading period already has a grade entry window.');
+      expect(statusOf('c-window')).toBe('accept_remote');
       expect(readSyncMetadata().lastFullResyncAt).toBeNull();
       expect(pullNow).toHaveBeenCalledTimes(1);
     });

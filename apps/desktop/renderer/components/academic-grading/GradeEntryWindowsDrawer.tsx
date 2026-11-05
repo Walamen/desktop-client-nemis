@@ -86,7 +86,8 @@ function GradeEntryWindowsManager() {
   const createWindow = async (event: FormEvent) => {
     event.preventDefault();
     // One window per grading period (the server refuses too; this keeps it offline).
-    if ((windows ?? []).some((w) => w.gradingPeriodId === form.gradingPeriodId)) {
+    if (windows === null) return;
+    if (windows.some((w) => w.gradingPeriodId === form.gradingPeriodId)) {
       // The message is the toast's whole text: the thunk's error carries no detail.
       await runSave(() => Promise.reject(new Error('')), {
         success: '',
@@ -305,7 +306,7 @@ function GradeEntryWindowsManager() {
             </button>
             <button
               type="submit"
-              disabled={creating}
+              disabled={creating || windows === null}
               className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-400 disabled:opacity-50"
             >
               {creating ? 'Creating…' : 'Create Window'}

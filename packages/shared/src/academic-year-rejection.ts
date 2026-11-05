@@ -82,3 +82,8 @@ export function academicYearTokenOf(
  * was enrolled in an earlier year; identical to the server's refusal. */
 export const RETURNING_STUDENT_REFUSAL =
   'This student was enrolled in an earlier year. Enrol them for this year through the student lookup.';
+
+/** The server's refusal when a grading period already has a grade entry window
+ * (window-only grade windows); identical to the server's text. A refused
+ * duplicate leaves a local-only row, so discarding it needs a full resync. */
+export const GRADE_WINDOW_DUPLICATE_REFUSAL = 'This grading period already has a grade entry window.';

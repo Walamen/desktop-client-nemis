@@ -30,6 +30,7 @@ import {
   hasRealDisagreement,
   isAcademicYearRejection,
   RETURNING_STUDENT_REFUSAL,
+  GRADE_WINDOW_DUPLICATE_REFUSAL,
   unwrapLocalPayload,
 } from '@nemis-desktop/shared';
 
@@ -759,10 +760,12 @@ export class DesktopSyncWorker {
       `).run(resolution, resolvedAt, row.id);
       if (
         resolution === 'accept_remote' &&
-        (isAcademicYearRejection(row.reason) || row.reason === RETURNING_STUDENT_REFUSAL)
+        (isAcademicYearRejection(row.reason) ||
+          row.reason === RETURNING_STUDENT_REFUSAL ||
+          row.reason === GRADE_WINDOW_DUPLICATE_REFUSAL)
       ) {
-        // The server refused this write for good (a closed year, or a returning
-        // student who must be enrolled through the lookup), but the refused content is
+        // The server refused this write for good (a closed year, a returning
+        // student who must be enrolled through the lookup, or a second window for a grading period), but the refused content is
         // still in the local tables. Marking the full resync due is durable
         // (it survives being offline and a non-empty queue: the cycle only
         // pulls once the queue drains) and a full resync reloads every table.
