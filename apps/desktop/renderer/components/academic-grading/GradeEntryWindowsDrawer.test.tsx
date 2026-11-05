@@ -65,8 +65,8 @@ describe('GradeEntryWindowsDrawer list view', () => {
   });
 
   it.each([
-    ['DRAFT', ['Open Window']],
-    ['OPEN', ['Close Window']],
+    ['DRAFT', ['Open Window', 'View Grades']],
+    ['OPEN', ['Close Window', 'View Grades']],
     ['CLOSED', ['Publish Grades', 'Reopen', 'View Grades']],
     ['PUBLISHED', ['Reopen', 'Unpublish', 'View Grades']],
   ])('offers exactly the %s actions', async (status, expected) => {
@@ -233,6 +233,23 @@ describe('GradeEntryWindowsDrawer save feedback', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create Window' }));
     expect(await screen.findByText('Grade entry window created.')).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByRole('heading', { name: 'Create Grade Entry Window' })).toBeNull());
+  });
+
+  it('refuses a second window for a period that already has one', async () => {
+    await renderDrawer([win({ status: 'CLOSED' })]);
+    fireEvent.click(await screen.findByRole('button', { name: 'Create Window' }));
+    await screen.findByRole('option', { name: 'Term 1' });
+    fireEvent.change(field('Term'), { target: { value: 't1' } });
+    await screen.findByRole('option', { name: 'Period 1' });
+    fireEvent.change(field('Grading Period'), { target: { value: 'p1' } });
+    fireEvent.change(field('Window Name'), { target: { value: 'Another Entry' } });
+    fireEvent.change(field('Open Date'), { target: { value: '2026-01-05' } });
+    fireEvent.change(field('Close Date'), { target: { value: '2026-01-20' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create Window' }));
+    expect(await screen.findByText('This grading period already has a grade entry window.')).toBeInTheDocument();
+    expect(save()).not.toHaveBeenCalled();
+    expect(screen.getByRole('heading', { name: 'Create Grade Entry Window' })).toBeInTheDocument();
+    expect(field('Window Name')).toHaveValue('Another Entry');
   });
 
   it('keeps the unpublish confirmation after a failed save', async () => {

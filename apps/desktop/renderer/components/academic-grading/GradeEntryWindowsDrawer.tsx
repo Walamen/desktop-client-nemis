@@ -85,6 +85,15 @@ function GradeEntryWindowsManager() {
 
   const createWindow = async (event: FormEvent) => {
     event.preventDefault();
+    // One window per grading period (the server refuses too; this keeps it offline).
+    if ((windows ?? []).some((w) => w.gradingPeriodId === form.gradingPeriodId)) {
+      // The message is the toast's whole text: the thunk's error carries no detail.
+      await runSave(() => Promise.reject(new Error('')), {
+        success: '',
+        failure: 'This grading period already has a grade entry window.',
+      });
+      return;
+    }
     setCreating(true);
     try {
       const result = await runSave(
@@ -429,15 +438,13 @@ function GradeEntryWindowsManager() {
                     </button>
                   </>
                 )}
-                {(win.status === 'CLOSED' || win.status === 'PUBLISHED') && (
-                  <Link
-                    href={`/government/school-admin/academic-grading/windows/grades?id=${win.id}`}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:border-secondary hover:text-secondary"
-                  >
-                    <FileText className="h-4 w-4" />
-                    View Grades
-                  </Link>
-                )}
+                <Link
+                  href={`/government/school-admin/academic-grading/windows/grades?id=${win.id}`}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:border-secondary hover:text-secondary"
+                >
+                  <FileText className="h-4 w-4" />
+                  View Grades
+                </Link>
               </div>
             </div>
           ))}
