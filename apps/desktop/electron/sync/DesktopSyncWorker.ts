@@ -26,7 +26,7 @@ import {
   SUBMISSION_DIRTY,
 } from './pendingPredicates';
 import { foldPendingFollowers } from './foldConflict';
-import { rebaseQueued, writeBackToken } from './syncToken';
+import { rebaseQueued, tokenFromRemote, tokenFromRemoteAlone, writeBackToken } from './syncToken';
 import { logger } from '@app/services/logger';
 import {
   hasRealDisagreement,
@@ -817,6 +817,7 @@ export class DesktopSyncWorker {
             `Cannot keep the local version of this ${row.entityType} conflict — it does not sync through the generic queue. Accept the remote version instead.`,
           );
         }
+        const requeue = keepMineRequeue(row);
         db.connection.prepare(`
           INSERT INTO sync_queue
             (id,entityType,entityId,operationType,payload,retryCount,status,createdAt,updatedAt,seq)
@@ -825,8 +826,8 @@ export class DesktopSyncWorker {
           randomUUID(),
           row.entityType,
           row.entityId,
-          row.operationType,
-          row.localPayload,
+          requeue.operationType,
+          requeue.payload,
           resolvedAt,
           resolvedAt,
         );
@@ -863,6 +864,55 @@ type RawConflict = Omit<SyncConflictResult, 'localPayload' | 'remotePayload' | '
   localPayload: string | null;
   remotePayload: string | null;
 };
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function parseRecord(json: string | null): Record<string, unknown> | null {
+  if (json === null) return null;
+  try {
+    const parsed: unknown = JSON.parse(json);
+    return parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/** "Keep mine": re-queue the local change rebased onto the server's current
+ *  version, so the server's concurrency check accepts it. Anything we cannot
+ *  rebase (no remote row, no shared token, unparseable payload) goes back as-is. */
+function keepMineRequeue(row: RawConflict): { operationType: string; payload: string | null } {
+  const asIs = { operationType: row.operationType, payload: row.localPayload };
+  const remote = parseRecord(row.remotePayload);
+  const local = parseRecord(row.localPayload);
+  if (!remote || !local) return asIs;
+
+  const base = asRecord(local.base);
+  const record = asRecord(local.record);
+  const localRow = { ...base, ...record };
+  const token =
+    tokenFromRemote(localRow, remote) ??
+    // Nothing on the local side to pair with (e.g. an empty delete payload):
+    // the server's own token is all there is.
+    (Object.keys(localRow).length === 0 || !('base' in local) ? tokenFromRemoteAlone(remote) : null);
+  if (!token) return asIs;
+
+  if (row.operationType === 'create') {
+    return {
+      operationType: 'update',
+      payload: JSON.stringify({ base: { ...remote, [token.field]: token.value }, record }),
+    };
+  }
+  return {
+    operationType: row.operationType,
+    payload: JSON.stringify({ ...local, base: { ...base, [token.field]: token.value } }),
+  };
+}
 
 function toConflict(row: RawConflict): Omit<SyncConflictResult, 'source'> {
   return {

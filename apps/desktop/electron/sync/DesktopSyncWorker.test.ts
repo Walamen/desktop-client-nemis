@@ -1227,6 +1227,71 @@ describe('DesktopSyncWorker retry policy', () => {
     });
   });
 
+  describe('keep mine rebases onto the server version', () => {
+    const now = '2026-01-01T00:00:00.000Z';
+    const SERVER = '2026-01-03T00:00:00.000Z';
+    const insertConflict = (op: string, local: unknown, remote: unknown) => {
+      manager.connection.prepare(`
+        INSERT INTO sync_conflicts
+          (id,operationId,entityType,entityId,operationType,localPayload,remotePayload,reason,status,createdAt,resolvedAt)
+        VALUES ('c-keep',NULL,'students','s1',?,?,?,'stale write','unresolved',?,NULL)
+      `).run(op, JSON.stringify(local), remote === null ? null : JSON.stringify(remote), now);
+    };
+    const keepMine = () => {
+      new DesktopSyncWorker(workspaces, {} as BackendProvisioningGateway, alwaysOnline())
+        .resolveConflict({ conflictId: 'c-keep', resolution: 'keep_local' });
+      const row = manager.connection
+        .prepare(`SELECT operationType, payload FROM sync_queue WHERE entityType='students' AND entityId='s1'`)
+        .get() as { operationType: string; payload: string };
+      return { operationType: row.operationType, payload: JSON.parse(row.payload) };
+    };
+
+    it("keep mine on an update conflict sends the server's token as base", () => {
+      insertConflict(
+        'update',
+        { base: { updatedAt: now }, record: { firstName: 'Ada', updatedAt: now } },
+        { id: 's1', firstName: 'Web', updatedAt: SERVER },
+      );
+      expect(keepMine()).toEqual({
+        operationType: 'update',
+        payload: { base: { updatedAt: SERVER }, record: { firstName: 'Ada', updatedAt: now } },
+      });
+    });
+
+    it('keep mine on a create conflict re-queues an update', () => {
+      insertConflict(
+        'create',
+        { record: { id: 's1', firstName: 'Ada', createdAt: now } },
+        { id: 's1', firstName: 'Web', createdAt: SERVER },
+      );
+      expect(keepMine()).toEqual({
+        operationType: 'update',
+        payload: {
+          base: { id: 's1', firstName: 'Web', createdAt: SERVER },
+          record: { id: 's1', firstName: 'Ada', createdAt: now },
+        },
+      });
+    });
+
+    it('keep mine on a delete conflict keeps it a delete with the server token', () => {
+      insertConflict('delete', { base: { updatedAt: now } }, { id: 's1', updatedAt: SERVER });
+      expect(keepMine()).toEqual({ operationType: 'delete', payload: { base: { updatedAt: SERVER } } });
+    });
+
+    it("keep mine on a delete conflict with an empty base uses the server's token", () => {
+      insertConflict('delete', {}, { id: 's1', updatedAt: SERVER });
+      expect(keepMine()).toEqual({ operationType: 'delete', payload: { base: { updatedAt: SERVER } } });
+    });
+
+    it('keep mine with no remote payload re-queues as-is', () => {
+      insertConflict('update', { base: { updatedAt: now }, record: { firstName: 'Ada' } }, null);
+      expect(keepMine()).toEqual({
+        operationType: 'update',
+        payload: { base: { updatedAt: now }, record: { firstName: 'Ada' } },
+      });
+    });
+  });
+
   it('resolveConflict with resolution "keep_local" stamps a seq after every row already queued', () => {
     // The re-queued write must push after work already waiting (e.g. the
     // conflicting row's own dependants), never NULL-first ahead of it.

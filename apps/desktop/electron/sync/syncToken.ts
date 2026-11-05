@@ -74,3 +74,12 @@ export function writeBackToken(
     db.prepare(`UPDATE sync_runtime SET captureEnabled=1 WHERE id='singleton'`).run();
   }
 }
+
+/** The remote's own token, for when the local side has no timestamp to pair it with. */
+export function tokenFromRemoteAlone(remote: Record<string, unknown>): DesktopSyncToken | null {
+  for (const field of TOKEN_FIELDS) {
+    const time = parsed(remote[field]);
+    if (time !== null) return { field, value: new Date(time).toISOString() };
+  }
+  return null;
+}
