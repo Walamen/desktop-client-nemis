@@ -298,6 +298,113 @@ describe('DesktopSyncWorker retry policy', () => {
     expect(conflictRow?.reason).toBe('The server record changed after the offline edit began.');
   });
 
+  describe('a refused change folds the record\'s later queued edits before deciding', () => {
+    const BASE = { id: 's1', firstName: 'Ada', lastName: 'Learner', updatedAt: '2026-11-01T00:00:00.000Z' };
+
+    async function queueEdit(firstName: string, operationType: 'update' | 'delete' = 'update') {
+      return dataLayer.services.syncQueue.enqueue({
+        entityType: 'students',
+        entityId: 's1',
+        operationType,
+        payload: operationType === 'delete' ? { base: BASE } : { base: BASE, record: { ...BASE, firstName } },
+      });
+    }
+
+    /** Refuses every pushed change as a conflict against a server copy named `serverName`. */
+    function refusingGateway(serverName: string, reason = 'The server record changed after the offline edit began.') {
+      const pushChanges = vi.fn(async (_deviceId: string, operations: Array<{ operationId: string; entityType: string; entityId: string }>) => ({
+        processedAt: '2026-11-05T10:00:00.000Z',
+        results: operations.map((operation) => ({
+          operationId: operation.operationId,
+          entityType: operation.entityType,
+          entityId: operation.entityId,
+          status: 'conflict' as const,
+          reason,
+          remotePayload: { ...BASE, firstName: serverName, updatedAt: '2026-11-04T00:00:00.000Z' },
+        })),
+      }));
+      const gateway = {
+        pushChanges,
+        downloadSnapshot: vi.fn().mockResolvedValue(emptySnapshot()),
+      } as unknown as BackendProvisioningGateway;
+      return { gateway, pushChanges };
+    }
+
+    const conflicts = () =>
+      manager.connection
+        .prepare(`SELECT id, operationType, localPayload, reason, status FROM sync_conflicts WHERE entityType='students' AND entityId='s1'`)
+        .all() as Array<{ id: string; operationType: string; localPayload: string; reason: string; status: string }>;
+    const waiting = () =>
+      (manager.connection
+        .prepare(`SELECT COUNT(*) count FROM sync_queue WHERE entityId='s1' AND status IN ('pending','in_flight')`)
+        .get() as { count: number }).count;
+
+    it('three queued edits, first refused → one conflict showing the latest edit, queue empty for that record', async () => {
+      await queueEdit('Bea');
+      await queueEdit('Cee');
+      await queueEdit('Dee');
+      const { gateway, pushChanges } = refusingGateway('Chinwe');
+
+      await new DesktopSyncWorker(workspaces, gateway, alwaysOnline()).syncActive();
+
+      expect(pushChanges).toHaveBeenCalledTimes(1);
+      const rows = conflicts();
+      expect(rows).toHaveLength(1);
+      expect(rows[0]!.operationType).toBe('update');
+      expect(JSON.parse(rows[0]!.localPayload)).toEqual({ base: BASE, record: { ...BASE, firstName: 'Dee' } });
+      expect(waiting()).toBe(0);
+    });
+
+    it('a queued delete after the refused edit makes it a delete conflict', async () => {
+      await queueEdit('Bea');
+      await queueEdit('', 'delete');
+      const { gateway } = refusingGateway('Chinwe');
+
+      await new DesktopSyncWorker(workspaces, gateway, alwaysOnline()).syncActive();
+
+      const rows = conflicts();
+      expect(rows).toHaveLength(1);
+      expect(rows[0]!.operationType).toBe('delete');
+      expect(JSON.parse(rows[0]!.localPayload)).toEqual({ base: BASE });
+      expect(waiting()).toBe(0);
+    });
+
+    it('a follower that matches the server auto-resolves with nothing recorded', async () => {
+      await queueEdit('Bea');
+      await queueEdit('Chinwe');
+      const { gateway, pushChanges } = refusingGateway('Chinwe');
+
+      await new DesktopSyncWorker(workspaces, gateway, alwaysOnline()).syncActive();
+
+      expect(pushChanges).toHaveBeenCalledTimes(1);
+      expect(conflicts()).toHaveLength(0);
+      expect(waiting()).toBe(0);
+    });
+
+    it('a second refusal for the same record updates the existing conflict', async () => {
+      manager.connection.prepare(`
+        INSERT INTO sync_conflicts
+          (id,operationId,entityType,entityId,operationType,localPayload,remotePayload,reason,status,createdAt,resolvedAt)
+        VALUES ('c-old',NULL,'students','s1','update',?,?,'old reason','unresolved','2026-11-04T00:00:00.000Z',NULL)
+      `).run(JSON.stringify({ base: BASE, record: { ...BASE, firstName: 'Old' } }), JSON.stringify(BASE));
+      await queueEdit('Bea');
+      await queueEdit('Cee');
+      const { gateway } = refusingGateway('Chinwe', 'second refusal');
+
+      await new DesktopSyncWorker(workspaces, gateway, alwaysOnline()).syncActive();
+
+      const rows = conflicts();
+      expect(rows).toHaveLength(1);
+      expect(rows[0]!.id).toBe('c-old');
+      expect(rows[0]!.status).toBe('unresolved');
+      expect(rows[0]!.reason).toBe('second refusal');
+      expect(JSON.parse(rows[0]!.localPayload)).toEqual({ base: BASE, record: { ...BASE, firstName: 'Cee' } });
+      const remote = (manager.connection.prepare(`SELECT remotePayload FROM sync_conflicts WHERE id='c-old'`).get() as { remotePayload: string }).remotePayload;
+      expect(JSON.parse(remote).firstName).toBe('Chinwe');
+      expect(waiting()).toBe(0);
+    });
+  });
+
   it('canonicalizes a redirected guardian id locally, cascading the link and any still-queued payload', async () => {
     manager.connection.prepare(`UPDATE sync_runtime SET captureEnabled=0 WHERE id='singleton'`).run();
     manager.connection.prepare(`

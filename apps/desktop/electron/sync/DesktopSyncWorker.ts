@@ -25,6 +25,7 @@ import {
   SCHOOL_REGISTRATION_PENDING,
   SUBMISSION_DIRTY,
 } from './pendingPredicates';
+import { foldPendingFollowers } from './foldConflict';
 import { rebaseQueued, writeBackToken } from './syncToken';
 import { logger } from '@app/services/logger';
 import {
@@ -193,7 +194,20 @@ export class DesktopSyncWorker {
           for (const result of pushed.results) {
             if (result.status !== 'conflict') continue;
             const queued = byId.get(result.operationId);
-            const local = queued?.payload;
+            // Fold first, then decide: the record's later queued edits join
+            // the refused change (and leave the queue), so the check below
+            // and any recorded conflict see the latest local version, and a
+            // stale follower never surfaces as a conflict of its own.
+            const folded = queued
+              ? foldPendingFollowers(workspace.database.connection, {
+                  entityType: queued.entityType,
+                  entityId: queued.entityId,
+                  operationType: queued.operationType,
+                  payload: queued.payload,
+                })
+              : undefined;
+            const local = folded?.payload;
+            const operationType = folded?.operationType ?? 'update';
             // The national server is the source of truth: a "conflict" that
             // only exists because of clock skew (sync metadata or a
             // server-assigned field the offline entry couldn't have known —
@@ -209,7 +223,7 @@ export class DesktopSyncWorker {
             // recorded so the user sees their offline change was refused.
             if (
               !isAcademicYearRejection(result.reason) &&
-              queued?.operationType !== 'delete' &&
+              operationType !== 'delete' &&
               hasRealDisagreement(unwrapLocalPayload(local).edited, result.remotePayload) === false
             ) {
               logger.info(
@@ -217,6 +231,17 @@ export class DesktopSyncWorker {
               );
               continue;
             }
+            const localJson = local == null ? null : JSON.stringify(local);
+            const remoteJson = result.remotePayload == null ? null : JSON.stringify(result.remotePayload);
+            const reason = result.reason ?? 'The server rejected this offline change.';
+            // One conflict per record: a later refusal replaces what an
+            // unresolved one shows rather than stacking a second row.
+            const updated = workspace.database.connection.prepare(`
+              UPDATE sync_conflicts
+                 SET operationType=?, localPayload=?, remotePayload=?, reason=?, operationId=?
+               WHERE entityType=? AND entityId=? AND status='unresolved'
+            `).run(operationType, localJson, remoteJson, reason, result.operationId, result.entityType, result.entityId);
+            if (updated.changes > 0) continue;
             workspace.database.connection.prepare(`
             INSERT INTO sync_conflicts
                 (id,operationId,entityType,entityId,operationType,localPayload,remotePayload,reason,status,createdAt,resolvedAt)
@@ -226,10 +251,10 @@ export class DesktopSyncWorker {
               result.operationId,
               result.entityType,
               result.entityId,
-              queued?.operationType ?? 'update',
-              local == null ? null : JSON.stringify(local),
-              result.remotePayload == null ? null : JSON.stringify(result.remotePayload),
-              result.reason ?? 'The server rejected this offline change.',
+              operationType,
+              localJson,
+              remoteJson,
+              reason,
               pushed.processedAt,
             );
           }
