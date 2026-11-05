@@ -195,6 +195,47 @@ describe('SqliteSyncQueueRepository', () => {
     expect(repo.claimBatch(10).map((row) => row.id)).toEqual([second.id, third.id]);
   });
 
+  it('stops the batch at a second change for the same record', () => {
+    const a1 = repo.enqueue(op('A'));
+    const b1 = repo.enqueue(op('B'));
+    repo.enqueue({ ...op('A'), operationType: 'update' });
+    repo.enqueue(op('C'));
+
+    expect(repo.nextBatch(10).map((row) => row.id)).toEqual([a1.id, b1.id]);
+  });
+
+  it('stops at a record that already has an in_flight change', () => {
+    const a1 = repo.enqueue(op('A'));
+    repo.markInFlight([a1.id]);
+    repo.enqueue(op('B'));
+    repo.enqueue({ ...op('A'), operationType: 'update' });
+    repo.enqueue(op('C'));
+
+    // B goes; the second A change waits for the first to finish and C is not skipped ahead.
+    expect(repo.nextBatch(10).map((row) => row.entityId)).toEqual(['B']);
+  });
+
+  it('treats the same entityId under another entityType as a different record', () => {
+    const student = repo.enqueue(op('X'));
+    const other = repo.enqueue({ ...op('X'), entityType: 'guardian' });
+
+    expect(repo.nextBatch(10).map((row) => row.id)).toEqual([student.id, other.id]);
+  });
+
+  it('after in_flight recovery, two pending rows for one record go out in two batches', () => {
+    const first = repo.enqueue(op('A'));
+    const second = repo.enqueue({ ...op('A'), operationType: 'update' });
+    // Crash recovery puts in_flight rows back to pending.
+    repo.markInFlight([first.id]);
+    test.context.connection
+      .prepare(`UPDATE sync_queue SET status='pending' WHERE status='in_flight'`)
+      .run();
+
+    expect(repo.claimBatch(10).map((row) => row.id)).toEqual([first.id]);
+    repo.markCompleted([first.id]);
+    expect(repo.claimBatch(10).map((row) => row.id)).toEqual([second.id]);
+  });
+
   it('enqueue stamps a seq after rows the outbox triggers already wrote', () => {
     // An outbox trigger stamps MAX(seq)+1 itself; simulate one at seq 41.
     test.context.connection

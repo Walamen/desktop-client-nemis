@@ -40,6 +40,8 @@ export const OUTBOX_BLOCKER_SQL = `SELECT MIN(seq) AS blocker FROM sync_queue
          WHERE status = 'pending' AND deadLetter = 0
            AND nextAttemptAt IS NOT NULL AND nextAttemptAt > ?`;
 
+const recordKey = (entityType: string, entityId: string): string => `${entityType}:${entityId}`;
+
 export class SqliteSyncQueueRepository
   extends BaseRepository<SyncQueueRow, SyncQueueItem>
   implements ISyncQueueRepository
@@ -100,7 +102,7 @@ export class SqliteSyncQueueRepository
       .get(OUTBOX_BLOCKER_SQL)
       .get(now) as { blocker: number | null };
     const due = and(eq('status', 'pending'), or(isNull('nextAttemptAt'), lte('nextAttemptAt', now)));
-    return this.selectWhere(
+    const dueRows = this.selectWhere(
       'nextBatch',
       blocker === null ? due : and(due, or(isNull('seq'), lt('seq', blocker))),
       {
@@ -114,6 +116,25 @@ export class SqliteSyncQueueRepository
         page: { limit, offset: 0 },
       },
     );
+    // One change per record per batch, never reordered: the batch is the due
+    // rows in seq order up to the first one whose record is already in it or
+    // has a change in flight. Stop, never skip — a later row for another
+    // record must not jump the held-back one, and a later change must not
+    // reach the server before the earlier one's result is known.
+    const inFlight = this.statements
+      .get(`SELECT entityType, entityId FROM sync_queue WHERE status = 'in_flight'`)
+      .all() as Array<{ entityType: string; entityId: string }>;
+    const seen = new Set(inFlight.map((row) => recordKey(row.entityType, row.entityId)));
+    const batch: SyncQueueItem[] = [];
+    for (const row of dueRows) {
+      const key = recordKey(row.entityType, row.entityId);
+      if (seen.has(key)) {
+        break;
+      }
+      seen.add(key);
+      batch.push(row);
+    }
+    return batch;
   }
 
   claimBatch(limit: number): SyncQueueItem[] {
