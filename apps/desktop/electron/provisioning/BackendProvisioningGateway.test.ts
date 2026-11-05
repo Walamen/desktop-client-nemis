@@ -47,6 +47,27 @@ describe('BackendProvisioningGateway', () => {
     );
   });
 
+  it('keeps a valid serverToken and drops malformed ones from push results', async () => {
+    const entry = (n: number, serverToken: unknown) => ({
+      operationId: `op-${n}`, entityType: 'terms', entityId: `t${n}`, status: 'accepted', serverToken,
+    });
+    vi.stubGlobal('fetch', vi.fn(async () => response({
+      processedAt: '2026-01-01T00:00:00.000Z',
+      results: [
+        entry(1, { field: 'updatedAt', value: '2026-01-01T00:00:00.000Z' }),
+        entry(2, { field: 'version', value: '2026-01-01T00:00:00.000Z' }),
+        entry(3, { field: 'updatedAt', value: 'not-a-date' }),
+        entry(4, 'junk'),
+      ],
+    })));
+    const result = await buildGateway().pushChanges('device-1', []);
+    expect(result.results[0]?.serverToken).toEqual({ field: 'updatedAt', value: '2026-01-01T00:00:00.000Z' });
+    for (const i of [1, 2, 3]) {
+      expect(result.results[i]).toBeDefined();
+      expect('serverToken' in (result.results[i] as object)).toBe(false);
+    }
+  });
+
   it('rejects a snapshot whose manifest does not match its collections', async () => {
     const data = Object.fromEntries(PROVISIONING_COLLECTIONS.map((key) => [key, []]));
     const manifest = Object.fromEntries(PROVISIONING_COLLECTIONS.map((key) => [key, 0]));

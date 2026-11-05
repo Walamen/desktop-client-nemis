@@ -6,6 +6,15 @@ export interface DesktopSyncOperation {
   payload?: unknown;
 }
 
+/** Concurrency token the server returns on an accepted non-delete push: the
+ *  record's own timestamp after the write, so queued follow-up edits can be
+ *  rebased onto it. */
+export interface DesktopSyncToken {
+  field: 'updatedAt' | 'assignedAt' | 'createdAt';
+  /** ISO timestamp. */
+  value: string;
+}
+
 export interface DesktopSyncOperationResult {
   operationId: string;
   entityType: string;
@@ -21,6 +30,8 @@ export interface DesktopSyncOperationResult {
    *  or the server correcting a client that should never have varied from
    *  it) — the value the local row must adopt in place of its own. */
   nemisId?: string;
+  /** Present only on accepted non-delete results. */
+  serverToken?: DesktopSyncToken;
 }
 
 export interface DesktopSyncPushResult {

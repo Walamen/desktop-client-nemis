@@ -1166,6 +1166,17 @@ function validateAssignmentPushResult(value: unknown): AssignmentPushResult {
   };
 }
 
+function isValidSyncToken(value: unknown): boolean {
+  if (typeof value !== 'object' || value === null) return false;
+  const token = value as Record<string, unknown>;
+  return (
+    typeof token.field === 'string' &&
+    ['updatedAt', 'assignedAt', 'createdAt'].includes(token.field) &&
+    typeof token.value === 'string' &&
+    !Number.isNaN(new Date(token.value).valueOf())
+  );
+}
+
 function validateSyncResult(value: unknown): DesktopSyncPushResult {
   const result = asRecord(value);
   if (typeof result.processedAt !== 'string' || !Array.isArray(result.results)) {
@@ -1180,6 +1191,10 @@ function validateSyncResult(value: unknown): DesktopSyncPushResult {
       !['accepted', 'conflict'].includes(String(row.status))
     ) {
       throw new Error('Desktop sync operation result is invalid.');
+    }
+    // A malformed serverToken is dropped, never an error: the push itself succeeded.
+    if ('serverToken' in row && !isValidSyncToken(row.serverToken)) {
+      delete (row as Record<string, unknown>).serverToken;
     }
   }
   return result as unknown as DesktopSyncPushResult;
