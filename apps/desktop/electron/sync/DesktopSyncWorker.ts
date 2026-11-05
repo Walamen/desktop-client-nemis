@@ -25,6 +25,7 @@ import {
   SCHOOL_REGISTRATION_PENDING,
   SUBMISSION_DIRTY,
 } from './pendingPredicates';
+import { rebaseQueued, writeBackToken } from './syncToken';
 import { logger } from '@app/services/logger';
 import {
   hasRealDisagreement,
@@ -45,6 +46,13 @@ const DEAD_LETTER_THRESHOLD = 5;
  * intentionally depends on by type only.
  */
 const UNREACHABLE_SERVER_MESSAGE = 'The NEMIS server could not be reached.';
+/**
+ * A batch holds at most one change per record, so a record's second queued
+ * change only goes out in the round after its first is acknowledged (and
+ * rebased onto the server's token). The cap keeps one cycle from running
+ * unbounded behind a long chain of edits; the rest goes next cycle.
+ */
+const MAX_PUSH_ROUNDS = 20;
 
 /** Minimal seam so DesktopSyncWorker doesn't depend on the concrete NetworkMonitor class. */
 export interface ConnectivitySource {
@@ -160,8 +168,11 @@ export class DesktopSyncWorker {
       this.#running = false;
       return;
     }
+    // `claimed` always holds the CURRENT round's rows: the catch below only
+    // reschedules those (earlier rounds are already 'completed').
+    const pushedAny = claimed.length > 0;
     try {
-      if (claimed.length > 0) {
+      for (let round = 1; claimed.length > 0; round += 1) {
         const operations: DesktopSyncOperation[] = claimed.map((item) => ({
           operationId: item.id,
           entityType: item.entityType,
@@ -268,11 +279,40 @@ export class DesktopSyncWorker {
               workspace.database.connection.prepare(`UPDATE sync_runtime SET captureEnabled=1 WHERE id='singleton'`).run();
             }
           }
+          // Adopt the server's concurrency token for every accepted change:
+          // the record's next queued change is rebased onto it (otherwise its
+          // base carries the desktop clock the server never saw, and it is
+          // refused as a conflict), and the local row stores it so the next
+          // edit captures it as its base even if no pull follows. Runs after
+          // the guardian canonicalization (it targets the canonical id) and
+          // outside the capture-off blocks above (writeBackToken re-enables
+          // capture when it finishes). An older server sends no token: nothing
+          // to do, same as before.
+          for (const result of pushed.results) {
+            if (result.status !== 'accepted' || !result.serverToken) continue;
+            const entityId = result.redirectedTo ?? result.entityId;
+            try {
+              rebaseQueued(workspace.database.connection, result.entityType, entityId, result.serverToken);
+              writeBackToken(workspace.database.connection, result.entityType, entityId, result.serverToken);
+            } catch (error) {
+              // Same reasoning as the guardian redirect: one bad token must not
+              // keep every other applied change in this batch from completing.
+              logger.error(
+                `DesktopSyncWorker: failed to adopt the server token for ${result.entityType}/${entityId}`,
+                error,
+              );
+            }
+          }
           workspace.database.connection.prepare(`
             UPDATE sync_queue SET status='completed',updatedAt=?
             WHERE id IN (${pushed.results.map(() => '?').join(',')})
           `).run(pushed.processedAt, ...pushed.results.map((result) => result.operationId));
         });
+        if (round >= MAX_PUSH_ROUNDS) break;
+        // Same check as after the push: never claim another round for a
+        // workspace that is no longer the active one.
+        if (this.workspaces.active.identity !== workspace.identity) return;
+        claimed = await workspace.data.services.syncQueue.claim(50);
       }
 
       // Runs after the generic queue push so a payment created in this same
@@ -313,14 +353,14 @@ export class DesktopSyncWorker {
       const stillPending = workspace.database.connection.prepare(
         `SELECT COUNT(*) count FROM sync_queue WHERE status IN ('pending','in_flight')`,
       ).get() as { count: number };
-      // `claimed.length > 0 || pullDue` restates what the early return above
+      // `pushedAny || pullDue` restates what the early return above
       // used to guarantee on its own. A cycle kept alive only by a pending
       // reversal has nothing to pull for, and must not turn every retry of a
       // stuck reversal into a full delta download.
       // A school the server answered also pulls: an accepted one's institution
       // row (same id) replaces the waiting one right away, and a refused one
       // shows red now (the pull is what tells the open pages to reload).
-      if (stillPending.count === 0 && (claimed.length > 0 || pullDue || registrationsAnswered > 0)) {
+      if (stillPending.count === 0 && (pushedAny || pullDue || registrationsAnswered > 0)) {
         const meta = workspace.database.connection.prepare(
           `SELECT lastDeltaAt, lastFullResyncAt FROM sync_metadata WHERE id='singleton'`,
         ).get() as { lastDeltaAt: string | null; lastFullResyncAt: string | null };
@@ -366,8 +406,9 @@ export class DesktopSyncWorker {
       }
       const now = new Date().toISOString();
       if (claimed.length > 0) {
-        // The push may well have succeeded — marking every claimed item
-        // 'completed' — before a later step in the same cycle (the pull) threw.
+        // `claimed` is the last round's rows (earlier rounds are 'completed'
+        // and never revisited). Even those may have been pushed and marked
+        // 'completed' before a later step in the same cycle (the pull) threw.
         // Only items still in_flight actually failed; rescheduling or
         // dead-lettering the rest would resurrect changes the server already
         // applied.

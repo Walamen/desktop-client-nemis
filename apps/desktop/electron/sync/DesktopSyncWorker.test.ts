@@ -1497,4 +1497,233 @@ describe('DesktopSyncWorker retry policy', () => {
       .toEqual(['q1', 'q2']);
   });
 
+  describe('push rounds and rebase on acknowledgement', () => {
+    const TOKENS = ['2026-11-05T10:00:00.000Z', '2026-11-05T10:00:05.000Z', '2026-11-05T10:00:09.000Z'];
+
+    type PushedOperation = { operationId: string; entityType: string; entityId: string; operationType: string; payload: unknown };
+
+    function setCapture(enabled: boolean): void {
+      manager.connection.prepare(`UPDATE sync_runtime SET captureEnabled=? WHERE id='singleton'`).run(enabled ? 1 : 0);
+    }
+
+    function seedSchool(): void {
+      setCapture(false);
+      manager.connection.prepare(`
+        INSERT INTO institutions (id,code,name,type,ownership,countyId,approvalStatus,version,updatedAt)
+        VALUES ('school-1','SCH-1','Central High','SECONDARY','PUBLIC','county-1','APPROVED',1,?)
+      `).run('2026-07-01T00:00:00.000Z');
+      setCapture(true);
+    }
+
+    /** Inserted with capture on, so the outbox queues a create. */
+    function createStudent(updatedAt: string): void {
+      manager.connection.prepare(`
+        INSERT INTO students (id,institutionId,firstName,lastName,nemisId,dateOfBirth,gender,isActive,version,updatedAt)
+        VALUES ('s1','school-1','Ada','Learner','482915736045','2012-05-04','FEMALE',1,1,?)
+      `).run(updatedAt);
+    }
+
+    /** A student that came down from the server: present locally, nothing queued. */
+    function syncedStudent(updatedAt: string): void {
+      setCapture(false);
+      createStudent(updatedAt);
+      setCapture(true);
+    }
+
+    function renameStudent(firstName: string, updatedAt: string): void {
+      manager.connection.prepare(`UPDATE students SET firstName=?, updatedAt=? WHERE id='s1'`).run(firstName, updatedAt);
+    }
+
+    /** Keeps the queue non-empty after the rounds so the cycle stops short of a
+     * pull, whose import would replace the local rows these tests inspect. */
+    function keepQueueBusy(): void {
+      const future = new Date(Date.now() + 60 * 60_000).toISOString();
+      manager.connection.prepare(`
+        INSERT INTO sync_queue (id,entityType,entityId,operationType,payload,retryCount,status,nextAttemptAt,createdAt,updatedAt)
+        VALUES ('op-busy','students','s-other','create','{}',0,'pending',?,?,?)
+      `).run(future, '2026-08-01T00:00:00.000Z', '2026-08-01T00:00:00.000Z');
+    }
+
+    /** A gateway that accepts everything; call N answers with TOKENS[N] when tokens are on. */
+    function acceptingGateway(options: { tokens: boolean; duringPush?: (call: number) => void }) {
+      let call = 0;
+      const pushChanges = vi.fn(async (_deviceId: string, operations: PushedOperation[]) => {
+        const token = TOKENS[call];
+        options.duringPush?.(call);
+        call += 1;
+        return {
+          processedAt: '2026-11-05T10:00:00.000Z',
+          results: operations.map((operation) => ({
+            operationId: operation.operationId,
+            entityType: operation.entityType,
+            entityId: operation.entityId,
+            status: 'accepted' as const,
+            ...(options.tokens ? { serverToken: { field: 'updatedAt' as const, value: token! } } : {}),
+          })),
+        };
+      });
+      const gateway = { pushChanges, downloadSnapshot: vi.fn() } as unknown as BackendProvisioningGateway;
+      return { gateway, pushChanges };
+    }
+
+    function pushedIn(pushChanges: ReturnType<typeof acceptingGateway>['pushChanges'], call: number): PushedOperation[] {
+      return pushChanges.mock.calls[call]![1];
+    }
+
+    function baseOf(operation: PushedOperation | undefined): Record<string, unknown> | undefined {
+      return (operation?.payload as { base?: Record<string, unknown> } | undefined)?.base;
+    }
+
+    function localUpdatedAt(): string {
+      return (manager.connection.prepare(`SELECT updatedAt FROM students WHERE id='s1'`).get() as { updatedAt: string }).updatedAt;
+    }
+
+    function queueFor(entityId: string): Array<{ status: string; operationType: string; payload: string }> {
+      return manager.connection
+        .prepare(`SELECT status, operationType, payload FROM sync_queue WHERE entityId=? ORDER BY seq`)
+        .all(entityId) as Array<{ status: string; operationType: string; payload: string }>;
+    }
+
+    it('rebases a queued follow-up onto the server token and pushes it in the same cycle', async () => {
+      seedSchool();
+      createStudent('2026-11-05T09:00:00.000Z');
+      renameStudent('Bea', '2026-11-05T09:01:00.000Z');
+      keepQueueBusy();
+      const { gateway, pushChanges } = acceptingGateway({ tokens: true });
+
+      await new DesktopSyncWorker(workspaces, gateway, alwaysOnline()).syncActive();
+
+      expect(pushChanges).toHaveBeenCalledTimes(2);
+      expect(pushedIn(pushChanges, 0).map((op) => op.operationType)).toEqual(['create']);
+      expect(pushedIn(pushChanges, 1).map((op) => op.operationType)).toEqual(['update']);
+      expect(baseOf(pushedIn(pushChanges, 1)[0])?.updatedAt).toBe(TOKENS[0]);
+      expect(queueFor('s1').map((row) => row.status)).toEqual(['completed', 'completed']);
+    });
+
+    it("writes the token back so the next edit's base is the server's", async () => {
+      seedSchool();
+      syncedStudent('2026-11-01T00:00:00.000Z');
+      renameStudent('Bea', '2026-11-05T09:01:00.000Z');
+      keepQueueBusy();
+      const { gateway } = acceptingGateway({ tokens: true });
+
+      await new DesktopSyncWorker(workspaces, gateway, alwaysOnline()).syncActive();
+
+      expect(localUpdatedAt()).toBe(TOKENS[0]);
+      // The write-back itself queued nothing.
+      expect(queueFor('s1').map((row) => row.status)).toEqual(['completed']);
+      renameStudent('Cee', '2026-11-05T09:02:00.000Z');
+      const rows = queueFor('s1');
+      expect(rows.map((row) => row.status)).toEqual(['completed', 'pending']);
+      expect(JSON.parse(rows[1]!.payload).base.updatedAt).toBe(TOKENS[0]);
+    });
+
+    it("an edit made while a push is in flight goes out next round with the server's base", async () => {
+      seedSchool();
+      syncedStudent('2026-11-01T00:00:00.000Z');
+      renameStudent('Bea', '2026-11-05T09:01:00.000Z');
+      keepQueueBusy();
+      const { gateway, pushChanges } = acceptingGateway({
+        tokens: true,
+        duringPush: (call) => {
+          if (call === 0) renameStudent('Cee', '2026-11-05T09:02:00.000Z');
+        },
+      });
+
+      await new DesktopSyncWorker(workspaces, gateway, alwaysOnline()).syncActive();
+
+      expect(pushChanges).toHaveBeenCalledTimes(2);
+      const second = pushedIn(pushChanges, 1);
+      expect(second).toHaveLength(1);
+      expect((second[0]!.payload as { record: { firstName: string } }).record.firstName).toBe('Cee');
+      expect(baseOf(second[0])?.updatedAt).toBe(TOKENS[0]);
+      expect(localUpdatedAt()).toBe(TOKENS[1]);
+      expect(queueFor('s1').map((row) => row.status)).toEqual(['completed', 'completed']);
+    });
+
+    it('a change stranded in_flight by a crash is replayed and its follower rebased onto the replayed token', async () => {
+      seedSchool();
+      createStudent('2026-11-05T09:00:00.000Z');
+      renameStudent('Bea', '2026-11-05T09:01:00.000Z');
+      keepQueueBusy();
+      // The app died after the server applied the create but before the ack.
+      const [create] = manager.connection
+        .prepare(`SELECT id FROM sync_queue WHERE entityId='s1' AND operationType='create'`)
+        .all() as Array<{ id: string }>;
+      manager.connection.prepare(`UPDATE sync_queue SET status='in_flight' WHERE id=?`).run(create!.id);
+      // The server answers the replay with its stored receipt, token included.
+      const { gateway, pushChanges } = acceptingGateway({ tokens: true });
+
+      await new DesktopSyncWorker(workspaces, gateway, alwaysOnline()).syncActive();
+
+      expect(pushChanges).toHaveBeenCalledTimes(2);
+      expect(pushedIn(pushChanges, 0).map((op) => op.operationId)).toEqual([create!.id]);
+      expect(baseOf(pushedIn(pushChanges, 1)[0])?.updatedAt).toBe(TOKENS[0]);
+      expect(queueFor('s1').map((row) => row.status)).toEqual(['completed', 'completed']);
+    });
+
+    it('without serverToken nothing is rebased and nothing breaks', async () => {
+      seedSchool();
+      createStudent('2026-11-05T09:00:00.000Z');
+      renameStudent('Bea', '2026-11-05T09:01:00.000Z');
+      keepQueueBusy();
+      const { gateway, pushChanges } = acceptingGateway({ tokens: false });
+
+      await new DesktopSyncWorker(workspaces, gateway, alwaysOnline()).syncActive();
+
+      expect(pushChanges).toHaveBeenCalledTimes(2);
+      // The base is exactly what the trigger captured: the create's desktop clock.
+      expect(baseOf(pushedIn(pushChanges, 1)[0])?.updatedAt).toBe('2026-11-05T09:00:00.000Z');
+      expect(localUpdatedAt()).toBe('2026-11-05T09:01:00.000Z');
+      expect(queueFor('s1').map((row) => row.status)).toEqual(['completed', 'completed']);
+      expect(
+        (manager.connection.prepare(`SELECT COUNT(*) count FROM sync_conflicts`).get() as { count: number }).count,
+      ).toBe(0);
+    });
+
+    it('stops after MAX_PUSH_ROUNDS', async () => {
+      // 25 separate changes to one record: one per round.
+      for (let index = 0; index < 25; index += 1) {
+        await dataLayer.services.syncQueue.enqueue({
+          entityType: 'students',
+          entityId: 's1',
+          operationType: 'update',
+          payload: { record: { id: 's1', firstName: `Name ${index}` } },
+        });
+      }
+      const { gateway, pushChanges } = acceptingGateway({ tokens: false });
+
+      await new DesktopSyncWorker(workspaces, gateway, alwaysOnline()).syncActive();
+
+      expect(pushChanges).toHaveBeenCalledTimes(20);
+      const statuses = queueFor('s1').map((row) => row.status);
+      expect(statuses.filter((status) => status === 'completed')).toHaveLength(20);
+      expect(statuses.filter((status) => status === 'pending')).toHaveLength(5);
+      // Not drained, so no pull this cycle.
+      expect(gateway.downloadSnapshot).not.toHaveBeenCalled();
+    });
+
+    it("a failure in a later round reschedules only that round's rows", async () => {
+      seedSchool();
+      createStudent('2026-11-05T09:00:00.000Z');
+      renameStudent('Bea', '2026-11-05T09:01:00.000Z');
+      const { gateway, pushChanges } = acceptingGateway({
+        tokens: true,
+        duringPush: (call) => {
+          if (call === 1) throw new Error('server rejected');
+        },
+      });
+
+      await expect(new DesktopSyncWorker(workspaces, gateway, alwaysOnline()).syncActive()).rejects.toThrow('server rejected');
+
+      expect(pushChanges).toHaveBeenCalledTimes(2);
+      const rows = manager.connection
+        .prepare(`SELECT operationType, status, retryCount, nextAttemptAt FROM sync_queue WHERE entityId='s1' ORDER BY seq`)
+        .all() as Array<{ operationType: string; status: string; retryCount: number; nextAttemptAt: string | null }>;
+      expect(rows).toEqual([
+        { operationType: 'create', status: 'completed', retryCount: 0, nextAttemptAt: null },
+        { operationType: 'update', status: 'pending', retryCount: 1, nextAttemptAt: expect.any(String) },
+      ]);
+    });
+  });
 });
