@@ -437,6 +437,35 @@ describe('DesktopSyncWorker retry policy', () => {
       expect(JSON.parse(remote).firstName).toBe('Chinwe');
       expect(waiting()).toBe(0);
     });
+
+    it('a refusal for a record with two unresolved conflicts updates the newest and closes the other', async () => {
+      const insertConflict = manager.connection.prepare(`
+        INSERT INTO sync_conflicts
+          (id,operationId,entityType,entityId,operationType,localPayload,remotePayload,reason,status,createdAt,resolvedAt)
+        VALUES (?,NULL,'students','s1','update',?,?,'old reason','unresolved',?,NULL)
+      `);
+      insertConflict.run('c-older', JSON.stringify({ base: BASE, record: { ...BASE, firstName: 'Older' } }), JSON.stringify(BASE), '2026-11-03T00:00:00.000Z');
+      insertConflict.run('c-newer', JSON.stringify({ base: BASE, record: { ...BASE, firstName: 'Newer' } }), JSON.stringify(BASE), '2026-11-04T00:00:00.000Z');
+      await queueEdit('Bea');
+      const { gateway } = refusingGateway('Chinwe', 'third refusal');
+
+      await new DesktopSyncWorker(workspaces, gateway, alwaysOnline()).syncActive();
+
+      const rows = manager.connection
+        .prepare(`SELECT id, status, reason, localPayload, resolvedAt FROM sync_conflicts WHERE entityId='s1' ORDER BY id`)
+        .all() as Array<{ id: string; status: string; reason: string; localPayload: string; resolvedAt: string | null }>;
+      expect(rows.map((row) => [row.id, row.status])).toEqual([
+        ['c-newer', 'unresolved'],
+        ['c-older', 'accept_remote'],
+      ]);
+      expect(rows[0]!.reason).toBe('third refusal');
+      expect(JSON.parse(rows[0]!.localPayload).record.firstName).toBe('Bea');
+      expect(rows[0]!.resolvedAt).toBeNull();
+      // Superseded, left as it was apart from being closed.
+      expect(rows[1]!.reason).toBe('old reason');
+      expect(JSON.parse(rows[1]!.localPayload).record.firstName).toBe('Older');
+      expect(rows[1]!.resolvedAt).not.toBeNull();
+    });
   });
 
   it('canonicalizes a redirected guardian id locally, cascading the link and any still-queued payload', async () => {

@@ -246,13 +246,28 @@ export class DesktopSyncWorker {
             const remoteJson = result.remotePayload == null ? null : JSON.stringify(result.remotePayload);
             const reason = result.reason ?? 'The server rejected this offline change.';
             // One conflict per record: a later refusal replaces what an
-            // unresolved one shows rather than stacking a second row.
-            const updated = workspace.database.connection.prepare(`
-              UPDATE sync_conflicts
-                 SET operationType=?, localPayload=?, remotePayload=?, reason=?, operationId=?
+            // unresolved one shows rather than stacking a second row. Should
+            // a record ever have several (rows from before this rule), the
+            // newest takes the refusal and the rest are closed as superseded
+            // — the server's version stands for them, as it does on
+            // auto-resolve — so "keep mine" can never resurrect a stale one.
+            const existing = workspace.database.connection.prepare(`
+              SELECT id FROM sync_conflicts
                WHERE entityType=? AND entityId=? AND status='unresolved'
-            `).run(operationType, localJson, remoteJson, reason, result.operationId, result.entityType, result.entityId);
-            if (updated.changes > 0) continue;
+               ORDER BY createdAt DESC, rowid DESC LIMIT 1
+            `).get(result.entityType, result.entityId) as { id: string } | undefined;
+            if (existing) {
+              workspace.database.connection.prepare(`
+                UPDATE sync_conflicts
+                   SET operationType=?, localPayload=?, remotePayload=?, reason=?, operationId=?
+                 WHERE id=?
+              `).run(operationType, localJson, remoteJson, reason, result.operationId, existing.id);
+              workspace.database.connection.prepare(`
+                UPDATE sync_conflicts SET status='accept_remote', resolvedAt=?
+                 WHERE entityType=? AND entityId=? AND status='unresolved' AND id<>?
+              `).run(new Date().toISOString(), result.entityType, result.entityId, existing.id);
+              continue;
+            }
             workspace.database.connection.prepare(`
             INSERT INTO sync_conflicts
                 (id,operationId,entityType,entityId,operationType,localPayload,remotePayload,reason,status,createdAt,resolvedAt)
