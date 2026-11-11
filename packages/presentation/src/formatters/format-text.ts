@@ -17,6 +17,7 @@ const ROLE_LABEL_OVERRIDES: Partial<Record<SystemRole, string>> = {
   COUNTY_ADMIN: 'County Education Officer',
   DEO: 'DEO',
   MINISTRY_ADMIN: 'Ministry Admin',
+  INSTITUTION_STAFF: 'School Office Staff',
 };
 
 /** SystemRole → display label, e.g. 'INSTITUTION_ADMIN' → 'Principal',

@@ -25,6 +25,7 @@ export const SENDER_ROLE_LABEL: Record<string, string> = {
   COUNTY_ADMIN: 'County Admin',
   DEO: 'District Education Officer',
   MINISTRY_ADMIN: 'Ministry Admin',
+  INSTITUTION_STAFF: 'School Office Staff',
 };
 
 export interface MessageRow {

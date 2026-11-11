@@ -25,6 +25,7 @@ describe('formatters', () => {
   it('humanizes roles, overriding INSTITUTION_ADMIN with the friendly job title', () => {
     expect(humanizeRole(SystemRole.INSTITUTION_ADMIN)).toBe('Principal');
     expect(humanizeRole(SystemRole.DEO)).toBe('DEO');
+    expect(humanizeRole(SystemRole.INSTITUTION_STAFF)).toBe('School Office Staff');
     expect(humanizeRole(SystemRole.MINISTRY_ADMIN)).toBe('Ministry Admin');
     expect(humanizeRole(SystemRole.COUNTY_ADMIN)).toBe('County Education Officer');
     expect(humanizeRole(SystemRole.TEACHER)).toBe('Teacher');

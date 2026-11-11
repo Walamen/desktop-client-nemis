@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ForbiddenError } from '@nemis-desktop/shared';
 import { BackendAuthenticationGateway } from './BackendAuthenticationGateway';
 
 const backendUser = {
@@ -91,6 +92,64 @@ describe('BackendAuthenticationGateway', () => {
     await expect(
       new BackendAuthenticationGateway('https://nemis.example').authenticate('admin@school.edu', 'password'),
     ).rejects.toThrow('did not match the backend contract');
+  });
+
+  describe('school office staff', () => {
+    const staffUser = {
+      ...backendUser,
+      role: 'INSTITUTION_STAFF',
+      institutionId: 'inst-1',
+      modules: ['STUDENTS'],
+      title: 'Registrar',
+    };
+
+    async function login(user: Record<string, unknown>) {
+      const response = jsonResponse({ success: true, data: { user } });
+      setCookies(response, ['sid=session; HttpOnly']);
+      vi.stubGlobal('fetch', vi.fn(async () => response));
+      return new BackendAuthenticationGateway('https://nemis.example').authenticate('a@b.c', 'password');
+    }
+
+    it('login of an INSTITUTION_STAFF user carries modules and title', async () => {
+      const { user } = await login(staffUser);
+      expect(user.modules).toEqual(['STUDENTS']);
+      expect(user.title).toBe('Registrar');
+      expect(user.scope).toMatchObject({ type: 'INSTITUTION', scopeId: 'inst-1', institutionId: 'inst-1' });
+    });
+
+    it('restore via /auth/me carries modules', async () => {
+      const me = jsonResponse({ success: true, data: { user: staffUser } });
+      vi.stubGlobal('fetch', vi.fn(async () => me));
+      const { user } = await new BackendAuthenticationGateway('https://nemis.example').restore(
+        JSON.stringify({ cookies: 'sid=session' }),
+      );
+      expect(user.modules).toEqual(['STUDENTS']);
+      expect(user.title).toBe('Registrar');
+      expect(user.scope).toMatchObject({ type: 'INSTITUTION', scopeId: 'inst-1', institutionId: 'inst-1' });
+    });
+
+    it('unknown module ids are dropped', async () => {
+      const { user } = await login({ ...staffUser, modules: ['STUDENTS', 'TIME_TRAVEL'] });
+      expect(user.modules).toEqual(['STUDENTS']);
+    });
+
+    it.each([
+      ['absent', undefined],
+      ['a string', 'STUDENTS'],
+    ])('missing or malformed modules (%s) become []', async (_label, modules) => {
+      const { user } = await login({ ...staffUser, modules });
+      expect(user.modules).toEqual([]);
+    });
+
+    it('other roles get modules [] and no title', async () => {
+      const { user } = await login(backendUser);
+      expect(user.modules).toEqual([]);
+      expect(user.title).toBeUndefined();
+    });
+
+    it('staff account without institutionId is refused', async () => {
+      await expect(login({ ...staffUser, institutionId: undefined })).rejects.toBeInstanceOf(ForbiddenError);
+    });
   });
 });
 

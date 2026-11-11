@@ -7,9 +7,11 @@ import {
   DESKTOP_PORTALS,
   DesktopScopeType,
   isDesktopPortalRole,
+  isSchoolModule,
   type DesktopPortalRole,
   type DesktopUserScope,
   type ProvisioningUser,
+  type SchoolModule,
 } from '@nemis-desktop/types';
 import { ForbiddenError, UnauthorizedError } from '@nemis-desktop/shared';
 import { asRecord, unwrapCookies, wrapCookies } from './sessionSecret';
@@ -25,6 +27,8 @@ interface BackendUser {
   institutionId?: string | null;
   staffId?: string | null;
   institution?: { name?: string } | null;
+  modules?: unknown;
+  title?: unknown;
 }
 
 const OFFLINE_LEASE_MS = 7 * 24 * 60 * 60 * 1000;
@@ -134,6 +138,10 @@ function toProvisioningUser(user: BackendUser): ProvisioningUser {
     districtId: user.districtId ?? undefined,
     staffId: user.staffId ?? undefined,
     institutionName: user.institution?.name,
+    modules: Array.isArray(user.modules)
+      ? user.modules.filter((m): m is SchoolModule => typeof m === 'string' && isSchoolModule(m))
+      : [],
+    title: typeof user.title === 'string' && user.title.length > 0 ? user.title : undefined,
   };
 }
 
