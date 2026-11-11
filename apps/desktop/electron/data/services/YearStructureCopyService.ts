@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { ForbiddenError } from '@nemis-desktop/shared';
-import { DesktopScopeType, SystemRole } from '@nemis-desktop/types';
+import { DesktopScopeType, isInstitutionScopedRole } from '@nemis-desktop/types';
 import type { YearStructureCopyRequest, YearStructureCopyResult } from '@nemis-desktop/types';
 import { ValidationError, YearStructureNotEmptyError } from '@app/data/errors/repositoryErrors';
 import type { WorkspaceManager } from '@app/workspace/WorkspaceManager';
@@ -47,7 +47,7 @@ export class YearStructureCopyService {
   copyStructure(request: YearStructureCopyRequest): YearStructureCopyResult {
     const active = this.workspaces.active;
     if (
-      active.user.role !== SystemRole.INSTITUTION_ADMIN ||
+      !isInstitutionScopedRole(active.user.role) ||
       active.user.scope.type !== DesktopScopeType.INSTITUTION
     ) {
       throw new ForbiddenError('Only a school administrator can copy a year structure.');

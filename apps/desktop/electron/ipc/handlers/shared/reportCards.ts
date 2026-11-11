@@ -1,5 +1,5 @@
 import { ForbiddenError } from '@nemis-desktop/shared';
-import { IpcChannels, SystemRole } from '@nemis-desktop/types';
+import { IpcChannels, isInstitutionScopedRole, SystemRole } from '@nemis-desktop/types';
 import type { IpcHandle } from '@app/ipc/registrar';
 import { assertNoArgs, assertSingleIdArg } from '@app/security/validateIpc';
 import type { WorkspaceManager } from '@app/workspace/WorkspaceManager';
@@ -8,13 +8,13 @@ import {
   type ReportCardViewer,
 } from '@app/data/repositories/sqlite/business/SqliteReportCardReadModel';
 
-/** Report cards for school administrators and teachers (see
+/** Report cards for school administrators, office staff with the Reports module and teachers (see
  * authorizeChannel.ts). Reads the active workspace's own database; the viewer
  * is derived from the signed-in user, never from renderer input, and the read
  * model enforces what a teacher may see. */
 export function registerReportCardHandlers(handle: IpcHandle, workspaces: WorkspaceManager): void {
   const viewerFor = (user: { id: string; role: string }): ReportCardViewer => {
-    if (user.role === SystemRole.INSTITUTION_ADMIN) return { teacherUserId: null };
+    if (isInstitutionScopedRole(user.role)) return { teacherUserId: null };
     if (user.role === SystemRole.TEACHER) return { teacherUserId: user.id };
     // authorizeChannel already refuses every other role; never widen to admin scope here.
     throw new ForbiddenError('Report cards are only available to school administrators and teachers.');

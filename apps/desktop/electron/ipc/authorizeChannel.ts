@@ -1,5 +1,13 @@
 import { ForbiddenError, UnauthorizedError } from '@nemis-desktop/shared';
-import { IpcChannels, SystemRole, type IpcChannel } from '@nemis-desktop/types';
+import {
+  canUseSchoolAccess,
+  IpcChannels,
+  SchoolModule,
+  schoolAccessLabel,
+  SystemRole,
+  type IpcChannel,
+  type SchoolAccess,
+} from '@nemis-desktop/types';
 import type { WorkspaceManager } from '@app/workspace/WorkspaceManager';
 
 const PUBLIC_CHANNELS = new Set<IpcChannel>([
@@ -13,92 +21,99 @@ const PUBLIC_CHANNELS = new Set<IpcChannel>([
 // School-management channels — both the mutations (create/update/delete) and
 // the reads that expose the same institution-wide data (dashboard totals,
 // full teacher/timetable/enrollment records, etc). Restricted to
-// INSTITUTION_ADMIN because none of it is needed by a teacher's own screens.
-const SCHOOL_ADMIN_CHANNELS = new Set<IpcChannel>([
+// INSTITUTION_ADMIN and, per the access value, INSTITUTION_STAFF holding that
+// module; none of it is needed by a teacher's own screens.
+export const SCHOOL_ADMIN_CHANNELS: ReadonlyMap<IpcChannel, SchoolAccess> = new Map<IpcChannel, SchoolAccess>([
   // Mutations
   // Online-only registry and transfer commands (NEMIS ID parity §6.2).
-  IpcChannels.REGISTRY_LOOKUP,
-  IpcChannels.REGISTRY_LOOKUP_BY_NAME,
-  IpcChannels.REGISTRY_CLAIM,
-  IpcChannels.REGISTRY_REQUEST,
-  IpcChannels.STUDENT_BULK_CLAIM,
-  IpcChannels.TRANSFER_CREATE,
-  IpcChannels.TRANSFER_REVIEW,
-  IpcChannels.TRANSFER_CANCEL,
-  IpcChannels.TRANSFER_RECORD_PREVIEW,
-  IpcChannels.TRANSFER_MATCHING_DRAFT_SAVE,
-  IpcChannels.TRANSFER_MATCHING_DRAFT_CLEAR,
-  IpcChannels.TRANSFER_SEARCH_SCHOOLS,
-  IpcChannels.ACADEMIC_YEAR_CREATE,
-  IpcChannels.ACADEMIC_YEAR_UPDATE,
-  IpcChannels.ACADEMIC_YEAR_START,
-  IpcChannels.ACADEMIC_YEAR_COPY_STRUCTURE,
+  [IpcChannels.REGISTRY_LOOKUP, SchoolModule.STUDENTS],
+  [IpcChannels.REGISTRY_LOOKUP_BY_NAME, SchoolModule.STUDENTS],
+  [IpcChannels.REGISTRY_CLAIM, SchoolModule.STUDENTS],
+  [IpcChannels.REGISTRY_REQUEST, SchoolModule.STUDENTS],
+  [IpcChannels.STUDENT_BULK_CLAIM, SchoolModule.STUDENTS],
+  [IpcChannels.TRANSFER_CREATE, SchoolModule.STUDENTS],
+  [IpcChannels.TRANSFER_REVIEW, SchoolModule.STUDENTS],
+  [IpcChannels.TRANSFER_CANCEL, SchoolModule.STUDENTS],
+  [IpcChannels.TRANSFER_RECORD_PREVIEW, SchoolModule.STUDENTS],
+  [IpcChannels.TRANSFER_MATCHING_DRAFT_SAVE, SchoolModule.STUDENTS],
+  [IpcChannels.TRANSFER_MATCHING_DRAFT_CLEAR, SchoolModule.STUDENTS],
+  [IpcChannels.TRANSFER_SEARCH_SCHOOLS, SchoolModule.STUDENTS],
+  [IpcChannels.ACADEMIC_YEAR_CREATE, SchoolModule.ACADEMIC_SETUP],
+  [IpcChannels.ACADEMIC_YEAR_UPDATE, SchoolModule.ACADEMIC_SETUP],
+  [IpcChannels.ACADEMIC_YEAR_START, SchoolModule.ACADEMIC_SETUP],
+  [IpcChannels.ACADEMIC_YEAR_COPY_STRUCTURE, SchoolModule.ACADEMIC_SETUP],
   // Close Academic Year (lifecycle Stage 3): online-only commands and the
   // server reads behind the close workflow.
-  IpcChannels.CLOSE_GET_READINESS,
-  IpcChannels.CLOSE_FILL_CELLS,
-  IpcChannels.CLOSE_GET_PROMOTION,
-  IpcChannels.CLOSE_SAVE_PROMOTION,
-  IpcChannels.CLOSE_YEAR,
-  IpcChannels.REOPEN_YEAR,
-  IpcChannels.CORRECT_GRADE,
-  IpcChannels.CORRECT_OUTCOME,
-  IpcChannels.CORRECT_REMARK,
-  IpcChannels.CLOSE_PENDING_CHANGES_COUNT,
+  [IpcChannels.CLOSE_GET_READINESS, 'PRINCIPAL'],
+  [IpcChannels.CLOSE_FILL_CELLS, 'PRINCIPAL'],
+  [IpcChannels.CLOSE_GET_PROMOTION, 'PRINCIPAL'],
+  [IpcChannels.CLOSE_SAVE_PROMOTION, 'PRINCIPAL'],
+  [IpcChannels.CLOSE_YEAR, 'PRINCIPAL'],
+  [IpcChannels.REOPEN_YEAR, 'PRINCIPAL'],
+  [IpcChannels.CORRECT_GRADE, 'PRINCIPAL'],
+  [IpcChannels.CORRECT_OUTCOME, 'PRINCIPAL'],
+  [IpcChannels.CORRECT_REMARK, 'PRINCIPAL'],
+  [IpcChannels.CLOSE_PENDING_CHANGES_COUNT, 'PRINCIPAL'],
   // Match prior record (lifecycle Stage 5): online reads and the one save.
-  IpcChannels.CARRY_OVER_LIST_PENDING,
-  IpcChannels.CARRY_OVER_LIST_LOCAL_PENDING,
-  IpcChannels.CARRY_OVER_GET,
-  IpcChannels.CARRY_OVER_SAVE,
-  IpcChannels.TERM_CREATE,
-  IpcChannels.TERM_UPDATE,
-  IpcChannels.TERM_SET_CURRENT,
-  IpcChannels.TERM_DELETE,
-  IpcChannels.CLASS_CREATE,
-  IpcChannels.CLASS_UPDATE,
-  IpcChannels.CLASS_SET_ACTIVE,
-  IpcChannels.CLASS_SUBJECT_ASSIGN,
-  IpcChannels.CLASS_SUBJECT_UNASSIGN,
-  IpcChannels.SUBJECT_CREATE,
-  IpcChannels.SUBJECT_UPDATE,
-  IpcChannels.SUBJECT_SET_ACTIVE,
-  IpcChannels.STUDENT_CREATE,
-  IpcChannels.STUDENT_CREATE_AND_ENROLL,
-  IpcChannels.STUDENT_UPDATE,
-  IpcChannels.STUDENT_SET_ACTIVE,
-  IpcChannels.STUDENT_CREATE_GUARDIAN,
-  IpcChannels.STUDENT_ENROLL,
-  IpcChannels.STUDENT_MOVE_CLASS,
-  IpcChannels.TEACHER_CREATE,
-  IpcChannels.TEACHER_UPDATE,
-  IpcChannels.TEACHER_SET_ACTIVE,
-  IpcChannels.TEACHER_ASSIGN,
-  IpcChannels.TEACHER_UPDATE_ASSIGNMENT,
-  IpcChannels.TEACHER_REMOVE_ASSIGNMENT,
-  IpcChannels.TIMETABLE_CREATE,
-  IpcChannels.TIMETABLE_UPDATE,
-  IpcChannels.TIMETABLE_DELETE,
-  IpcChannels.TIMETABLE_COPY,
+  [IpcChannels.CARRY_OVER_LIST_PENDING, SchoolModule.STUDENTS],
+  [IpcChannels.CARRY_OVER_LIST_LOCAL_PENDING, SchoolModule.STUDENTS],
+  [IpcChannels.CARRY_OVER_GET, SchoolModule.STUDENTS],
+  [IpcChannels.CARRY_OVER_SAVE, SchoolModule.STUDENTS],
+  [IpcChannels.TERM_CREATE, SchoolModule.ACADEMIC_SETUP],
+  [IpcChannels.TERM_UPDATE, SchoolModule.ACADEMIC_SETUP],
+  [IpcChannels.TERM_SET_CURRENT, SchoolModule.ACADEMIC_SETUP],
+  [IpcChannels.TERM_DELETE, SchoolModule.ACADEMIC_SETUP],
+  [IpcChannels.CLASS_CREATE, SchoolModule.TEACHING],
+  [IpcChannels.CLASS_UPDATE, SchoolModule.TEACHING],
+  [IpcChannels.CLASS_SET_ACTIVE, SchoolModule.TEACHING],
+  [IpcChannels.CLASS_SUBJECT_ASSIGN, SchoolModule.TEACHING],
+  [IpcChannels.CLASS_SUBJECT_UNASSIGN, SchoolModule.TEACHING],
+  [IpcChannels.SUBJECT_CREATE, SchoolModule.ACADEMIC_SETUP],
+  [IpcChannels.SUBJECT_UPDATE, SchoolModule.ACADEMIC_SETUP],
+  [IpcChannels.SUBJECT_SET_ACTIVE, SchoolModule.ACADEMIC_SETUP],
+  [IpcChannels.STUDENT_CREATE, SchoolModule.STUDENTS],
+  [IpcChannels.STUDENT_CREATE_AND_ENROLL, SchoolModule.STUDENTS],
+  [IpcChannels.STUDENT_UPDATE, SchoolModule.STUDENTS],
+  [IpcChannels.STUDENT_SET_ACTIVE, SchoolModule.STUDENTS],
+  [IpcChannels.STUDENT_CREATE_GUARDIAN, SchoolModule.STUDENTS],
+  [IpcChannels.STUDENT_ENROLL, SchoolModule.STUDENTS],
+  [IpcChannels.STUDENT_MOVE_CLASS, SchoolModule.STUDENTS],
+  [IpcChannels.TEACHER_CREATE, SchoolModule.STAFF],
+  [IpcChannels.TEACHER_UPDATE, SchoolModule.STAFF],
+  [IpcChannels.TEACHER_SET_ACTIVE, SchoolModule.STAFF],
+  [IpcChannels.TEACHER_ASSIGN, SchoolModule.STAFF],
+  [IpcChannels.TEACHER_UPDATE_ASSIGNMENT, SchoolModule.STAFF],
+  [IpcChannels.TEACHER_REMOVE_ASSIGNMENT, SchoolModule.STAFF],
+  [IpcChannels.TIMETABLE_CREATE, SchoolModule.TEACHING],
+  [IpcChannels.TIMETABLE_UPDATE, SchoolModule.TEACHING],
+  [IpcChannels.TIMETABLE_DELETE, SchoolModule.TEACHING],
+  [IpcChannels.TIMETABLE_COPY, SchoolModule.TEACHING],
 
   // Reads — institution-wide data with no teacher-facing screen behind it.
-  IpcChannels.DASHBOARD_GET_OVERVIEW,
-  IpcChannels.SCHOOL_GET_SUMMARY,
-  IpcChannels.ACADEMIC_YEAR_LIST,
-  IpcChannels.TERM_GET_CURRENT,
-  IpcChannels.SUBJECT_LIST,
-  IpcChannels.CLASS_GRADE_LEVEL_COUNTS,
-  IpcChannels.CLASS_SUBJECT_LIST,
-  IpcChannels.TEACHER_LIST,
-  IpcChannels.TEACHER_GET_PROFILE,
-  IpcChannels.TIMETABLE_LIST,
-  IpcChannels.TIMETABLE_CLASS,
-  IpcChannels.TIMETABLE_SUBJECT,
-  IpcChannels.TIMETABLE_DASHBOARD,
-  IpcChannels.TIMETABLE_CONFLICTS,
-  IpcChannels.STUDENT_GET,
-  IpcChannels.STUDENT_LIST_ENROLLMENTS,
-  IpcChannels.STUDENT_GET_STATISTICS,
-  IpcChannels.STUDENT_CREATE_SYNCED,
+  [IpcChannels.DASHBOARD_GET_OVERVIEW, 'BASE'],
+  [IpcChannels.SCHOOL_GET_SUMMARY, 'BASE'],
+  [IpcChannels.ACADEMIC_YEAR_LIST, 'BASE'],
+  [IpcChannels.TERM_GET_CURRENT, 'BASE'],
+  [IpcChannels.SUBJECT_LIST, 'BASE'],
+  [IpcChannels.CLASS_GRADE_LEVEL_COUNTS, 'BASE'],
+  [IpcChannels.CLASS_SUBJECT_LIST, 'BASE'],
+  [IpcChannels.TEACHER_LIST, 'BASE'],
+  [IpcChannels.TEACHER_GET_PROFILE, 'BASE'],
+  [IpcChannels.TIMETABLE_LIST, SchoolModule.TEACHING],
+  [IpcChannels.TIMETABLE_CLASS, SchoolModule.TEACHING],
+  [IpcChannels.TIMETABLE_SUBJECT, SchoolModule.TEACHING],
+  [IpcChannels.TIMETABLE_DASHBOARD, 'BASE'],
+  [IpcChannels.TIMETABLE_CONFLICTS, SchoolModule.TEACHING],
+  [IpcChannels.STUDENT_GET, 'BASE'],
+  [IpcChannels.STUDENT_LIST_ENROLLMENTS, 'BASE'],
+  [IpcChannels.STUDENT_GET_STATISTICS, 'BASE'],
+  [IpcChannels.STUDENT_CREATE_SYNCED, SchoolModule.STUDENTS],
+
+  // Office-user management: principal-only, never delegable.
+  [IpcChannels.SCHOOL_USERS_LIST, 'PRINCIPAL'],
+  [IpcChannels.SCHOOL_USERS_CREATE, 'PRINCIPAL'],
+  [IpcChannels.SCHOOL_USERS_UPDATE, 'PRINCIPAL'],
+  [IpcChannels.SCHOOL_USERS_SET_ACTIVE, 'PRINCIPAL'],
 ]);
 
 // Reads a teacher's own screens genuinely need, in addition to school
@@ -112,29 +127,30 @@ const SCHOOL_ADMIN_CHANNELS = new Set<IpcChannel>([
 // institution-wide data (bell schedule, current year, term list) that the
 // Timetable and Gradebook pages need to render — not teacher- or
 // class-specific, so none of them need self-scoping.
-const SCHOOL_STAFF_CHANNELS = new Set<IpcChannel>([
+export const SCHOOL_STAFF_CHANNELS: ReadonlyMap<IpcChannel, SchoolAccess> = new Map<IpcChannel, SchoolAccess>([
   // Stage 5: carried marks, read-only in the teacher's grade grid.
-  IpcChannels.CARRIED_GRADES_FOR_PERIOD,
-  IpcChannels.ATTENDANCE_LIST,
-  IpcChannels.ATTENDANCE_RECORD,
-  IpcChannels.CLASS_LIST,
-  IpcChannels.STUDENT_LIST,
-  IpcChannels.TEACHER_LIST_ASSIGNMENTS,
-  IpcChannels.TIMETABLE_TEACHER,
-  IpcChannels.TIMETABLE_PERIODS,
-  IpcChannels.ACADEMIC_YEAR_GET_CURRENT,
-  IpcChannels.TERM_LIST,
-  IpcChannels.ACADEMIC_CONTEXT_GET,
+  [IpcChannels.CARRIED_GRADES_FOR_PERIOD, SchoolModule.TEACHING],
+  [IpcChannels.ATTENDANCE_LIST, SchoolModule.TEACHING],
+  [IpcChannels.ATTENDANCE_RECORD, SchoolModule.TEACHING],
+  [IpcChannels.CLASS_LIST, 'BASE'],
+  [IpcChannels.STUDENT_LIST, 'BASE'],
+  [IpcChannels.TEACHER_LIST_ASSIGNMENTS, 'BASE'],
+  [IpcChannels.TIMETABLE_TEACHER, SchoolModule.TEACHING],
+  [IpcChannels.TIMETABLE_PERIODS, 'BASE'],
+  [IpcChannels.ACADEMIC_YEAR_GET_CURRENT, 'BASE'],
+  [IpcChannels.TERM_LIST, 'BASE'],
+  [IpcChannels.ACADEMIC_CONTEXT_GET, 'BASE'],
   // Report cards (academic-year lifecycle Stage 2): the read model scopes a
   // TEACHER to the classes they are assigned to, see SqliteReportCardReadModel.
-  IpcChannels.REPORT_CARDS_LIST_FOR_STUDENT,
-  IpcChannels.REPORT_CARDS_LIST_FOR_CLASS,
-  IpcChannels.REPORT_CARD_GET_ISSUE,
-  IpcChannels.REPORT_CARDS_LIST_ARCHIVED_YEARS,
+  [IpcChannels.REPORT_CARDS_LIST_FOR_STUDENT, SchoolModule.REPORTS],
+  [IpcChannels.REPORT_CARDS_LIST_FOR_CLASS, SchoolModule.REPORTS],
+  [IpcChannels.REPORT_CARD_GET_ISSUE, SchoolModule.REPORTS],
+  [IpcChannels.REPORT_CARDS_LIST_ARCHIVED_YEARS, SchoolModule.REPORTS],
 ]);
 
 // Report-card channels are also members of SCHOOL_STAFF_CHANNELS; they are
-// checked first so a refusal names report cards, not attendance.
+// checked first so a refusal names report cards, not attendance. Office staff
+// reach them through the REPORTS module in SCHOOL_STAFF_CHANNELS.
 const REPORT_CARD_CHANNELS = new Set<IpcChannel>([
   IpcChannels.REPORT_CARDS_LIST_FOR_STUDENT,
   IpcChannels.REPORT_CARDS_LIST_FOR_CLASS,
@@ -215,6 +231,18 @@ const COUNTY_ADMIN_CHANNELS = new Set<IpcChannel>([
   IpcChannels.COUNTY_BULK_CREATE_USERS,
 ]);
 
+// Office staff follow the module classification of a channel. A session saved
+// by an older build has no modules; that reads as an empty set.
+function assertOfficeAccess(workspaces: WorkspaceManager, access: SchoolAccess): void {
+  const user = workspaces.active.user;
+  if (canUseSchoolAccess(user, access)) return;
+  if (access === 'PRINCIPAL') {
+    throw new ForbiddenError('This action is only available to the School Admin.');
+  }
+  // 'BASE' is open to every institution-scoped role, so only a module can refuse here.
+  throw new ForbiddenError(`This account does not have access to ${schoolAccessLabel(access as SchoolModule)}.`);
+}
+
 export function authorizeChannel(channel: IpcChannel, workspaces: WorkspaceManager): void {
   if (PUBLIC_CHANNELS.has(channel)) return;
   let role: string;
@@ -223,18 +251,28 @@ export function authorizeChannel(channel: IpcChannel, workspaces: WorkspaceManag
   } catch {
     throw new UnauthorizedError('Sign in to unlock an offline workspace.');
   }
-  if (SCHOOL_ADMIN_CHANNELS.has(channel) && role !== SystemRole.INSTITUTION_ADMIN) {
-    throw new ForbiddenError('This action requires a school administrator workspace.');
+  const schoolAdminAccess = SCHOOL_ADMIN_CHANNELS.get(channel);
+  if (schoolAdminAccess !== undefined) {
+    if (role === SystemRole.INSTITUTION_STAFF) {
+      assertOfficeAccess(workspaces, schoolAdminAccess);
+    } else if (role !== SystemRole.INSTITUTION_ADMIN) {
+      throw new ForbiddenError('This action requires a school administrator workspace.');
+    }
   }
-  if (REPORT_CARD_CHANNELS.has(channel) && role !== SystemRole.INSTITUTION_ADMIN && role !== SystemRole.TEACHER) {
-    throw new ForbiddenError('Report cards are only available to school administrators and teachers.');
+  if (REPORT_CARD_CHANNELS.has(channel)) {
+    if (role === SystemRole.INSTITUTION_STAFF) {
+      assertOfficeAccess(workspaces, SchoolModule.REPORTS);
+    } else if (role !== SystemRole.INSTITUTION_ADMIN && role !== SystemRole.TEACHER) {
+      throw new ForbiddenError('Report cards are only available to school administrators and teachers.');
+    }
   }
-  if (
-    SCHOOL_STAFF_CHANNELS.has(channel) &&
-    role !== SystemRole.INSTITUTION_ADMIN &&
-    role !== SystemRole.TEACHER
-  ) {
-    throw new ForbiddenError('Attendance is only available to school administrators and teachers.');
+  const schoolStaffAccess = SCHOOL_STAFF_CHANNELS.get(channel);
+  if (schoolStaffAccess !== undefined) {
+    if (role === SystemRole.INSTITUTION_STAFF) {
+      assertOfficeAccess(workspaces, schoolStaffAccess);
+    } else if (role !== SystemRole.INSTITUTION_ADMIN && role !== SystemRole.TEACHER) {
+      throw new ForbiddenError('Attendance is only available to school administrators and teachers.');
+    }
   }
   if (TEACHER_ONLY_CHANNELS.has(channel) && role !== SystemRole.TEACHER) {
     throw new ForbiddenError('Assignments are only available to teachers.');

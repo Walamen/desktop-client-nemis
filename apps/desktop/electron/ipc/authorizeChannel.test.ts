@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { ForbiddenError } from '@nemis-desktop/shared';
-import { IpcChannels, SystemRole } from '@nemis-desktop/types';
+import { IpcChannels, isSchoolModule, SystemRole, type IpcChannel } from '@nemis-desktop/types';
 import type { WorkspaceManager } from '@app/workspace/WorkspaceManager';
-import { authorizeChannel } from './authorizeChannel';
+import { authorizeChannel, SCHOOL_ADMIN_CHANNELS, SCHOOL_STAFF_CHANNELS } from './authorizeChannel';
 
-function workspace(role?: string): WorkspaceManager {
+function workspace(role?: string, modules?: string[]): WorkspaceManager {
   return {
     get active() {
       if (!role) throw new Error('locked');
-      return { user: { role } };
+      return { user: { role, modules } };
     },
   } as unknown as WorkspaceManager;
 }
@@ -286,5 +286,235 @@ describe('authorizeChannel', () => {
     expect(() =>
       authorizeChannel(channel, workspace(SystemRole.INSTITUTION_ADMIN)),
     ).not.toThrow();
+  });
+});
+
+const BEFORE_CHANGE_CHANNELS: IpcChannel[] = [
+IpcChannels.ACADEMIC_CONTEXT_GET,
+    IpcChannels.ACADEMIC_YEAR_COPY_STRUCTURE,
+    IpcChannels.ACADEMIC_YEAR_CREATE,
+    IpcChannels.ACADEMIC_YEAR_GET_CURRENT,
+    IpcChannels.ACADEMIC_YEAR_LIST,
+    IpcChannels.ACADEMIC_YEAR_START,
+    IpcChannels.ACADEMIC_YEAR_UPDATE,
+    IpcChannels.ATTENDANCE_LIST,
+    IpcChannels.ATTENDANCE_RECORD,
+    IpcChannels.CARRIED_GRADES_FOR_PERIOD,
+    IpcChannels.CARRY_OVER_GET,
+    IpcChannels.CARRY_OVER_LIST_LOCAL_PENDING,
+    IpcChannels.CARRY_OVER_LIST_PENDING,
+    IpcChannels.CARRY_OVER_SAVE,
+    IpcChannels.CLASS_CREATE,
+    IpcChannels.CLASS_GRADE_LEVEL_COUNTS,
+    IpcChannels.CLASS_LIST,
+    IpcChannels.CLASS_SET_ACTIVE,
+    IpcChannels.CLASS_SUBJECT_ASSIGN,
+    IpcChannels.CLASS_SUBJECT_LIST,
+    IpcChannels.CLASS_SUBJECT_UNASSIGN,
+    IpcChannels.CLASS_UPDATE,
+    IpcChannels.CLOSE_FILL_CELLS,
+    IpcChannels.CLOSE_GET_PROMOTION,
+    IpcChannels.CLOSE_GET_READINESS,
+    IpcChannels.CLOSE_PENDING_CHANGES_COUNT,
+    IpcChannels.CLOSE_SAVE_PROMOTION,
+    IpcChannels.CLOSE_YEAR,
+    IpcChannels.CORRECT_GRADE,
+    IpcChannels.CORRECT_OUTCOME,
+    IpcChannels.CORRECT_REMARK,
+    IpcChannels.DASHBOARD_GET_OVERVIEW,
+    IpcChannels.REGISTRY_CLAIM,
+    IpcChannels.REGISTRY_LOOKUP,
+    IpcChannels.REGISTRY_LOOKUP_BY_NAME,
+    IpcChannels.REGISTRY_REQUEST,
+    IpcChannels.REOPEN_YEAR,
+    IpcChannels.REPORT_CARDS_LIST_ARCHIVED_YEARS,
+    IpcChannels.REPORT_CARDS_LIST_FOR_CLASS,
+    IpcChannels.REPORT_CARDS_LIST_FOR_STUDENT,
+    IpcChannels.REPORT_CARD_GET_ISSUE,
+    IpcChannels.SCHOOL_GET_SUMMARY,
+    IpcChannels.STUDENT_BULK_CLAIM,
+    IpcChannels.STUDENT_CREATE,
+    IpcChannels.STUDENT_CREATE_AND_ENROLL,
+    IpcChannels.STUDENT_CREATE_GUARDIAN,
+    IpcChannels.STUDENT_CREATE_SYNCED,
+    IpcChannels.STUDENT_ENROLL,
+    IpcChannels.STUDENT_GET,
+    IpcChannels.STUDENT_GET_STATISTICS,
+    IpcChannels.STUDENT_LIST,
+    IpcChannels.STUDENT_LIST_ENROLLMENTS,
+    IpcChannels.STUDENT_MOVE_CLASS,
+    IpcChannels.STUDENT_SET_ACTIVE,
+    IpcChannels.STUDENT_UPDATE,
+    IpcChannels.SUBJECT_CREATE,
+    IpcChannels.SUBJECT_LIST,
+    IpcChannels.SUBJECT_SET_ACTIVE,
+    IpcChannels.SUBJECT_UPDATE,
+    IpcChannels.TEACHER_ASSIGN,
+    IpcChannels.TEACHER_CREATE,
+    IpcChannels.TEACHER_GET_PROFILE,
+    IpcChannels.TEACHER_LIST,
+    IpcChannels.TEACHER_LIST_ASSIGNMENTS,
+    IpcChannels.TEACHER_REMOVE_ASSIGNMENT,
+    IpcChannels.TEACHER_SET_ACTIVE,
+    IpcChannels.TEACHER_UPDATE,
+    IpcChannels.TEACHER_UPDATE_ASSIGNMENT,
+    IpcChannels.TERM_CREATE,
+    IpcChannels.TERM_DELETE,
+    IpcChannels.TERM_GET_CURRENT,
+    IpcChannels.TERM_LIST,
+    IpcChannels.TERM_SET_CURRENT,
+    IpcChannels.TERM_UPDATE,
+    IpcChannels.TIMETABLE_CLASS,
+    IpcChannels.TIMETABLE_CONFLICTS,
+    IpcChannels.TIMETABLE_COPY,
+    IpcChannels.TIMETABLE_CREATE,
+    IpcChannels.TIMETABLE_DASHBOARD,
+    IpcChannels.TIMETABLE_DELETE,
+    IpcChannels.TIMETABLE_LIST,
+    IpcChannels.TIMETABLE_PERIODS,
+    IpcChannels.TIMETABLE_SUBJECT,
+    IpcChannels.TIMETABLE_TEACHER,
+    IpcChannels.TIMETABLE_UPDATE,
+    IpcChannels.TRANSFER_CANCEL,
+    IpcChannels.TRANSFER_CREATE,
+    IpcChannels.TRANSFER_MATCHING_DRAFT_CLEAR,
+    IpcChannels.TRANSFER_MATCHING_DRAFT_SAVE,
+    IpcChannels.TRANSFER_RECORD_PREVIEW,
+    IpcChannels.TRANSFER_REVIEW,
+    IpcChannels.TRANSFER_SEARCH_SCHOOLS,
+];
+
+const OFFICE = SystemRole.INSTITUTION_STAFF;
+const ALL_MODULES = [
+  'ACADEMIC_SETUP',
+  'STUDENTS',
+  'STAFF',
+  'TEACHING',
+  'FINANCE_PAYMENTS',
+  'FINANCE_RULES',
+  'REPORTS',
+  'SCHOOL',
+];
+const PRINCIPAL_ONLY: IpcChannel[] = [
+  IpcChannels.CLOSE_GET_READINESS,
+  IpcChannels.CLOSE_FILL_CELLS,
+  IpcChannels.CLOSE_GET_PROMOTION,
+  IpcChannels.CLOSE_SAVE_PROMOTION,
+  IpcChannels.CLOSE_YEAR,
+  IpcChannels.CLOSE_PENDING_CHANGES_COUNT,
+  IpcChannels.REOPEN_YEAR,
+  IpcChannels.CORRECT_GRADE,
+  IpcChannels.CORRECT_OUTCOME,
+  IpcChannels.CORRECT_REMARK,
+  IpcChannels.SCHOOL_USERS_LIST,
+  IpcChannels.SCHOOL_USERS_CREATE,
+  IpcChannels.SCHOOL_USERS_UPDATE,
+  IpcChannels.SCHOOL_USERS_SET_ACTIVE,
+];
+
+describe('authorizeChannel for school office staff', () => {
+  it('every school-admin and school-staff channel has a classification', () => {
+    for (const map of [SCHOOL_ADMIN_CHANNELS, SCHOOL_STAFF_CHANNELS]) {
+      for (const [channel, access] of map) {
+        expect(
+          access === 'BASE' || access === 'PRINCIPAL' || isSchoolModule(access),
+          channel,
+        ).toBe(true);
+      }
+    }
+    const keys = [...SCHOOL_ADMIN_CHANNELS.keys(), ...SCHOOL_STAFF_CHANNELS.keys()];
+    const expected = [
+      ...BEFORE_CHANGE_CHANNELS,
+      IpcChannels.SCHOOL_USERS_LIST,
+      IpcChannels.SCHOOL_USERS_CREATE,
+      IpcChannels.SCHOOL_USERS_UPDATE,
+      IpcChannels.SCHOOL_USERS_SET_ACTIVE,
+    ];
+    expect(new Set(keys)).toEqual(new Set(expected));
+  });
+
+  it('principal-only channels refuse office staff even with every module', () => {
+    for (const channel of PRINCIPAL_ONLY) {
+      expect(() => authorizeChannel(channel, workspace(OFFICE, ALL_MODULES)), channel).toThrow(
+        new ForbiddenError('This action is only available to the School Admin.'),
+      );
+      expect(() => authorizeChannel(channel, workspace(SystemRole.INSTITUTION_ADMIN)), channel).not.toThrow();
+    }
+  });
+
+  it('office staff pass base channels with no modules', () => {
+    for (const channel of [
+      IpcChannels.DASHBOARD_GET_OVERVIEW,
+      IpcChannels.STUDENT_LIST,
+      IpcChannels.TIMETABLE_DASHBOARD,
+    ]) {
+      expect(() => authorizeChannel(channel, workspace(OFFICE, [])), channel).not.toThrow();
+    }
+  });
+
+  it('a session saved without modules reads as no modules', () => {
+    expect(() => authorizeChannel(IpcChannels.STUDENT_LIST, workspace(OFFICE, undefined))).not.toThrow();
+    expect(() => authorizeChannel(IpcChannels.STUDENT_CREATE, workspace(OFFICE, undefined))).toThrow(
+      'This account does not have access to Students & families.',
+    );
+  });
+
+  it('office staff need the module', () => {
+    expect(() => authorizeChannel(IpcChannels.STUDENT_CREATE, workspace(OFFICE, ['FINANCE_PAYMENTS']))).toThrow(
+      new ForbiddenError('This account does not have access to Students & families.'),
+    );
+    expect(() => authorizeChannel(IpcChannels.STUDENT_CREATE, workspace(OFFICE, ['STUDENTS']))).not.toThrow();
+    expect(() => authorizeChannel(IpcChannels.TEACHER_CREATE, workspace(OFFICE, ['STUDENTS']))).toThrow(
+      'This account does not have access to Teachers & staff.',
+    );
+    expect(() => authorizeChannel(IpcChannels.TERM_CREATE, workspace(OFFICE, ['ACADEMIC_SETUP']))).not.toThrow();
+    expect(() => authorizeChannel(IpcChannels.ATTENDANCE_RECORD, workspace(OFFICE, ['STUDENTS']))).toThrow(
+      'This account does not have access to Teaching workflow.',
+    );
+    expect(() => authorizeChannel(IpcChannels.ATTENDANCE_RECORD, workspace(OFFICE, ['TEACHING']))).not.toThrow();
+  });
+
+  it('every module-classified channel passes with exactly its module', () => {
+    for (const map of [SCHOOL_ADMIN_CHANNELS, SCHOOL_STAFF_CHANNELS]) {
+      for (const [channel, access] of map) {
+        if (!isSchoolModule(access)) continue;
+        expect(() => authorizeChannel(channel, workspace(OFFICE, [access])), channel).not.toThrow();
+        expect(() => authorizeChannel(channel, workspace(OFFICE, [])), channel).toThrow(ForbiddenError);
+      }
+    }
+  });
+
+  it('office staff with REPORTS read report cards; without it they are refused', () => {
+    for (const channel of [
+      IpcChannels.REPORT_CARDS_LIST_FOR_STUDENT,
+      IpcChannels.REPORT_CARDS_LIST_FOR_CLASS,
+      IpcChannels.REPORT_CARD_GET_ISSUE,
+      IpcChannels.REPORT_CARDS_LIST_ARCHIVED_YEARS,
+    ]) {
+      expect(() => authorizeChannel(channel, workspace(OFFICE, ['REPORTS'])), channel).not.toThrow();
+      expect(() => authorizeChannel(channel, workspace(OFFICE, ['STUDENTS'])), channel).toThrow(
+        new ForbiddenError('This account does not have access to Reports.'),
+      );
+    }
+  });
+
+  it('office staff are refused teacher-only and county channels', () => {
+    expect(() => authorizeChannel(IpcChannels.ASSIGNMENT_LIST, workspace(OFFICE, ALL_MODULES))).toThrow(ForbiddenError);
+    expect(() => authorizeChannel(IpcChannels.COUNTY_LIST_USERS, workspace(OFFICE, ALL_MODULES))).toThrow(ForbiddenError);
+    expect(() => authorizeChannel(IpcChannels.YEAR_ARCHIVES_LIST, workspace(OFFICE, ALL_MODULES))).toThrow(ForbiddenError);
+  });
+
+  it('admin and teacher behaviour is unchanged', () => {
+    expect(() =>
+      authorizeChannel(IpcChannels.SCHOOL_USERS_CREATE, workspace(SystemRole.INSTITUTION_ADMIN)),
+    ).not.toThrow();
+    expect(() => authorizeChannel(IpcChannels.STUDENT_CREATE, workspace(SystemRole.TEACHER))).toThrow(
+      'This action requires a school administrator workspace.',
+    );
+    expect(() => authorizeChannel(IpcChannels.SCHOOL_USERS_LIST, workspace(SystemRole.TEACHER))).toThrow(
+      'This action requires a school administrator workspace.',
+    );
+    expect(() => authorizeChannel(IpcChannels.ATTENDANCE_RECORD, workspace(SystemRole.TEACHER))).not.toThrow();
+    expect(() => authorizeChannel(IpcChannels.REPORT_CARD_GET_ISSUE, workspace(SystemRole.TEACHER))).not.toThrow();
   });
 });

@@ -50,6 +50,12 @@ describe('registerReportCardHandlers', () => {
     expect(rows.map((r) => r.issueId)).toEqual(['i-1']);
   });
 
+  it('office staff viewer reads institution-wide', () => {
+    register(SystemRole.INSTITUTION_STAFF);
+    const rows = calls.get(IpcChannels.REPORT_CARDS_LIST_FOR_STUDENT)!.handler('s-1') as { issueId: string }[];
+    expect(rows.map((r) => r.issueId)).toEqual(['i-1']);
+  });
+
   it('scopes a teacher by their own user id, never by anything the renderer sends', () => {
     register(SystemRole.TEACHER);
     expect(() => calls.get(IpcChannels.REPORT_CARDS_LIST_FOR_CLASS)!.handler('c-1')).toThrow(ForbiddenError);
