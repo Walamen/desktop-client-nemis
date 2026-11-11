@@ -6,8 +6,8 @@ import {
   desktopPortalRoute,
   roleCanAccessRoute,
   type DesktopPortalRole,
+  type ProvisioningUser,
 } from '@nemis-desktop/types';
-import type { ProvisioningUser } from '@nemis-desktop/types';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
 import { SessionUserProvider } from './SessionUserContext';
 

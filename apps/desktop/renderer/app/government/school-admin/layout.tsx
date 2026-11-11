@@ -10,6 +10,9 @@ import { useSessionUser } from '@/components/shell/SessionUserContext';
 import { ToastHost } from '@/components/shell/ToastHost';
 import { SystemRole } from '@nemis-desktop/types';
 
+// Module-level so RouteGuard's effect does not re-run on every navigation.
+const SCHOOL_ROLES = [SystemRole.INSTITUTION_ADMIN, SystemRole.INSTITUTION_STAFF] as const;
+
 function SchoolAdminShell({ children }: { children: ReactNode }) {
   const { role } = useSessionUser();
   return (
@@ -32,7 +35,7 @@ function SchoolAdminShell({ children }: { children: ReactNode }) {
 
 export default function SchoolAdminLayout({ children }: { children: ReactNode }) {
   return (
-    <RouteGuard requiredRoles={[SystemRole.INSTITUTION_ADMIN, SystemRole.INSTITUTION_STAFF]}>
+    <RouteGuard requiredRoles={SCHOOL_ROLES}>
       <SchoolAdminShell>{children}</SchoolAdminShell>
     </RouteGuard>
   );

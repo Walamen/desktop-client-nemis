@@ -9,9 +9,12 @@ import { StatusBar } from '@/components/shell/StatusBar';
 import { ToastHost } from '@/components/shell/ToastHost';
 import { SchoolRegistrationNotices } from '@/components/county/schools/registration/SchoolRegistrationNotices';
 
+// Module-level so RouteGuard's effect does not re-run on every navigation.
+const COUNTY_ROLES = [SystemRole.COUNTY_ADMIN] as const;
+
 export default function Layout({ children }: { children: ReactNode }) {
   return (
-    <RouteGuard requiredRoles={[SystemRole.COUNTY_ADMIN]}>
+    <RouteGuard requiredRoles={COUNTY_ROLES}>
       <div className="flex h-screen overflow-hidden bg-gray-50">
         <Sidebar role={SystemRole.COUNTY_ADMIN} />
         <div className="flex-1 flex flex-col overflow-hidden">
