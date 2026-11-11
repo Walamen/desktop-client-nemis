@@ -1131,6 +1131,102 @@ describe('BackendProvisioningGateway', () => {
     });
   });
 
+  describe('school office users', () => {
+    const call = (fetchMock: { mock: { calls: unknown[][] } }) =>
+      fetchMock.mock.calls[0] as unknown as [URL, RequestInit];
+    const serverUser = {
+      id: 'u-1', firstName: 'Ada', lastName: 'Doe', email: 'ada@school.lr', phoneNumber: null, photoUrl: null,
+      role: 'INSTITUTION_STAFF', title: 'Registrar', modules: ['STUDENTS', 'FUTURE_MODULE'], isActive: true,
+      lastLoginAt: null, staffId: null, extra: 'dropped',
+    };
+    const mappedUser = {
+      id: 'u-1', firstName: 'Ada', lastName: 'Doe', email: 'ada@school.lr', phoneNumber: null, photoUrl: null,
+      role: 'INSTITUTION_STAFF', title: 'Registrar', modules: ['STUDENTS'], isActive: true,
+      lastLoginAt: null, staffId: null,
+    };
+
+    it('listSchoolUsers GETs the school users and maps each one', async () => {
+      const fetchMock = vi.fn(async () => response([serverUser]));
+      vi.stubGlobal('fetch', fetchMock);
+      expect(await buildGateway().listSchoolUsers()).toEqual([mappedUser]);
+      const [url, init] = call(fetchMock);
+      expect(url).toEqual(new URL('https://nemis.example/school-admin/users'));
+      expect(init.method).toBe('GET');
+    });
+
+    it('createSchoolUser posts the body and maps user and credential', async () => {
+      const fetchMock = vi.fn(async () =>
+        response({ user: serverUser, credential: { email: 'ada@school.lr', defaultPassword: 'Pw-123' } }),
+      );
+      vi.stubGlobal('fetch', fetchMock);
+      const request = {
+        firstName: 'Ada', lastName: 'Doe', email: 'ada@school.lr', title: 'Registrar',
+        modules: ['STUDENTS' as const], staffId: 'st-1',
+      };
+      expect(await buildGateway().createSchoolUser(request)).toEqual({
+        user: mappedUser,
+        credential: { email: 'ada@school.lr', defaultPassword: 'Pw-123' },
+      });
+      const [url, init] = call(fetchMock);
+      expect(url).toEqual(new URL('https://nemis.example/school-admin/users'));
+      expect(init.method).toBe('POST');
+      expect(JSON.parse(String(init.body))).toEqual(request);
+    });
+
+    it('createSchoolUser without a credential (an existing account) returns the user only', async () => {
+      vi.stubGlobal('fetch', vi.fn(async () => response({ user: serverUser })));
+      const result = await buildGateway().createSchoolUser({
+        firstName: 'Ada', lastName: 'Doe', email: 'ada@school.lr', modules: ['STUDENTS'],
+      });
+      expect(result).toEqual({ user: mappedUser });
+    });
+
+    it('setSchoolUserActive(false) posts to /deactivate, (true) to /reactivate', async () => {
+      const fetchMock = vi.fn(async () => response(serverUser));
+      vi.stubGlobal('fetch', fetchMock);
+      const gateway = buildGateway();
+      expect(await gateway.setSchoolUserActive({ userId: 'u 1', isActive: false })).toEqual(mappedUser);
+      expect(await gateway.setSchoolUserActive({ userId: 'u 1', isActive: true })).toEqual(mappedUser);
+      const [first, second] = fetchMock.mock.calls as unknown as Array<[URL, RequestInit]>;
+      expect(first![0]).toEqual(new URL('https://nemis.example/school-admin/users/u%201/deactivate'));
+      expect(first![1].method).toBe('POST');
+      expect(second![0]).toEqual(new URL('https://nemis.example/school-admin/users/u%201/reactivate'));
+      expect(second![1].method).toBe('POST');
+    });
+
+    it('updateSchoolUser PATCHes /school-admin/users/:id without userId in the body', async () => {
+      const fetchMock = vi.fn(async () => response(serverUser));
+      vi.stubGlobal('fetch', fetchMock);
+      expect(
+        await buildGateway().updateSchoolUser({ userId: 'u-1', title: null, modules: ['STUDENTS', 'REPORTS'] }),
+      ).toEqual(mappedUser);
+      const [url, init] = call(fetchMock);
+      expect(url).toEqual(new URL('https://nemis.example/school-admin/users/u-1'));
+      expect(init.method).toBe('PATCH');
+      expect(JSON.parse(String(init.body))).toEqual({ title: null, modules: ['STUDENTS', 'REPORTS'] });
+    });
+
+    it.each([{ ...serverUser, id: undefined }, { ...serverUser, role: undefined }, { ...serverUser, role: 'TEACHER' }])(
+      'refuses a user without an id or an office role (%#)',
+      async (body) => {
+        vi.stubGlobal('fetch', vi.fn(async () => response(body)));
+        await expect(buildGateway().setSchoolUserActive({ userId: 'u-1', isActive: true })).rejects.toThrow(
+          'Malformed server response.',
+        );
+      },
+    );
+
+    it('a server refusal surfaces its message', async () => {
+      vi.stubGlobal('fetch', vi.fn(async () => new Response(
+        JSON.stringify({ errorCode: 'CONFLICT', message: 'Email already registered' }),
+        { status: 409, headers: { 'content-type': 'application/json' } },
+      )));
+      await expect(
+        buildGateway().createSchoolUser({ firstName: 'A', lastName: 'B', email: 'a@b.lr', modules: ['STUDENTS'] }),
+      ).rejects.toMatchObject({ status: 409, remoteMessage: 'Email already registered' });
+    });
+  });
+
   describe('session restore', () => {
     // The server rotates refresh tokens: a second refresh with the token the
     // first one just used deletes the session. Concurrent requests must share

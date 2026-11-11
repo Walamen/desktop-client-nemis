@@ -11,6 +11,7 @@ import {
   GradeLevel,
   SCHOOL_ADMIN_COLLECTIONS,
   StaffPosition,
+  isSchoolModule,
 } from '@nemis-desktop/types';
 
 /** Rejects IPC calls that pass unexpected arguments. Never trust renderer input. */
@@ -1420,6 +1421,77 @@ export function assertCountyBulkCreateUsersArgs(args: readonly unknown[]): void 
   for (const row of rows as unknown[]) {
     assertCountyNewUser(row, ['firstName', 'lastName', 'email', 'phoneNumber', 'role', 'districtId', 'institutionId']);
   }
+}
+
+// --- School office users (Users & Access) ------------------------------------
+const OFFICE_USER_NAME_MAX_LENGTH = 100;
+const OFFICE_USER_EMAIL_MAX_LENGTH = 255;
+const OFFICE_USER_PHONE_MAX_LENGTH = 30;
+const OFFICE_USER_TITLE_MAX_LENGTH = 60;
+
+/** A string that is non-empty once trimmed and within `maxLength`. */
+function assertTrimmedString(value: unknown, field: string, maxLength: number): void {
+  if (typeof value !== 'string' || value.trim().length === 0 || value.length > maxLength) {
+    throw new IPCError(`Expected a non-empty string for "${field}" (max ${maxLength} characters).`);
+  }
+}
+
+function assertOptionalTrimmedString(value: unknown, field: string, maxLength: number): void {
+  if (value === undefined) return;
+  assertTrimmedString(value, field, maxLength);
+}
+
+/** A non-empty list of known module ids, each at most once. */
+function assertSchoolModules(value: unknown): void {
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new IPCError('Expected at least one module.');
+  }
+  const seen = new Set<string>();
+  for (const item of value as unknown[]) {
+    if (typeof item !== 'string' || !isSchoolModule(item)) throw new IPCError('Unknown module.');
+    if (seen.has(item)) throw new IPCError('Duplicate module.');
+    seen.add(item);
+  }
+}
+
+function assertOfficeUserRequest(args: readonly unknown[], allowed: readonly string[]): Record<string, unknown> {
+  assertArity(args, 1);
+  const [request] = args;
+  if (!isPlainObject(request)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(request, allowed);
+  return request;
+}
+
+export function assertSchoolUserCreateArgs(args: readonly unknown[]): void {
+  const request = assertOfficeUserRequest(args, [
+    'firstName', 'lastName', 'email', 'phoneNumber', 'title', 'modules', 'staffId',
+  ]);
+  assertTrimmedString(request.firstName, 'firstName', OFFICE_USER_NAME_MAX_LENGTH);
+  assertTrimmedString(request.lastName, 'lastName', OFFICE_USER_NAME_MAX_LENGTH);
+  assertTrimmedString(request.email, 'email', OFFICE_USER_EMAIL_MAX_LENGTH);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((request.email as string).trim())) {
+    throw new IPCError('Expected a valid email address.');
+  }
+  assertOptionalTrimmedString(request.phoneNumber, 'phoneNumber', OFFICE_USER_PHONE_MAX_LENGTH);
+  assertOptionalTrimmedString(request.title, 'title', OFFICE_USER_TITLE_MAX_LENGTH);
+  assertSchoolModules(request.modules);
+  assertOptionalTrimmedString(request.staffId, 'staffId', ID_MAX_LENGTH);
+}
+
+export function assertSchoolUserUpdateArgs(args: readonly unknown[]): void {
+  const request = assertOfficeUserRequest(args, ['userId', 'firstName', 'lastName', 'phoneNumber', 'title', 'modules']);
+  assertTrimmedString(request.userId, 'userId', ID_MAX_LENGTH);
+  assertOptionalTrimmedString(request.firstName, 'firstName', OFFICE_USER_NAME_MAX_LENGTH);
+  assertOptionalTrimmedString(request.lastName, 'lastName', OFFICE_USER_NAME_MAX_LENGTH);
+  assertOptionalTrimmedString(request.phoneNumber, 'phoneNumber', OFFICE_USER_PHONE_MAX_LENGTH);
+  if (request.title !== null) assertOptionalTrimmedString(request.title, 'title', OFFICE_USER_TITLE_MAX_LENGTH);
+  if (request.modules !== undefined) assertSchoolModules(request.modules);
+}
+
+export function assertSchoolUserSetActiveArgs(args: readonly unknown[]): void {
+  const request = assertOfficeUserRequest(args, ['userId', 'isActive']);
+  assertTrimmedString(request.userId, 'userId', ID_MAX_LENGTH);
+  assertBoolean(request.isActive, 'isActive');
 }
 
 // --- Close Academic Year (lifecycle Stage 3) ---------------------------------

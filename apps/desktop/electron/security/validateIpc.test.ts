@@ -27,6 +27,9 @@ import {
   assertGradeSubmissionArgs,
   assertCreateGuardianArgs,
   assertListPendingRecordsArgs,
+  assertSchoolUserCreateArgs,
+  assertSchoolUserSetActiveArgs,
+  assertSchoolUserUpdateArgs,
 } from './validateIpc';
 
 describe('assertAuthenticateArgs', () => {
@@ -409,5 +412,52 @@ describe('assertListTeachingAssignmentsArgs', () => {
     expect(() => assertListTeachingAssignmentsArgs(['t-1', { other: true }])).toThrow();
     expect(() => assertListTeachingAssignmentsArgs(['t-1', null])).toThrow();
     expect(() => assertListTeachingAssignmentsArgs(['t-1', {}, 'x'])).toThrow();
+  });
+});
+
+describe('school office user validators', () => {
+  const create = { firstName: 'Ada', lastName: 'Doe', email: 'ada@school.lr', modules: ['STUDENTS'] };
+
+  it('accepts a minimal create', () => {
+    expect(() => assertSchoolUserCreateArgs([create])).not.toThrow();
+    expect(() =>
+      assertSchoolUserCreateArgs([
+        { ...create, phoneNumber: '0770000000', title: 'Registrar', staffId: 'st-1', modules: ['STUDENTS', 'REPORTS'] },
+      ]),
+    ).not.toThrow();
+  });
+
+  it('rejects empty modules, unknown module, duplicate module, 61-char title', () => {
+    expect(() => assertSchoolUserCreateArgs([{ ...create, modules: [] }])).toThrow();
+    expect(() => assertSchoolUserCreateArgs([{ ...create, modules: ['ROOT'] }])).toThrow();
+    expect(() => assertSchoolUserCreateArgs([{ ...create, modules: ['STUDENTS', 'STUDENTS'] }])).toThrow();
+    expect(() => assertSchoolUserCreateArgs([{ ...create, title: 'x'.repeat(61) }])).toThrow();
+    expect(() => assertSchoolUserCreateArgs([{ ...create, title: 'x'.repeat(60) }])).not.toThrow();
+  });
+
+  it('create rejects blank or over-long required fields, a bad email and unknown keys', () => {
+    expect(() => assertSchoolUserCreateArgs([{ ...create, firstName: '   ' }])).toThrow();
+    expect(() => assertSchoolUserCreateArgs([{ ...create, lastName: 'x'.repeat(101) }])).toThrow();
+    expect(() => assertSchoolUserCreateArgs([{ ...create, email: 'not-an-email' }])).toThrow();
+    expect(() => assertSchoolUserCreateArgs([{ ...create, email: `${'a'.repeat(251)}@x.lr` }])).toThrow();
+    expect(() => assertSchoolUserCreateArgs([{ ...create, phoneNumber: '0'.repeat(31) }])).toThrow();
+    expect(() => assertSchoolUserCreateArgs([{ ...create, staffId: '' }])).toThrow();
+    expect(() => assertSchoolUserCreateArgs([{ ...create, role: 'INSTITUTION_ADMIN' }])).toThrow();
+    expect(() => assertSchoolUserCreateArgs([create, create])).toThrow();
+  });
+
+  it('update needs a userId; modules are optional but non-empty when given; title may be cleared', () => {
+    expect(() => assertSchoolUserUpdateArgs([{ userId: 'u-1', firstName: 'Ada' }])).not.toThrow();
+    expect(() => assertSchoolUserUpdateArgs([{ userId: 'u-1', title: null, modules: ['STAFF'] }])).not.toThrow();
+    expect(() => assertSchoolUserUpdateArgs([{ userId: '', firstName: 'Ada' }])).toThrow();
+    expect(() => assertSchoolUserUpdateArgs([{ userId: 'u-1', modules: [] }])).toThrow();
+    expect(() => assertSchoolUserUpdateArgs([{ userId: 'u-1', firstName: ' ' }])).toThrow();
+    expect(() => assertSchoolUserUpdateArgs([{ userId: 'u-1', email: 'new@school.lr' }])).toThrow();
+  });
+
+  it('set-active needs a userId and a boolean', () => {
+    expect(() => assertSchoolUserSetActiveArgs([{ userId: 'u-1', isActive: false }])).not.toThrow();
+    expect(() => assertSchoolUserSetActiveArgs([{ userId: ' ', isActive: false }])).toThrow();
+    expect(() => assertSchoolUserSetActiveArgs([{ userId: 'u-1', isActive: 'no' }])).toThrow();
   });
 });

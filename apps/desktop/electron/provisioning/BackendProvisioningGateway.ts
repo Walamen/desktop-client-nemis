@@ -8,6 +8,13 @@ import {
   Gender,
   GradeLevel,
   PROVISIONING_COLLECTIONS,
+  isSchoolModule,
+  type CreateSchoolUserRequest,
+  type CreateSchoolUserResult,
+  type SchoolModule,
+  type SchoolOfficeUser,
+  type SetSchoolUserActiveRequest,
+  type UpdateSchoolUserRequest,
   type BulkClaimRequest,
   type BulkClaimResult,
   type CompletionGuidanceRow,
@@ -606,6 +613,61 @@ export class BackendProvisioningGateway {
     );
   }
 
+  /** Users & Access: the school's admin and office-staff accounts (server truth). */
+  async listSchoolUsers(): Promise<SchoolOfficeUser[]> {
+    return this.authorized(
+      '/school-admin/users',
+      { method: 'GET' },
+      (value) => {
+        if (!Array.isArray(value)) throw new Error('Malformed server response.');
+        return value.map(requireSchoolOfficeUser);
+      },
+      ONLINE_COMMAND,
+    );
+  }
+
+  /** A new office account. `credential` (the one-time default password) comes
+   * back only when the server created the login; it is passed through to the
+   * admin and never logged. */
+  async createSchoolUser(request: CreateSchoolUserRequest): Promise<CreateSchoolUserResult> {
+    return this.authorized(
+      '/school-admin/users',
+      { method: 'POST', body: JSON.stringify(request) },
+      (value) => {
+        const body = asRecord(value);
+        const credential = asRecord(body.credential);
+        return {
+          user: requireSchoolOfficeUser(body.user),
+          ...(typeof credential.email === 'string' && typeof credential.defaultPassword === 'string'
+            ? { credential: { email: credential.email, defaultPassword: credential.defaultPassword } }
+            : {}),
+        };
+      },
+      ONLINE_COMMAND,
+    );
+  }
+
+  /** `userId` names the path; it is never sent in the body. */
+  async updateSchoolUser(request: UpdateSchoolUserRequest): Promise<SchoolOfficeUser> {
+    const { userId, ...fields } = request;
+    return this.authorized(
+      `/school-admin/users/${encodeURIComponent(userId)}`,
+      { method: 'PATCH', body: JSON.stringify(fields) },
+      requireSchoolOfficeUser,
+      ONLINE_COMMAND,
+    );
+  }
+
+  async setSchoolUserActive(request: SetSchoolUserActiveRequest): Promise<SchoolOfficeUser> {
+    const action = request.isActive ? 'reactivate' : 'deactivate';
+    return this.authorized(
+      `/school-admin/users/${encodeURIComponent(request.userId)}/${action}`,
+      { method: 'POST' },
+      requireSchoolOfficeUser,
+      ONLINE_COMMAND,
+    );
+  }
+
   /** Destination-school search for "New transfer" — the desktop only stores
    * its own institution. Dedicated server endpoint (the generic institutions list is caller-scoped). Read-only. */
   async searchSchools(query: string): Promise<SchoolSearchResult[]> {
@@ -916,6 +978,35 @@ function requireId(value: unknown): string {
   const id = asRecord(value).id;
   if (typeof id !== 'string' || id.length === 0) throw new Error('Malformed server response.');
   return id;
+}
+
+const nullableString = (value: unknown): string | null => (typeof value === 'string' ? value : null);
+
+/** A server SchoolOfficeUser. A missing id or office role is malformed; module
+ * ids this build does not know are dropped, so they never grant anything. */
+function requireSchoolOfficeUser(value: unknown): SchoolOfficeUser {
+  const row = asRecord(value);
+  const id = requireId(row);
+  if (row.role !== 'INSTITUTION_ADMIN' && row.role !== 'INSTITUTION_STAFF') {
+    throw new Error('Malformed server response.');
+  }
+  const modules = Array.isArray(row.modules)
+    ? row.modules.filter((m): m is SchoolModule => typeof m === 'string' && isSchoolModule(m))
+    : [];
+  return {
+    id,
+    firstName: typeof row.firstName === 'string' ? row.firstName : '',
+    lastName: typeof row.lastName === 'string' ? row.lastName : '',
+    email: nullableString(row.email),
+    phoneNumber: nullableString(row.phoneNumber),
+    photoUrl: nullableString(row.photoUrl),
+    role: row.role,
+    title: nullableString(row.title),
+    modules,
+    isActive: row.isActive === true,
+    lastLoginAt: nullableString(row.lastLoginAt),
+    staffId: nullableString(row.staffId),
+  };
 }
 
 const GRADE_LEVELS: readonly string[] = Object.values(GradeLevel);

@@ -41,6 +41,7 @@ import { registerStudentHandlers } from '@app/ipc/handlers/school-admin/students
 import { registerTeacherDirectoryHandlers } from '@app/ipc/handlers/school-admin/teacherDirectory';
 import { registerRegistryHandlers } from '@app/ipc/handlers/school-admin/registry';
 import { registerTransferHandlers } from '@app/ipc/handlers/school-admin/transfers';
+import { registerSchoolUserHandlers } from '@app/ipc/handlers/school-admin/schoolUsers';
 import type { BackendProvisioningGateway } from '@app/provisioning/BackendProvisioningGateway';
 import { registerTimetableHandlers } from '@app/ipc/handlers/school-admin/timetables';
 import { StudentSyncStatusService } from '@app/data/services/StudentSyncStatusService';
@@ -122,6 +123,12 @@ export function registerIpcHandlers(
   const refresh = () => syncWorker.pullNow();
   registerRegistryHandlers(securedHandle, gateway, refresh);
   registerTransferHandlers(securedHandle, gateway, refresh);
+  registerSchoolUserHandlers(securedHandle, app, {
+    gateway,
+    isOnline: () => syncWorker.isOnline(),
+    refresh,
+    institutionId: () => workspaces.active.user.scope.scopeId,
+  });
   registerAcademicYearHandlers(securedHandle, app, gateway, refresh, new YearStructureCopyService(workspaces));
   registerAcademicYearCloseHandlers(securedHandle, gateway, refresh, () => syncWorker.countPendingChanges());
   const carryOverReads = () =>

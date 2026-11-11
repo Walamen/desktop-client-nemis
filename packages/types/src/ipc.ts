@@ -447,15 +447,15 @@ export interface IpcContract {
   'school-users:list': { args: []; result: SchoolUsersResult };
   'school-users:create': {
     args: [request: CreateSchoolUserRequest];
-    result: CreateSchoolUserResult;
+    result: OnlineCommandResult<CreateSchoolUserResult>;
   };
   'school-users:update': {
     args: [request: UpdateSchoolUserRequest];
-    result: SchoolOfficeUser;
+    result: OnlineCommandResult<SchoolOfficeUser>;
   };
   'school-users:set-active': {
     args: [request: SetSchoolUserActiveRequest];
-    result: SchoolOfficeUser;
+    result: OnlineCommandResult<SchoolOfficeUser>;
   };
   // Online-only commands (NEMIS ID desktop parity spec §6). These call the
   // server directly; mutations refresh local data with a forced pull.

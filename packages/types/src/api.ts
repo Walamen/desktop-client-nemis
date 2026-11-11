@@ -60,6 +60,14 @@ import type {
 } from './dashboard';
 import type { CountyDashboardResult } from './county-dashboard';
 import type {
+  CreateSchoolUserRequest,
+  CreateSchoolUserResult,
+  SchoolOfficeUser,
+  SchoolUsersResult,
+  SetSchoolUserActiveRequest,
+  UpdateSchoolUserRequest,
+} from './school-users';
+import type {
   CountyAssignDeoRequest,
   CountyDistrictDetailResult,
   CountyDistrictsResult,
@@ -418,6 +426,14 @@ export interface SchoolAdminApi {
   delete(request: SchoolAdminDeleteRequest): Promise<{ id: string }>;
   reversePayment(request: SchoolAdminReversePaymentRequest): Promise<{ id: string }>;
 }
+/** Users & Access (School Admin only). The list reads the server when online
+ * and falls back to this device; every command is online only and forces a pull. */
+export interface SchoolUsersApi {
+  list(): Promise<SchoolUsersResult>;
+  create(request: CreateSchoolUserRequest): Promise<OnlineCommandResult<CreateSchoolUserResult>>;
+  update(request: UpdateSchoolUserRequest): Promise<OnlineCommandResult<SchoolOfficeUser>>;
+  setActive(request: SetSchoolUserActiveRequest): Promise<OnlineCommandResult<SchoolOfficeUser>>;
+}
 export interface AssignmentApi {
   list(request: ListAssignmentsRequest): Promise<AssignmentResult[]>;
   get(id: string): Promise<AssignmentResult | null>;
@@ -499,6 +515,7 @@ export interface NemisApi {
   timetable: TimetableApi;
   attendance: AttendanceApi;
   schoolAdmin: SchoolAdminApi;
+  schoolUsers: SchoolUsersApi;
   assignment: AssignmentApi;
   registry: RegistryApi;
   transfer: TransferApi;
