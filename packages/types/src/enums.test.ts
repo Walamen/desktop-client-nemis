@@ -12,7 +12,7 @@ describe('canonical enum mirror', () => {
   it('SystemRole matches backend values', () => {
     expect(SystemRole.TEACHER).toBe('TEACHER');
     expect(Object.values(SystemRole)).toContain('DEO');
-    expect(Object.values(SystemRole)).toHaveLength(10);
+    expect(Object.values(SystemRole)).toHaveLength(11);
   });
 
   it('AttendanceStatus includes the five recorded states', () => {

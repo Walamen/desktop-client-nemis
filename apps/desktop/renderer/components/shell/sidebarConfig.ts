@@ -52,84 +52,88 @@ export interface HeaderConfig {
   pageTitles?: Record<string, string>;
 }
 
-export const sidebarConfigs: Record<DesktopPortalRole, SidebarConfig> = {
-  [SystemRole.INSTITUTION_ADMIN]: {
-    collapsibleGroups: true,
-    dashboardItem: {
-      name: 'Overview',
-      href: '/government/school-admin',
-      icon: GrOverview,
-    },
-    navGroups: [
-      {
-        // Academic years, terms and assessment periods live in drawers on the
-        // Academic Grading page, in dependency order (grading config → years →
-        // terms → periods); see lib/academic-setup.ts for their deep links.
-        label: 'ACADEMIC SETUP',
-        items: [
-          { name: 'Academic Grading', href: '/government/school-admin/academic-grading', icon: SlidersHorizontal },
-          { name: 'Subjects', href: '/government/school-admin/subjects', icon: BookOpen },
-        ],
-      },
-      {
-        label: 'STUDENTS & FAMILIES',
-        items: [
-          { name: 'Students', href: '/government/school-admin/students', icon: GraduationCap },
-          { name: 'Parents & Guardians', href: '/government/school-admin/parents-guardians', icon: Users },
-          {
-            name: 'Student Transfers',
-            href: '/government/school-admin/students/inter-school-transfer',
-            icon: ArrowRightLeft,
-            badge: 'transfers',
-          },
-        ],
-      },
-      {
-        label: 'STAFF',
-        items: [
-          { name: 'Teachers & Staff', href: '/government/school-admin/teachers-staff', icon: UserCog },
-        ],
-      },
-      {
-        label: 'TEACHING WORKFLOW',
-        items: [
-          { name: 'Classes', href: '/government/school-admin/classes', icon: School },
-          { name: 'Timetable', href: '/government/school-admin/timetable', icon: Clock },
-          { name: 'Attendance', href: '/government/school-admin/attendance', icon: CalendarCheck },
-         
-        ],
-      },
-      {
-        label: 'FINANCE',
-        items: [
-          { name: 'Record Payment', href: '/government/school-admin/financial/record-payment', icon: CreditCard },
-          { name: 'Payment Plan', href: '/government/school-admin/financial', icon: Receipt },
-        ],
-      },
-      {
-        label: 'REPORTS & MESSAGES',
-        items: [
-          { name: 'Reports', href: '/government/school-admin/reports', icon: FileBarChart },
-          { name: 'Past years', href: '/government/school-admin/past-years', icon: Archive },
-          { name: 'Notifications', href: '/government/school-admin/notifications', icon: Bell },
-          { name: 'Messages', href: '/government/school-admin/messages', icon: MessageCircle },
-        ],
-      },
-      {
-        label: 'SCHOOL',
-        items: [
-          {
-            name: 'Settings',
-            href: '/government/school-admin/settings',
-            icon: Settings,
-            alsoActiveOn: ['/government/school-admin/school-profile'],
-          },
-          { name: 'Grade Levels', href: '/government/school-admin/grade-levels', icon: Layers },
-          { name: 'Infrastructure & Alerts', href: '/government/school-admin/infrastructure', icon: AlertTriangle },
-        ],
-      },
-    ],
+const INSTITUTION_ADMIN_SIDEBAR: SidebarConfig = {
+  collapsibleGroups: true,
+  dashboardItem: {
+    name: 'Overview',
+    href: '/government/school-admin',
+    icon: GrOverview,
   },
+  navGroups: [
+    {
+      // Academic years, terms and assessment periods live in drawers on the
+      // Academic Grading page, in dependency order (grading config → years →
+      // terms → periods); see lib/academic-setup.ts for their deep links.
+      label: 'ACADEMIC SETUP',
+      items: [
+        { name: 'Academic Grading', href: '/government/school-admin/academic-grading', icon: SlidersHorizontal },
+        { name: 'Subjects', href: '/government/school-admin/subjects', icon: BookOpen },
+      ],
+    },
+    {
+      label: 'STUDENTS & FAMILIES',
+      items: [
+        { name: 'Students', href: '/government/school-admin/students', icon: GraduationCap },
+        { name: 'Parents & Guardians', href: '/government/school-admin/parents-guardians', icon: Users },
+        {
+          name: 'Student Transfers',
+          href: '/government/school-admin/students/inter-school-transfer',
+          icon: ArrowRightLeft,
+          badge: 'transfers',
+        },
+      ],
+    },
+    {
+      label: 'STAFF',
+      items: [
+        { name: 'Teachers & Staff', href: '/government/school-admin/teachers-staff', icon: UserCog },
+      ],
+    },
+    {
+      label: 'TEACHING WORKFLOW',
+      items: [
+        { name: 'Classes', href: '/government/school-admin/classes', icon: School },
+        { name: 'Timetable', href: '/government/school-admin/timetable', icon: Clock },
+        { name: 'Attendance', href: '/government/school-admin/attendance', icon: CalendarCheck },
+       
+      ],
+    },
+    {
+      label: 'FINANCE',
+      items: [
+        { name: 'Record Payment', href: '/government/school-admin/financial/record-payment', icon: CreditCard },
+        { name: 'Payment Plan', href: '/government/school-admin/financial', icon: Receipt },
+      ],
+    },
+    {
+      label: 'REPORTS & MESSAGES',
+      items: [
+        { name: 'Reports', href: '/government/school-admin/reports', icon: FileBarChart },
+        { name: 'Past years', href: '/government/school-admin/past-years', icon: Archive },
+        { name: 'Notifications', href: '/government/school-admin/notifications', icon: Bell },
+        { name: 'Messages', href: '/government/school-admin/messages', icon: MessageCircle },
+      ],
+    },
+    {
+      label: 'SCHOOL',
+      items: [
+        {
+          name: 'Settings',
+          href: '/government/school-admin/settings',
+          icon: Settings,
+          alsoActiveOn: ['/government/school-admin/school-profile'],
+        },
+        { name: 'Grade Levels', href: '/government/school-admin/grade-levels', icon: Layers },
+        { name: 'Infrastructure & Alerts', href: '/government/school-admin/infrastructure', icon: AlertTriangle },
+      ],
+    },
+  ],
+};
+
+export const sidebarConfigs: Record<DesktopPortalRole, SidebarConfig> = {
+  [SystemRole.INSTITUTION_ADMIN]: INSTITUTION_ADMIN_SIDEBAR,
+  // Stage 2 Task 8 refines
+  [SystemRole.INSTITUTION_STAFF]: INSTITUTION_ADMIN_SIDEBAR,
 
   [SystemRole.COUNTY_ADMIN]: {
     headerTitle: 'NEMIS',
@@ -324,6 +328,14 @@ const SCHOOL_ADMIN_PAGE_TITLES: Record<string, string> = {
 export const headerConfigs: Record<DesktopPortalRole, HeaderConfig> = {
   [SystemRole.INSTITUTION_ADMIN]: {
     basePath: DESKTOP_PORTALS[SystemRole.INSTITUTION_ADMIN].route,
+    showNotificationBell: true,
+    avatarRole: 'generic',
+    breadcrumbRoot: 'School Admin',
+    pageTitles: SCHOOL_ADMIN_PAGE_TITLES,
+  },
+  // Stage 2 Task 8 refines
+  [SystemRole.INSTITUTION_STAFF]: {
+    basePath: DESKTOP_PORTALS[SystemRole.INSTITUTION_STAFF].route,
     showNotificationBell: true,
     avatarRole: 'generic',
     breadcrumbRoot: 'School Admin',

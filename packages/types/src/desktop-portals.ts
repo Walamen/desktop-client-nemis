@@ -14,6 +14,7 @@ export const DESKTOP_PORTAL_ROLES = [
   SystemRole.COUNTY_ADMIN,
   SystemRole.DEO,
   SystemRole.INSTITUTION_ADMIN,
+  SystemRole.INSTITUTION_STAFF,
   SystemRole.TEACHER,
 ] as const;
 export type DesktopPortalRole = (typeof DESKTOP_PORTAL_ROLES)[number];
@@ -51,6 +52,11 @@ export const DESKTOP_PORTALS: Readonly<Record<DesktopPortalRole, DesktopPortalDe
   },
   [SystemRole.INSTITUTION_ADMIN]: {
     role: SystemRole.INSTITUTION_ADMIN,
+    route: '/government/school-admin',
+    scopeType: DesktopScopeType.INSTITUTION,
+  },
+  [SystemRole.INSTITUTION_STAFF]: {
+    role: SystemRole.INSTITUTION_STAFF,
     route: '/government/school-admin',
     scopeType: DesktopScopeType.INSTITUTION,
   },

@@ -12,6 +12,7 @@ describe('desktop portal registry', () => {
     [SystemRole.COUNTY_ADMIN, '/government/county'],
     [SystemRole.DEO, '/government/deo'],
     [SystemRole.INSTITUTION_ADMIN, '/government/school-admin'],
+    [SystemRole.INSTITUTION_STAFF, '/government/school-admin'],
     [SystemRole.TEACHER, '/government/teacher'],
   ])('maps %s to its portal', (role, route) => {
     expect(desktopPortalRoute(role)).toBe(route);

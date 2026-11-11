@@ -208,6 +208,14 @@ import type {
   SchoolAdminReversePaymentRequest,
   SchoolAdminSaveRequest,
 } from './school-admin';
+import type {
+  CreateSchoolUserRequest,
+  CreateSchoolUserResult,
+  SchoolOfficeUser,
+  SchoolUsersResult,
+  SetSchoolUserActiveRequest,
+  UpdateSchoolUserRequest,
+} from './school-users';
 
 /**
  * Single source of truth for every IPC endpoint's request/response types.
@@ -436,6 +444,19 @@ export interface IpcContract {
     args: [request: SchoolAdminReversePaymentRequest];
     result: { id: string };
   };
+  'school-users:list': { args: []; result: SchoolUsersResult };
+  'school-users:create': {
+    args: [request: CreateSchoolUserRequest];
+    result: CreateSchoolUserResult;
+  };
+  'school-users:update': {
+    args: [request: UpdateSchoolUserRequest];
+    result: SchoolOfficeUser;
+  };
+  'school-users:set-active': {
+    args: [request: SetSchoolUserActiveRequest];
+    result: SchoolOfficeUser;
+  };
   // Online-only commands (NEMIS ID desktop parity spec §6). These call the
   // server directly; mutations refresh local data with a forced pull.
   'registry:lookup': { args: [request: RegistryLookupRequest]; result: RegistryLookupResult };
@@ -635,6 +656,10 @@ export const IpcChannels = {
   SCHOOL_ADMIN_SAVE: 'school-admin:save',
   SCHOOL_ADMIN_DELETE: 'school-admin:delete',
   SCHOOL_ADMIN_REVERSE_PAYMENT: 'school-admin:reverse-payment',
+  SCHOOL_USERS_LIST: 'school-users:list',
+  SCHOOL_USERS_CREATE: 'school-users:create',
+  SCHOOL_USERS_UPDATE: 'school-users:update',
+  SCHOOL_USERS_SET_ACTIVE: 'school-users:set-active',
   REGISTRY_LOOKUP: 'registry:lookup',
   REGISTRY_LOOKUP_BY_NAME: 'registry:lookup-by-name',
   REGISTRY_CLAIM: 'registry:claim',

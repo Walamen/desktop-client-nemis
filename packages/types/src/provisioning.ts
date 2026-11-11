@@ -5,6 +5,7 @@ import type {
   DesktopScopeType,
   DesktopUserScope,
 } from './desktop-portals';
+import type { SchoolModule } from './school-modules';
 
 export interface ProvisioningUser {
   readonly id: string;
@@ -18,6 +19,9 @@ export interface ProvisioningUser {
   readonly districtId?: string;
   readonly staffId?: string;
   readonly institutionName?: string;
+  /** Office-staff module grants; absent on sessions saved by older builds. */
+  readonly modules?: readonly SchoolModule[];
+  readonly title?: string;
 }
 
 export interface DeviceIdentity {
