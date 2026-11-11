@@ -146,6 +146,8 @@ import { GetInstitutionProfileUseCase } from '../use-cases/institution/get-insti
 import { UpdateGradingConfigUseCase } from '../use-cases/institution/update-grading-config';
 import { GetCurrentSchoolUseCase } from '../use-cases/institution/get-current-school';
 import { ListInstitutionsUseCase } from '../use-cases/institution/list-institutions';
+import { GetSchoolUsersUseCase } from '../use-cases/institution/get-school-users';
+import type { ISchoolUsersReadModel } from '../interfaces/institution/school-users-read-model';
 import { InstitutionApplicationService } from '../services/institution-application-service';
 
 import { RegisterDeviceUseCase } from '../use-cases/infra/register-device';
@@ -233,6 +235,8 @@ export interface ApplicationPorts {
   countySettings: ICountySettingsReadModel;
   /** County Administrative Users page: list, stats and assignment options. */
   countyUsers: ICountyUsersReadModel;
+  /** School Admin Users & Access page: office accounts on this device (offline fallback). */
+  schoolUsers: ISchoolUsersReadModel;
   gradingConfigs: IGradingConfigRepository;
   /** The authenticated user's id for this workspace (see GetCurrentUserDeps). */
   currentUserId: string;
@@ -490,6 +494,7 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
       students: ports.students,
       logger,
     }),
+    listSchoolUsers: new GetSchoolUsersUseCase({ readModel: ports.schoolUsers, logger }),
   });
 
   const infra = new InfraApplicationService({

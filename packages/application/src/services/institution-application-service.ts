@@ -1,3 +1,4 @@
+import type { SchoolUsersResult } from '@nemis-desktop/types';
 import type { ApplicationResponse } from '../core/response';
 import type {
   GradingConfigOutput,
@@ -9,12 +10,14 @@ import type { GetInstitutionProfileUseCase } from '../use-cases/institution/get-
 import type { UpdateGradingConfigUseCase } from '../use-cases/institution/update-grading-config';
 import type { GetCurrentSchoolUseCase } from '../use-cases/institution/get-current-school';
 import type { ListInstitutionsUseCase } from '../use-cases/institution/list-institutions';
+import type { GetSchoolUsersUseCase } from '../use-cases/institution/get-school-users';
 
 export interface InstitutionApplicationServiceDeps {
   getProfile: GetInstitutionProfileUseCase;
   updateGradingConfig: UpdateGradingConfigUseCase;
   getCurrentSchool: GetCurrentSchoolUseCase;
   listInstitutions: ListInstitutionsUseCase;
+  listSchoolUsers: GetSchoolUsersUseCase;
 }
 
 export class InstitutionApplicationService {
@@ -34,5 +37,11 @@ export class InstitutionApplicationService {
   }
   listInstitutions(): Promise<ApplicationResponse<InstitutionSummaryOutput[]>> {
     return this.deps.listInstitutions.execute({});
+  }
+  /** Users & Access accounts as this device holds them (the offline fallback). */
+  listSchoolUsers(query: {
+    institutionId: string;
+  }): Promise<ApplicationResponse<SchoolUsersResult>> {
+    return this.deps.listSchoolUsers.execute(query);
   }
 }

@@ -61,6 +61,7 @@ export function createApplicationComposition(
     countyAudit: dataLayer.repositories.countyAudit,
     countySettings: dataLayer.repositories.countySettings,
     countyUsers: dataLayer.repositories.countyUsers,
+    schoolUsers: dataLayer.repositories.schoolUsers,
     users: dataLayer.repositories.users,
     academicYears: dataLayer.repositories.academicYears,
     classes: dataLayer.repositories.classes,

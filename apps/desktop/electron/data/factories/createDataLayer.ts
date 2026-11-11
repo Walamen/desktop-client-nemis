@@ -29,6 +29,7 @@ import type {
   IAssignmentRepository,
   IAssignmentSubmissionRepository,
   ICountyUsersReadModel,
+  ISchoolUsersReadModel,
 } from '@nemis-desktop/application';
 import type { DatabaseLogger, DatabaseManager } from '../../database/DatabaseManager';
 import { translateDatabaseError } from '../errors/translateError';
@@ -79,6 +80,7 @@ import { SyncMetadataService } from '../services/SyncMetadataService';
 import { SyncQueueService } from '../services/SyncQueueService';
 import type { TransactionRunner } from '../services/TransactionRunner';
 import { SqliteCountyUsersReadModel } from '../repositories/sqlite/business/SqliteCountyUsersReadModel';
+import { SqliteSchoolUsersReadModel } from '../repositories/sqlite/business/SqliteSchoolUsersReadModel';
 
 export interface DataLayer {
   repositories: {
@@ -117,6 +119,7 @@ export interface DataLayer {
     assignments: IAssignmentRepository;
     assignmentSubmissions: IAssignmentSubmissionRepository;
     countyUsers: ICountyUsersReadModel;
+    schoolUsers: ISchoolUsersReadModel;
   };
   services: {
     device: DeviceService;
@@ -195,6 +198,7 @@ export function createDataLayer(manager: DatabaseManager, log: DatabaseLogger): 
   const assignments = new SqliteAssignmentRepository(context);
   const assignmentSubmissions = new SqliteAssignmentSubmissionRepository(context);
   const countyUsers = new SqliteCountyUsersReadModel(context);
+  const schoolUsers = new SqliteSchoolUsersReadModel(context);
 
   // Services see only the RepositoryError taxonomy: failures of the
   // transaction machinery itself (BEGIN/COMMIT, closed-connection errors)
@@ -256,6 +260,7 @@ export function createDataLayer(manager: DatabaseManager, log: DatabaseLogger): 
       assignments,
       assignmentSubmissions,
       countyUsers,
+      schoolUsers,
     },
     services: {
       device: new DeviceService({ devices }),
