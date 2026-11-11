@@ -10,10 +10,13 @@ interface DisableUserModalProps {
   userName: string;
   onClose: () => void;
   onConfirm: () => Promise<void>;
+  /** Replaces the county consequence list with one sentence, for callers
+   * whose disable means something different (school office users). */
+  consequence?: string;
 }
 
 /** portal-web county/users DisableUserModal: type DISABLE to confirm. */
-export function DisableUserModal({ userName, onClose, onConfirm }: DisableUserModalProps) {
+export function DisableUserModal({ userName, onClose, onConfirm, consequence }: DisableUserModalProps) {
   const [phrase, setPhrase] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -45,19 +48,23 @@ export function DisableUserModal({ userName, onClose, onConfirm }: DisableUserMo
       {/* Warning block */}
       <div className="bg-red-50 border border-red-200 p-4 mb-5 space-y-2">
         <p className="text-xs font-semibold uppercase tracking-widest text-red-700 mb-2">What this means</p>
-        <ul className="space-y-1.5">
-          {[
-            "This user will immediately lose access to their portal.",
-            "They will not be able to log in until the account is re-enabled.",
-            "All existing assignments and data are preserved.",
-            "You can reverse this at any time by enabling the account again.",
-          ].map((line) => (
-            <li key={line} className="flex items-start gap-2 text-sm text-red-800">
-              <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
-              {line}
-            </li>
-          ))}
-        </ul>
+        {consequence ? (
+          <p className="text-sm text-red-800">{consequence}</p>
+        ) : (
+          <ul className="space-y-1.5">
+            {[
+              "This user will immediately lose access to their portal.",
+              "They will not be able to log in until the account is re-enabled.",
+              "All existing assignments and data are preserved.",
+              "You can reverse this at any time by enabling the account again.",
+            ].map((line) => (
+              <li key={line} className="flex items-start gap-2 text-sm text-red-800">
+                <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
+                {line}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       {/* Confirmation input */}

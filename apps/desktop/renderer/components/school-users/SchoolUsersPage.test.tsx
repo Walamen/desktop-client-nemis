@@ -17,6 +17,10 @@ import { clearNemis, officeUser, renderWithToasts, stubSchoolUsers, usersResult 
 
 const OFFLINE_BANNER = "You're offline. These are the accounts saved on this device. Changes need a connection.";
 const OFFLINE_NOTE = 'Connect to the internet to add or change office accounts.';
+const SERVER_ERROR_BANNER =
+  "The server couldn't be reached. These are the accounts saved on this device. Changes need a connection.";
+const DISABLE_COPY =
+  'Ada Kollie will be signed out of NEMIS the next time their device connects. You can enable the account again later.';
 const SAVED_TOAST =
   'Saved. A signed-in desktop picks up the change the next time it reconnects, or when the person signs in again.';
 
@@ -73,6 +77,7 @@ describe('SchoolUsersPage', () => {
     await renderWithToasts(<SchoolUsersPage />);
 
     expect(await screen.findByText(OFFLINE_BANNER)).toBeInTheDocument();
+    expect(screen.queryByText(SERVER_ERROR_BANNER)).toBeNull();
     expect(screen.getByText(OFFLINE_NOTE)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Add office user/ })).toBeDisabled();
     const ada = within(card('Ada Kollie'));
@@ -80,10 +85,11 @@ describe('SchoolUsersPage', () => {
     expect(ada.getByRole('button', { name: 'Disable' })).toBeDisabled();
   });
 
-  it('a device list while the app thinks it is online still disables commands', async () => {
+  it('a device list while the app thinks it is online says the server could not be reached', async () => {
     stubSchoolUsers(usersResult({ source: 'device' }));
     await renderWithToasts(<SchoolUsersPage />);
-    expect(await screen.findByText(OFFLINE_BANNER)).toBeInTheDocument();
+    expect(await screen.findByText(SERVER_ERROR_BANNER)).toBeInTheDocument();
+    expect(screen.queryByText(OFFLINE_BANNER)).toBeNull();
     expect(screen.getByRole('button', { name: /Add office user/ })).toBeDisabled();
   });
 
@@ -91,6 +97,8 @@ describe('SchoolUsersPage', () => {
     const api = stubSchoolUsers();
     await renderWithToasts(<SchoolUsersPage />);
     fireEvent.click(within(await screen.findByRole('article', { name: 'Ada Kollie' })).getByRole('button', { name: 'Disable' }));
+    expect(screen.getByText(DISABLE_COPY)).toBeInTheDocument();
+    expect(screen.queryByText('This user will immediately lose access to their portal.')).toBeNull();
     fireEvent.change(screen.getByPlaceholderText('DISABLE'), { target: { value: 'DISABLE' } });
     fireEvent.click(screen.getByRole('button', { name: 'Disable Account' }));
 

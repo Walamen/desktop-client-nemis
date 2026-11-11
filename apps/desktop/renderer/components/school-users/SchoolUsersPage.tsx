@@ -14,6 +14,8 @@ import { SchoolUserDrawer } from "./SchoolUserDrawer";
 import { CredentialPanel } from "./CredentialPanel";
 
 const DEVICE_BANNER = "You're offline. These are the accounts saved on this device. Changes need a connection.";
+const SERVER_ERROR_BANNER =
+  "The server couldn't be reached. These are the accounts saved on this device. Changes need a connection.";
 const OFFLINE_NOTE = "Connect to the internet to add or change office accounts.";
 const SAVED_TOAST =
   "Saved. A signed-in desktop picks up the change the next time it reconnects, or when the person signs in again.";
@@ -201,7 +203,7 @@ export function SchoolUsersPage() {
           {fromDevice && (
             <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
               <WifiOff className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-              <p className="text-sm text-amber-700">{DEVICE_BANNER}</p>
+              <p className="text-sm text-amber-700">{online ? SERVER_ERROR_BANNER : DEVICE_BANNER}</p>
             </div>
           )}
 
@@ -263,6 +265,7 @@ export function SchoolUsersPage() {
       {pendingDisable && (
         <DisableUserModal
           userName={fullName(pendingDisable)}
+          consequence={`${fullName(pendingDisable)} will be signed out of NEMIS the next time their device connects. You can enable the account again later.`}
           onClose={() => setPendingDisable(null)}
           onConfirm={async () => {
             await setActive(pendingDisable, false);
