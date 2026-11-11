@@ -2,10 +2,14 @@
 
 import { useState, type KeyboardEvent } from 'react';
 import { Clock } from 'lucide-react';
-import type { SchoolAdminRecord } from '@nemis-desktop/types';
+import { hasModule, SchoolModule, type SchoolAdminRecord } from '@nemis-desktop/types';
 import { formatNemisId } from '@nemis-desktop/shared';
 import { formatCurrency, getOrCreateObligation, OBLIGATION_STATUS_CONFIG, PAYMENT_METHODS, recordPayment } from './shared';
 import { capAmountInput, methodRequiresReference, validatePaymentDraft, type PaymentDraftError } from './payment-draft';
+import { useSessionUser } from '@/components/shell/SessionUserContext';
+
+const NO_OBLIGATION_MESSAGE =
+  'This student has no fee obligation yet. Someone with Fee rules & payment plans access must set it up first.';
 
 export interface EnrichedStudent {
   id: string;
@@ -72,6 +76,10 @@ export function PaymentRow({ index, student, currency, academicYearId, termId, c
   const isPayable = Boolean(rule) && !isSettled;
   const maxAmount = student.balance > 0 ? student.balance : Number(rule?.amount ?? 0);
   const needsRef = methodRequiresReference(method);
+  // Creating an obligation is a fee-rules write. Without FINANCE_RULES the
+  // row cannot start one, so it waits for someone who can.
+  const canCreateObligation = hasModule(useSessionUser(), SchoolModule.FINANCE_RULES);
+  const blockedByObligation = !student.obligationId && !canCreateObligation;
 
   const handleSave = async () => {
     // Payments are append-only, so a double submit is not an edit — it is a
@@ -79,7 +87,7 @@ export function PaymentRow({ index, student, currency, academicYearId, termId, c
     // second fee_obligations row that hides half the money). The Save button
     // is disabled while saving, but Enter is not a button press, so the guard
     // has to live here too.
-    if (saving || !rule || !canRecord) return;
+    if (saving || !rule || !canRecord || blockedByObligation) return;
     const problem = validatePaymentDraft({ amount, method, reference }, maxAmount);
     if (problem) {
       setError(errorMessage(problem, currency));
@@ -131,6 +139,13 @@ export function PaymentRow({ index, student, currency, academicYearId, termId, c
       return (
         <td className={MONEY} colSpan={2}>
           <span className="text-sm font-semibold text-active">{formatCurrency(student.totalPaid, currency)}</span>
+        </td>
+      );
+    }
+    if (blockedByObligation) {
+      return (
+        <td className={CELL} colSpan={2}>
+          <span className="text-xs text-slate-500">{NO_OBLIGATION_MESSAGE}</span>
         </td>
       );
     }
@@ -203,7 +218,7 @@ export function PaymentRow({ index, student, currency, academicYearId, termId, c
             <button
               type="button"
               onClick={() => void handleSave()}
-              disabled={saving || !canRecord || !amount}
+              disabled={saving || !canRecord || !amount || blockedByObligation}
               className="mr-1 rounded-button bg-primary px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-primary-400 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {saving ? 'Saving…' : 'Save'}
