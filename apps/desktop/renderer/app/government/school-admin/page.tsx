@@ -5,6 +5,7 @@ import {
   ClipboardClock, CheckCircle, UsersIcon,
 } from 'lucide-react';
 import { ErrorState } from '@nemis-desktop/ui';
+import { canUseSchoolAccess, hasModule, schoolRouteAccess } from '@nemis-desktop/types';
 import { formatNemisId } from '@nemis-desktop/shared';
 import {
   useDashboardViewModel, useSettingsViewModel, useAcademicYearViewModel,
@@ -25,8 +26,24 @@ import QuickActionCard from '@/components/dashboard/QuickActionCard';
 import RecentActivityFeed from '@/components/dashboard/RecentActivityFeed';
 import TeachersListSection from '@/components/dashboard/TeachersListSection';
 import { PriorRecordsToMatchCard } from '@/components/transfers/PriorRecordsToMatchCard';
+import { useSessionUser } from '@/components/shell/SessionUserContext';
+
+const QUICK_ACTIONS = [
+  { title: 'Add Student', description: 'Enroll a new student', icon: UserPlus, href: '/government/school-admin/students', variant: 'primary' },
+  { title: 'Record Attendance', description: 'Mark daily attendance', icon: CalendarCheck, href: '/government/school-admin/attendance', variant: 'primary' },
+  { title: 'Manage Classes', description: 'View and edit classes', icon: BookOpen, href: '/government/school-admin/classes' },
+  { title: 'Grade Records', description: 'View student grades', icon: GraduationCap, href: '/government/school-admin/academic-grading' },
+  { title: 'Add Teacher', description: 'Register new staff', icon: UserCog2, href: '/government/school-admin/teachers-staff' },
+  { title: 'Timetable', description: 'Manage schedules', icon: Calendar, href: '/government/school-admin/timetable' },
+  { title: 'Notifications', description: 'Send announcements', icon: Bell, href: '/government/school-admin/notifications' },
+  { title: 'Settings', description: 'School configuration', icon: Settings, href: '/government/school-admin/settings' },
+] as const;
 
 export default function DashboardPage() {
+  const sessionUser = useSessionUser();
+  const quickActions = QUICK_ACTIONS.filter((action) =>
+    canUseSchoolAccess(sessionUser, schoolRouteAccess(action.href)),
+  );
   const dashboard = useDashboardViewModel();
   const currentUser = useCurrentUserViewModel();
   const settings = useSettingsViewModel();
@@ -102,20 +119,15 @@ export default function DashboardPage() {
           </div>
         )}
 
-        <PriorRecordsToMatchCard />
+        {hasModule(sessionUser, 'STUDENTS') && <PriorRecordsToMatchCard />}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="bg-white border border-slate-300 rounded-card p-6">
             <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-4">Quick Actions</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <QuickActionCard title="Add Student" description="Enroll a new student" icon={UserPlus} href="/government/school-admin/students" variant="primary" />
-              <QuickActionCard title="Record Attendance" description="Mark daily attendance" icon={CalendarCheck} href="/government/school-admin/attendance" variant="primary" />
-              <QuickActionCard title="Manage Classes" description="View and edit classes" icon={BookOpen} href="/government/school-admin/classes" />
-              <QuickActionCard title="Grade Records" description="View student grades" icon={GraduationCap} href="/government/school-admin/academic-grading" />
-              <QuickActionCard title="Add Teacher" description="Register new staff" icon={UserCog2} href="/government/school-admin/teachers-staff" />
-              <QuickActionCard title="Timetable" description="Manage schedules" icon={Calendar} href="/government/school-admin/timetable" />
-              <QuickActionCard title="Notifications" description="Send announcements" icon={Bell} href="/government/school-admin/notifications" />
-              <QuickActionCard title="Settings" description="School configuration" icon={Settings} href="/government/school-admin/settings" />
+              {quickActions.map((action) => (
+                <QuickActionCard key={action.href} {...action} />
+              ))}
             </div>
           </div>
           <RecentActivityFeed recentlyEnrolled={summaryReady ? summary.data.recentlyEnrolled : []} />

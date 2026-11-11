@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { createStore } from 'zustand/vanilla';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { SystemRole } from '@nemis-desktop/types';
+import { SystemRole, type ProvisioningUser } from '@nemis-desktop/types';
 
 vi.mock('next/navigation', () => ({
   usePathname: vi.fn(() => '/government/school-admin'),
@@ -29,6 +29,7 @@ vi.mock('@/services/nemis-bridge/shared', () => ({
 
 import { usePathname } from 'next/navigation';
 import { Sidebar } from './Sidebar';
+import { SessionUserProvider } from './SessionUserContext';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
 import { notifyTransfersChanged } from '@/lib/transfers';
 
@@ -231,5 +232,77 @@ describe('Sidebar collapsible groups', () => {
     render(<Sidebar role={SystemRole.COUNTY_ADMIN} />);
     expect(screen.getByText('PEOPLE')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^PEOPLE/ })).toBeNull();
+  });
+});
+
+const staff = (modules?: ProvisioningUser['modules']) =>
+  ({ id: 'u1', email: 'a@b.c', firstName: 'A', lastName: 'B', role: SystemRole.INSTITUTION_STAFF, scope: 'INSTITUTION', modules }) as unknown as ProvisioningUser;
+const renderStaff = (modules?: ProvisioningUser['modules']) =>
+  render(
+    <SessionUserProvider user={staff(modules)}>
+      <Sidebar role={SystemRole.INSTITUTION_STAFF} />
+    </SessionUserProvider>,
+  );
+const present = (name: string) => screen.queryByRole('link', { name }) !== null;
+
+describe('Sidebar for School Office Staff', () => {
+  it('registrar sees Students, Parents & Guardians, Student Transfers, Notifications, Messages, Settings, and no Finance group', () => {
+    renderStaff(['STUDENTS']);
+    for (const name of ['Overview', 'Students', 'Parents & Guardians', 'Student Transfers', 'Notifications', 'Messages', 'Settings']) {
+      expect(present(name)).toBe(true);
+    }
+    expect(screen.queryByText('FINANCE')).toBeNull();
+    expect(present('Record Payment')).toBe(false);
+    expect(present('Teachers & Staff')).toBe(false);
+    expect(screen.queryByText('ACADEMIC SETUP')).toBeNull();
+  });
+
+  it('business manager sees Record Payment and Payment Plan, no Students group', () => {
+    renderStaff(['FINANCE_PAYMENTS', 'FINANCE_RULES']);
+    expect(present('Record Payment')).toBe(true);
+    expect(present('Payment Plan')).toBe(true);
+    expect(screen.queryByText('STUDENTS & FAMILIES')).toBeNull();
+    expect(present('Students')).toBe(false);
+  });
+
+  it('office staff with no modules see Overview, Notifications, Messages and Settings only', () => {
+    renderStaff([]);
+    expect(screen.getAllByRole('link').map((a) => a.textContent)).toEqual(['Overview', 'Notifications', 'Messages', 'Settings']);
+  });
+
+  it('a session saved by an older build (no modules) is treated as no modules', () => {
+    renderStaff(undefined);
+    expect(screen.getAllByRole('link').map((a) => a.textContent)).toEqual(['Overview', 'Notifications', 'Messages', 'Settings']);
+  });
+
+  it('admin sidebar unchanged', () => {
+    render(
+      <SessionUserProvider user={{ ...staff(), role: SystemRole.INSTITUTION_ADMIN }}>
+        <Sidebar role={SystemRole.INSTITUTION_ADMIN} />
+      </SessionUserProvider>,
+    );
+    for (const name of ['Academic Grading', 'Students', 'Teachers & Staff', 'Classes', 'Record Payment', 'Payment Plan', 'Reports', 'Past years', 'Settings', 'Grade Levels', 'Infrastructure & Alerts']) {
+      expect(present(name)).toBe(true);
+    }
+  });
+
+  it('transfer badge reads only with STUDENTS', async () => {
+    stubRows([pushToUs('a')]);
+    const view = renderStaff(['FINANCE_PAYMENTS', 'FINANCE_RULES']);
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(listMock).not.toHaveBeenCalled();
+    view.unmount();
+
+    renderStaff(['STUDENTS']);
+    await waitFor(() => expect(transfersLink()).toHaveTextContent('1'));
+    expect(listMock).toHaveBeenCalled();
+  });
+
+  it('shares the admin collapsed-groups storage key', () => {
+    renderStaff(['STUDENTS']);
+    fireEvent.click(groupToggle('STUDENTS & FAMILIES'));
+    expect(JSON.parse(window.localStorage.getItem(STORE_KEY) ?? '[]')).toEqual(['STUDENTS & FAMILIES']);
   });
 });

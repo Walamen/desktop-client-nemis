@@ -75,7 +75,7 @@ export function Header({ role }: { role: DesktopPortalRole }) {
         <div className="flex items-center gap-3">
           
 
-          {(role === SystemRole.INSTITUTION_ADMIN || role === SystemRole.TEACHER) && <AcademicYearLabel />}
+          {(role === SystemRole.INSTITUTION_ADMIN || role === SystemRole.INSTITUTION_STAFF || role === SystemRole.TEACHER) && <AcademicYearLabel />}
 
           {headerConfigs[role].showNotificationBell && <NotificationBell basePath={headerConfigs[role].basePath} />}
 

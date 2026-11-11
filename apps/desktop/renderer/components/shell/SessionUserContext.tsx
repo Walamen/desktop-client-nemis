@@ -20,3 +20,9 @@ export function useSessionUser(): ProvisioningUser {
   if (!user) throw new Error('useSessionUser must be used inside a SessionUserProvider');
   return user;
 }
+
+/** Non-throwing variant for shared chrome that also renders in tests or portals
+ * where no session user is required. */
+export function useOptionalSessionUser(): ProvisioningUser | null {
+  return useContext(SessionUserContext);
+}

@@ -3,10 +3,14 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { ChevronDown, ChevronRight, LogOut } from 'lucide-react';
-import { SystemRole, type DesktopPortalRole } from '@nemis-desktop/types';
-import { headerConfigs, sidebarConfigs, type SidebarBadge } from './sidebarConfig';
+import {
+  SystemRole, canUseSchoolAccess, hasModule, isInstitutionScopedRole,
+  type DesktopPortalRole, type ProvisioningUser, type SchoolAccess,
+} from '@nemis-desktop/types';
+import { headerConfigs, sidebarConfigs, type SidebarBadge, type SidebarConfig } from './sidebarConfig';
 import { resolveActiveHref } from './active-nav';
 import { useCollapsedGroups } from './use-collapsed-groups';
+import { useOptionalSessionUser } from './SessionUserContext';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
 import { usePendingTransferCount } from '@/lib/use-pending-transfer-count';
 
@@ -21,22 +25,46 @@ function CountPill({ count }: { count: number }) {
   );
 }
 
+/** Keeps only the items this user may open, and drops groups left empty. Roles
+ * outside the school portal are returned untouched. */
+function visibleConfig(config: SidebarConfig, user: Pick<ProvisioningUser, 'role' | 'modules'>): SidebarConfig {
+  if (!isInstitutionScopedRole(user.role)) return config;
+  const allowed = (item: { access?: SchoolAccess }) =>
+    canUseSchoolAccess(user, item.access ?? 'BASE');
+  return {
+    ...config,
+    navGroups: config.navGroups
+      .map((group) => ({ ...group, items: group.items.filter(allowed) }))
+      .filter((group) => group.items.length > 0),
+  };
+}
+
 export function Sidebar({
   role,
 }: {
   role: DesktopPortalRole;
 }) {
-  const config = sidebarConfigs[role];
+  const sessionUser = useOptionalSessionUser();
+  // Without a session user (outside the guarded layouts) fall back to the role alone: no modules.
+  const user = sessionUser ?? { role, modules: [] };
+  const config = visibleConfig(sidebarConfigs[role], user);
   const pathname = usePathname();
   const router = useRouter();
   const activeHref = resolveActiveHref(pathname ?? '', config, headerConfigs[role].basePath);
   const isActive = (href: string) => href === activeHref;
   const collapsible = config.collapsibleGroups === true;
-  const { collapsed, toggle } = useCollapsedGroups(role, collapsible);
+  const { collapsed, toggle } = useCollapsedGroups(
+    // Office staff share the school admin's collapsed-groups key.
+    role === SystemRole.INSTITUTION_STAFF ? SystemRole.INSTITUTION_ADMIN : role,
+    collapsible,
+  );
 
   // Hooks may not be called conditionally, so every role calls this; only the
-  // school admin enables it, so other roles make no transfer reads.
-  const pendingTransfers = usePendingTransferCount(role === SystemRole.INSTITUTION_ADMIN);
+  // school admin and office users holding STUDENTS enable it, so every other
+  // user makes no transfer reads.
+  const pendingTransfers = usePendingTransferCount(
+    isInstitutionScopedRole(role) && hasModule(user, 'STUDENTS'),
+  );
   const getBadgeCount = (badge?: SidebarBadge) => {
     if (badge === 'transfers') return pendingTransfers;
     return 0;

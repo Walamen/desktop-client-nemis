@@ -10,7 +10,7 @@ import { SiGoogleclassroom } from "react-icons/si";
 import { GrOverview } from "react-icons/gr";
 import { PiClockUserBold } from "react-icons/pi";
 import type { ComponentType } from 'react';
-import { DESKTOP_PORTALS, SystemRole, type DesktopPortalRole } from '@nemis-desktop/types';
+import { DESKTOP_PORTALS, SystemRole, type DesktopPortalRole, type SchoolAccess } from '@nemis-desktop/types';
 import type { AvatarRole } from '@nemis-desktop/ui';
 
 export type SidebarBadge = 'transfers';
@@ -20,6 +20,8 @@ export interface SidebarNavItem {
   href: string;
   icon: ComponentType<{ className?: string }>;
   badge?: SidebarBadge;
+  /** Who may see this item; absent means BASE (every school-scoped user). Read only for school roles. */
+  access?: SchoolAccess;
   /** Extra paths (exact or as a prefix) on which this item also counts as active. */
   alsoActiveOn?: readonly string[];
 }
@@ -66,50 +68,51 @@ const INSTITUTION_ADMIN_SIDEBAR: SidebarConfig = {
       // terms → periods); see lib/academic-setup.ts for their deep links.
       label: 'ACADEMIC SETUP',
       items: [
-        { name: 'Academic Grading', href: '/government/school-admin/academic-grading', icon: SlidersHorizontal },
-        { name: 'Subjects', href: '/government/school-admin/subjects', icon: BookOpen },
+        { name: 'Academic Grading', href: '/government/school-admin/academic-grading', icon: SlidersHorizontal, access: 'ACADEMIC_SETUP' },
+        { name: 'Subjects', href: '/government/school-admin/subjects', icon: BookOpen, access: 'ACADEMIC_SETUP' },
       ],
     },
     {
       label: 'STUDENTS & FAMILIES',
       items: [
-        { name: 'Students', href: '/government/school-admin/students', icon: GraduationCap },
-        { name: 'Parents & Guardians', href: '/government/school-admin/parents-guardians', icon: Users },
+        { name: 'Students', href: '/government/school-admin/students', icon: GraduationCap, access: 'STUDENTS' },
+        { name: 'Parents & Guardians', href: '/government/school-admin/parents-guardians', icon: Users, access: 'STUDENTS' },
         {
           name: 'Student Transfers',
           href: '/government/school-admin/students/inter-school-transfer',
           icon: ArrowRightLeft,
           badge: 'transfers',
+          access: 'STUDENTS',
         },
       ],
     },
     {
       label: 'STAFF',
       items: [
-        { name: 'Teachers & Staff', href: '/government/school-admin/teachers-staff', icon: UserCog },
+        { name: 'Teachers & Staff', href: '/government/school-admin/teachers-staff', icon: UserCog, access: 'STAFF' },
       ],
     },
     {
       label: 'TEACHING WORKFLOW',
       items: [
-        { name: 'Classes', href: '/government/school-admin/classes', icon: School },
-        { name: 'Timetable', href: '/government/school-admin/timetable', icon: Clock },
-        { name: 'Attendance', href: '/government/school-admin/attendance', icon: CalendarCheck },
+        { name: 'Classes', href: '/government/school-admin/classes', icon: School, access: 'TEACHING' },
+        { name: 'Timetable', href: '/government/school-admin/timetable', icon: Clock, access: 'TEACHING' },
+        { name: 'Attendance', href: '/government/school-admin/attendance', icon: CalendarCheck, access: 'TEACHING' },
        
       ],
     },
     {
       label: 'FINANCE',
       items: [
-        { name: 'Record Payment', href: '/government/school-admin/financial/record-payment', icon: CreditCard },
-        { name: 'Payment Plan', href: '/government/school-admin/financial', icon: Receipt },
+        { name: 'Record Payment', href: '/government/school-admin/financial/record-payment', icon: CreditCard, access: 'FINANCE_PAYMENTS' },
+        { name: 'Payment Plan', href: '/government/school-admin/financial', icon: Receipt, access: 'FINANCE_RULES' },
       ],
     },
     {
       label: 'REPORTS & MESSAGES',
       items: [
-        { name: 'Reports', href: '/government/school-admin/reports', icon: FileBarChart },
-        { name: 'Past years', href: '/government/school-admin/past-years', icon: Archive },
+        { name: 'Reports', href: '/government/school-admin/reports', icon: FileBarChart, access: 'REPORTS' },
+        { name: 'Past years', href: '/government/school-admin/past-years', icon: Archive, access: 'REPORTS' },
         { name: 'Notifications', href: '/government/school-admin/notifications', icon: Bell },
         { name: 'Messages', href: '/government/school-admin/messages', icon: MessageCircle },
       ],
@@ -123,8 +126,8 @@ const INSTITUTION_ADMIN_SIDEBAR: SidebarConfig = {
           icon: Settings,
           alsoActiveOn: ['/government/school-admin/school-profile'],
         },
-        { name: 'Grade Levels', href: '/government/school-admin/grade-levels', icon: Layers },
-        { name: 'Infrastructure & Alerts', href: '/government/school-admin/infrastructure', icon: AlertTriangle },
+        { name: 'Grade Levels', href: '/government/school-admin/grade-levels', icon: Layers, access: 'SCHOOL' },
+        { name: 'Infrastructure & Alerts', href: '/government/school-admin/infrastructure', icon: AlertTriangle, access: 'SCHOOL' },
       ],
     },
   ],
@@ -132,7 +135,6 @@ const INSTITUTION_ADMIN_SIDEBAR: SidebarConfig = {
 
 export const sidebarConfigs: Record<DesktopPortalRole, SidebarConfig> = {
   [SystemRole.INSTITUTION_ADMIN]: INSTITUTION_ADMIN_SIDEBAR,
-  // Stage 2 Task 8 refines
   [SystemRole.INSTITUTION_STAFF]: INSTITUTION_ADMIN_SIDEBAR,
 
   [SystemRole.COUNTY_ADMIN]: {
@@ -325,22 +327,17 @@ const SCHOOL_ADMIN_PAGE_TITLES: Record<string, string> = {
   '/government/school-admin': 'Dashboard Overview',
 };
 
+const INSTITUTION_HEADER: HeaderConfig = {
+  basePath: DESKTOP_PORTALS[SystemRole.INSTITUTION_ADMIN].route,
+  showNotificationBell: true,
+  avatarRole: 'generic',
+  breadcrumbRoot: 'School Admin',
+  pageTitles: SCHOOL_ADMIN_PAGE_TITLES,
+};
+
 export const headerConfigs: Record<DesktopPortalRole, HeaderConfig> = {
-  [SystemRole.INSTITUTION_ADMIN]: {
-    basePath: DESKTOP_PORTALS[SystemRole.INSTITUTION_ADMIN].route,
-    showNotificationBell: true,
-    avatarRole: 'generic',
-    breadcrumbRoot: 'School Admin',
-    pageTitles: SCHOOL_ADMIN_PAGE_TITLES,
-  },
-  // Stage 2 Task 8 refines
-  [SystemRole.INSTITUTION_STAFF]: {
-    basePath: DESKTOP_PORTALS[SystemRole.INSTITUTION_STAFF].route,
-    showNotificationBell: true,
-    avatarRole: 'generic',
-    breadcrumbRoot: 'School Admin',
-    pageTitles: SCHOOL_ADMIN_PAGE_TITLES,
-  },
+  [SystemRole.INSTITUTION_ADMIN]: INSTITUTION_HEADER,
+  [SystemRole.INSTITUTION_STAFF]: INSTITUTION_HEADER,
   [SystemRole.COUNTY_ADMIN]: {
     basePath: DESKTOP_PORTALS[SystemRole.COUNTY_ADMIN].route,
     showNotificationBell: true,

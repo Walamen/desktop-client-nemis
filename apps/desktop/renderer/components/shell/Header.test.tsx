@@ -142,6 +142,16 @@ describe('Header', () => {
       expect(await screen.findByText('No active academic year')).toBeInTheDocument();
     });
 
+    it('office staff see the academic-year label', async () => {
+      vi.mocked(sharedBridge.getAcademicContext).mockResolvedValue({
+        year: { id: 'y', code: '2026/2027', status: 'ACTIVE' },
+        term: null,
+        period: null,
+      });
+      render(<Header role={SystemRole.INSTITUTION_STAFF} />);
+      expect(await screen.findByText('2026/2027')).toBeInTheDocument();
+    });
+
     it('is not rendered, nor fetched, for DEO, county and ministry', () => {
       for (const role of [SystemRole.DEO, SystemRole.COUNTY_ADMIN, SystemRole.MINISTRY_ADMIN]) {
         const { unmount } = render(<Header role={role} />);
