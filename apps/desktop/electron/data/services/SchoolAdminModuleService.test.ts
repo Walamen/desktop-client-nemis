@@ -521,6 +521,61 @@ describe('SchoolAdminModuleService', () => {
       workspaces.close();
     });
 
+    it('office staff with no modules can save a conversation and a message', () => {
+      const { workspaces, service } = setup(staff([]));
+      const now = new Date().toISOString();
+      workspaces.active.database.connection
+        .prepare(
+          `INSERT INTO students (id, institutionId, firstName, lastName, nemisId, dateOfBirth, gender, isActive, version, updatedAt)
+           VALUES ('student-1','school-1','Musu','Kollie',NULL,'2012-04-01','FEMALE',1,1,?)`,
+        )
+        .run(now);
+      const conversation = service.save({
+        collection: 'conversations',
+        record: { studentId: 'student-1', teacherId: 'teacher-1', subject: null, lastMessageAt: null },
+      });
+      const message = service.save({
+        collection: 'messages',
+        record: { conversationId: String(conversation.id), content: 'Hello', isRead: false, readAt: null },
+      });
+      expect(message.conversationId).toBe(conversation.id);
+      expect(() =>
+        service.save({
+          collection: 'conversations',
+          record: { id: String(conversation.id), lastMessageAt: now },
+        }),
+      ).not.toThrow();
+      workspaces.close();
+    });
+
+    it('reports (REPORTS) reads grades, fee payments and grading configs but cannot save them', () => {
+      const { workspaces, service } = setup(staff(['REPORTS']));
+      for (const collection of ['grades', 'fee_payments', 'institution_grading_configs'] as const) {
+        expect(() => service.list({ collection })).not.toThrow();
+        expect(() => service.save({ collection, record: {} })).toThrow(
+          'This record type cannot be changed by the active role.',
+        );
+      }
+      workspaces.close();
+    });
+
+    it('teaching (TEACHING) reads grade entry windows but cannot save one', () => {
+      const { workspaces, service } = setup(staff(['TEACHING']));
+      expect(() => service.list({ collection: 'grade_entry_windows' })).not.toThrow();
+      expect(() =>
+        service.save({ collection: 'grade_entry_windows', record: { name: 'Window' } }),
+      ).toThrow('This record type cannot be changed by the active role.');
+      workspaces.close();
+    });
+
+    it('office staff without FINANCE_PAYMENTS cannot reverse a payment', () => {
+      const { workspaces, service } = setup(staff(['STUDENTS']));
+      expect(() =>
+        service.reverseFeePayment({ paymentId: 'payment-1', reason: 'duplicate entry' }),
+      ).toThrow('This record type cannot be changed by the active role.');
+      workspaces.close();
+    });
+
     it('office staff with modules undefined get the base sets only', () => {
       const { workspaces, service } = setup(staff());
       expect(() => service.list({ collection: 'students' })).not.toThrow();

@@ -1,6 +1,9 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { DesktopScopeType, SystemRole, type ProvisioningUser } from '@nemis-desktop/types';
-import { deriveWorkspaceKey, workspaceIdentity } from './WorkspaceManager';
+import { deriveWorkspaceKey, WorkspaceManager, workspaceIdentity } from './WorkspaceManager';
 
 const base: ProvisioningUser = {
   id: 'user-1',
@@ -39,5 +42,31 @@ describe('workspace cryptographic isolation', () => {
     expect(one).not.toBe(master);
     expect(two).not.toBe(one);
     expect(deriveWorkspaceKey(master, workspaceIdentity(base))).toBe(one);
+  });
+});
+
+describe('WorkspaceManager.activate', () => {
+  it('refreshes the user when the same identity is activated again', () => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'nemis-workspace-manager-'));
+    const workspaces = new WorkspaceManager({
+      userDataDir: directory,
+      masterKey: 'ab'.repeat(32),
+      device: { deviceName: 'Test', platform: 'win32', osVersion: '11', appVersion: '1' },
+      log: { info() {}, warn() {}, error() {} },
+    });
+    try {
+      const office: ProvisioningUser = {
+        ...base,
+        role: SystemRole.INSTITUTION_STAFF,
+        modules: ['STUDENTS'],
+      };
+      const first = workspaces.activate(office);
+      const second = workspaces.activate({ ...office, modules: ['STUDENTS', 'REPORTS'] });
+      expect(workspaces.active.user.modules).toEqual(['STUDENTS', 'REPORTS']);
+      expect(second.database).toBe(first.database);
+    } finally {
+      workspaces.close();
+      fs.rmSync(directory, { recursive: true, force: true });
+    }
   });
 });

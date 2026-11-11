@@ -2,7 +2,17 @@ import { describe, expect, it } from 'vitest';
 import { ForbiddenError } from '@nemis-desktop/shared';
 import { IpcChannels, isSchoolModule, SystemRole, type IpcChannel } from '@nemis-desktop/types';
 import type { WorkspaceManager } from '@app/workspace/WorkspaceManager';
-import { authorizeChannel, SCHOOL_ADMIN_CHANNELS, SCHOOL_STAFF_CHANNELS } from './authorizeChannel';
+import {
+  authorizeChannel,
+  COUNTY_ADMIN_CHANNELS,
+  GOVERNMENT_YEAR_ARCHIVE_CHANNELS,
+  PUBLIC_CHANNELS,
+  REPORT_CARD_CHANNELS,
+  SCHOOL_ADMIN_CHANNELS,
+  SCHOOL_STAFF_CHANNELS,
+  TEACHER_ONLY_CHANNELS,
+  type ChannelAccess,
+} from './authorizeChannel';
 
 function workspace(role?: string, modules?: string[]): WorkspaceManager {
   return {
@@ -384,6 +394,50 @@ const BEFORE_CHANGE_CHANNELS: IpcChannel[] = [
     IpcChannels.TRANSFER_SEARCH_SCHOOLS,
 ];
 
+// Channels deliberately left open to every authenticated role, office staff
+// included. A channel missing from every classified set and from this list
+// fails the "every IPC channel is classified" test below.
+const OPEN_TO_OFFICE_STAFF: IpcChannel[] = [
+  // Generic school-admin records: the service enforces per-collection read
+  // and write sets (readCollectionsFor / writeCollectionsFor), so the channel
+  // itself is open.
+  IpcChannels.SCHOOL_ADMIN_LIST,
+  IpcChannels.SCHOOL_ADMIN_SAVE,
+  IpcChannels.SCHOOL_ADMIN_DELETE,
+  IpcChannels.SCHOOL_ADMIN_REVERSE_PAYMENT,
+  // Sync: every role syncs its own workspace.
+  IpcChannels.SYNC_GET_STATUS,
+  IpcChannels.SYNC_LIST_CONFLICTS,
+  IpcChannels.SYNC_LIST_PENDING,
+  IpcChannels.SYNC_LIST_PENDING_RECORDS,
+  IpcChannels.SYNC_RESOLVE_CONFLICT,
+  IpcChannels.SYNC_RUN,
+  // Identity, device, settings and system: cross-portal shell plumbing.
+  IpcChannels.IDENTITY_GET_CURRENT_USER,
+  IpcChannels.IDENTITY_HEADER_NOTIFICATIONS,
+  IpcChannels.DEVICE_GET_INFO,
+  IpcChannels.SETTINGS_GET,
+  IpcChannels.SYSTEM_SAVE_FILE,
+  // Institution list: scoped by the workspace snapshot, used by every portal.
+  IpcChannels.INSTITUTION_LIST,
+  // Messaging presence: every role that messages.
+  IpcChannels.MESSAGING_ONLINE_USERS,
+  // Used by the teacher portal and the school-admin dashboard's teacher widget.
+  IpcChannels.TEACHER_GET_DASHBOARD,
+  // Pure validation of a proposed timetable entry; reads no school data.
+  IpcChannels.TIMETABLE_VALIDATE,
+];
+
+function isValidAccess(access: ChannelAccess): boolean {
+  if (typeof access !== 'string') return access.length > 0 && access.every((m) => isSchoolModule(m));
+  return access === 'BASE' || access === 'PRINCIPAL' || isSchoolModule(access);
+}
+
+function modulesOf(access: ChannelAccess): string[] {
+  if (typeof access !== 'string') return [...access];
+  return isSchoolModule(access) ? [access] : [];
+}
+
 const OFFICE = SystemRole.INSTITUTION_STAFF;
 const ALL_MODULES = [
   'ACADEMIC_SETUP',
@@ -413,13 +467,25 @@ const PRINCIPAL_ONLY: IpcChannel[] = [
 ];
 
 describe('authorizeChannel for school office staff', () => {
+  it('every IPC channel is classified or deliberately open', () => {
+    const classified = new Set<IpcChannel>([
+      ...PUBLIC_CHANNELS,
+      ...SCHOOL_ADMIN_CHANNELS.keys(),
+      ...SCHOOL_STAFF_CHANNELS.keys(),
+      ...REPORT_CARD_CHANNELS,
+      ...TEACHER_ONLY_CHANNELS,
+      ...COUNTY_ADMIN_CHANNELS,
+      ...GOVERNMENT_YEAR_ARCHIVE_CHANNELS,
+      ...OPEN_TO_OFFICE_STAFF,
+    ]);
+    const unclassified = Object.values(IpcChannels).filter((channel) => !classified.has(channel));
+    expect(unclassified).toEqual([]);
+  });
+
   it('every school-admin and school-staff channel has a classification', () => {
     for (const map of [SCHOOL_ADMIN_CHANNELS, SCHOOL_STAFF_CHANNELS]) {
       for (const [channel, access] of map) {
-        expect(
-          access === 'BASE' || access === 'PRINCIPAL' || isSchoolModule(access),
-          channel,
-        ).toBe(true);
+        expect(isValidAccess(access), channel).toBe(true);
       }
     }
     const keys = [...SCHOOL_ADMIN_CHANNELS.keys(), ...SCHOOL_STAFF_CHANNELS.keys()];
@@ -477,11 +543,26 @@ describe('authorizeChannel for school office staff', () => {
   it('every module-classified channel passes with exactly its module', () => {
     for (const map of [SCHOOL_ADMIN_CHANNELS, SCHOOL_STAFF_CHANNELS]) {
       for (const [channel, access] of map) {
-        if (!isSchoolModule(access)) continue;
-        expect(() => authorizeChannel(channel, workspace(OFFICE, [access])), channel).not.toThrow();
+        const modules = modulesOf(access);
+        if (modules.length === 0) continue;
+        for (const module of modules) {
+          expect(() => authorizeChannel(channel, workspace(OFFICE, [module])), channel).not.toThrow();
+        }
         expect(() => authorizeChannel(channel, workspace(OFFICE, [])), channel).toThrow(ForbiddenError);
       }
     }
+  });
+
+  it('attendance list is open to TEACHING or REPORTS; recording stays TEACHING only', () => {
+    expect(() => authorizeChannel(IpcChannels.ATTENDANCE_LIST, workspace(OFFICE, ['REPORTS']))).not.toThrow();
+    expect(() => authorizeChannel(IpcChannels.ATTENDANCE_LIST, workspace(OFFICE, ['TEACHING']))).not.toThrow();
+    expect(() => authorizeChannel(IpcChannels.ATTENDANCE_RECORD, workspace(OFFICE, ['REPORTS']))).toThrow(
+      new ForbiddenError('This account does not have access to Teaching workflow.'),
+    );
+    expect(() => authorizeChannel(IpcChannels.ATTENDANCE_LIST, workspace(OFFICE, ['STUDENTS']))).toThrow(
+      new ForbiddenError('This account does not have access to Teaching workflow or Reports.'),
+    );
+    expect(SCHOOL_STAFF_CHANNELS.get(IpcChannels.ATTENDANCE_RECORD)).toBe('TEACHING');
   });
 
   it('office staff with REPORTS read report cards; without it they are refused', () => {

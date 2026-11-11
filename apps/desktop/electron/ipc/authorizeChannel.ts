@@ -1,6 +1,7 @@
 import { ForbiddenError, UnauthorizedError } from '@nemis-desktop/shared';
 import {
   canUseSchoolAccess,
+  hasModule,
   IpcChannels,
   SchoolModule,
   schoolAccessLabel,
@@ -10,7 +11,11 @@ import {
 } from '@nemis-desktop/types';
 import type { WorkspaceManager } from '@app/workspace/WorkspaceManager';
 
-const PUBLIC_CHANNELS = new Set<IpcChannel>([
+/** A channel's office-staff access: one SchoolAccess value, or a list of
+ * modules of which the user needs at least one (any-of). */
+export type ChannelAccess = SchoolAccess | readonly SchoolModule[];
+
+export const PUBLIC_CHANNELS: ReadonlySet<IpcChannel> = new Set<IpcChannel>([
   IpcChannels.AUTH_GET_STATUS,
   IpcChannels.AUTH_LOGIN,
   IpcChannels.AUTH_LOGOUT,
@@ -23,7 +28,7 @@ const PUBLIC_CHANNELS = new Set<IpcChannel>([
 // full teacher/timetable/enrollment records, etc). Restricted to
 // INSTITUTION_ADMIN and, per the access value, INSTITUTION_STAFF holding that
 // module; none of it is needed by a teacher's own screens.
-export const SCHOOL_ADMIN_CHANNELS: ReadonlyMap<IpcChannel, SchoolAccess> = new Map<IpcChannel, SchoolAccess>([
+export const SCHOOL_ADMIN_CHANNELS: ReadonlyMap<IpcChannel, ChannelAccess> = new Map<IpcChannel, ChannelAccess>([
   // Mutations
   // Online-only registry and transfer commands (NEMIS ID parity §6.2).
   [IpcChannels.REGISTRY_LOOKUP, SchoolModule.STUDENTS],
@@ -127,10 +132,11 @@ export const SCHOOL_ADMIN_CHANNELS: ReadonlyMap<IpcChannel, SchoolAccess> = new 
 // institution-wide data (bell schedule, current year, term list) that the
 // Timetable and Gradebook pages need to render — not teacher- or
 // class-specific, so none of them need self-scoping.
-export const SCHOOL_STAFF_CHANNELS: ReadonlyMap<IpcChannel, SchoolAccess> = new Map<IpcChannel, SchoolAccess>([
+// ATTENDANCE_LIST is any-of TEACHING | REPORTS: the attendance report reads it.
+export const SCHOOL_STAFF_CHANNELS: ReadonlyMap<IpcChannel, ChannelAccess> = new Map<IpcChannel, ChannelAccess>([
   // Stage 5: carried marks, read-only in the teacher's grade grid.
   [IpcChannels.CARRIED_GRADES_FOR_PERIOD, SchoolModule.TEACHING],
-  [IpcChannels.ATTENDANCE_LIST, SchoolModule.TEACHING],
+  [IpcChannels.ATTENDANCE_LIST, [SchoolModule.TEACHING, SchoolModule.REPORTS]],
   [IpcChannels.ATTENDANCE_RECORD, SchoolModule.TEACHING],
   [IpcChannels.CLASS_LIST, 'BASE'],
   [IpcChannels.STUDENT_LIST, 'BASE'],
@@ -151,7 +157,7 @@ export const SCHOOL_STAFF_CHANNELS: ReadonlyMap<IpcChannel, SchoolAccess> = new 
 // Report-card channels are also members of SCHOOL_STAFF_CHANNELS; they are
 // checked first so a refusal names report cards, not attendance. Office staff
 // reach them through the REPORTS module in SCHOOL_STAFF_CHANNELS.
-const REPORT_CARD_CHANNELS = new Set<IpcChannel>([
+export const REPORT_CARD_CHANNELS: ReadonlySet<IpcChannel> = new Set<IpcChannel>([
   IpcChannels.REPORT_CARDS_LIST_FOR_STUDENT,
   IpcChannels.REPORT_CARDS_LIST_FOR_CLASS,
   IpcChannels.REPORT_CARD_GET_ISSUE,
@@ -159,14 +165,14 @@ const REPORT_CARD_CHANNELS = new Set<IpcChannel>([
 ]);
 
 // Closed academic years across the schools a district or county oversees.
-const GOVERNMENT_YEAR_ARCHIVE_CHANNELS = new Set<IpcChannel>([IpcChannels.YEAR_ARCHIVES_LIST]);
+export const GOVERNMENT_YEAR_ARCHIVE_CHANNELS: ReadonlySet<IpcChannel> = new Set<IpcChannel>([IpcChannels.YEAR_ARCHIVES_LIST]);
 
 // Teacher-exclusive channels — unlike attendance, the web app has no
 // school-admin-facing assignments screen at all, so these stay closed to
 // INSTITUTION_ADMIN rather than falling into SCHOOL_STAFF_CHANNELS. Ownership
 // (teacherId) is injected server-side from workspaces.active.user.staffId in
 // the handler, never trusted from the renderer — see handlers/teacher/assignments.ts.
-const TEACHER_ONLY_CHANNELS = new Set<IpcChannel>([
+export const TEACHER_ONLY_CHANNELS: ReadonlySet<IpcChannel> = new Set<IpcChannel>([
   IpcChannels.ASSIGNMENT_LIST,
   IpcChannels.ASSIGNMENT_GET,
   IpcChannels.ASSIGNMENT_CREATE,
@@ -180,7 +186,7 @@ const TEACHER_ONLY_CHANNELS = new Set<IpcChannel>([
 
 // County (CEO) portal reads — county-wide aggregates that no other role's
 // screens use.
-const COUNTY_ADMIN_CHANNELS = new Set<IpcChannel>([
+export const COUNTY_ADMIN_CHANNELS: ReadonlySet<IpcChannel> = new Set<IpcChannel>([
   IpcChannels.COUNTY_GET_DASHBOARD,
   IpcChannels.COUNTY_LIST_DISTRICTS,
   IpcChannels.COUNTY_GET_DISTRICT,
@@ -233,8 +239,14 @@ const COUNTY_ADMIN_CHANNELS = new Set<IpcChannel>([
 
 // Office staff follow the module classification of a channel. A session saved
 // by an older build has no modules; that reads as an empty set.
-function assertOfficeAccess(workspaces: WorkspaceManager, access: SchoolAccess): void {
+function assertOfficeAccess(workspaces: WorkspaceManager, access: ChannelAccess): void {
   const user = workspaces.active.user;
+  if (typeof access !== 'string') {
+    if (access.some((module) => hasModule(user, module))) return;
+    throw new ForbiddenError(
+      `This account does not have access to ${schoolAccessLabel([...access])}.`,
+    );
+  }
   if (canUseSchoolAccess(user, access)) return;
   if (access === 'PRINCIPAL') {
     throw new ForbiddenError('This action is only available to the School Admin.');

@@ -340,14 +340,18 @@ const ROLE_WRITE_COLLECTIONS: Readonly<Record<string, ReadonlySet<SchoolAdminCol
 
 const OFFICE_BASE_READ: readonly SchoolAdminCollection[] = [
   'institutions', 'students', 'guardians', 'student_guardians', 'staff', 'staff_directory',
-  'institution_admin', 'classes', 'subjects', 'grading_periods', 'fee_rules', 'fee_obligations',
-  'announcements', 'conversations', 'messages', 'user_notifications',
+  'institution_admin', 'classes', 'subjects', 'grading_periods', 'grade_entry_windows', 'fee_rules',
+  'fee_obligations', 'announcements', 'conversations', 'messages', 'user_notifications',
 ];
-const OFFICE_BASE_WRITE: readonly SchoolAdminCollection[] = ['messages', 'user_notifications'];
+const OFFICE_BASE_WRITE: readonly SchoolAdminCollection[] = [
+  'conversations', 'messages', 'user_notifications',
+];
 
 /** Reads are wider than writes: structural school data is readable by every
  * office user. A module adds its collections to the read and the write set,
- * except student_transfers (pull-only for every role, so read only). */
+ * except student_transfers (pull-only for every role, so read only) and the
+ * REPORTS source data (grades, payments, grading config), which report
+ * builders read but never change. */
 const OFFICE_MODULE_COLLECTIONS: Readonly<
   Record<SchoolModuleId, { read: readonly SchoolAdminCollection[]; write: readonly SchoolAdminCollection[] }>
 > = {
@@ -369,7 +373,10 @@ const OFFICE_MODULE_COLLECTIONS: Readonly<
     read: ['fee_rules', 'fee_obligations'],
     write: ['fee_rules', 'fee_obligations'],
   },
-  REPORTS: { read: ['reports'], write: ['reports'] },
+  REPORTS: {
+    read: ['reports', 'grades', 'fee_payments', 'institution_grading_configs'],
+    write: ['reports'],
+  },
   SCHOOL: { read: ['alerts', 'institutions'], write: ['alerts', 'institutions'] },
 };
 

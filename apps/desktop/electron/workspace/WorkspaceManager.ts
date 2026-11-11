@@ -45,7 +45,12 @@ export class WorkspaceManager {
 
   activate(user: ProvisioningUser): ActiveWorkspace {
     const identity = workspaceIdentity(user);
-    if (this.#active?.identity === identity) return this.#active;
+    if (this.#active?.identity === identity) {
+      // Same workspace: keep the open database but take the fresh user, so
+      // modules or title changed on the server reach the main process.
+      this.#active = { ...this.#active, user };
+      return this.#active;
+    }
     this.close();
 
     const workspaceDir = path.join(this.#options.userDataDir, 'workspaces', identity);
