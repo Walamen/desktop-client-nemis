@@ -11,7 +11,7 @@ import { SchoolRegistrationNotices } from '@/components/county/schools/registrat
 
 export default function Layout({ children }: { children: ReactNode }) {
   return (
-    <RouteGuard requiredRole={SystemRole.COUNTY_ADMIN}>
+    <RouteGuard requiredRoles={[SystemRole.COUNTY_ADMIN]}>
       <div className="flex h-screen overflow-hidden bg-gray-50">
         <Sidebar role={SystemRole.COUNTY_ADMIN} />
         <div className="flex-1 flex flex-col overflow-hidden">

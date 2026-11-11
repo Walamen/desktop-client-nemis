@@ -7,17 +7,19 @@ import {
   roleCanAccessRoute,
   type DesktopPortalRole,
 } from '@nemis-desktop/types';
+import type { ProvisioningUser } from '@nemis-desktop/types';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
+import { SessionUserProvider } from './SessionUserContext';
 
 export function RouteGuard({
   children,
-  requiredRole,
+  requiredRoles,
 }: {
   children: ReactNode;
-  requiredRole?: DesktopPortalRole;
+  requiredRoles?: readonly DesktopPortalRole[];
 }) {
   const router = useRouter();
-  const [allowed, setAllowed] = useState(false);
+  const [user, setUser] = useState<ProvisioningUser | null>(null);
   useEffect(() => {
     void sharedBridge.getProvisioningStatus().then((status) => {
       if (!status.isProvisioned || status.authentication !== 'authenticated' || !status.user) {
@@ -25,13 +27,13 @@ export function RouteGuard({
         return;
       }
       const route = desktopPortalRoute(status.user.role);
-      if (!route || (requiredRole && status.user.role !== requiredRole)) {
+      if (!route || (requiredRoles && !requiredRoles.includes(status.user.role))) {
         router.replace(route ?? '/');
         return;
       }
-      if (roleCanAccessRoute(status.user.role, window.location.pathname)) setAllowed(true);
+      if (roleCanAccessRoute(status.user.role, window.location.pathname)) setUser(status.user);
       else router.replace(route);
     });
-  }, [requiredRole, router]);
-  return allowed ? <>{children}</> : null;
+  }, [requiredRoles, router]);
+  return user ? <SessionUserProvider user={user}>{children}</SessionUserProvider> : null;
 }

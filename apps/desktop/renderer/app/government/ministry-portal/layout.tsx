@@ -10,7 +10,7 @@ import { ToastHost } from '@/components/shell/ToastHost';
 
 export default function Layout({ children }: { children: ReactNode }) {
   return (
-    <RouteGuard requiredRole={SystemRole.MINISTRY_ADMIN}>
+    <RouteGuard requiredRoles={[SystemRole.MINISTRY_ADMIN]}>
       <div className="flex h-screen overflow-hidden bg-gray-50">
         <Sidebar role={SystemRole.MINISTRY_ADMIN} />
         <div className="flex-1 flex flex-col overflow-hidden">
