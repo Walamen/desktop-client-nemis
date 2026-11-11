@@ -234,4 +234,9 @@ describe('YearStructureCopyService', () => {
     const { service } = setup({ ...admin, role: SystemRole.TEACHER });
     expect(() => service.copyStructure(request)).toThrow(ForbiddenError);
   });
+
+  it('office staff workspace is allowed', () => {
+    const { service } = setup({ ...admin, role: SystemRole.INSTITUTION_STAFF, modules: ['ACADEMIC_SETUP'] });
+    expect(() => service.copyStructure(request)).not.toThrow();
+  });
 });

@@ -261,7 +261,8 @@ export function authorizeChannel(channel: IpcChannel, workspaces: WorkspaceManag
   }
   if (REPORT_CARD_CHANNELS.has(channel)) {
     if (role === SystemRole.INSTITUTION_STAFF) {
-      assertOfficeAccess(workspaces, SchoolModule.REPORTS);
+      // Access comes from the staff map so the two cannot drift.
+      assertOfficeAccess(workspaces, SCHOOL_STAFF_CHANNELS.get(channel) ?? 'PRINCIPAL');
     } else if (role !== SystemRole.INSTITUTION_ADMIN && role !== SystemRole.TEACHER) {
       throw new ForbiddenError('Report cards are only available to school administrators and teachers.');
     }

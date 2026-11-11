@@ -141,4 +141,9 @@ describe('StudentSyncStatusService', () => {
     const { service } = setup({ ...admin, role: SystemRole.TEACHER });
     expect(() => service.isCreateSynced('s-1')).toThrow(/school administrator/);
   });
+
+  it('office staff workspace is allowed', () => {
+    const { service } = setup({ ...admin, role: SystemRole.INSTITUTION_STAFF, modules: ['STUDENTS'] });
+    expect(service.isCreateSynced('s-1')).toEqual({ synced: true });
+  });
 });

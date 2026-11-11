@@ -290,7 +290,7 @@ describe('authorizeChannel', () => {
 });
 
 const BEFORE_CHANGE_CHANNELS: IpcChannel[] = [
-IpcChannels.ACADEMIC_CONTEXT_GET,
+    IpcChannels.ACADEMIC_CONTEXT_GET,
     IpcChannels.ACADEMIC_YEAR_COPY_STRUCTURE,
     IpcChannels.ACADEMIC_YEAR_CREATE,
     IpcChannels.ACADEMIC_YEAR_GET_CURRENT,
