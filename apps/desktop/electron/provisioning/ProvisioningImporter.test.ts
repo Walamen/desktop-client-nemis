@@ -692,6 +692,29 @@ describe('ProvisioningImporter', () => {
     expect(db.prepare(`SELECT createdAt FROM students`).get()).toEqual({ createdAt: null });
   });
 
+  it('imports userOrganizations modules and title', () => {
+    new ProvisioningImporter(manager).import(
+      snapshotOf({
+        ...BASE_DATA,
+        userOrganizations: [
+          ...(BASE_DATA.userOrganizations ?? []),
+          { id: 'org-staff-1', userId: 'user-1', role: 'INSTITUTION_STAFF', institutionId: 'school-1', countyId: null, districtId: null, isActive: true, modules: ['STUDENTS', 'REPORTS'], title: 'Registrar' },
+          { id: 'org-staff-2', userId: 'user-1', role: 'INSTITUTION_STAFF', institutionId: 'school-1', countyId: null, districtId: null, isActive: true },
+        ],
+      }),
+      CONTEXT,
+    );
+    const db = manager.connection;
+    expect(db.prepare(`SELECT modules, title FROM user_organizations WHERE id='org-staff-1'`).get()).toEqual({
+      modules: '["STUDENTS","REPORTS"]',
+      title: 'Registrar',
+    });
+    expect(db.prepare(`SELECT modules, title FROM user_organizations WHERE id='org-staff-2'`).get()).toEqual({
+      modules: '[]',
+      title: null,
+    });
+  });
+
   it('imports DEO memberships, DEO users and the district/school/user contact columns', () => {
     const importer = new ProvisioningImporter(manager);
     importer.import(
