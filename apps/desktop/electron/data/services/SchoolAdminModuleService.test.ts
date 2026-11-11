@@ -434,4 +434,103 @@ describe('SchoolAdminModuleService', () => {
     expect(result.items.map((item) => item.id)).toEqual(['t-pending', 't-0', 't-1']);
     workspaces.close();
   });
+
+  describe('office staff collections', () => {
+    const staff = (modules?: ProvisioningUser['modules']): ProvisioningUser => ({
+      ...admin,
+      id: 'staff-1',
+      role: SystemRole.INSTITUTION_STAFF,
+      ...(modules ? { modules } : {}),
+    });
+    const ALL = [
+      'ACADEMIC_SETUP', 'STUDENTS', 'STAFF', 'TEACHING',
+      'FINANCE_PAYMENTS', 'FINANCE_RULES', 'REPORTS', 'SCHOOL',
+    ] as const;
+
+    it('business manager (FINANCE_PAYMENTS) reads students, fee rules and obligations', () => {
+      const { workspaces, service } = setup(staff(['FINANCE_PAYMENTS']));
+      for (const collection of ['students', 'fee_rules', 'fee_obligations', 'fee_payments'] as const) {
+        expect(() => service.list({ collection })).not.toThrow();
+      }
+      workspaces.close();
+    });
+
+    it('business manager records a payment and reverses it', () => {
+      const { workspaces, service } = setup(staff(['FINANCE_PAYMENTS']));
+      const now = new Date().toISOString();
+      const db = workspaces.active.database.connection;
+      db.prepare(
+        `INSERT INTO fee_obligations
+          (id,studentId,feeRuleId,institutionId,academicYearId,termId,requiredAmount,
+           totalPaid,status,createdBy,createdAt,updatedAt)
+         VALUES ('obligation-1','student-1','rule-1','school-1','year-1','term-1',
+                 100,0,'OUTSTANDING','admin-1',?,?)`,
+      ).run(now, now);
+      const payment = service.save({
+        collection: 'fee_payments',
+        record: {
+          obligationId: 'obligation-1', studentId: 'student-1', amount: 40, method: 'CASH',
+          reference: null, notes: null, receiptNumber: 'R-1', recordedBy: '',
+          isReversed: false, paidAt: now,
+        },
+      });
+      expect(obligationRow(workspaces, 'obligation-1').totalPaid).toBe(40);
+      service.reverseFeePayment({ paymentId: String(payment.id), reason: 'duplicate entry' });
+      expect(obligationRow(workspaces, 'obligation-1').totalPaid).toBe(0);
+      workspaces.close();
+    });
+
+    it('business manager cannot save a fee rule', () => {
+      const { workspaces, service } = setup(staff(['FINANCE_PAYMENTS']));
+      expect(() =>
+        service.save({ collection: 'fee_rules', record: { name: 'Tuition' } }),
+      ).toThrow('This record type cannot be changed by the active role.');
+      workspaces.close();
+    });
+
+    it('registrar (STUDENTS) cannot read grades or fee payments', () => {
+      const { workspaces, service } = setup(staff(['STUDENTS']));
+      expect(() => service.list({ collection: 'grades' })).toThrow(/not available/);
+      expect(() => service.list({ collection: 'fee_payments' })).toThrow(/not available/);
+      expect(() => service.list({ collection: 'guardians' })).not.toThrow();
+      workspaces.close();
+    });
+
+    it('office staff never write announcements, even with all eight modules', () => {
+      const { workspaces, service } = setup(staff([...ALL]));
+      expect(() =>
+        service.save({
+          collection: 'announcements',
+          record: { title: 'x', content: 'y', author: 'staff-1', priority: 'HIGH' },
+        }),
+      ).toThrow('This record type cannot be changed by the active role.');
+      expect(() => service.list({ collection: 'announcements' })).not.toThrow();
+      workspaces.close();
+    });
+
+    it('office staff saves are forced into their own institution', () => {
+      const { workspaces, service } = setup(staff(['SCHOOL']));
+      const saved = service.save({
+        collection: 'alerts',
+        record: {
+          institutionId: 'school-2', type: 'ENROLLMENT_ANOMALY', severity: 'HIGH',
+          title: 'a', description: 'b', isResolved: false,
+        },
+      });
+      expect(saved.institutionId).toBe('school-1');
+      workspaces.close();
+    });
+
+    it('office staff with modules undefined get the base sets only', () => {
+      const { workspaces, service } = setup(staff());
+      expect(() => service.list({ collection: 'students' })).not.toThrow();
+      expect(() => service.list({ collection: 'messages' })).not.toThrow();
+      expect(() => service.list({ collection: 'grades' })).toThrow(/not available/);
+      expect(() => service.list({ collection: 'fee_payments' })).toThrow(/not available/);
+      expect(() => service.save({ collection: 'alerts', record: { title: 'a' } })).toThrow(
+        'This record type cannot be changed by the active role.',
+      );
+      workspaces.close();
+    });
+  });
 });

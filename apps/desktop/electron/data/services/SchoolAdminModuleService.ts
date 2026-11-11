@@ -7,8 +7,14 @@ import type {
   SchoolAdminListResult,
   SchoolAdminRecord,
   SchoolAdminSaveRequest,
+  SchoolModule as SchoolModuleId,
 } from '@nemis-desktop/types';
-import { DesktopScopeType } from '@nemis-desktop/types';
+import {
+  DesktopScopeType,
+  hasModule,
+  isInstitutionScopedRole,
+  type ProvisioningUser,
+} from '@nemis-desktop/types';
 import type { WorkspaceManager } from '@app/workspace/WorkspaceManager';
 import { workspaceStudentScope } from '@app/data/repositories/sqlite/business/workspaceScope';
 
@@ -332,6 +338,68 @@ const ROLE_WRITE_COLLECTIONS: Readonly<Record<string, ReadonlySet<SchoolAdminCol
   MINISTRY_ADMIN: new Set(['reports', 'alerts']),
 };
 
+const OFFICE_BASE_READ: readonly SchoolAdminCollection[] = [
+  'institutions', 'students', 'guardians', 'student_guardians', 'staff', 'staff_directory',
+  'institution_admin', 'classes', 'subjects', 'grading_periods', 'fee_rules', 'fee_obligations',
+  'announcements', 'conversations', 'messages', 'user_notifications',
+];
+const OFFICE_BASE_WRITE: readonly SchoolAdminCollection[] = ['messages', 'user_notifications'];
+
+/** Reads are wider than writes: structural school data is readable by every
+ * office user. A module adds its collections to the read and the write set,
+ * except student_transfers (pull-only for every role, so read only). */
+const OFFICE_MODULE_COLLECTIONS: Readonly<
+  Record<SchoolModuleId, { read: readonly SchoolAdminCollection[]; write: readonly SchoolAdminCollection[] }>
+> = {
+  ACADEMIC_SETUP: {
+    read: ['institution_grading_configs', 'grading_periods', 'grade_entry_windows'],
+    write: ['institution_grading_configs', 'grading_periods', 'grade_entry_windows'],
+  },
+  STUDENTS: {
+    read: ['guardians', 'student_guardians', 'student_transfers'],
+    write: ['guardians', 'student_guardians'],
+  },
+  STAFF: { read: ['staff', 'staff_directory'], write: ['staff', 'staff_directory'] },
+  TEACHING: {
+    read: ['grades', 'assessment_templates', 'assessments', 'timetable_entries', 'class_resources'],
+    write: ['grades', 'assessment_templates', 'assessments', 'timetable_entries', 'class_resources'],
+  },
+  FINANCE_PAYMENTS: { read: ['fee_payments'], write: ['fee_payments'] },
+  FINANCE_RULES: {
+    read: ['fee_rules', 'fee_obligations'],
+    write: ['fee_rules', 'fee_obligations'],
+  },
+  REPORTS: { read: ['reports'], write: ['reports'] },
+  SCHOOL: { read: ['alerts', 'institutions'], write: ['alerts', 'institutions'] },
+};
+
+function officeCollections(
+  user: ProvisioningUser,
+  base: readonly SchoolAdminCollection[],
+  side: 'read' | 'write',
+): ReadonlySet<SchoolAdminCollection> {
+  const set = new Set<SchoolAdminCollection>(base);
+  for (const [module, collections] of Object.entries(OFFICE_MODULE_COLLECTIONS)) {
+    if (!hasModule(user, module as SchoolModuleId)) continue;
+    for (const collection of collections[side]) set.add(collection);
+  }
+  return set;
+}
+
+/** The collections this user may read. Office staff get the base set plus
+ * their modules; every other role keeps its fixed set. */
+export function readCollectionsFor(user: ProvisioningUser): ReadonlySet<SchoolAdminCollection> {
+  if (user.role === 'INSTITUTION_STAFF') return officeCollections(user, OFFICE_BASE_READ, 'read');
+  return ROLE_READ_COLLECTIONS[user.role] ?? new Set();
+}
+
+/** The collections this user may write. announcements is never writable by
+ * office staff: announcing is a School Admin action. */
+export function writeCollectionsFor(user: ProvisioningUser): ReadonlySet<SchoolAdminCollection> {
+  if (user.role === 'INSTITUTION_STAFF') return officeCollections(user, OFFICE_BASE_WRITE, 'write');
+  return ROLE_WRITE_COLLECTIONS[user.role] ?? new Set();
+}
+
 /** The obligation status rule, mirroring the server's computeStatus in
  * Nemis/apps/Server/src/fees/obligations.service.ts. Shared by the payment
  * create path and the reversal path so a shrinking total can reach
@@ -353,7 +421,7 @@ export class SchoolAdminModuleService {
 
   list(request: SchoolAdminListRequest): SchoolAdminListResult {
     const active = this.workspaces.active;
-    if (!ROLE_READ_COLLECTIONS[active.user.role]?.has(request.collection)) {
+    if (!readCollectionsFor(active.user).has(request.collection)) {
       throw new ForbiddenError('This collection is not available to the active role.');
     }
     const db = active.database.connection;
@@ -423,9 +491,9 @@ export class SchoolAdminModuleService {
     if (!existing && ['fee_rules', 'fee_obligations'].includes(request.collection)) {
   record.createdBy = userId;
 }
-    if (role === 'INSTITUTION_ADMIN' && config.scope === 'institution')
+    if (isInstitutionScopedRole(role) && config.scope === 'institution')
       record.institutionId = scopeId;
-    if (role === 'INSTITUTION_ADMIN' && request.collection === 'reports') record.schoolId = scopeId;
+    if (isInstitutionScopedRole(role) && request.collection === 'reports') record.schoolId = scopeId;
     if (request.collection === 'fee_payments') {
       const obligationId = request.record.obligationId;
       const obligation =
@@ -617,11 +685,11 @@ export class SchoolAdminModuleService {
 
   private context(collection: SchoolAdminCollection) {
     const active = this.workspaces.active;
-    if (!ROLE_WRITE_COLLECTIONS[active.user.role]?.has(collection)) {
+    if (!writeCollectionsFor(active.user).has(collection)) {
       throw new ForbiddenError('This record type cannot be changed by the active role.');
     }
     if (
-      active.user.role === 'INSTITUTION_ADMIN' &&
+      isInstitutionScopedRole(active.user.role) &&
       active.user.scope.type !== DesktopScopeType.INSTITUTION
     ) {
       throw new ForbiddenError('An institution workspace is required.');
@@ -645,10 +713,10 @@ export class SchoolAdminModuleService {
   ): void {
     const db = this.workspaces.active.database.connection;
     if (scope === 'institution') {
-      if (role === 'INSTITUTION_ADMIN' && record.institutionId !== scopeId) {
+      if (isInstitutionScopedRole(role) && record.institutionId !== scopeId) {
         throw new ForbiddenError('The record is outside this institution workspace.');
       }
-      if (role !== 'INSTITUTION_ADMIN') {
+      if (!isInstitutionScopedRole(role)) {
         const row =
           typeof record.institutionId === 'string'
             ? (db
@@ -659,10 +727,10 @@ export class SchoolAdminModuleService {
       }
     }
     if (scope === 'school') {
-      if (role === 'INSTITUTION_ADMIN' && record.schoolId !== scopeId) {
+      if (isInstitutionScopedRole(role) && record.schoolId !== scopeId) {
         throw new ForbiddenError('The report is outside this institution workspace.');
       }
-      if (role !== 'INSTITUTION_ADMIN') {
+      if (!isInstitutionScopedRole(role)) {
         const row =
           typeof record.schoolId === 'string'
             ? (db.prepare('SELECT 1 found FROM institutions WHERE id=?').get(record.schoolId) as
@@ -676,13 +744,13 @@ export class SchoolAdminModuleService {
     }
     if (scope === 'transfer') {
       if (
-        role === 'INSTITUTION_ADMIN' &&
+        isInstitutionScopedRole(role) &&
         record.fromInstitutionId !== scopeId &&
         record.toInstitutionId !== scopeId
       ) {
         throw new ForbiddenError('The transfer does not involve this institution.');
       }
-      if (role !== 'INSTITUTION_ADMIN') {
+      if (!isInstitutionScopedRole(role)) {
         const row = db
           .prepare(
             `
