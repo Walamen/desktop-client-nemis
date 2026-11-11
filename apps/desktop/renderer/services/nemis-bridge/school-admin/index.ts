@@ -9,6 +9,7 @@ export * from './teacher-directory-bridge';
 export * from './timetable-bridge';
 export * from './registry-bridge';
 export * from './transfer-bridge';
+export * from './school-users-bridge';
 
 import { institutionBridge } from './institution-bridge';
 import { reportingBridge } from './reporting-bridge';

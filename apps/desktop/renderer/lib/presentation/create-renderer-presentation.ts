@@ -1,6 +1,7 @@
 import { createPresentationLayer, type PresentationLayer } from '@nemis-desktop/presentation';
 import { createIpcApplicationLayer } from '../ipc';
 import { academicYearBridge } from '@/services/nemis-bridge/school-admin/academic-year-bridge';
+import { schoolUsersBridge } from '@/services/nemis-bridge/school-admin/school-users-bridge';
 
 /** THE Phase-8 SEAM (now live): the renderer's presentation layer is built over
  * an ApplicationLayer-shaped IPC facade to the main process — no in-memory
@@ -8,5 +9,6 @@ import { academicYearBridge } from '@/services/nemis-bridge/school-admin/academi
 export function createRendererPresentation(): PresentationLayer {
   return createPresentationLayer(createIpcApplicationLayer(), {
     startAcademicYear: (id) => academicYearBridge.start(id),
+    loadSchoolUsers: () => schoolUsersBridge.list(),
   });
 }

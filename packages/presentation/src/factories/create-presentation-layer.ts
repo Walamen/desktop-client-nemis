@@ -1,5 +1,5 @@
 import type { ApplicationLayer } from '@nemis-desktop/application';
-import type { OnlineCommandResult } from '@nemis-desktop/types';
+import type { OnlineCommandResult, SchoolUsersResult } from '@nemis-desktop/types';
 import type { NotificationKind } from '../notifications/notification';
 import { AcademicYearViewModel } from '../view-models/academic-year/academic-year-view-model';
 import { AcademicFoundationViewModel } from '../view-models/academic-foundation/academic-foundation-view-model';
@@ -40,6 +40,7 @@ import { CountyNotificationsViewModel } from '../view-models/county/county-notif
 import { CountyAuditViewModel } from '../view-models/county/county-audit-view-model';
 import { CountySettingsViewModel } from '../view-models/county/county-settings-view-model';
 import { CountyTeacherDetailViewModel } from '../view-models/county/county-teacher-detail-view-model';
+import { SchoolUsersViewModel } from '../view-models/school-admin/school-users-view-model';
 import { SettingsViewModel } from '../view-models/settings/settings-view-model';
 import { StudentsViewModel } from '../view-models/students/students-view-model';
 import { StudentStatisticsViewModel } from '../view-models/students/student-statistics-view-model';
@@ -95,6 +96,7 @@ export interface PresentationViewModels {
   readonly countyNotifications: CountyNotificationsViewModel;
   readonly countyAudit: CountyAuditViewModel;
   readonly countySettings: CountySettingsViewModel;
+  readonly schoolUsers: SchoolUsersViewModel;
   readonly device: DeviceViewModel;
   readonly currentUser: CurrentUserViewModel;
   readonly headerNotifications: HeaderNotificationsViewModel;
@@ -127,6 +129,8 @@ export interface PresentationLayerOptions {
   readonly autoDismissOverrides?: Partial<Record<NotificationKind, number | null>>;
   /** Online-only academic-year start (the renderer wires the IPC bridge). */
   readonly startAcademicYear?: (id: string) => Promise<OnlineCommandResult<null>>;
+  /** Users & Access list (the renderer wires the IPC bridge). */
+  readonly loadSchoolUsers?: () => Promise<SchoolUsersResult>;
 }
 
 /** Composition root: the renderer (Phase 7) calls this once with the
@@ -188,6 +192,9 @@ export function createPresentationLayer(
     countyNotifications: new CountyNotificationsViewModel({ county: app.county }),
     countyAudit: new CountyAuditViewModel({ county: app.county }),
     countySettings: new CountySettingsViewModel({ county: app.county }),
+    schoolUsers: new SchoolUsersViewModel({
+      ...(options?.loadSchoolUsers ? { loadSchoolUsers: options.loadSchoolUsers } : {}),
+    }),
     device: new DeviceViewModel({ infra: app.infra, notifications, session }),
     currentUser: new CurrentUserViewModel({ identity: app.identity, session }),
     headerNotifications: new HeaderNotificationsViewModel({ identity: app.identity }),

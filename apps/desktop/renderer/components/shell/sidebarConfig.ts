@@ -128,6 +128,7 @@ const INSTITUTION_ADMIN_SIDEBAR: SidebarConfig = {
         },
         { name: 'Grade Levels', href: '/government/school-admin/grade-levels', icon: Layers, access: 'SCHOOL' },
         { name: 'Infrastructure & Alerts', href: '/government/school-admin/infrastructure', icon: AlertTriangle, access: 'SCHOOL' },
+        { name: 'Users & Access', href: '/government/school-admin/settings/users', icon: ShieldCheck, access: 'PRINCIPAL' },
       ],
     },
   ],
@@ -325,6 +326,7 @@ export const sidebarConfigs: Record<DesktopPortalRole, SidebarConfig> = {
  * `page-titles.ts`, so this is intentionally NOT a mirror of `sidebarConfigs`. */
 const SCHOOL_ADMIN_PAGE_TITLES: Record<string, string> = {
   '/government/school-admin': 'Dashboard Overview',
+  '/government/school-admin/settings/users': 'Users & Access',
 };
 
 const INSTITUTION_HEADER: HeaderConfig = {

@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { createStore } from 'zustand/vanilla';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { SystemRole, type ProvisioningUser } from '@nemis-desktop/types';
+import { SCHOOL_MODULES, SystemRole, schoolRouteAccess, type ProvisioningUser } from '@nemis-desktop/types';
 
 vi.mock('next/navigation', () => ({
   usePathname: vi.fn(() => '/government/school-admin'),
@@ -30,6 +30,7 @@ vi.mock('@/services/nemis-bridge/shared', () => ({
 import { usePathname } from 'next/navigation';
 import { Sidebar } from './Sidebar';
 import { SessionUserProvider } from './SessionUserContext';
+import { headerConfigs, sidebarConfigs } from './sidebarConfig';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
 import { notifyTransfersChanged } from '@/lib/transfers';
 
@@ -304,5 +305,33 @@ describe('Sidebar for School Office Staff', () => {
     renderStaff(['STUDENTS']);
     fireEvent.click(groupToggle('STUDENTS & FAMILIES'));
     expect(JSON.parse(window.localStorage.getItem(STORE_KEY) ?? '[]')).toEqual(['STUDENTS & FAMILIES']);
+  });
+});
+
+describe('Users & Access', () => {
+  it('Users & Access shows for the admin, not for office staff with every module', () => {
+    const view = render(
+      <SessionUserProvider user={{ ...staff(), role: SystemRole.INSTITUTION_ADMIN }}>
+        <Sidebar role={SystemRole.INSTITUTION_ADMIN} />
+      </SessionUserProvider>,
+    );
+    expect(screen.getByRole('link', { name: 'Users & Access' })).toHaveAttribute('href', '/government/school-admin/settings/users');
+    view.unmount();
+
+    renderStaff([...SCHOOL_MODULES]);
+    expect(present('Settings')).toBe(true);
+    expect(present('Users & Access')).toBe(false);
+  });
+
+  it('every school-admin sidebar item has the same access as its route', () => {
+    const config = sidebarConfigs[SystemRole.INSTITUTION_ADMIN];
+    const items = [...(config.dashboardItem ? [config.dashboardItem] : []), ...config.navGroups.flatMap((g) => g.items)];
+    for (const item of items) {
+      expect({ href: item.href, access: item.access ?? 'BASE' }).toEqual({ href: item.href, access: schoolRouteAccess(item.href) });
+    }
+  });
+
+  it('titles the Users & Access page', () => {
+    expect(headerConfigs[SystemRole.INSTITUTION_ADMIN].pageTitles?.['/government/school-admin/settings/users']).toBe('Users & Access');
   });
 });

@@ -26,3 +26,4 @@ export const useSubjectScheduleViewModel = () => usePresentation().viewModels.su
 export const useTimetableConflictViewModel = () => usePresentation().viewModels.timetableConflicts;
 export const useTimetableDashboardViewModel = () => usePresentation().viewModels.timetableDashboard;
 export const useClassRosterViewModel = () => usePresentation().viewModels.classRoster;
+export const useSchoolUsersViewModel = () => usePresentation().viewModels.schoolUsers;
