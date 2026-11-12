@@ -146,6 +146,11 @@ export default function ProvisioningPage() {
               <Welcome onContinue={() => setShowLogin(true)} />
             ) : showLogin || status.authentication !== 'authenticated' ? (
               <div className="space-y-6 bg-white p-8 rounded-lg border border-slate-300">
+              {status.authentication === 'expired' && status.message ? (
+                <p role="status" className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                  {status.message}
+                </p>
+              ) : null}
               <LoginForm
                 email={email}
                 password={password}

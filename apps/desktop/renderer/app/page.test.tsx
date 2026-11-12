@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { PresentationProvider } from '@/lib/presentation/presentation-provider';
 import { createRendererPresentation } from '@/lib/presentation/create-renderer-presentation';
 import ProvisioningPage from './page';
@@ -11,6 +11,12 @@ vi.mock('next/navigation', () => ({
 const DEVICE = { id: 'device-1', fingerprint: 'f'.repeat(64), name: 'PC', platform: 'win32', osVersion: '11', appVersion: '1.0.0' };
 const TEACHER_ID = 'user-1';
 
+const anonymousDefaults = {
+  authentication: 'anonymous' as 'anonymous' | 'expired', stage: 'welcome' as const, user: null,
+  device: DEVICE, isProvisioned: false, completedAt: null, progress: 0,
+  message: undefined as string | undefined,
+};
+
 /**
  * Reproduces the real flow: `RootProviders` runs bootstrap once, immediately,
  * before the user has authenticated — `identity.getCurrentUser` legitimately
@@ -19,7 +25,7 @@ const TEACHER_ID = 'user-1';
  * mocked `auth.login` call succeeds, mirroring the main process activating
  * the workspace at that point.
  */
-function installMock() {
+function installMock(overrides: { anonymous?: Partial<typeof anonymousDefaults> } = {}) {
   let loggedIn = false;
   const authenticatedStatus = {
     authentication: 'authenticated' as const,
@@ -33,10 +39,7 @@ function installMock() {
     completedAt: '2026-01-01T00:00:00.000Z',
     progress: 100,
   };
-  const anonymousStatus = {
-    authentication: 'anonymous' as const, stage: 'welcome' as const, user: null,
-    device: DEVICE, isProvisioned: false, completedAt: null, progress: 0,
-  };
+  const anonymousStatus = { ...anonymousDefaults, ...overrides.anonymous };
   const nemis = {
     auth: {
       getStatus: vi.fn(async () => (loggedIn ? authenticatedStatus : anonymousStatus)),
@@ -63,6 +66,7 @@ function installMock() {
 }
 
 afterEach(() => {
+  cleanup();
   delete (window as unknown as { nemis?: unknown }).nemis;
 });
 
@@ -104,5 +108,30 @@ describe('Fresh login without a page reload', () => {
         data: expect.objectContaining({ id: TEACHER_ID }),
       }),
     );
+  });
+});
+
+describe('Expired session notice', () => {
+  const page = () => render(
+    <PresentationProvider layer={createRendererPresentation()}>
+      <ProvisioningPage />
+    </PresentationProvider>,
+  );
+
+  it('shows the revoke reason above the login form when the status is expired', async () => {
+    installMock({ anonymous: {
+      authentication: 'expired',
+      message: 'This account is no longer active. Sign in again or contact your School Admin.',
+    } });
+    page();
+    expect(await screen.findByText('This account is no longer active. Sign in again or contact your School Admin.')).toBeTruthy();
+    expect(screen.getByText('User Login')).toBeTruthy();
+  });
+
+  it('shows no notice for a plain anonymous status', async () => {
+    installMock();
+    page();
+    await screen.findByText('User Login');
+    expect(screen.queryByRole('status')).toBeNull();
   });
 });
