@@ -95,6 +95,21 @@ describe('RouteGuard', () => {
     expect(replace).not.toHaveBeenCalled();
   });
 
+  it('keeps the current user when the refresh read fails', async () => {
+    vi.mocked(sharedBridge.getProvisioningStatus).mockResolvedValue(staffStatus(['STUDENTS']));
+    render(
+      <RouteGuard requiredRoles={[SystemRole.INSTITUTION_STAFF]}>
+        <ModulesProbe />
+      </RouteGuard>,
+    );
+    expect(await screen.findByText('modules:STUDENTS')).toBeTruthy();
+    vi.mocked(sharedBridge.getProvisioningStatus).mockRejectedValue(new Error('ipc down'));
+    fire({ type: 'session', reason: 'refreshed' });
+    await act(async () => { await Promise.resolve(); });
+    expect(screen.getByText('modules:STUDENTS')).toBeTruthy();
+    expect(replace).not.toHaveBeenCalled();
+  });
+
   it('sends the user to the sign-in page on session/revoked', async () => {
     vi.mocked(sharedBridge.getProvisioningStatus).mockResolvedValue(status(SystemRole.INSTITUTION_STAFF));
     render(

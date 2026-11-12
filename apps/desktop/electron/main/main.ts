@@ -122,7 +122,7 @@ function bootstrap(): void {
         // so `provisioning` is always assigned by then (no TDZ risk).
         {
           onRestored: (session) => provisioning.applyRestoredSession(session),
-          onRevoked: () => provisioning.revokeSession('disabled'),
+          onRevoked: () => provisioning.revokeSession('ended'),
         },
       );
       provisioning = new ProvisioningService(

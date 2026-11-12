@@ -43,7 +43,7 @@ request — the JWT `scopes` claim is ignored. Only the desktop's local picture 
 2. Module added → sidebar group and pages become available on the next sync, no
    reload. Module removed while the user is on one of its pages → they are sent to
    the dashboard (existing `ModuleGuard` behaviour, matching the web).
-3. Account disabled (or any server-side revocation) → on the next sync the
+3. Account disabled (or any server-side revocation) → on the next sync that reaches the server the
    renderer leaves the workspace and shows the sign-in screen with a one-line
    reason, instead of sitting on a dead workspace until restart.
    *Verified on the server (2026-11-12):* `SchoolAdminUsersService.setActive`
@@ -57,7 +57,7 @@ request — the JWT `scopes` claim is ignored. Only the desktop's local picture 
 
 ## Non-goals
 
-- No change to how often sync runs, nor a new "refresh my permissions" button.
+- No extra periodic `/auth/me` poll, no change to how often sync runs, nor a new "refresh my permissions" button.
 - No server endpoint or portal-web change.
 - No live push from the server (socket) for membership changes; "upon sync" is
   the agreed cadence (Alvin: "same way the web works … added or removed upon
@@ -114,13 +114,14 @@ Add two methods:
   - Otherwise: `workspaces.activate(session.user)` (same-identity branch, keeps
     the DB open), set `status = { ...status, user: session.user }`, and emit
     `{ type: 'session', reason: 'refreshed' }`.
-- `revokeSession(reason: 'disabled' | 'changed'): void`
+- `revokeSession(reason: 'ended' | 'changed'): void`
   - Idempotent. If not currently authenticated, return.
   - `workspaces.close()`, then
     `status = { ...anonymousStatus(device), authentication: 'expired', message }`
     where `message` is
-    - `'disabled'` → "This account is no longer active. Sign in again or contact
-      your School Admin."
+    - `'ended'` → "Your session has ended. Sign in again. If this keeps happening, contact your School Admin." (covers any 401/403: account
+      disabled, expired session, password reset, so the copy must not claim the
+      account was disabled).
     - `'changed'` → "Your role or school assignment changed. Sign in again to
       open the right workspace."
   - `restored = true` (so a later `getStatus()` does not try to restore a
@@ -169,7 +170,7 @@ of them refresh the user for free.
 `RealtimeClient` that sends `REALTIME_EVENT_CHANNEL` to every `BrowserWindow`.
 Lift it to a shared `broadcastEvent(event: RealtimeEvent)` function and pass it to
 both `RealtimeClient` and `ProvisioningService`. Wire the gateway hooks to
-`provisioning.applyRestoredSession` / `provisioning.revokeSession('disabled')`.
+`provisioning.applyRestoredSession` / `provisioning.revokeSession('ended')`.
 (The gateway is constructed before the service; use a small forwarding closure
 or a setter — builder's choice.)
 
@@ -224,7 +225,9 @@ stored session within the offline lease.
 ## Sequence (module removed while on its page)
 
 1. Admin removes STUDENTS from the Registrar on the web → DB updated.
-2. Desktop background sync (≤20 s) → `syncActive` → `authorized()` →
+2. Desktop background sync (the worker calls `/auth/me` only when it goes to the
+   network: pull due about every 5 minutes, or something queued to push; so within
+   ~5 minutes on an idle desktop, immediately on Sync now or any online action) → `syncActive` → `authorized()` →
    `restoreSession()` → `/auth/me` → user without STUDENTS → `sessions.save` →
    `onRestored(session)`.
 3. `applyRestoredSession`: same identity, modules differ → `workspaces.activate`
@@ -260,11 +263,11 @@ stored session within the offline lease.
 ## Manual GUI checklist (after merge)
 
 1. Web: add REPORTS to a Registrar. Desktop (signed in as that Registrar): wait
-   ≤20 s or press Sync now → Reports group appears, pages open, IPC calls succeed.
+   up to ~5 minutes (the next pull) or press Sync now → Reports group appears, pages open, IPC calls succeed.
 2. Web: remove STUDENTS while the desktop is on a Students page → desktop lands
    on the dashboard; Students group gone.
 3. Web: disable the account → desktop goes to sign-in on the next sync and the
-   sign-in page says the account is no longer active.
+   sign-in page shows "Your session has ended. Sign in again. If this keeps happening, contact your School Admin."
 4. Disconnect the network, change modules on the web, Sync now on the desktop →
    desktop unchanged (offline fallback); reconnect → change applies.
 5. Renderer reload (Ctrl+R) after a module change already synced → new modules.
@@ -283,6 +286,10 @@ Resolved without a decision from Alvin; overturn any of them before the plan:
    server change.
 4. **Revoke shows a reason** on the sign-in page via the existing
    `authentication: 'expired'` + `status.message` fields, two fixed strings.
+5. **Correction (final review 2026-11-12):** the revoke reason is `'ended'`, not
+   `'disabled'`, because 401/403 also covers expired sessions and password resets.
+   Propagation to an idle desktop is ~5 minutes (when the worker next goes to the
+   network), not ≤20 s; immediate on Sync now or any online action.
 
 ## Left to the builder
 

@@ -121,10 +121,10 @@ describe('Expired session notice', () => {
   it('shows the revoke reason above the login form when the status is expired', async () => {
     installMock({ anonymous: {
       authentication: 'expired',
-      message: 'This account is no longer active. Sign in again or contact your School Admin.',
+      message: 'Your session has ended. Sign in again. If this keeps happening, contact your School Admin.',
     } });
     page();
-    expect(await screen.findByText('This account is no longer active. Sign in again or contact your School Admin.')).toBeTruthy();
+    expect(await screen.findByText('Your session has ended. Sign in again. If this keeps happening, contact your School Admin.')).toBeTruthy();
     expect(screen.getByText('User Login')).toBeTruthy();
   });
 

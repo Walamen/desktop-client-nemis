@@ -22,19 +22,22 @@ export function RouteGuard({
   const router = useRouter();
   const [user, setUser] = useState<ProvisioningUser | null>(null);
   const check = useCallback(() => {
-    void sharedBridge.getProvisioningStatus().then((status) => {
-      if (!status.isProvisioned || status.authentication !== 'authenticated' || !status.user) {
-        router.replace('/');
-        return;
-      }
-      const route = desktopPortalRoute(status.user.role);
-      if (!route || (requiredRoles && !requiredRoles.includes(status.user.role))) {
-        router.replace(route ?? '/');
-        return;
-      }
-      if (roleCanAccessRoute(status.user.role, window.location.pathname)) setUser(status.user);
-      else router.replace(route);
-    });
+    void sharedBridge
+      .getProvisioningStatus()
+      .then((status) => {
+        if (!status.isProvisioned || status.authentication !== 'authenticated' || !status.user) {
+          router.replace('/');
+          return;
+        }
+        const route = desktopPortalRoute(status.user.role);
+        if (!route || (requiredRoles && !requiredRoles.includes(status.user.role))) {
+          router.replace(route ?? '/');
+          return;
+        }
+        if (roleCanAccessRoute(status.user.role, window.location.pathname)) setUser(status.user);
+        else router.replace(route);
+      })
+      .catch(() => undefined);
   }, [requiredRoles, router]);
   useEffect(() => check(), [check]);
   useRealtime((event) => {

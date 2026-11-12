@@ -15,7 +15,7 @@ import type { ProvisioningImporter } from './ProvisioningImporter';
 import { sameProvisioningUser, sameWorkspaceIdentity } from './sameProvisioningUser';
 
 const REVOKE_MESSAGES = {
-  disabled: 'This account is no longer active. Sign in again or contact your School Admin.',
+  ended: 'Your session has ended. Sign in again. If this keeps happening, contact your School Admin.',
   changed: 'Your role or school assignment changed. Sign in again to open the right workspace.',
 } as const;
 
@@ -53,7 +53,7 @@ export class ProvisioningService {
     this.emit?.({ type: 'session', reason: 'refreshed' });
   }
 
-  /** Ends the signed-in session because the server disabled the account or changed its identity. */
+  /** Ends the signed-in session because the server rejected the session (401/403) or changed its identity. */
   revokeSession(reason: keyof typeof REVOKE_MESSAGES): void {
     if (this.status.authentication !== 'authenticated') return;
     this.workspaces?.close();
@@ -166,7 +166,10 @@ export class ProvisioningService {
       };
       return this.status;
     } catch (error) {
-      this.status = { ...this.status, message: friendlyFailure(error) };
+      // A revoke during provisioning already set the user-facing message; keep it.
+      if (this.status.authentication !== 'expired') {
+        this.status = { ...this.status, message: friendlyFailure(error) };
+      }
       throw error;
     }
   }

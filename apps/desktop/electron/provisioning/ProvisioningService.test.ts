@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { AuthenticatedSession } from '@nemis-desktop/application';
 import { DesktopScopeType, SystemRole, type ProvisioningUser } from '@nemis-desktop/types';
+import { UnauthorizedError } from '@nemis-desktop/shared';
 import { ProvisioningService } from './ProvisioningService';
 
 const device = { id: 'd-1', fingerprint: 'f'.repeat(64), name: 'PC', platform: 'win32', osVersion: '11', appVersion: '1' };
@@ -13,7 +14,7 @@ const user: ProvisioningUser = {
 const sessionFor = (u: ProvisioningUser): AuthenticatedSession =>
   ({ user: u, sessionSecret: 's', offlineAccessExpiresAt: '2099-01-01T00:00:00.000Z' });
 
-function build(initial: ProvisioningUser | null = user) {
+function build(initial: ProvisioningUser | null = user, opts: { provisioned?: boolean; gateway?: unknown } = {}) {
   const workspaces = { activate: vi.fn(), close: vi.fn() };
   const emit = vi.fn();
   const restore = vi.fn(async () => (initial ? sessionFor(initial) : null));
@@ -22,8 +23,8 @@ function build(initial: ProvisioningUser | null = user) {
     { execute: vi.fn() } as never,
     { execute: restore } as never,
     { execute: vi.fn(async () => undefined) } as never,
-    {} as never,
-    { getCompletion: () => completion, import: vi.fn() } as never,
+    (opts.gateway ?? {}) as never,
+    { getCompletion: () => (opts.provisioned === false ? null : completion), import: vi.fn() } as never,
     device as never,
     workspaces,
     emit,
@@ -76,24 +77,24 @@ describe('applyRestoredSession', () => {
 });
 
 describe('revokeSession', () => {
-  it('closes the workspace, marks the status expired with the disabled message and emits revoked once', async () => {
+  it('closes the workspace, marks the status expired with the ended message and emits revoked once', async () => {
     const { service, workspaces, emit } = build();
     await service.getStatus();
-    service.revokeSession('disabled');
-    service.revokeSession('disabled');
+    service.revokeSession('ended');
+    service.revokeSession('ended');
     expect(workspaces.close).toHaveBeenCalledTimes(1);
     expect(emit).toHaveBeenCalledTimes(1);
     expect(emit).toHaveBeenCalledWith({ type: 'session', reason: 'revoked' });
     const status = await service.getStatus();
     expect(status.authentication).toBe('expired');
     expect(status.isProvisioned).toBe(false);
-    expect(status.message).toBe('This account is no longer active. Sign in again or contact your School Admin.');
+    expect(status.message).toBe('Your session has ended. Sign in again. If this keeps happening, contact your School Admin.');
   });
 
   it('is a no-op when nobody is signed in', async () => {
     const { service, workspaces, emit } = build(null);
     await service.getStatus();
-    service.revokeSession('disabled');
+    service.revokeSession('ended');
     expect(workspaces.close).not.toHaveBeenCalled();
     expect(emit).not.toHaveBeenCalled();
   });
@@ -101,9 +102,42 @@ describe('revokeSession', () => {
   it('does not restore again on the next getStatus', async () => {
     const { service, restore } = build();
     await service.getStatus();
-    service.revokeSession('disabled');
+    service.revokeSession('ended');
     restore.mockClear();
     expect((await service.getStatus()).authentication).toBe('expired');
     expect(restore).not.toHaveBeenCalled();
+  });
+});
+
+describe('revoked session stays revoked', () => {
+  it('ignores a later restored session after revokeSession', async () => {
+    const { service, workspaces, emit } = build();
+    await service.getStatus();
+    service.revokeSession('ended');
+    workspaces.activate.mockClear();
+    emit.mockClear();
+    service.applyRestoredSession(sessionFor({ ...user, modules: ['STUDENTS'] }));
+    expect(workspaces.activate).not.toHaveBeenCalled();
+    expect(emit).not.toHaveBeenCalled();
+    expect((await service.getStatus()).authentication).toBe('expired');
+  });
+});
+
+describe('start() when revoked mid-provisioning', () => {
+  it('keeps the revoke message and rethrows', async () => {
+    const ref: { service?: ProvisioningService } = {};
+    const gateway = {
+      registerDevice: vi.fn(async () => {
+        ref.service!.revokeSession('ended');
+        throw new UnauthorizedError();
+      }),
+    };
+    const { service } = build(user, { provisioned: false, gateway });
+    ref.service = service;
+    await service.getStatus();
+    await expect(service.start()).rejects.toBeInstanceOf(UnauthorizedError);
+    const status = await service.getStatus();
+    expect(status.authentication).toBe('expired');
+    expect(status.message).toBe('Your session has ended. Sign in again. If this keeps happening, contact your School Admin.');
   });
 });

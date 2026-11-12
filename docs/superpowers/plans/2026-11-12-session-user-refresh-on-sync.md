@@ -17,7 +17,7 @@
 - Hooks fire only inside the existing single-flight `restoreSession()`; no second `/auth/me` path.
 - `onRevoked` fires only for `UnauthorizedError` / `ForbiddenError` (from `@nemis-desktop/shared`). `AuthenticationUnavailableError` and plain `Error` (5xx, contract mismatch) call **no** hook and keep today's behaviour exactly.
 - Revoke copy (exact):
-  - `'disabled'` → `This account is no longer active. Sign in again or contact your School Admin.`
+  - `'ended'` → `Your session has ended. Sign in again. If this keeps happening, contact your School Admin.`
   - `'changed'` → `Your role or school assignment changed. Sign in again to open the right workspace.`
 - Event shape (exact): `{ type: 'session'; reason: 'refreshed' | 'revoked' }`.
 - `ProvisioningService` must not import from `@app/workspace/WorkspaceManager` (that module loads `better-sqlite3`; the service's tests run without it).
