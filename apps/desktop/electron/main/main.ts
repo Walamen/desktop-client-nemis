@@ -1,7 +1,7 @@
 import os from 'node:os';
 import { app, BrowserWindow, dialog } from 'electron';
 import { io } from 'socket.io-client';
-import { REALTIME_EVENT_CHANNEL, SystemRole } from '@nemis-desktop/types';
+import { REALTIME_EVENT_CHANNEL, SystemRole, type RealtimeEvent } from '@nemis-desktop/types';
 import { RealtimeClient, type SocketLike } from '@app/realtime/RealtimeClient';
 import started from 'electron-squirrel-startup';
 import { loadConfig } from '@app/config/env';
@@ -106,14 +106,26 @@ function bootstrap(): void {
       const services = {
         appSettings: deferredMember(() => workspaces!.active.data.services, 'appSettings'),
       } as DataLayer['services'];
+      const broadcastEvent = (event: RealtimeEvent) => {
+        for (const window of BrowserWindow.getAllWindows()) window.webContents.send(REALTIME_EVENT_CHANNEL, event);
+      };
+      // Declared ahead of the gateway, whose restore hooks close over it.
+      // eslint-disable-next-line prefer-const
+      let provisioning: ProvisioningService;
       const sessionRepository = new EncryptedSessionRepository(app.getPath('userData'));
       const authenticationGateway = new BackendAuthenticationGateway(config.apiBaseUrl);
       const backendProvisioning = new BackendProvisioningGateway(
         config.apiBaseUrl,
         authenticationGateway,
         sessionRepository,
+        // Hooks only fire from authorized() calls, which happen after startup,
+        // so `provisioning` is always assigned by then (no TDZ risk).
+        {
+          onRestored: (session) => provisioning.applyRestoredSession(session),
+          onRevoked: () => provisioning.revokeSession('disabled'),
+        },
       );
-      const provisioning = new ProvisioningService(
+      provisioning = new ProvisioningService(
         new AuthenticateUser(authenticationGateway, sessionRepository),
         new RestoreSession(authenticationGateway, sessionRepository),
         new Logout(authenticationGateway, sessionRepository),
@@ -121,6 +133,7 @@ function bootstrap(): void {
         new ProvisioningImporter(() => workspaces!.active.database),
         loadDeviceIdentity(app.getPath('userData')),
         workspaces,
+        broadcastEvent,
       );
       networkMonitor = new NetworkMonitor(config.apiBaseUrl, () => {
         // Without this, items already in backoff would sit out the very sync
@@ -146,9 +159,7 @@ function bootstrap(): void {
         connect: (url, options) => io(url, options) as unknown as SocketLike,
         getCookie: () => backendProvisioning.sessionCookie(),
         pullNow: () => syncWorker!.pullNow(),
-        emit: (event) => {
-          for (const window of BrowserWindow.getAllWindows()) window.webContents.send(REALTIME_EVENT_CHANNEL, event);
-        },
+        emit: broadcastEvent,
         shouldRun: () => {
           try {
             return !!networkMonitor?.isOnline() && workspaces!.active.user.role === SystemRole.COUNTY_ADMIN;
