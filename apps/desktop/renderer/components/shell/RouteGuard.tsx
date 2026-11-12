@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   desktopPortalRoute,
@@ -9,6 +9,7 @@ import {
   type ProvisioningUser,
 } from '@nemis-desktop/types';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
+import { useRealtime } from '@/hooks/use-realtime';
 import { SessionUserProvider } from './SessionUserContext';
 
 export function RouteGuard({
@@ -20,7 +21,7 @@ export function RouteGuard({
 }) {
   const router = useRouter();
   const [user, setUser] = useState<ProvisioningUser | null>(null);
-  useEffect(() => {
+  const check = useCallback(() => {
     void sharedBridge.getProvisioningStatus().then((status) => {
       if (!status.isProvisioned || status.authentication !== 'authenticated' || !status.user) {
         router.replace('/');
@@ -35,5 +36,14 @@ export function RouteGuard({
       else router.replace(route);
     });
   }, [requiredRoles, router]);
+  useEffect(() => check(), [check]);
+  useRealtime((event) => {
+    if (event.type !== 'session') return;
+    if (event.reason === 'revoked') {
+      router.replace('/');
+      return;
+    }
+    check();
+  });
   return user ? <SessionUserProvider user={user}>{children}</SessionUserProvider> : null;
 }
