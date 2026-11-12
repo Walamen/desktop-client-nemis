@@ -1,7 +1,23 @@
-import type { AuthenticateUser, Logout, RestoreSession } from '@nemis-desktop/application';
-import type { DeviceIdentity, ProvisioningStatus, ProvisioningUser } from '@nemis-desktop/types';
+import type {
+  AuthenticatedSession,
+  AuthenticateUser,
+  Logout,
+  RestoreSession,
+} from '@nemis-desktop/application';
+import type {
+  DeviceIdentity,
+  ProvisioningStatus,
+  ProvisioningUser,
+  RealtimeEvent,
+} from '@nemis-desktop/types';
 import type { BackendProvisioningGateway } from './BackendProvisioningGateway';
 import type { ProvisioningImporter } from './ProvisioningImporter';
+import { sameProvisioningUser, sameWorkspaceIdentity } from './sameProvisioningUser';
+
+const REVOKE_MESSAGES = {
+  disabled: 'This account is no longer active. Sign in again or contact your School Admin.',
+  changed: 'Your role or school assignment changed. Sign in again to open the right workspace.',
+} as const;
 
 export class ProvisioningService {
   private restored = false;
@@ -18,8 +34,36 @@ export class ProvisioningService {
       activate(user: ProvisioningUser): unknown;
       close(): void;
     },
+    private readonly emit?: (event: RealtimeEvent) => void,
   ) {
     this.status = anonymousStatus(device);
+  }
+
+  /** Applies a user freshly restored from `/auth/me`; revokes if the workspace identity changed. */
+  applyRestoredSession(session: AuthenticatedSession): void {
+    const current = this.status.user;
+    if (this.status.authentication !== 'authenticated' || !current) return;
+    if (!sameWorkspaceIdentity(current, session.user)) {
+      this.revokeSession('changed');
+      return;
+    }
+    if (sameProvisioningUser(current, session.user)) return;
+    this.workspaces?.activate(session.user);
+    this.status = { ...this.status, user: session.user };
+    this.emit?.({ type: 'session', reason: 'refreshed' });
+  }
+
+  /** Ends the signed-in session because the server disabled the account or changed its identity. */
+  revokeSession(reason: keyof typeof REVOKE_MESSAGES): void {
+    if (this.status.authentication !== 'authenticated') return;
+    this.workspaces?.close();
+    this.restored = true;
+    this.status = {
+      ...anonymousStatus(this.status.device),
+      authentication: 'expired',
+      message: REVOKE_MESSAGES[reason],
+    };
+    this.emit?.({ type: 'session', reason: 'revoked' });
   }
 
   async getStatus(): Promise<ProvisioningStatus> {

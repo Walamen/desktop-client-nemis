@@ -4,7 +4,9 @@ export type RealtimeEvent =
   | { type: 'message'; conversationId: string }
   | { type: 'notification' }
   | { type: 'presence'; userId: string; online: boolean }
-  | { type: 'synced' };
+  | { type: 'synced' }
+  // the signed-in user was refreshed from `/auth/me`, or the session was revoked by the server
+  | { type: 'session'; reason: 'refreshed' | 'revoked' };
 
 export const REALTIME_EVENT_CHANNEL = 'nemis:event';
 
