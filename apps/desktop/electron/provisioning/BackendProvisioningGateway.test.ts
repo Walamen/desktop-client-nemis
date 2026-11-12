@@ -9,7 +9,7 @@ import type {
 } from '@nemis-desktop/application';
 import { AuthenticationUnavailableError } from '@nemis-desktop/application';
 import { PROVISIONING_COLLECTIONS } from '@nemis-desktop/types';
-import { ForbiddenError, OfflineError, RateLimitedError, RemoteRejectedError } from '@nemis-desktop/shared';
+import { ForbiddenError, OfflineError, RateLimitedError, RemoteRejectedError, UnauthorizedError } from '@nemis-desktop/shared';
 import { BackendProvisioningGateway } from './BackendProvisioningGateway';
 
 const session: AuthenticatedSession = {
@@ -1245,6 +1245,64 @@ describe('BackendProvisioningGateway', () => {
       );
       return { gateway, restore, load, release };
     }
+
+    function gatewayWithHooks(restore: () => Promise<AuthenticatedSession>) {
+      const hooks = { onRestored: vi.fn(), onRevoked: vi.fn() };
+      const clear = vi.fn(async () => undefined);
+      const gateway = new BackendProvisioningGateway(
+        'https://nemis.example',
+        { authenticate: async () => session, restore, logout: async () => undefined },
+        { load: async () => session, save: async () => undefined, clear },
+        hooks,
+      );
+      return { gateway, hooks, clear };
+    }
+
+    it('calls onRestored once per shared restore with the saved session', async () => {
+      vi.stubGlobal('fetch', vi.fn(async () => response({ years: [], transfers: [] })));
+      const { gateway, hooks } = gatewayWithHooks(async () => session);
+      await Promise.all([gateway.getStudentAcademicRecord('c', 's-1'), gateway.getStudentAcademicRecord('c', 's-2')]);
+      expect(hooks.onRestored).toHaveBeenCalledTimes(1);
+      expect(hooks.onRestored).toHaveBeenCalledWith(session);
+      expect(hooks.onRevoked).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['UnauthorizedError', () => new UnauthorizedError()],
+      ['ForbiddenError', () => new ForbiddenError('refused')],
+    ])('calls onRevoked after clearing the session on %s', async (_name, make) => {
+      const { gateway, hooks, clear } = gatewayWithHooks(async () => { throw make(); });
+      await expect(gateway.getStudentAcademicRecord('c', 's-1')).rejects.toBeInstanceOf(Error);
+      expect(clear).toHaveBeenCalledTimes(1);
+      expect(hooks.onRevoked).toHaveBeenCalledTimes(1);
+      expect(hooks.onRestored).not.toHaveBeenCalled();
+    });
+
+    it('calls no hook on AuthenticationUnavailableError and does not clear the session', async () => {
+      const { gateway, hooks, clear } = gatewayWithHooks(async () => { throw new AuthenticationUnavailableError('offline'); });
+      await expect(gateway.getStudentAcademicRecord('c', 's-1')).rejects.toBeInstanceOf(Error);
+      expect(clear).not.toHaveBeenCalled();
+      expect(hooks.onRestored).not.toHaveBeenCalled();
+      expect(hooks.onRevoked).not.toHaveBeenCalled();
+    });
+
+    it('calls no hook on a plain Error (5xx / contract mismatch) but still clears the session', async () => {
+      const { gateway, hooks, clear } = gatewayWithHooks(async () => { throw new Error('NEMIS authentication failed with status 502.'); });
+      await expect(gateway.getStudentAcademicRecord('c', 's-1')).rejects.toBeInstanceOf(Error);
+      expect(clear).toHaveBeenCalledTimes(1);
+      expect(hooks.onRestored).not.toHaveBeenCalled();
+      expect(hooks.onRevoked).not.toHaveBeenCalled();
+    });
+
+    it('a throwing onRestored does not fail the request', async () => {
+      vi.stubGlobal('fetch', vi.fn(async () => response({ years: [], transfers: [] })));
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      const { gateway, hooks } = gatewayWithHooks(async () => session);
+      hooks.onRestored.mockImplementation(() => { throw new Error('boom'); });
+      await expect(gateway.getStudentAcademicRecord('c', 's-1')).resolves.toBeDefined();
+      expect(warn).toHaveBeenCalled();
+      warn.mockRestore();
+    });
 
     it('concurrent requests share one restore', async () => {
       vi.stubGlobal('fetch', vi.fn(async () => response({ years: [], transfers: [] })));

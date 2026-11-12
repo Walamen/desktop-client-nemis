@@ -85,6 +85,13 @@ const LOOKUP_BUDGET_MESSAGE = 'Too many lookups. Please try again later.';
  * history stay resolvable. */
 const DEPARTED_COHORT_FLAG = 'departedCohort';
 
+/** Outcome of the shared session restore, for the caller that owns the
+ * signed-in user. A throwing hook never fails the request that restored. */
+export interface RestoreHooks {
+  onRestored?(session: AuthenticatedSession): void;
+  onRevoked?(): void;
+}
+
 export class BackendProvisioningGateway {
   /** Set once an older server rejected the opt-in flag; in memory only. */
   private departedCohortUnsupported = false;
@@ -95,6 +102,7 @@ export class BackendProvisioningGateway {
     private readonly baseUrl: string,
     private readonly authentication: AuthenticationGateway,
     private readonly sessions: SessionRepository,
+    private readonly hooks: RestoreHooks = {},
   ) {}
 
   async registerDevice(identity: DeviceIdentity): Promise<RegisteredDevice> {
@@ -749,10 +757,14 @@ export class BackendProvisioningGateway {
       try {
         const restored = await this.authentication.restore(stored.sessionSecret);
         await this.sessions.save(restored);
+        this.runHook(() => this.hooks.onRestored?.(restored));
         return restored;
       } catch (error) {
         if (!(error instanceof AuthenticationUnavailableError)) {
           await this.sessions.clear();
+        }
+        if (error instanceof UnauthorizedError || error instanceof ForbiddenError) {
+          this.runHook(() => this.hooks.onRevoked?.());
         }
         throw error;
       }
@@ -760,6 +772,14 @@ export class BackendProvisioningGateway {
       this.restoring = null;
     });
     return this.restoring;
+  }
+
+  private runHook(fn: () => void): void {
+    try {
+      fn();
+    } catch (error) {
+      console.warn('[provisioning] session hook failed', error);
+    }
   }
 
   private async authorized<T>(
