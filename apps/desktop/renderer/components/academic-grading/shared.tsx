@@ -1,5 +1,5 @@
 import { sharedBridge } from '@/services/nemis-bridge/shared';
-import type { SchoolAdminRecord } from '@nemis-desktop/types';
+import type { SchoolAdminCollection, SchoolAdminRecord } from '@nemis-desktop/types';
 
 export interface GradeScaleItem {
   letter: string;
@@ -94,9 +94,23 @@ export async function listAllWindows(): Promise<SchoolAdminRecord[]> {
   return result.items;
 }
 
+const PAGE_SIZE = 250;
+
+/** Reads a whole collection in PAGE_SIZE chunks. Stops on an empty page or once
+ * the accumulated rows reach the reported total (a total of 0 with items is
+ * treated as "one page only"). */
+export async function listAllRecords(collection: SchoolAdminCollection): Promise<SchoolAdminRecord[]> {
+  const all: SchoolAdminRecord[] = [];
+  for (;;) {
+    const { items, total } = await sharedBridge.listSchoolAdminRecords({ collection, limit: PAGE_SIZE, offset: all.length });
+    all.push(...items);
+    if (items.length === 0 || all.length >= total) return all;
+  }
+}
+
 export async function listGradesForPeriod(gradingPeriodId: string): Promise<SchoolAdminRecord[]> {
-  const result = await sharedBridge.listSchoolAdminRecords({ collection: 'grades', limit: 250 });
-  return result.items.filter((item) => item.gradingPeriodId === gradingPeriodId);
+  const items = await listAllRecords('grades');
+  return items.filter((item) => item.gradingPeriodId === gradingPeriodId);
 }
 
 export async function getGradingConfig(): Promise<SchoolAdminRecord | null> {

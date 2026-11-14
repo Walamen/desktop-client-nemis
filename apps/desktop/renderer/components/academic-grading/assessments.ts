@@ -1,4 +1,5 @@
 import { sharedBridge } from '@/services/nemis-bridge/shared';
+import { listAllRecords } from './shared';
 import type { SchoolAdminRecord } from '@nemis-desktop/types';
 
 export interface AssessmentTemplateRow {
@@ -54,6 +55,12 @@ export async function listTemplatesForSubject(
   return result.items
     .filter((item) => item.classId === classId && item.subjectId === subjectId)
     .map(toAssessmentTemplateRow);
+}
+
+/** Raw assessment rows of every class and subject in the period. */
+export async function listAssessmentsForGradingPeriod(gradingPeriodId: string): Promise<SchoolAdminRecord[]> {
+  const items = await listAllRecords('assessments');
+  return items.filter((item) => item.gradingPeriodId === gradingPeriodId);
 }
 
 export async function listAssessmentsForPeriod(

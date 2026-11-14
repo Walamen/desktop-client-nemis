@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  listAssessmentsForGradingPeriod,
   listAssessmentsForPeriod,
   listTemplatesForSubject,
   materializeAssessment,
@@ -113,5 +114,17 @@ describe('totalWeight', () => {
       toAssessmentTemplateRow({ id: 't2', classId: 'c1', subjectId: 's1', name: 'Test', type: 'TEST', totalMarks: 50, weight: null, date: '2026-02-01' }),
     ];
     expect(totalWeight(templates)).toBe(40);
+  });
+});
+
+describe('listAssessmentsForGradingPeriod', () => {
+  it('returns raw assessment rows of every class and subject in the period', async () => {
+    installMock({ assessments: [
+      { id: 'a1', templateId: 't1', classId: 'c1', subjectId: 's1', gradingPeriodId: 'p1', name: 'Quiz 1', type: 'QUIZ', totalMarks: 20, weight: 20, date: '2026-02-01' },
+      { id: 'a2', templateId: 't2', classId: 'c2', subjectId: 's9', gradingPeriodId: 'p1', name: 'Project', type: 'PROJECT', totalMarks: 50, weight: 30, date: '2026-02-10' },
+      { id: 'a3', templateId: 't1', classId: 'c1', subjectId: 's1', gradingPeriodId: 'p2', name: 'Quiz 1', type: 'QUIZ', totalMarks: 20, weight: 20, date: '2026-05-01' },
+    ] });
+    const rows = await listAssessmentsForGradingPeriod('p1');
+    expect(rows.map((r) => r.id)).toEqual(['a1', 'a2']);
   });
 });
