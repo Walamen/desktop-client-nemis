@@ -11,15 +11,16 @@ import { sharedBridge } from '@/services/nemis-bridge/shared';
 import type { SchoolAdminRecord } from '@nemis-desktop/types';
 import { useQueryParam } from '@/hooks/use-query-param';
 import { GRADE_STATUS_STYLE, listGradesForPeriod, pctTone } from './shared';
+import { listAssessmentsForGradingPeriod } from './assessments';
+import { buildWindowGrades } from './window-grades';
 import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 import { academicSetupHref } from '@/lib/academic-setup';
 
 /** Read-only grade review for a single window — mirrors portal-web's
- * windows/[id]/grades page. Desktop's `grades` table already stores one row
- * per student x subject x grading period with the final component scores
- * (CA/Test/Exam) and computed percentage/letter/status baked in, so this
- * reads that real data directly instead of re-deriving a per-assessment
- * matrix the desktop backend doesn't have (assessments repo is unbuilt). */
+ * windows/[id]/grades page. The `grades` collection holds one row per
+ * student x assessment (`assessmentId` set) plus a final row per student x
+ * subject (`assessmentId` null); `buildWindowGrades` reproduces the server's
+ * `getWindowGrades` from those rows and the period's assessments. */
 export function WindowGradesPage() {
   const windowId = useQueryParam('id');
   const foundation = useAcademicFoundationViewModel();
@@ -30,6 +31,7 @@ export function WindowGradesPage() {
 
   const [win, setWin] = useState<SchoolAdminRecord | null>(null);
   const [grades, setGrades] = useState<SchoolAdminRecord[]>([]);
+  const [assessments, setAssessments] = useState<SchoolAdminRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedClassId, setSelectedClassId] = useState('');
   const [selectedSubjectId, setSelectedSubjectId] = useState('');
@@ -40,6 +42,7 @@ export function WindowGradesPage() {
   useEffect(() => {
     setWin(null);
     setGrades([]);
+    setAssessments([]);
     setSelectedClassId('');
     setSelectedSubjectId('');
     setSearch('');
@@ -61,22 +64,26 @@ export function WindowGradesPage() {
       const result = await sharedBridge.listSchoolAdminRecords({ collection: 'grade_entry_windows', limit: 250 });
       if (cancelled) return;
       const found = result.items.find((item) => item.id === windowId) ?? null;
-      const rows = found?.gradingPeriodId ? await listGradesForPeriod(String(found.gradingPeriodId)) : [];
+      const periodId = found?.gradingPeriodId ? String(found.gradingPeriodId) : '';
+      const [gradeRows, assessmentRows] = periodId
+        ? await Promise.all([listGradesForPeriod(periodId), listAssessmentsForGradingPeriod(periodId)])
+        : [[], []];
       if (cancelled) return;
       setWin(found);
-      setGrades(rows);
+      setGrades(gradeRows);
+      setAssessments(assessmentRows);
       setLoading(false);
     })();
     return () => { cancelled = true; };
   }, [windowId]);
 
-  const classIds = useMemo(
-    () => Array.from(new Set(grades.map((g) => String(g.classId ?? '')).filter(Boolean))),
-    [grades],
-  );
+  const view = useMemo(() => buildWindowGrades(grades, assessments), [grades, assessments]);
+  const classIds = view.classIds;
   const classNames = classesState.status === 'success' || classesState.status === 'refreshing' ? classesState.data : [];
-  const subjectNames =
-    subjectsState.status === 'success' || subjectsState.status === 'refreshing' ? subjectsState.data : [];
+  const subjectNames = useMemo(
+    () => (subjectsState.status === 'success' || subjectsState.status === 'refreshing' ? subjectsState.data : []),
+    [subjectsState],
+  );
 
   useEffect(() => {
     if (!selectedClassId && classIds.length > 0) setSelectedClassId(classIds[0]!);
@@ -85,17 +92,18 @@ export function WindowGradesPage() {
   useEffect(() => {
     if (selectedClassId) {
       students.setFilters({ classId: selectedClassId, isActive: true, sort: 'name' });
-      void students.loadStudents();
+      // setPageSize resets to page 1 and reloads, so no separate loadStudents().
+      void students.setPageSize(100);
     }
   }, [selectedClassId, students]);
 
-  const subjectIdsForClass = useMemo(
-    () =>
-      Array.from(
-        new Set(grades.filter((g) => String(g.classId) === selectedClassId).map((g) => String(g.subjectId ?? ''))),
-      ).filter(Boolean),
-    [grades, selectedClassId],
-  );
+  const classLabel = (id: string) => classNames.find((c) => c.id === id)?.name ?? id;
+  const subjectLabel = (id: string) => subjectNames.find((s) => s.id === id)?.name ?? id;
+
+  const subjectIdsForClass = useMemo(() => {
+    const label = (id: string) => subjectNames.find((s) => s.id === id)?.name ?? id;
+    return view.subjectIdsFor(selectedClassId).sort((a, b) => label(a).localeCompare(label(b)));
+  }, [view, selectedClassId, subjectNames]);
 
   useEffect(() => {
     if (subjectIdsForClass.length > 0 && !subjectIdsForClass.includes(selectedSubjectId)) {
@@ -105,11 +113,10 @@ export function WindowGradesPage() {
     }
   }, [subjectIdsForClass, selectedSubjectId]);
 
-  const classLabel = (id: string) => classNames.find((c) => c.id === id)?.name ?? id;
-  const subjectLabel = (id: string) => {
-    const subject = subjectNames.find((s) => s.id === id);
-    return subject ? `${subject.code} — ${subject.name}` : id;
-  };
+  const columns = useMemo(
+    () => (selectedClassId && selectedSubjectId ? view.assessmentsFor(selectedClassId, selectedSubjectId) : []),
+    [view, selectedClassId, selectedSubjectId],
+  );
 
   const filteredStudents = useMemo(() => {
     const rows = studentList.status === 'success' || studentList.status === 'refreshing' ? studentList.data : [];
@@ -119,24 +126,20 @@ export function WindowGradesPage() {
     return rows.filter((s) => s.fullName.toLowerCase().includes(q) || (s.nemisId?.toLowerCase().includes(q) ?? false));
   }, [studentList, search]);
 
-  const gradeFor = (studentId: string) =>
-    grades.find(
-      (g) => String(g.studentId) === studentId && String(g.subjectId) === selectedSubjectId && String(g.classId) === selectedClassId,
-    );
-
-  const summary = useMemo(() => {
-    const scoped = grades.filter((g) => g.classId && g.subjectId);
-    const studentsGraded = new Set(scoped.map((g) => String(g.studentId))).size;
-    const finalsSubmitted = scoped.filter((g) => g.status && g.status !== 'DRAFT').length;
-    const finalsPublished = scoped.filter((g) => Boolean(g.isPublished)).length;
-    return { classes: classIds.length, studentsGraded, finalsSubmitted, finalsPublished };
-  }, [grades, classIds]);
+  const summary = view.summary;
 
   const handleExport = () => {
     if (!selectedClassId || !selectedSubjectId) return;
-    const header = ['Student', 'NEMIS ID', 'CA', 'Test', 'Exam', 'Marks', 'Percentage', 'Grade', 'Status'];
+    const header = [
+      'Student',
+      'NEMIS ID',
+      ...columns.map((a) => `${a.name} (/${a.totalMarks})`),
+      'Final %',
+      'Grade',
+      'Status',
+    ];
     const csvRows = filteredStudents.map((student) => {
-      const grade = gradeFor(student.id);
+      const final = view.finalFor(student.id, selectedClassId, selectedSubjectId);
       return [
         student.fullName,
         // Exported DASHED for readability — there is no desktop grade import
@@ -144,13 +147,10 @@ export function WindowGradesPage() {
         // MUST strip separators (normalizeNemisId) before matching, since the
         // stored/compared form is always the 12 bare digits.
         student.nemisId ? formatNemisId(student.nemisId) : '',
-        grade?.assessmentScore ?? '',
-        grade?.testScore ?? '',
-        grade?.examScore ?? '',
-        grade ? `${grade.marksObtained}/${grade.maxMarks}` : '',
-        grade?.percentage != null ? `${grade.percentage}%` : '',
-        grade?.letterGrade ?? '',
-        grade?.status ?? 'Not submitted',
+        ...columns.map((a) => view.marksFor(student.id, a.id) ?? ''),
+        final?.percentage != null ? final.percentage.toFixed(1) : '',
+        final?.letterGrade ?? '',
+        final?.status ?? 'Not submitted',
       ];
     });
     const csv = [header, ...csvRows].map((r) => r.join(',')).join('\n');
@@ -292,15 +292,18 @@ export function WindowGradesPage() {
                                   <th className="whitespace-nowrap px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-widest text-slate-400">
                                     NEMIS ID
                                   </th>
-                                  <th className="whitespace-nowrap px-3 py-2.5 text-center text-xs font-semibold uppercase tracking-widest text-slate-400">
-                                    CA
-                                  </th>
-                                  <th className="whitespace-nowrap px-3 py-2.5 text-center text-xs font-semibold uppercase tracking-widest text-slate-400">
-                                    Test
-                                  </th>
-                                  <th className="whitespace-nowrap px-3 py-2.5 text-center text-xs font-semibold uppercase tracking-widest text-slate-400">
-                                    Exam
-                                  </th>
+                                  {columns.map((a) => (
+                                    <th
+                                      key={a.id}
+                                      className="whitespace-nowrap px-3 py-2.5 text-center text-xs font-semibold uppercase tracking-widest text-slate-400"
+                                    >
+                                      <div>{a.name}</div>
+                                      <div className="normal-case font-normal text-slate-300">
+                                        /{a.totalMarks}
+                                        {a.weight != null ? ` · ${a.weight}%` : ''}
+                                      </div>
+                                    </th>
+                                  ))}
                                   <th className="whitespace-nowrap px-4 py-2.5 text-center text-xs font-semibold uppercase tracking-widest text-slate-400">
                                     Final Grade
                                   </th>
@@ -311,7 +314,7 @@ export function WindowGradesPage() {
                               </thead>
                               <tbody className="divide-y divide-slate-100">
                                 {filteredStudents.map((student) => {
-                                  const grade = gradeFor(student.id);
+                                  const final = view.finalFor(student.id, selectedClassId, selectedSubjectId);
                                   return (
                                     <tr key={student.id} className="transition-colors hover:bg-slate-50">
                                       <td className="whitespace-nowrap px-4 py-3 font-medium text-slate-900">
@@ -320,23 +323,30 @@ export function WindowGradesPage() {
                                       <td className="whitespace-nowrap px-3 py-3 font-mono text-xs text-slate-400">
                                         {student.nemisId ? formatNemisId(student.nemisId) : '—'}
                                       </td>
-                                      <td className="px-3 py-3 text-center tabular-nums text-slate-600">
-                                        {grade?.assessmentScore ?? '—'}
-                                      </td>
-                                      <td className="px-3 py-3 text-center tabular-nums text-slate-600">
-                                        {grade?.testScore ?? '—'}
-                                      </td>
-                                      <td className="px-3 py-3 text-center tabular-nums text-slate-600">
-                                        {grade?.examScore ?? '—'}
-                                      </td>
+                                      {columns.map((a) => {
+                                        const marks = view.marksFor(student.id, a.id);
+                                        return (
+                                          <td key={a.id} className="px-3 py-3 text-center tabular-nums">
+                                            {marks != null ? (
+                                              <span className="font-semibold text-slate-700">
+                                                {marks}
+                                                <span className="mx-0.5 font-normal text-slate-300">/</span>
+                                                <span className="font-normal text-slate-500">{a.totalMarks}</span>
+                                              </span>
+                                            ) : (
+                                              <span className="text-slate-300">—</span>
+                                            )}
+                                          </td>
+                                        );
+                                      })}
                                       <td className="whitespace-nowrap px-4 py-3 text-center tabular-nums">
-                                        {grade ? (
-                                          <span className={pctTone(grade.percentage)}>
-                                            {grade.percentage != null
-                                              ? `${Number(grade.percentage).toFixed(1)}%`
-                                              : `${grade.marksObtained}/${grade.maxMarks}`}
-                                            {grade.letterGrade ? (
-                                              <span className="font-normal text-slate-400"> ({String(grade.letterGrade)})</span>
+                                        {final ? (
+                                          <span className={pctTone(final.percentage)}>
+                                            {final.percentage != null
+                                              ? `${final.percentage.toFixed(1)}%`
+                                              : `${final.marksObtained}/${final.maxMarks}`}
+                                            {final.letterGrade ? (
+                                              <span className="font-normal text-slate-400"> ({final.letterGrade})</span>
                                             ) : null}
                                           </span>
                                         ) : (
@@ -344,14 +354,13 @@ export function WindowGradesPage() {
                                         )}
                                       </td>
                                       <td className="whitespace-nowrap px-4 py-3 text-center">
-                                        {grade ? (
+                                        {final ? (
                                           <span
                                             className={`rounded px-2 py-0.5 text-xs font-semibold ${
-                                              GRADE_STATUS_STYLE[String(grade.status)] ?? 'bg-slate-100 text-slate-600'
+                                              GRADE_STATUS_STYLE[final.status] ?? 'bg-slate-100 text-slate-600'
                                             }`}
                                           >
-                                            {String(grade.status)}
-                                            {grade.isPublished ? ' · Published' : ''}
+                                            {final.status}
                                           </span>
                                         ) : (
                                           <span className="text-xs text-slate-300">—</span>
@@ -362,7 +371,7 @@ export function WindowGradesPage() {
                                 })}
                                 {filteredStudents.length === 0 && (
                                   <tr>
-                                    <td colSpan={7} className="py-12 text-center text-sm text-slate-400">
+                                    <td colSpan={4 + columns.length} className="py-12 text-center text-sm text-slate-400">
                                       No students match your search.
                                     </td>
                                   </tr>
