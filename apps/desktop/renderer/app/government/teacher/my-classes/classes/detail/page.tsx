@@ -14,6 +14,7 @@ import { useViewModel } from '@/hooks/use-view-model';
 import { useQueryParam } from '@/hooks/use-query-param';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
 import { studentBridge } from '@/services/nemis-bridge/school-admin/student-bridge';
+import { fetchAllPages } from '@/components/classes/shared';
 import { genderBadgeClass, genderLabel, human } from '@/components/teachers/shared';
 import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 import { ClassReportCardsPage } from '@/components/report-cards/ClassReportCardsPage';
@@ -117,9 +118,9 @@ function ClassDetail({ classId }: { classId: string }) {
     if (!classId) return;
     let cancelled = false;
     setRosterLoading(true);
-    void studentBridge.listStudents({ classId, limit: 200, offset: 0 }).then((result) => {
+    void fetchAllPages((limit, offset) => studentBridge.listStudents({ classId, limit, offset })).then((items) => {
       if (cancelled) return;
-      setRoster(result.items);
+      setRoster(items);
       setRosterLoading(false);
     });
     return () => {

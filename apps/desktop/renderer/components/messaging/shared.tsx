@@ -1,5 +1,6 @@
 import { sharedBridge } from '@/services/nemis-bridge/shared';
 import { schoolAdminBridge } from '@/services/nemis-bridge/school-admin';
+import { fetchAllPages } from '@/components/classes/shared';
 import type { SchoolAdminRecord, StudentListItemResult, TeacherResult } from '@nemis-desktop/types';
 
 async function listAll(
@@ -94,11 +95,11 @@ export async function loadConversations(currentUserId: string): Promise<Conversa
     listAll('messages'),
     listAll('guardians'),
     listAll('student_guardians'),
-    schoolAdminBridge.listStudents({ limit: 2000 }),
+    fetchAllPages((limit, offset) => schoolAdminBridge.listStudents({ limit, offset })),
     schoolAdminBridge.listTeachers({ limit: 2000 }),
   ]);
 
-  const studentNameById = new Map(studentsPage.items.map((s: StudentListItemResult) => [s.id, s.fullName]));
+  const studentNameById = new Map(studentsPage.map((s: StudentListItemResult) => [s.id, s.fullName]));
   const teacherNameById = new Map(teachersPage.items.map((t: TeacherResult) => [t.id, `${t.firstName} ${t.lastName}`]));
   const guardianNameByStudent = buildPrimaryGuardianNameMap(guardianRecords, linkRecords);
 

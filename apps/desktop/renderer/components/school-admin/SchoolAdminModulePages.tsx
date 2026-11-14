@@ -6,6 +6,7 @@ import { formatNemisId } from '@nemis-desktop/shared';
 import { Input } from '@nemis-desktop/ui';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
 import { studentBridge } from '@/services/nemis-bridge/school-admin/student-bridge';
+import { fetchAllPages } from '@/components/classes/shared';
 import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 
 type Section = {
@@ -193,9 +194,8 @@ export function RecordPaymentPage() {
     void sharedBridge
       .listSchoolAdminRecords({ collection: 'fee_obligations', limit: 250 })
       .then((result) => setObligations(result.items));
-    void studentBridge
-      .listStudents({ limit: 250, offset: 0 })
-      .then((result) => setStudents(result.items as unknown as SchoolAdminRecord[]));
+    void fetchAllPages((limit, offset) => studentBridge.listStudents({ limit, offset }))
+      .then((items) => setStudents(items as unknown as SchoolAdminRecord[]));
   }, []);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { GradeLevel, type GradeLevel as GradeLevelValue, type SchoolAdminRecord } from '@nemis-desktop/types';
 import { Button, Drawer } from '@nemis-desktop/ui';
+import { fetchAllPages } from '@/components/classes/shared';
 import { useViewModel } from '@/hooks/use-view-model';
 import { useAcademicFoundationViewModel } from '@/lib/presentation/hooks/school-admin';
 import { schoolAdminBridge } from '@/services/nemis-bridge/school-admin';
@@ -58,15 +59,17 @@ export function BulkAssignDrawer({ feeRule, onClose, onDone }: {
     if (!feeRule || !termReady || !canSubmit) return;
     setSubmitting(true);
     try {
-      const students = mode === 'gradeLevel' && selectedGradeLevel
-        ? await schoolAdminBridge.listStudents({ gradeLevel: selectedGradeLevel, isActive: true, limit: 2000 })
-        : await schoolAdminBridge.listStudents({ classId: selectedClassId, isActive: true, limit: 2000 });
+      const students = await fetchAllPages((limit, offset) =>
+        mode === 'gradeLevel' && selectedGradeLevel
+          ? schoolAdminBridge.listStudents({ gradeLevel: selectedGradeLevel, isActive: true, limit, offset })
+          : schoolAdminBridge.listStudents({ classId: selectedClassId, isActive: true, limit, offset }),
+      );
       const outcome = await bulkAssignObligations({
         feeRuleId: String(feeRule.id),
         academicYearId: term.data.academicYearId,
         termId: term.data.id,
         requiredAmount: Number(feeRule.amount),
-        studentIds: students.items.map((s) => s.id),
+        studentIds: students.map((s) => s.id),
       });
       setResult(outcome);
       onDone();
