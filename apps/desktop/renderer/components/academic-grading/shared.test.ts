@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { SchoolAdminRecord } from '@nemis-desktop/types';
 
 const data = vi.hoisted(() => ({
-  grades: [] as Record<string, unknown>[],
+  grades: [] as SchoolAdminRecord[],
   total: 0,
 }));
 
@@ -31,6 +32,17 @@ describe('listGradesForPeriod', () => {
     expect(rows).toHaveLength(150);
     const offsets = list().mock.calls.map(([r]) => r.offset ?? 0);
     expect(offsets).toEqual([0, 250]);
+  });
+  it('keeps a row once when a sync insert shifts it onto the next page too', async () => {
+    data.grades = Array.from({ length: 300 }, (_, i) => ({ id: `g${i}`, gradingPeriodId: 'p1' }));
+    data.total = 300;
+    // Page 2 starts one row early, so g249 comes back on both pages.
+    list().mockImplementationOnce(async () => ({ items: data.grades.slice(0, 250), total: 300 }));
+    list().mockImplementationOnce(async () => ({ items: data.grades.slice(249, 300), total: 300 }));
+    const rows = await listGradesForPeriod('p1');
+    expect(rows.filter((row) => row.id === 'g249')).toHaveLength(1);
+    expect(rows).toHaveLength(300);
+    expect(rows.map((row) => row.id)).toEqual(data.grades.map((row) => row.id));
   });
   it('stops after one page when the bridge reports total 0 with items', async () => {
     data.grades = [{ id: 'g1', gradingPeriodId: 'p1' }];

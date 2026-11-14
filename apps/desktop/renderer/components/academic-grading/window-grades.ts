@@ -95,9 +95,11 @@ export function buildWindowGrades(
     const classId = str(row.classId);
     const studentId = str(row.studentId);
     const assessmentId = row.assessmentId != null ? str(row.assessmentId) : null;
-    if (assessmentId !== null && !assessmentById.has(assessmentId)) continue;
+    // The server lists the class and subject of every grade row, so register
+    // them before dropping a row whose assessment is not in this period.
     if (classId) classIds.add(classId);
     addSubject(classId, str(row.subjectId));
+    if (assessmentId !== null && !assessmentById.has(assessmentId)) continue;
     if (assessmentId !== null) {
       marks.set(`${studentId}::${assessmentId}`, Number(row.marksObtained));
       continue;

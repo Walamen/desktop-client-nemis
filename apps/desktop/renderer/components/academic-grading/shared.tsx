@@ -97,14 +97,28 @@ export async function listAllWindows(): Promise<SchoolAdminRecord[]> {
 const PAGE_SIZE = 250;
 
 /** Reads a whole collection in PAGE_SIZE chunks. Stops on an empty page or once
- * the accumulated rows reach the reported total (a total of 0 with items is
+ * the rows fetched reach the reported total (a total of 0 with items is
  * treated as "one page only"). */
 export async function listAllRecords(collection: SchoolAdminCollection): Promise<SchoolAdminRecord[]> {
+  // Rows are deduplicated by id: the list is ordered newest-first, so a sync
+  // insert between two pages shifts rows and a later page can repeat earlier ones.
+  // A row without an id is kept as-is. The offset counts rows fetched, not
+  // rows kept, so it keeps walking the bridge's own paging.
+  const seenIds = new Set<string>();
   const all: SchoolAdminRecord[] = [];
+  let fetched = 0;
   for (;;) {
-    const { items, total } = await sharedBridge.listSchoolAdminRecords({ collection, limit: PAGE_SIZE, offset: all.length });
-    all.push(...items);
-    if (items.length === 0 || all.length >= total) return all;
+    const { items, total } = await sharedBridge.listSchoolAdminRecords({ collection, limit: PAGE_SIZE, offset: fetched });
+    fetched += items.length;
+    for (const item of items) {
+      if (item.id !== undefined && item.id !== null) {
+        const key = String(item.id);
+        if (seenIds.has(key)) continue;
+        seenIds.add(key);
+      }
+      all.push(item);
+    }
+    if (items.length === 0 || fetched >= total) return all;
   }
 }
 

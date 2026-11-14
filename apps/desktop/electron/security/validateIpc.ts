@@ -601,11 +601,14 @@ export function assertSchoolAdminListArgs(args: readonly unknown[]): void {
   if (!isPlainObject(request)) throw new IPCError('Expected a school-admin list request.');
   assertKnownKeys(request, ['collection', 'limit', 'offset']);
   assertSchoolAdminCollection(request.collection);
+  // A whole collection is paged 250 rows at a time, so the offset must reach
+  // well past 10000; a single page stays capped at 10000 rows.
+  const upperBound = { limit: 10000, offset: 1_000_000 } as const;
   for (const key of ['limit', 'offset'] as const) {
     const value = request[key];
     if (
       value !== undefined &&
-      (!Number.isInteger(value) || Number(value) < 0 || Number(value) > 10000)
+      (!Number.isInteger(value) || Number(value) < 0 || Number(value) > upperBound[key])
     ) {
       throw new IPCError(`Expected a bounded non-negative integer for "${key}".`);
     }

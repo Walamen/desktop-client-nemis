@@ -8,13 +8,15 @@ import { formatNemisId, normalizeNemisId } from '@nemis-desktop/shared';
 import { useViewModel } from '@/hooks/use-view-model';
 import { useAcademicFoundationViewModel, useStudentsViewModel } from '@/lib/presentation/hooks/school-admin';
 import { sharedBridge } from '@/services/nemis-bridge/shared';
-import type { SchoolAdminRecord } from '@nemis-desktop/types';
+import { GradeLevel, type SchoolAdminRecord } from '@nemis-desktop/types';
 import { useQueryParam } from '@/hooks/use-query-param';
 import { GRADE_STATUS_STYLE, listGradesForPeriod, pctTone } from './shared';
 import { listAssessmentsForGradingPeriod } from './assessments';
 import { buildWindowGrades } from './window-grades';
 import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 import { academicSetupHref } from '@/lib/academic-setup';
+
+const GRADE_LEVEL_ORDER: readonly string[] = Object.values(GradeLevel);
 
 /** Read-only grade review for a single window — mirrors portal-web's
  * windows/[id]/grades page. The `grades` collection holds one row per
@@ -33,6 +35,7 @@ export function WindowGradesPage() {
   const [grades, setGrades] = useState<SchoolAdminRecord[]>([]);
   const [assessments, setAssessments] = useState<SchoolAdminRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [selectedClassId, setSelectedClassId] = useState('');
   const [selectedSubjectId, setSelectedSubjectId] = useState('');
   const [search, setSearch] = useState('');
@@ -46,6 +49,7 @@ export function WindowGradesPage() {
     setSelectedClassId('');
     setSelectedSubjectId('');
     setSearch('');
+    setLoadError(false);
   }, [windowId]);
 
   useRevalidateOnSync(() => {
@@ -59,27 +63,58 @@ export function WindowGradesPage() {
       return;
     }
     setLoading(true);
+    setLoadError(false);
     let cancelled = false;
     void (async () => {
-      const result = await sharedBridge.listSchoolAdminRecords({ collection: 'grade_entry_windows', limit: 250 });
-      if (cancelled) return;
-      const found = result.items.find((item) => item.id === windowId) ?? null;
-      const periodId = found?.gradingPeriodId ? String(found.gradingPeriodId) : '';
-      const [gradeRows, assessmentRows] = periodId
-        ? await Promise.all([listGradesForPeriod(periodId), listAssessmentsForGradingPeriod(periodId)])
-        : [[], []];
-      if (cancelled) return;
-      setWin(found);
-      setGrades(gradeRows);
-      setAssessments(assessmentRows);
-      setLoading(false);
+      try {
+        const result = await sharedBridge.listSchoolAdminRecords({ collection: 'grade_entry_windows', limit: 250 });
+        if (cancelled) return;
+        const found = result.items.find((item) => item.id === windowId) ?? null;
+        const periodId = found?.gradingPeriodId ? String(found.gradingPeriodId) : '';
+        const [gradeRows, assessmentRows] = periodId
+          ? await Promise.all([listGradesForPeriod(periodId), listAssessmentsForGradingPeriod(periodId)])
+          : [[], []];
+        if (cancelled) return;
+        setWin(found);
+        setGrades(gradeRows);
+        setAssessments(assessmentRows);
+        setLoading(false);
+      } catch (cause) {
+        if (cancelled) return;
+        console.error('[WindowGradesPage] load failed', cause);
+        setLoadError(true);
+        setLoading(false);
+      }
     })();
     return () => { cancelled = true; };
   }, [windowId]);
 
   const view = useMemo(() => buildWindowGrades(grades, assessments), [grades, assessments]);
-  const classIds = view.classIds;
-  const classNames = classesState.status === 'success' || classesState.status === 'refreshing' ? classesState.data : [];
+  const classNames = useMemo(
+    () => (classesState.status === 'success' || classesState.status === 'refreshing' ? classesState.data : []),
+    [classesState],
+  );
+  // The server orders a window's classes by gradeLevel then name; gradeLevel
+  // is a Postgres enum, so "asc" is the enum's declared order (KG … GRADE_12),
+  // not string order. view.classIds is first-appearance order instead.
+  const classIds = useMemo(() => {
+    const rowById = new Map(classNames.map((c) => [c.id, c]));
+    const levelRank = (level: string) => {
+      const index = GRADE_LEVEL_ORDER.indexOf(level);
+      return index === -1 ? GRADE_LEVEL_ORDER.length : index;
+    };
+    const byClassOrder = (a: string, b: string): number => {
+      const x = rowById.get(a);
+      const y = rowById.get(b);
+      if (!x || !y) return x ? -1 : y ? 1 : a.localeCompare(b);
+      return (
+        levelRank(x.gradeLevel) - levelRank(y.gradeLevel) ||
+        x.gradeLevel.localeCompare(y.gradeLevel) ||
+        x.name.localeCompare(y.name)
+      );
+    };
+    return [...view.classIds].sort(byClassOrder);
+  }, [view, classNames]);
   const subjectNames = useMemo(
     () => (subjectsState.status === 'success' || subjectsState.status === 'refreshing' ? subjectsState.data : []),
     [subjectsState],
@@ -118,13 +153,17 @@ export function WindowGradesPage() {
     [view, selectedClassId, selectedSubjectId],
   );
 
+  const rosterStudents = useMemo(
+    () => (studentList.status === 'success' || studentList.status === 'refreshing' ? studentList.data : []),
+    [studentList],
+  );
+
   const filteredStudents = useMemo(() => {
-    const rows = studentList.status === 'success' || studentList.status === 'refreshing' ? studentList.data : [];
     const rawQuery = search.trim();
-    if (!rawQuery) return rows;
+    if (!rawQuery) return rosterStudents;
     const q = (normalizeNemisId(rawQuery) ?? rawQuery).toLowerCase();
-    return rows.filter((s) => s.fullName.toLowerCase().includes(q) || (s.nemisId?.toLowerCase().includes(q) ?? false));
-  }, [studentList, search]);
+    return rosterStudents.filter((s) => s.fullName.toLowerCase().includes(q) || (s.nemisId?.toLowerCase().includes(q) ?? false));
+  }, [rosterStudents, search]);
 
   const summary = view.summary;
 
@@ -138,7 +177,8 @@ export function WindowGradesPage() {
       'Grade',
       'Status',
     ];
-    const csvRows = filteredStudents.map((student) => {
+    // The web exports every student of the class, not just the search matches.
+    const csvRows = rosterStudents.map((student) => {
       const final = view.finalFor(student.id, selectedClassId, selectedSubjectId);
       return [
         student.fullName,
@@ -198,6 +238,8 @@ export function WindowGradesPage() {
           <div className="flex justify-center border border-slate-300 bg-white p-12">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-secondary border-t-transparent" />
           </div>
+        ) : loadError ? (
+          <div className="border border-slate-300 bg-white p-12 text-center text-slate-500">{"Couldn't load grades. It will retry after the next sync."}</div>
         ) : !win ? (
           <div className="border border-slate-300 bg-white p-12 text-center text-slate-500">Window not found.</div>
         ) : (

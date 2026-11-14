@@ -30,6 +30,7 @@ import {
   assertSchoolUserCreateArgs,
   assertSchoolUserSetActiveArgs,
   assertSchoolUserUpdateArgs,
+  assertSchoolAdminListArgs,
 } from './validateIpc';
 
 describe('assertAuthenticateArgs', () => {
@@ -459,5 +460,26 @@ describe('school office user validators', () => {
     expect(() => assertSchoolUserSetActiveArgs([{ userId: 'u-1', isActive: false }])).not.toThrow();
     expect(() => assertSchoolUserSetActiveArgs([{ userId: ' ', isActive: false }])).toThrow();
     expect(() => assertSchoolUserSetActiveArgs([{ userId: 'u-1', isActive: 'no' }])).toThrow();
+  });
+});
+
+describe('assertSchoolAdminListArgs', () => {
+  const ok = { collection: 'grades', limit: 250, offset: 0 };
+  it('accepts a well-formed request', () => {
+    expect(() => assertSchoolAdminListArgs([ok])).not.toThrow();
+  });
+  it('accepts an offset past 10000 so a large collection can be paged to the end', () => {
+    expect(() => assertSchoolAdminListArgs([{ ...ok, offset: 10_250 }])).not.toThrow();
+    expect(() => assertSchoolAdminListArgs([{ ...ok, offset: 1_000_000 }])).not.toThrow();
+  });
+  it('rejects an offset past 1000000', () => {
+    expect(() => assertSchoolAdminListArgs([{ ...ok, offset: 1_000_001 }])).toThrow(
+      'Expected a bounded non-negative integer for "offset".',
+    );
+  });
+  it('still rejects a limit past 10000', () => {
+    expect(() => assertSchoolAdminListArgs([{ ...ok, limit: 10_001 }])).toThrow(
+      'Expected a bounded non-negative integer for "limit".',
+    );
   });
 });

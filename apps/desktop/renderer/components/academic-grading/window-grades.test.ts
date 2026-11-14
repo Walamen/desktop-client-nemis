@@ -68,11 +68,13 @@ describe('buildWindowGrades', () => {
     expect(view.finalFor('st1', 'c1', 'sub1')).toBeNull();
     expect(view.marksFor('st1', 'a1')).toBe(18);
   });
-  it('ignores a per-assessment row whose assessment is not in the period', () => {
+  it('ignores a per-assessment row whose assessment is not in the period, but keeps its class and subject', () => {
     const view = buildWindowGrades([grade({ assessmentId: 'ghost', marksObtained: 5 })], []);
     expect(view.assessmentsFor('c1', 'sub1')).toEqual([]);
     expect(view.finalFor('st1', 'c1', 'sub1')).toBeNull();
     expect(view.marksFor('st1', 'ghost')).toBeNull();
+    expect(view.classIds).toEqual(['c1']);
+    expect(view.subjectIdsFor('c1')).toEqual(['sub1']);
   });
   it('keeps a null percentage so the page can fall back to marks/max', () => {
     const view = buildWindowGrades([grade({ percentage: null, letterGrade: null, marksObtained: 72, maxMarks: 100 })], []);
