@@ -28,12 +28,14 @@ export function stubNemis({
   currentYear = null,
   academicYear = {},
   term = {},
+  more = {},
 }: {
   years?: unknown[];
   terms?: unknown[];
   currentYear?: unknown;
   academicYear?: Record<string, unknown>;
   term?: Record<string, unknown>;
+  more?: Record<string, unknown>;
 } = {}) {
   (window as unknown as { nemis: unknown }).nemis = {
     dashboard: { getOverview: vi.fn(async () => ({ totalStudents: 0, totalClasses: 0, totalSubjects: 0, attendanceToday: { present: 0, total: 0 }, studentsByGrade: [], recentlyEnrolled: [] })) },
@@ -43,6 +45,7 @@ export function stubNemis({
     identity: { getCurrentUser: vi.fn(async () => null) },
     device: { getInfo: vi.fn(async () => null) },
     teacher: { getDashboard: vi.fn(async () => ({ totalTeachers: 0, bySubject: [], byGrade: [], byEmploymentStatus: [], recentlyAdded: [], totalAssignments: 0, unassignedTeachers: 0 })) },
+    ...more,
   };
 }
 
