@@ -5,7 +5,8 @@
  *   schoolAdminBridge — school profile, academics, students, staff, timetable
  *   teacherBridge     — teacher's own dashboard (grows as more lands)
  *   countyBridge      — the County (CEO) dashboard
- *   deoBridge / ministryPortalBridge — placeholders, no live endpoints yet
+ *   deoBridge         — the DEO (district) dashboard
+ *   ministryPortalBridge — placeholder, no live endpoints yet
  * Error translation happens one layer up, in lib/ipc/. */
 export * from './shared';
 export * from './school-admin';
