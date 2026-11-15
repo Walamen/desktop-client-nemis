@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createTestContext, type TestContext } from '../../../testing/createTestContext';
 import {
   ATTENDANCE_SINCE,
+  AT_RISK_STUDENTS_SQL,
   CURRENT_ASSESSMENTS_SQL,
   SqliteDistrictOverviewReadModel,
 } from './SqliteDistrictOverviewReadModel';
@@ -524,6 +525,74 @@ describe('SqliteDistrictOverviewReadModel', () => {
       issue('i-5', 's-a', { metadata: JSON.stringify({ staffId: 'stf-1' }) });
       issue('i-6', 's-other');
       expect(readModel.countOpenInfrastructureIssuesBySchool('d-1')).toEqual([{ institutionId: 's-a', count: 2 }]);
+    });
+  });
+
+  describe('pupils at risk', () => {
+    /** n records for one pupil from a start day, one per day. */
+    function marks(studentId: string, classId: string, status: string, n: number, from = '2026-10-20') {
+      for (let i = 0; i < n; i += 1) {
+        seq += 1;
+        const day = new Date(`${from}T00:00:00.000Z`);
+        day.setUTCDate(day.getUTCDate() + i + seq);
+        run(
+          `INSERT INTO attendance (id,studentId,classId,date,status,version,updatedAt) VALUES (?,?,?,?,?,1,?)`,
+          `att-${seq}`,
+          studentId,
+          classId,
+          day.toISOString().slice(0, 10),
+          status,
+          NOW,
+        );
+      }
+    }
+    const since = '2026-10-17';
+    const counts = () =>
+      Object.fromEntries(readModel.countAtRiskStudentsBySchool('d-1', since).map((r) => [r.institutionId, r.count]));
+
+    it('counts active pupils with 5+ records under 80% attended, at their own school', () => {
+      seedDistrict();
+      klass('c-a', 's-a');
+      klass('c-b', 's-b');
+      const risk = student('s-a');
+      marks(risk, 'c-a', 'PRESENT', 3);
+      marks(risk, 'c-a', 'ABSENT', 2); // 60%
+      const edge = student('s-a');
+      marks(edge, 'c-a', 'PRESENT', 4);
+      marks(edge, 'c-a', 'ABSENT', 1); // exactly 80%: fine
+      const few = student('s-a');
+      marks(few, 'c-a', 'PRESENT', 1);
+      marks(few, 'c-a', 'ABSENT', 3); // 4 records: not judged
+      const late = student('s-b');
+      marks(late, 'c-b', 'LATE', 4);
+      marks(late, 'c-b', 'ABSENT', 1); // LATE attends: 80%
+      const gone = student('s-a', { isActive: 0 });
+      marks(gone, 'c-a', 'ABSENT', 10);
+      const visitor = student('s-a'); // pupil of s-a, marked in an s-b class
+      marks(visitor, 'c-b', 'ABSENT', 6);
+      expect(counts()).toEqual({ 's-a': 2 });
+    });
+
+    it('reads only the window and only the district', () => {
+      seedDistrict();
+      klass('c-a', 's-a');
+      klass('c-x', 's-other');
+      const old = student('s-a');
+      marks(old, 'c-a', 'ABSENT', 10, '2026-08-01'); // before the window
+      marks(old, 'c-a', 'PRESENT', 5);
+      const elsewhere = student('s-other');
+      marks(elsewhere, 'c-x', 'ABSENT', 10);
+      expect(counts()).toEqual({});
+    });
+
+    it('reads attendance through an index, never a full scan', () => {
+      const plan = (
+        db.prepare(`EXPLAIN QUERY PLAN ${AT_RISK_STUDENTS_SQL}`).all(since, 'd-1', 'd-1') as { detail: string }[]
+      )
+        .map((row) => row.detail)
+        .join(String.fromCharCode(10));
+      expect(plan).toMatch(/USING (COVERING )?INDEX idx_attendance_/);
+      expect(plan).not.toMatch(/SCAN a(\s|$)/m);
     });
   });
 

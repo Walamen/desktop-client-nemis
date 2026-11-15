@@ -148,7 +148,7 @@ function periodLabel(month: Date): string {
 
 /** Cumulative active students per month. Students created before the window,
  * or with no creation date, form the starting figure. */
-function enrollmentTrend(
+export function enrollmentTrend(
   now: Date,
   totalStudents: number,
   districtId: string,

@@ -115,6 +115,10 @@ export interface IDistrictOverviewReadModel {
   /** Unresolved INFRASTRUCTURE_ISSUE alerts per school, school staff
    * requests excluded; a school with none is absent. */
   countOpenInfrastructureIssuesBySchool(districtId: string): { institutionId: string; count: number }[];
+  /** Active pupils at risk, per their own school: at least 5 attendance
+   * records on or after sinceDate (in the district's active schools) and
+   * attended × 100 < 80 × records, LATE attending. Schools with none are absent. */
+  countAtRiskStudentsBySchool(districtId: string, sinceDate: string): { institutionId: string; count: number }[];
   /** Active TEACHER / ASSISTANT_TEACHER staff of the district's active schools. Unordered. */
   listTeachers(districtId: string): DistrictTeacherRow[];
 }

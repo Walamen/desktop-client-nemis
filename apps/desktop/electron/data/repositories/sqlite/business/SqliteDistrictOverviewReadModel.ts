@@ -7,6 +7,7 @@ import type {
   DistrictSchoolRef,
   IDistrictOverviewReadModel,
 } from '@nemis-desktop/application';
+import { LOW_ATTENDANCE_RATE, MIN_RECORDS_TO_JUDGE } from '@nemis-desktop/application';
 import { GradeLevel } from '@nemis-desktop/types';
 import { TableNames } from '../../../../database/schema/tableNames';
 import { StatementCache } from '../../base/StatementCache';
@@ -59,6 +60,21 @@ export const ATTENDANCE_SINCE = `FROM ${classes} c
   JOIN ${institutions} i ON i.id = c.institutionId
   JOIN ${attendance} a ON a.classId = c.id AND a.date >= ?
   WHERE ${DISTRICT_SCHOOLS}`;
+
+/** Active pupils at risk per their own school (packages/application
+ * use-cases/deo/pupil-risk.ts): records in the district's active schools on
+ * or after a date, grouped per pupil, judged with an exact comparison. LATE
+ * attends. Parameters: sinceDate, districtId (attendance), districtId (the
+ * pupil's own school). Exported for the query-plan test. */
+export const AT_RISK_STUDENTS_SQL = `SELECT s.institutionId AS institutionId, COUNT(*) AS count
+  FROM (SELECT a.studentId AS studentId, COUNT(*) AS records,
+               SUM(CASE WHEN a.status IN ('PRESENT','LATE') THEN 1 ELSE 0 END) AS attended
+        ${ATTENDANCE_SINCE}
+        GROUP BY a.studentId) p
+  JOIN ${students} s ON s.id = p.studentId AND s.isActive = 1
+  JOIN ${institutions} si ON si.id = s.institutionId AND si.districtId = ? AND si.isActive = 1
+  WHERE p.records >= ${MIN_RECORDS_TO_JUDGE} AND p.attended * 100 < ${LOW_ATTENDANCE_RATE} * p.records
+  GROUP BY s.institutionId`;
 
 /** The district's current-term assessments, each with whether it has any
  * grade (through idx_grades_assessment, migration 050). One parameter: the
@@ -383,6 +399,14 @@ export class SqliteDistrictOverviewReadModel implements IDistrictOverviewReadMod
         .all(districtId) as { institutionId: string; count: number }[];
     });
   }
+  countAtRiskStudentsBySchool(districtId: string, sinceDate: string): { institutionId: string; count: number }[] {
+    return guarded('SqliteDistrictOverviewReadModel.countAtRiskStudentsBySchool', () =>
+      this.#statements
+        .get(AT_RISK_STUDENTS_SQL)
+        .all(sinceDate, districtId, districtId) as { institutionId: string; count: number }[],
+    );
+  }
+
   listTeachers(districtId: string): DistrictTeacherRow[] {
     return guarded('SqliteDistrictOverviewReadModel.listTeachers', () => {
       const teachers = this.#statements

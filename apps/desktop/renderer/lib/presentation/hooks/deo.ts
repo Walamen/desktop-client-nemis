@@ -6,4 +6,5 @@ import { usePresentation } from '../presentation-provider';
 export const useDeoDashboardViewModel = () => usePresentation().viewModels.deoDashboard;
 export const useDeoSchoolsViewModel = () => usePresentation().viewModels.deoSchools;
 export const useDeoSchoolAdminsViewModel = () => usePresentation().viewModels.deoSchoolAdmins;
+export const useDeoStudentsViewModel = () => usePresentation().viewModels.deoStudents;
 export const useDeoTeachersViewModel = () => usePresentation().viewModels.deoTeachers;

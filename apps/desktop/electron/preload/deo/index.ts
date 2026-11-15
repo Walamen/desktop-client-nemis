@@ -7,6 +7,7 @@ export const deoDashboardApi: DeoApi = {
   resolveAlert: (alertId) => invoke(IpcChannels.DEO_RESOLVE_ALERT, alertId),
   listSchools: () => invoke(IpcChannels.DEO_LIST_SCHOOLS),
   listSchoolAdmins: () => invoke(IpcChannels.DEO_LIST_SCHOOL_ADMINS),
+  listStudents: () => invoke(IpcChannels.DEO_LIST_STUDENTS),
   listTeachers: () => invoke(IpcChannels.DEO_LIST_TEACHERS),
 };
 

@@ -31,6 +31,7 @@ export class InMemoryDistrictOverviewReadModel implements IDistrictOverviewReadM
   schoolAdminRows: DistrictSchoolAdminRow[] = [];
   infrastructureIssues: { institutionId: string; count: number }[] = [];
   teacherRows: DistrictTeacherRow[] = [];
+  atRiskStudents: { institutionId: string; count: number }[] = [];
   readonly calls: { method: string; args: unknown[] }[] = [];
 
   #record(method: string, ...args: unknown[]): void {
@@ -107,6 +108,10 @@ export class InMemoryDistrictOverviewReadModel implements IDistrictOverviewReadM
   listTeachers(districtId: string): DistrictTeacherRow[] {
     this.#record('listTeachers', districtId);
     return this.teacherRows;
+  }
+  countAtRiskStudentsBySchool(districtId: string, sinceDate: string) {
+    this.#record('countAtRiskStudentsBySchool', districtId, sinceDate);
+    return this.atRiskStudents;
   }
   countOpenInfrastructureIssuesBySchool(districtId: string) {
     this.#record('countOpenInfrastructureIssuesBySchool', districtId);

@@ -28,7 +28,7 @@ export function buildDistrictSchoolRows(
   const students = byInstitution(readModel.countActiveStudentsBySchool(districtId), (row) => row.count);
   const teachers = byInstitution(readModel.countTeachingStaffBySchool(districtId), (row) => row.count);
   const attendance = byInstitution(
-    readModel.attendanceBySchool(districtId, addDays(today, -ATTENDANCE_WINDOW_DAYS)),
+    readModel.attendanceBySchool(districtId, attendanceWindowStart(now)),
     (row) => row,
   );
   const lastAttendance = byInstitution(readModel.lastAttendanceDateBySchool(districtId), (row) => row.date);
@@ -100,6 +100,12 @@ function byInstitution<Row extends { institutionId: string }, Value>(
   pick: (row: Row) => Value,
 ): Map<string, Value> {
   return new Map(rows.map((row) => [row.institutionId, pick(row)]));
+}
+
+/** First day (YYYY-MM-DD, local) of the 30-day attendance window every DEO
+ * page reads, matching the server's computeSchoolStandings window. */
+export function attendanceWindowStart(now: Date): string {
+  return addDays(localDateIso(now), -ATTENDANCE_WINDOW_DAYS);
 }
 
 /** The device's local calendar date as YYYY-MM-DD. */

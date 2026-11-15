@@ -169,12 +169,58 @@ export interface DeoTeachersResult {
   summary: DeoTeachersSummary;
 }
 
+/** One school on DEO Students & Enrollment. */
+export interface DeoEnrollmentSchool {
+  id: string;
+  name: string;
+  code: string;
+  levels: string[];
+  students: number;
+  teachers: number;
+  /** Last 30 days; null when the school recorded none. */
+  attendanceRate: number | null;
+  lastSubmissionAt: string | null;
+  performanceStatus: SchoolPerformanceStatus;
+}
+
+/** A school with pupils that needs a look: low attendance, flagged, or never reported. */
+export interface DeoDropoutAlert {
+  schoolId: string;
+  schoolName: string;
+  attendanceRate: number | null;
+  reason: string;
+  /** Active pupils with at least 5 records in 30 days and under 80% attended. */
+  atRiskStudents: number;
+}
+
+/** DEO Students & Enrollment, from this device. The server builds the same
+ * for the web (Nemis districts.service.ts getDistrictStudentEnrollment). */
+export interface DeoStudentsResult {
+  districtId: string | null;
+  district: { id: string; name: string } | null;
+  county: { id: string; name: string } | null;
+  summary: {
+    totalEnrollment: number;
+    male: number;
+    female: number;
+    /** All attended over all records, last 30 days; null with no records. */
+    avgAttendance: number | null;
+  };
+  enrollmentTrend: { period: string; enrollment: number }[];
+  genderDistribution: { male: number; female: number };
+  /** By name. */
+  schools: DeoEnrollmentSchool[];
+  /** Worst attendance first, no-data last, then by name. */
+  dropoutAlerts: DeoDropoutAlert[];
+}
+
 /** DEO portal calls on `window.nemis.deo`. */
 export interface DeoApi {
   getDashboard(): Promise<DeoDashboardResult>;
   listSchools(): Promise<DeoSchoolsResult>;
   listSchoolAdmins(): Promise<DeoSchoolAdminsResult>;
   listTeachers(): Promise<DeoTeachersResult>;
+  listStudents(): Promise<DeoStudentsResult>;
   /** Marks an alert reviewed on this device; the outbox syncs it later. */
   resolveAlert(alertId: string): Promise<boolean>;
 }
