@@ -80,7 +80,9 @@ const SPECS: Record<ProvisioningCollection, TableSpec> = {
   attendance: spec('attendance', ['id','studentId','classId','subjectId','date','status','recordedBy','version','updatedAt','lastModifiedBy']),
   staff: spec('staff', ['id','institutionId','userId','firstName','lastName','middleName','dateOfBirth','gender','nationalId','phoneNumber','email','address','employeeNumber','position','employmentType','dateOfJoining','dateOfLeaving','qualifications','isActive','photoUrl','approvalStatus','approvedBy','approvedAt','approvalNotes','createdAt','updatedAt','version','lastModifiedBy']),
   staffDirectory: spec('staff_directory', ['id','institutionId','firstName','lastName','position','photoUrl','email','phoneNumber','isActive','updatedAt']),
-  institutionAdmin: spec('institution_admin', ['id','institutionId','firstName','lastName','position','photoUrl','email','phoneNumber','isActive']),
+  // Always sent in full (built from the never-filtered userOrganizations), so
+  // a merge prunes an admin who has left the school.
+  institutionAdmin: spec('institution_admin', ['id','institutionId','firstName','lastName','position','photoUrl','email','phoneNumber','isActive'], ['id']),
   assessmentTemplates: spec('assessment_templates', ['id','classId','subjectId','name','type','totalMarks','weight','date','createdAt','updatedAt']),
   assessments: spec('assessments', ['id','templateId','classId','subjectId','gradingPeriodId','name','type','totalMarks','weight','date','createdAt','updatedAt']),
   subjectTeachers: spec('subject_teachers', ['id','subjectId','staffId','assignedAt','version','updatedAt','lastModifiedBy'], ['subjectId','staffId']),

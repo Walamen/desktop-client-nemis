@@ -294,6 +294,22 @@ describe('ProvisioningImporter', () => {
     expect(countRows('class_teachers')).toBe(0);
   });
 
+  it('drops a School Admin who left the school on the next merge', () => {
+    // The server sends the whole School Admin roster on every pull (it comes
+    // from the never-filtered userOrganizations), so a name that stops
+    // arriving has left: the DEO Schools page must not keep naming them.
+    const admin = (id: string, firstName: string) => ({
+      id, institutionId: 'school-1', firstName, lastName: 'Doe', position: 'PRINCIPAL',
+      photoUrl: null, email: null, phoneNumber: null, isActive: true,
+    });
+    const importer = new ProvisioningImporter(manager);
+    importer.import(snapshotOf({ ...BASE_DATA, institutionAdmin: [admin('u-old', 'Old')] }), CONTEXT);
+    importer.import(snapshotOf({ institutionAdmin: [admin('u-new', 'New')] }), CONTEXT, { merge: true });
+    expect(
+      manager.connection.prepare('SELECT id FROM institution_admin ORDER BY id').all(),
+    ).toEqual([{ id: 'u-new' }]);
+  });
+
   it('does not prune a locally-pending class_teachers row the delta says nothing about (not yet pushed)', () => {
     // Mirrors the assignments "does not touch a locally-created assignment"
     // guarantee: an INSTITUTION_ADMIN device can assign/remove a teacher
