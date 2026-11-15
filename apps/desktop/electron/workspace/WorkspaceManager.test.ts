@@ -95,5 +95,7 @@ describe('WorkspaceManager.activate', () => {
       workspaces.close();
       fs.rmSync(directory, { recursive: true, force: true });
     }
-  });
+    // Opens two encrypted workspaces, each running every migration: slower
+    // than the 5 s default under a full-suite load.
+  }, 30_000);
 });
