@@ -15,6 +15,7 @@ export * from './school-admin';
 export * from './registry';
 export * from './grade-completions';
 export * from './county-dashboard';
+export * from './deo-dashboard';
 export * from './county-districts';
 export * from './county-schools';
 export * from './county-school-registrations';
