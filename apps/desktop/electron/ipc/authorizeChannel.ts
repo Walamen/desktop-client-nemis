@@ -244,6 +244,7 @@ export const DEO_CHANNELS: ReadonlySet<IpcChannel> = new Set<IpcChannel>([
   IpcChannels.DEO_GET_DASHBOARD,
   IpcChannels.DEO_RESOLVE_ALERT,
   IpcChannels.DEO_LIST_SCHOOLS,
+  IpcChannels.DEO_LIST_SCHOOL_ADMINS,
 ]);
 
 // Office staff follow the module classification of a channel. A session saved

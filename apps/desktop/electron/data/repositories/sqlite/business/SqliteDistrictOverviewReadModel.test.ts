@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createTestContext, type TestContext } from '../../../testing/createTestContext';
-import { SqliteDistrictOverviewReadModel } from './SqliteDistrictOverviewReadModel';
+import { ATTENDANCE_SINCE, SqliteDistrictOverviewReadModel } from './SqliteDistrictOverviewReadModel';
 
 const NOW = '2026-01-01T00:00:00.000Z';
 
@@ -381,6 +381,116 @@ describe('SqliteDistrictOverviewReadModel', () => {
     ]);
   });
 
+  describe('school admin directory', () => {
+    const MONTH = ['2026-11-01T00:00:00.000Z', '2026-12-01T00:00:00.000Z'] as const;
+    function account(id: string, opts: { isActive?: number; photoUrl?: string | null; createdAt?: string | null; lastLoginAt?: string | null } = {}) {
+      run(
+        `INSERT INTO users (id,firstName,lastName,email,isActive,version,updatedAt,photoUrl,createdAt,lastLoginAt)
+         VALUES (?,?, 'Doe', ?, ?, 1, ?, ?, ?, ?)`,
+        id, `First ${id}`, `${id}@moe.gov.lr`, opts.isActive ?? 1, NOW,
+        opts.photoUrl ?? null, opts.createdAt === undefined ? '2025-02-03T00:00:00.000Z' : opts.createdAt,
+        opts.lastLoginAt === undefined ? '2026-11-14T09:00:00.000Z' : opts.lastLoginAt,
+      );
+    }
+    function schoolAdmin(id: string, institutionId: string, first: string) {
+      run(
+        `INSERT INTO institution_admin (id,institutionId,firstName,lastName,position,photoUrl,isActive) VALUES (?,?,?,'Doe','PRINCIPAL',NULL,1)`,
+        id, institutionId, first,
+      );
+    }
+    function staffFor(userId: string, institutionId: string, employeeNumber: string) {
+      seq += 1;
+      run(
+        `INSERT INTO staff (id,institutionId,userId,firstName,lastName,dateOfBirth,gender,phoneNumber,employeeNumber,position,employmentType,dateOfJoining,isActive,createdAt,updatedAt)
+         VALUES (?,?,?,'A','B','1990-01-01','MALE','0770000000',?,'PRINCIPAL','FULL_TIME','2020-01-01',1,?,?)`,
+        `stf-${seq}`, institutionId, userId, employeeNumber, NOW, NOW,
+      );
+    }
+    function reportBy(id: string, schoolId: string, submittedById: string, submittedAt: string) {
+      run(
+        `INSERT INTO reports (id,type,title,description,data,status,comments,schoolId,districtId,countyId,submittedById,reviewedById,submittedAt,reviewedAt,createdAt,updatedAt)
+         VALUES (?,'WEEKLY_SUMMARY','R',NULL,'{}','SUBMITTED',NULL,?,NULL,NULL,?,NULL,?,NULL,?,?)`,
+        id, schoolId, submittedById, submittedAt, NOW, NOW,
+      );
+    }
+
+    it('lists each School Admin of the district with the account details', () => {
+      seedDistrict();
+      account('u-1', { isActive: 0, photoUrl: 'https://img/a.png' });
+      schoolAdmin('u-1', 's-a', 'Ann');
+      account('u-9');
+      schoolAdmin('u-9', 's-other', 'Elsewhere');
+      expect(readModel.listSchoolAdmins('d-1', ...MONTH)).toEqual([
+        {
+          userId: 'u-1',
+          firstName: 'Ann',
+          lastName: 'Doe',
+          photoUrl: 'https://img/a.png',
+          schoolId: 's-a',
+          schoolName: 'Alpha',
+          employeeNumber: null,
+          isActive: false,
+          joinedAt: '2025-02-03T00:00:00.000Z',
+          lastLoginAt: '2026-11-14T09:00:00.000Z',
+          reportsThisMonth: 0,
+        },
+      ]);
+    });
+
+    it('treats an admin whose account row has not synced as active, with no dates', () => {
+      seedDistrict();
+      schoolAdmin('u-2', 's-b', 'Musu');
+      expect(readModel.listSchoolAdmins('d-1', ...MONTH)[0]).toMatchObject({
+        userId: 'u-2',
+        isActive: true,
+        photoUrl: null,
+        joinedAt: null,
+        lastLoginAt: null,
+      });
+    });
+
+    it('takes the employee number from the staff record at that school only', () => {
+      seedDistrict();
+      account('u-1');
+      schoolAdmin('u-1', 's-a', 'Ann');
+      staffFor('u-1', 's-b', 'EMP-OTHER');
+      expect(readModel.listSchoolAdmins('d-1', ...MONTH)[0]!.employeeNumber).toBeNull();
+      run(`DELETE FROM staff`);
+      staffFor('u-1', 's-a', 'EMP-007');
+      expect(readModel.listSchoolAdmins('d-1', ...MONTH)[0]!.employeeNumber).toBe('EMP-007');
+    });
+
+    it('counts reports the admin submitted for that school this month, boundaries included', () => {
+      seedDistrict();
+      account('u-1');
+      schoolAdmin('u-1', 's-a', 'Ann');
+      reportBy('r-1', 's-a', 'u-1', '2026-11-01T00:00:00.000Z');
+      reportBy('r-2', 's-a', 'u-1', '2026-11-30T23:59:59.000Z');
+      reportBy('r-3', 's-a', 'u-1', '2026-10-31T23:59:59.000Z');
+      reportBy('r-4', 's-a', 'u-1', '2026-12-01T00:00:00.000Z');
+      reportBy('r-5', 's-b', 'u-1', '2026-11-10T00:00:00.000Z');
+      reportBy('r-6', 's-a', 'u-other', '2026-11-10T00:00:00.000Z');
+      expect(readModel.listSchoolAdmins('d-1', ...MONTH)[0]!.reportsThisMonth).toBe(2);
+    });
+
+    it('counts open infrastructure issues per school, without school staff requests', () => {
+      seedDistrict();
+      const issue = (id: string, institutionId: string, opts: { type?: string; isResolved?: number; metadata?: string | null } = {}) =>
+        run(
+          `INSERT INTO alerts (id,countyId,districtId,institutionId,type,severity,title,description,isResolved,resolvedAt,resolvedBy,metadata,createdAt,updatedAt)
+           VALUES (?,NULL,NULL,?,?,'HIGH','T','D',?,NULL,NULL,?,?,?)`,
+          id, institutionId, opts.type ?? 'INFRASTRUCTURE_ISSUE', opts.isResolved ?? 0, opts.metadata ?? null, NOW, NOW,
+        );
+      issue('i-1', 's-a');
+      issue('i-2', 's-a');
+      issue('i-3', 's-a', { isResolved: 1 });
+      issue('i-4', 's-a', { type: 'ATTENDANCE_CONCERN' });
+      issue('i-5', 's-a', { metadata: JSON.stringify({ staffId: 'stf-1' }) });
+      issue('i-6', 's-other');
+      expect(readModel.countOpenInfrastructureIssuesBySchool('d-1')).toEqual([{ institutionId: 's-a', count: 2 }]);
+    });
+  });
+
   it('answers the attendance questions quickly at district scale', () => {
     district('d-1', 'Buchanan');
     const insertSchool = db.prepare(
@@ -420,6 +530,15 @@ describe('SqliteDistrictOverviewReadModel', () => {
     expect(last).toHaveLength(100);
     expect(byMonth.map((row) => row.month)).toEqual(['2026-09', '2026-10', '2026-11']);
     expect(byMonth.reduce((total, row) => total + row.records, 0)).toBe(200_000);
-    expect(elapsed).toBeLessThan(1500);
+    // The plan, not the clock, is what proves there is no table scan: the
+    // timing below is only a loose backstop for a much slower machine.
+    const plan = (db.prepare(`EXPLAIN QUERY PLAN SELECT COUNT(*) ${ATTENDANCE_SINCE}`).all('2026-10-17', 'd-1') as { detail: string }[])
+      .map((row) => row.detail)
+      .join(String.fromCharCode(10));
+    // Either attendance index reads only the window (a district device holds
+    // only its own district); what must never happen is a full scan.
+    expect(plan).toMatch(/SEARCH a USING (COVERING )?INDEX idx_attendance_(class_)?date/);
+    expect(plan).not.toMatch(/SCAN a(\s|$)/m);
+    expect(elapsed).toBeLessThan(5000);
   }, 60_000);
 });

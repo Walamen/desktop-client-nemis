@@ -144,7 +144,12 @@ describe('authorizeChannel', () => {
   });
 
   it('allows every DEO channel only for a district education officer', () => {
-    const channels = [IpcChannels.DEO_GET_DASHBOARD, IpcChannels.DEO_RESOLVE_ALERT, IpcChannels.DEO_LIST_SCHOOLS];
+    const channels = [
+      IpcChannels.DEO_GET_DASHBOARD,
+      IpcChannels.DEO_RESOLVE_ALERT,
+      IpcChannels.DEO_LIST_SCHOOLS,
+      IpcChannels.DEO_LIST_SCHOOL_ADMINS,
+    ];
     expect(new Set(channels)).toEqual(new Set(DEO_CHANNELS));
     for (const channel of channels) {
       expect(() => authorizeChannel(channel, workspace(SystemRole.DEO))).not.toThrow();

@@ -2,6 +2,7 @@ import type {
   DistrictAlertRow,
   DistrictOverviewRef,
   DistrictReportRow,
+  DistrictSchoolAdminRow,
   DistrictSchoolRef,
   IDistrictOverviewReadModel,
 } from '@nemis-desktop/application';
@@ -23,6 +24,7 @@ const {
   academicYears,
   alerts,
   reports,
+  users,
 } = TableNames;
 
 /** The district's active schools (institution alias `i`). One parameter. */
@@ -32,7 +34,7 @@ const DISTRICT_SCHOOLS = `i.districtId = ? AND i.isActive = 1`;
  * classes so each class reads its own slice of idx_attendance_class_date
  * instead of scanning the table. Parameters: sinceDate, districtId. A bare
  * YYYY-MM-DD bound also orders correctly against full ISO timestamps. */
-const ATTENDANCE_SINCE = `FROM ${classes} c
+export const ATTENDANCE_SINCE = `FROM ${classes} c
   JOIN ${institutions} i ON i.id = c.institutionId
   JOIN ${attendance} a ON a.classId = c.id AND a.date >= ?
   WHERE ${DISTRICT_SCHOOLS}`;
@@ -299,6 +301,49 @@ export class SqliteDistrictOverviewReadModel implements IDistrictOverviewReadMod
            ORDER BY institutionId ASC, month ASC`,
         )
         .all(districtId, sinceDate) as { institutionId: string; month: string }[];
+    });
+  }
+  listSchoolAdmins(districtId: string, monthStartIso: string, nextMonthIso: string): DistrictSchoolAdminRow[] {
+    return guarded('SqliteDistrictOverviewReadModel.listSchoolAdmins', () => {
+      // institution_admin.id is the user id; the users row carries the
+      // account state. A missing users row reads as an active account with
+      // no dates rather than hiding the admin.
+      const rows = this.#statements
+        .get(
+          `SELECT a.id AS userId, a.firstName, a.lastName,
+                  COALESCE(u.photoUrl, a.photoUrl) AS photoUrl,
+                  i.id AS schoolId, i.name AS schoolName,
+                  (SELECT s.employeeNumber FROM ${staff} s
+                    WHERE s.userId = a.id AND s.institutionId = a.institutionId
+                    ORDER BY s.id LIMIT 1) AS employeeNumber,
+                  COALESCE(u.isActive, 1) AS isActive,
+                  u.createdAt AS joinedAt, u.lastLoginAt AS lastLoginAt,
+                  (SELECT COUNT(*) FROM ${reports} r
+                    WHERE r.submittedById = a.id AND r.schoolId = a.institutionId
+                      AND r.submittedAt >= ? AND r.submittedAt < ?) AS reportsThisMonth
+           FROM ${institutionAdmin} a
+           JOIN ${institutions} i ON i.id = a.institutionId
+           LEFT JOIN ${users} u ON u.id = a.id
+           WHERE ${DISTRICT_SCHOOLS} AND a.isActive = 1`,
+        )
+        .all(monthStartIso, nextMonthIso, districtId) as (Omit<DistrictSchoolAdminRow, 'isActive'> & {
+        isActive: number;
+      })[];
+      return rows.map((row) => ({ ...row, isActive: row.isActive === 1 }));
+    });
+  }
+
+  countOpenInfrastructureIssuesBySchool(districtId: string): { institutionId: string; count: number }[] {
+    return guarded('SqliteDistrictOverviewReadModel.countOpenInfrastructureIssuesBySchool', () => {
+      return this.#statements
+        .get(
+          `SELECT a.institutionId AS institutionId, COUNT(*) AS count
+           FROM ${alerts} a JOIN ${institutions} i ON i.id = a.institutionId
+           WHERE ${DISTRICT_SCHOOLS} AND a.isResolved = 0 AND a.type = 'INFRASTRUCTURE_ISSUE'
+             AND ${notSchoolStaffRequest('a.metadata')}
+           GROUP BY a.institutionId`,
+        )
+        .all(districtId) as { institutionId: string; count: number }[];
     });
   }
 }

@@ -32,6 +32,21 @@ export interface DistrictReportRow {
   readonly submittedAt: string;
 }
 
+/** One School Admin account at one school, before the school's issues are joined in. */
+export interface DistrictSchoolAdminRow {
+  readonly userId: string;
+  readonly firstName: string;
+  readonly lastName: string;
+  readonly photoUrl: string | null;
+  readonly schoolId: string;
+  readonly schoolName: string;
+  readonly employeeNumber: string | null;
+  readonly isActive: boolean;
+  readonly joinedAt: string | null;
+  readonly lastLoginAt: string | null;
+  readonly reportsThisMonth: number;
+}
+
 /** Raw rows and counts for one district, read from this device's synced
  * database. No arithmetic here: GetDeoDashboardUseCase owns it.
  *
@@ -72,4 +87,11 @@ export interface IDistrictOverviewReadModel {
   /** Each month (YYYY-MM) on or after sinceDate in which a school submitted
    * a report; one row per school and month. */
   reportMonthsBySchool(districtId: string, sinceDate: string): { institutionId: string; month: string }[];
+  /** Every School Admin of an active school of the district. reportsThisMonth
+   * counts reports the admin submitted for that school with
+   * monthStartIso <= submittedAt < nextMonthIso. Unordered. */
+  listSchoolAdmins(districtId: string, monthStartIso: string, nextMonthIso: string): DistrictSchoolAdminRow[];
+  /** Unresolved INFRASTRUCTURE_ISSUE alerts per school, school staff
+   * requests excluded; a school with none is absent. */
+  countOpenInfrastructureIssuesBySchool(districtId: string): { institutionId: string; count: number }[];
 }

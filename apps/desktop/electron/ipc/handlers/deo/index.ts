@@ -2,3 +2,4 @@
  * way as county/, school-admin/ and teacher/. */
 export { registerDeoDashboardHandlers } from './dashboard';
 export { registerDeoSchoolHandlers } from './schools';
+export { registerDeoSchoolAdminHandlers } from './school-admins';

@@ -104,6 +104,8 @@ export * from './view-models/deo/deo-dashboard-view-model';
 export * from './view-models/deo/deo-dashboard-views';
 export * from './view-models/deo/deo-schools-view-model';
 export * from './view-models/deo/deo-schools-views';
+export * from './view-models/deo/deo-school-admins-view-model';
+export * from './view-models/deo/deo-school-admins-views';
 export * from './queries/county/get-county-districts-ui-query';
 export * from './queries/county/get-county-district-detail-ui-query';
 export * from './mappers/county/county-districts-view-mapper';

@@ -1,5 +1,6 @@
 import type {
   DistrictAlertRow,
+  DistrictSchoolAdminRow,
   DistrictOverviewRef,
   DistrictReportRow,
   DistrictSchoolRef,
@@ -26,6 +27,8 @@ export class InMemoryDistrictOverviewReadModel implements IDistrictOverviewReadM
   lastSubmissions: { institutionId: string; submittedAt: string }[] = [];
   schoolAdmins: { institutionId: string; name: string }[] = [];
   reportMonths: { institutionId: string; month: string }[] = [];
+  schoolAdminRows: DistrictSchoolAdminRow[] = [];
+  infrastructureIssues: { institutionId: string; count: number }[] = [];
   readonly calls: { method: string; args: unknown[] }[] = [];
 
   #record(method: string, ...args: unknown[]): void {
@@ -94,6 +97,14 @@ export class InMemoryDistrictOverviewReadModel implements IDistrictOverviewReadM
   schoolAdminNameBySchool(districtId: string) {
     this.#record('schoolAdminNameBySchool', districtId);
     return this.schoolAdmins;
+  }
+  listSchoolAdmins(districtId: string, monthStartIso: string, nextMonthIso: string): DistrictSchoolAdminRow[] {
+    this.#record('listSchoolAdmins', districtId, monthStartIso, nextMonthIso);
+    return this.schoolAdminRows;
+  }
+  countOpenInfrastructureIssuesBySchool(districtId: string) {
+    this.#record('countOpenInfrastructureIssuesBySchool', districtId);
+    return this.infrastructureIssues;
   }
   reportMonthsBySchool(districtId: string, sinceDate: string) {
     this.#record('reportMonthsBySchool', districtId, sinceDate);

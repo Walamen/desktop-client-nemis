@@ -1,4 +1,5 @@
-import { ComingSoon } from '@/components/shell/ComingSoon';
+import { DeoSchoolAdminsPage } from '@/components/deo/DeoSchoolAdminsPage';
+
 export default function Page() {
-  return <ComingSoon title="School Admins" />;
+  return <DeoSchoolAdminsPage />;
 }

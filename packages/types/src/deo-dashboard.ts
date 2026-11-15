@@ -101,10 +101,42 @@ export interface DeoSchoolsResult {
   schools: DeoSchoolRow[];
 }
 
+/** One School Admin account, as the School Admin Directory shows it. */
+export interface DeoSchoolAdmin {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  photoUrl: string | null;
+  schoolId: string;
+  schoolName: string;
+  /** The staff record of this user at this school; null when none. */
+  employeeNumber: string | null;
+  /** False = the account is deactivated ("Suspended"). */
+  isActive: boolean;
+  /** Account creation. */
+  joinedAt: string | null;
+  lastLoginAt: string | null;
+  /** Reports this admin submitted for this school in the current calendar month. */
+  reportsThisMonth: number;
+  /** Unresolved INFRASTRUCTURE_ISSUE alerts raised against the school. */
+  openInfrastructureIssues: number;
+}
+
+export interface DeoSchoolAdminsResult {
+  districtId: string | null;
+  district: { id: string; name: string } | null;
+  county: { id: string; name: string } | null;
+  /** By school name, then admin name. */
+  admins: DeoSchoolAdmin[];
+  /** Active schools with no School Admin, by name. */
+  schoolsWithoutAdmin: { id: string; name: string }[];
+}
+
 /** DEO portal calls on `window.nemis.deo`. */
 export interface DeoApi {
   getDashboard(): Promise<DeoDashboardResult>;
   listSchools(): Promise<DeoSchoolsResult>;
+  listSchoolAdmins(): Promise<DeoSchoolAdminsResult>;
   /** Marks an alert reviewed on this device; the outbox syncs it later. */
   resolveAlert(alertId: string): Promise<boolean>;
 }
