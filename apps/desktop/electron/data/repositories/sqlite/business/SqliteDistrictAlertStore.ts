@@ -1,7 +1,7 @@
 import type { IDistrictAlertStore } from '@nemis-desktop/application';
 import { TableNames } from '../../../../database/schema/tableNames';
 import type { RepositoryContext } from '../../base/RepositoryContext';
-import { guarded } from './support';
+import { guarded, notSchoolStaffRequest } from './support';
 
 const { alerts, institutions } = TableNames;
 
@@ -26,6 +26,7 @@ export class SqliteDistrictAlertStore implements IDistrictAlertStore {
             `UPDATE ${alerts}
              SET isResolved = 1, resolvedAt = ?, resolvedBy = ?, updatedAt = ?
              WHERE id = ? AND isResolved = 0
+               AND ${notSchoolStaffRequest('metadata')}
                AND (districtId = ?
                     OR institutionId IN (SELECT i.id FROM ${institutions} i WHERE i.districtId = ?))`,
           )

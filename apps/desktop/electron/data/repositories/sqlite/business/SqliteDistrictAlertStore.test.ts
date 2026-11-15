@@ -76,6 +76,15 @@ describe('SqliteDistrictAlertStore', () => {
     },
   );
 
+  it("leaves a school's own staff request for the school admin to answer", () => {
+    alert('a-request', { institutionId: 's-1' });
+    run(`UPDATE alerts SET metadata = ? WHERE id = 'a-request'`, JSON.stringify({ gradeId: 'g-1', staffId: 'stf-1' }));
+    run(`DELETE FROM sync_queue`);
+    expect(store.resolve('d-1', 'a-request', 'deo-1', NOW)).toBe(false);
+    expect(row('a-request')).toMatchObject({ isResolved: 0 });
+    expect(queued()).toEqual([]);
+  });
+
   it('leaves an already resolved alert as it was', () => {
     expect(store.resolve('d-1', 'a-done', 'deo-1', NOW)).toBe(false);
     expect(row('a-done')).toMatchObject({ resolvedAt: null, resolvedBy: null, updatedAt: STAMP });

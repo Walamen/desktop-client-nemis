@@ -303,6 +303,16 @@ describe('SqliteDistrictOverviewReadModel', () => {
     });
   });
 
+  it("leaves a school's own staff requests out, and survives unreadable metadata", () => {
+    seedDistrict();
+    alert('a-roof', { institutionId: 's-a' });
+    alert('a-request', { institutionId: 's-a' });
+    alert('a-garbled', { institutionId: 's-a' });
+    run(`UPDATE alerts SET metadata = ? WHERE id = 'a-request'`, JSON.stringify({ attendanceId: 'att-1', staffId: 'stf-1' }));
+    run(`UPDATE alerts SET metadata = 'not json' WHERE id = 'a-garbled'`);
+    expect(readModel.listOpenAlerts('d-1').map((row) => row.id).sort()).toEqual(['a-garbled', 'a-roof']);
+  });
+
   it('lists submitted reports newest first, and the newest per school', () => {
     seedDistrict();
     report('r-old', 's-a', '2026-11-01T08:00:00.000Z');

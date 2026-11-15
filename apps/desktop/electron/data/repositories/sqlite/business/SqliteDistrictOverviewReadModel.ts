@@ -8,7 +8,7 @@ import type {
 import { TableNames } from '../../../../database/schema/tableNames';
 import { StatementCache } from '../../base/StatementCache';
 import type { RepositoryContext } from '../../base/RepositoryContext';
-import { guarded } from './support';
+import { guarded, notSchoolStaffRequest } from './support';
 
 const { students, institutions, districts, counties, staff, classes, attendance, terms, academicYears, alerts, reports } =
   TableNames;
@@ -199,6 +199,7 @@ export class SqliteDistrictOverviewReadModel implements IDistrictOverviewReadMod
           `SELECT a.id, a.type, a.severity, a.title, a.description, a.institutionId, a.createdAt
            FROM ${alerts} a
            WHERE a.isResolved = 0
+             AND ${notSchoolStaffRequest('a.metadata')}
              AND (a.districtId = ?
                   OR a.institutionId IN (SELECT i.id FROM ${institutions} i WHERE i.districtId = ?))`,
         )
