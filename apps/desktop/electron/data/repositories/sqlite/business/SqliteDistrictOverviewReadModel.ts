@@ -7,6 +7,7 @@ import type {
   DistrictSchoolRef,
   IDistrictOverviewReadModel,
 } from '@nemis-desktop/application';
+import { GradeLevel } from '@nemis-desktop/types';
 import { TableNames } from '../../../../database/schema/tableNames';
 import { StatementCache } from '../../base/StatementCache';
 import type { RepositoryContext } from '../../base/RepositoryContext';
@@ -31,6 +32,21 @@ const {
   classTeachers,
   classSubjectTeachers,
 } = TableNames;
+
+/** KG, K1, K2, GRADE_1 … GRADE_12: the server's GradeLevel enum order. */
+const GRADE_RANK = new Map<string, number>(Object.values(GradeLevel).map((grade, index) => [grade, index]));
+
+/** The class a teacher's lead subject falls back to: grade order, then
+ * name, then id. Sorted in code, not by SQLite (gradeLevel is TEXT there),
+ * so it matches the server's compareClassesForLead
+ * (Nemis apps/Server/src/common/district/class-lead-order.ts). */
+function compareClassesForLead(
+  a: { id: string; gradeLevel: string; name: string },
+  b: { id: string; gradeLevel: string; name: string },
+): number {
+  const rank = (grade: string) => GRADE_RANK.get(grade) ?? Number.MAX_SAFE_INTEGER;
+  return rank(a.gradeLevel) - rank(b.gradeLevel) || a.name.localeCompare(b.name) || a.id.localeCompare(b.id);
+}
 
 /** The district's active schools (institution alias `i`). One parameter. */
 const DISTRICT_SCHOOLS = `i.districtId = ? AND i.isActive = 1`;
@@ -372,36 +388,50 @@ export class SqliteDistrictOverviewReadModel implements IDistrictOverviewReadMod
       const teachers = this.#statements
         .get(
           `SELECT t.id, t.firstName, t.lastName, t.employeeNumber, t.institutionId AS schoolId,
-                  i.name AS schoolName, t.approvalStatus,
-                  (SELECT c.gradeLevel
-                     FROM (SELECT staffId, classId FROM ${classTeachers}
-                           UNION ALL SELECT staffId, classId FROM ${classSubjectTeachers}) a
-                     JOIN ${classes} c ON c.id = a.classId
-                     JOIN ${academicYears} y ON y.id = c.academicYearId
-                    WHERE a.staffId = t.id AND c.institutionId = t.institutionId AND y.isCurrent = 1
-                    ORDER BY c.gradeLevel, c.name LIMIT 1) AS firstClassGrade
+                  i.name AS schoolName, t.approvalStatus
            FROM ${staff} t JOIN ${institutions} i ON i.id = t.institutionId
            WHERE ${DISTRICT_SCHOOLS} AND t.isActive = 1 AND t.position IN ('TEACHER','ASSISTANT_TEACHER')`,
         )
         .all(districtId) as Array<
-        Omit<DistrictTeacherRow, 'subjects' | 'unassigned' | 'ownedAssessments' | 'ungradedAssessments'>
+        Omit<
+          DistrictTeacherRow,
+          'subjects' | 'firstClassGrade' | 'unassigned' | 'ownedAssessments' | 'ungradedAssessments'
+        >
       >;
       if (teachers.length === 0) return [];
+
+      // Current-year classes at the teacher's own school, by either link.
+      const firstClass = new Map<string, { id: string; gradeLevel: string; name: string }>();
+      for (const row of this.#statements
+        .get(
+          `SELECT DISTINCT x.staffId AS staffId, c.id AS id, c.gradeLevel AS gradeLevel, c.name AS name
+           FROM (SELECT staffId, classId FROM ${classTeachers}
+                 UNION SELECT staffId, classId FROM ${classSubjectTeachers}) x
+           JOIN ${staff} t ON t.id = x.staffId
+           JOIN ${institutions} i ON i.id = t.institutionId
+           JOIN ${classes} c ON c.id = x.classId AND c.institutionId = t.institutionId
+           JOIN ${academicYears} y ON y.id = c.academicYearId AND y.isCurrent = 1
+           WHERE ${DISTRICT_SCHOOLS}`,
+        )
+        .all(districtId) as { staffId: string; id: string; gradeLevel: string; name: string }[]) {
+        const best = firstClass.get(row.staffId);
+        if (!best || compareClassesForLead(row, best) < 0) firstClass.set(row.staffId, row);
+      }
 
       const subjects = new Map<string, string[]>();
       for (const row of this.#statements
         .get(
-          `SELECT DISTINCT x.staffId AS staffId, trim(sj.name) AS name
+          `SELECT DISTINCT x.staffId AS staffId, sj.name AS name
            FROM (SELECT staffId, subjectId FROM ${subjectTeachers}
                  UNION SELECT staffId, subjectId FROM ${classSubjectTeachers}) x
            JOIN ${subjects_} sj ON sj.id = x.subjectId
            JOIN ${staff} t ON t.id = x.staffId JOIN ${institutions} i ON i.id = t.institutionId
-           WHERE ${DISTRICT_SCHOOLS}
-           ORDER BY name`,
+           WHERE ${DISTRICT_SCHOOLS}`,
         )
         .all(districtId) as { staffId: string; name: string }[]) {
         const list = subjects.get(row.staffId) ?? [];
-        if (!list.includes(row.name)) list.push(row.name);
+        const name = row.name.trim();
+        if (!list.includes(name)) list.push(name);
         subjects.set(row.staffId, list);
       }
 
@@ -409,7 +439,7 @@ export class SqliteDistrictOverviewReadModel implements IDistrictOverviewReadMod
         (
           this.#statements
             .get(
-              `WITH cur AS (${CURRENT_ASSESSMENTS_SQL})
+              `WITH cur AS MATERIALIZED (${CURRENT_ASSESSMENTS_SQL})
                SELECT t.id AS staffId, COUNT(cur.id) AS owned,
                       COALESCE(SUM(CASE WHEN cur.graded = 0 THEN 1 ELSE 0 END), 0) AS ungraded
                FROM ${staff} t
@@ -418,7 +448,7 @@ export class SqliteDistrictOverviewReadModel implements IDistrictOverviewReadMod
                               WHERE p.staffId = t.id AND p.classId = cur.classId AND p.subjectId = cur.subjectId)
                      OR EXISTS (SELECT 1 FROM ${subjectTeachers} s
                                  WHERE s.staffId = t.id AND s.subjectId = cur.subjectId))
-               WHERE t.isActive = 1
+               WHERE t.isActive = 1 AND t.position IN ('TEACHER','ASSISTANT_TEACHER')
                GROUP BY t.id`,
             )
             .all(districtId) as { staffId: string; owned: number; ungraded: number }[]
@@ -428,7 +458,8 @@ export class SqliteDistrictOverviewReadModel implements IDistrictOverviewReadMod
       return teachers.map((row) => ({
         ...row,
         subjects: [...(subjects.get(row.id) ?? [])].sort((a, b) => a.localeCompare(b)),
-        unassigned: row.firstClassGrade === null,
+        firstClassGrade: firstClass.get(row.id)?.gradeLevel ?? null,
+        unassigned: !firstClass.has(row.id),
         ownedAssessments: states.get(row.id)?.owned ?? 0,
         ungradedAssessments: states.get(row.id)?.ungraded ?? 0,
       }));

@@ -660,6 +660,46 @@ describe('SqliteDistrictOverviewReadModel', () => {
       expect(rows).toEqual({ 't-pair': [1, 1], 't-subject': [2, 0], 't-none': [0, 0] });
     });
 
+    it('takes the first class in grade order, not text order (KG first, GRADE_2 before GRADE_10)', () => {
+      seedSchool();
+      classIn('c-10', 's-a', 'y-a', 'GRADE_10');
+      classIn('c-g2', 's-a', 'y-a', 'GRADE_2');
+      classIn('c-kg', 's-a', 'y-a', 'KG');
+      classIn('c-g1', 's-a', 'y-a', 'GRADE_1');
+      teacherRow('t-1', 's-a', { lastName: 'A' });
+      teacherRow('t-2', 's-a', { lastName: 'B' });
+      classTeacher('t-1', 'c-10');
+      classTeacher('t-1', 'c-g2');
+      classTeacher('t-2', 'c-g1');
+      classTeacher('t-2', 'c-kg');
+      const rows = Object.fromEntries(readModel.listTeachers('d-1').map((t) => [t.id, t.firstClassGrade]));
+      expect(rows).toEqual({ 't-1': 'GRADE_2', 't-2': 'KG' });
+    });
+
+    it('trims subject names as the server does (tabs and no-break spaces too)', () => {
+      seedSchool();
+      subjectIn('sj-tab', 's-a', 'Science\t');
+      subjectIn('sj-nbsp', 's-a', ' Science');
+      teacherRow('t-1', 's-a');
+      bySubject('t-1', 'sj-tab');
+      bySubject('t-1', 'sj-nbsp');
+      expect(readModel.listTeachers('d-1')[0]!.subjects).toEqual(['Science']);
+    });
+
+    it('owns nothing through a class pair or subject at another school', () => {
+      seedSchool();
+      yearOf('y-b', 's-b', 1);
+      termOf('t-b', 'y-b', 1);
+      classIn('c-b', 's-b', 'y-b', 'GRADE_2');
+      period('gp-b', 's-b', 'y-b', 't-b');
+      teacherRow('t-1', 's-a');
+      pair('t-1', 'c-b', 'sj-m');
+      bySubject('t-1', 'sj-e');
+      assessment('a-b1', 'c-b', 'sj-m', 'gp-b');
+      assessment('a-b2', 'c-b', 'sj-e', 'gp-b');
+      expect(readModel.listTeachers('d-1')[0]).toMatchObject({ ownedAssessments: 0, ungradedAssessments: 0 });
+    });
+
     it('carries the approval status and school name', () => {
       seedSchool();
       teacherRow('t-1', 's-a', { approvalStatus: 'PENDING' });

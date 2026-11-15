@@ -51,6 +51,13 @@ describe('GetDeoTeachersUseCase', () => {
     expect(data.summary).toEqual({ totalTeachers: 3, gradesPending: 1, pendingApproval: 1, unassigned: 1 });
   });
 
+  it('breaks name ties by id, as the server does', async () => {
+    const model = new InMemoryDistrictOverviewReadModel();
+    model.teacherRows = [row('t-b', 'Same'), row('t-a', 'Same')];
+    const { data } = await run(model);
+    expect(data.teachers.map((t) => t.id)).toEqual(['t-a', 't-b']);
+  });
+
   it('reads nothing when no district is assigned', async () => {
     const model = new InMemoryDistrictOverviewReadModel();
     const { data } = await run(model, null);

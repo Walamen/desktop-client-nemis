@@ -40,7 +40,12 @@ export class GetDeoTeachersUseCase implements QueryHandler<
       const teachers = readModel
         .listTeachers(districtId)
         .map(toTeacher)
-        .sort((a, b) => a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName));
+        .sort(
+          (a, b) =>
+            a.lastName.localeCompare(b.lastName) ||
+            a.firstName.localeCompare(b.firstName) ||
+            a.id.localeCompare(b.id),
+        );
       return ok({
         districtId,
         district: district ? { id: district.id, name: district.name } : null,

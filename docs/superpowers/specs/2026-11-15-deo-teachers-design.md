@@ -46,9 +46,9 @@ Active teaching staff (TEACHER, ASSISTANT_TEACHER) at active schools of the dist
 | Field | Rule |
 |---|---|
 | Subjects | names from `subject_teachers` ∪ `class_subject_teachers` (the County rule), distinct, sorted |
-| Subject column | the first subject; else the grade level of their first current-year class; else "General" |
+| Subject column | the first subject (names trimmed in code, as JS `trim()`); else the grade level of their first current-year class at their own school, ordered by grade (KG, K1, K2, GRADE_1 … GRADE_12; never text order), then class name, then id, sorted in code on both sides; else "General" |
 | Attendance | "Not recorded" (grey) |
-| Grades | **Pending**: some current-term assessment they own has no grade. **Submitted**: they own current-term assessments and all have grades. **No assessments**: they own none this term. They own an assessment when they teach its class and subject (`class_subject_teachers`), or teach its subject at that school (`subject_teachers`). The current term is the school's `isCurrent` term, reached through the assessment's grading period. |
+| Grades | **Pending**: some current-term assessment they own has no grade. **Submitted**: they own current-term assessments and all have grades. **No assessments**: they own none this term. They own an assessment when they teach its class and subject (`class_subject_teachers`), or teach its subject at that school (`subject_teachers`). The current term is the school's `isCurrent` term, reached through the assessment's grading period. Both ownership routes require the class to be at the teacher's own school. A grade counts only when its student belongs to the district: the desktop holds only those grades, so the server counts the same. Teachers sort by last name, first name, then id. |
 | Status | **Pending Approval** when `approvalStatus` is not APPROVED; otherwise **Active** |
 | Unassigned | active and no `class_teachers` / `class_subject_teachers` row in a class of the school's current academic year (County Teachers rule) |
 

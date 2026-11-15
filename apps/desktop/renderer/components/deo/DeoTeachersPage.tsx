@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { AlertTriangle, CheckCircle2, Users } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock, Users } from 'lucide-react';
 import { Card, Spinner } from '@nemis-desktop/ui';
 import type { DeoTeacher, TeacherGradesStatus } from '@nemis-desktop/types';
 import {
@@ -201,7 +201,11 @@ export function DeoTeachersPage() {
                           <span
                             className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full ${GRADES_CHIP[row.gradesStatus]}`}
                           >
-                            <CheckCircle2 className="w-3 h-3" />
+                            {row.gradesStatus === 'Submitted' ? (
+                              <CheckCircle2 className="w-3 h-3" aria-hidden />
+                            ) : row.gradesStatus === 'Pending' ? (
+                              <Clock className="w-3 h-3" aria-hidden />
+                            ) : null}
                             {row.gradesStatus}
                           </span>
                         </td>
