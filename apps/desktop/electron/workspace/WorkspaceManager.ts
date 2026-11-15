@@ -68,7 +68,8 @@ export class WorkspaceManager {
       user,
       database,
       data,
-      application: createApplicationComposition(data, user.id),
+      // Only a DISTRICT scope carries a district: every other role gets null.
+      application: createApplicationComposition(data, user.id, undefined, user.scope.districtId ?? null),
       workspaceDir,
     };
     return this.#active;

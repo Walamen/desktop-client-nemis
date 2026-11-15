@@ -69,4 +69,31 @@ describe('WorkspaceManager.activate', () => {
       fs.rmSync(directory, { recursive: true, force: true });
     }
   });
+
+  it('gives a DEO workspace its district, and every other workspace none', async () => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'nemis-workspace-manager-'));
+    const workspaces = new WorkspaceManager({
+      userDataDir: directory,
+      masterKey: 'ab'.repeat(32),
+      device: { deviceName: 'Test', platform: 'win32', osVersion: '11', appVersion: '1' },
+      log: { info() {}, warn() {}, error() {} },
+    });
+    try {
+      const deo: ProvisioningUser = {
+        ...base,
+        id: 'deo-1',
+        role: SystemRole.DEO,
+        scope: { type: DesktopScopeType.DISTRICT, scopeId: 'd-1', districtId: 'd-1' },
+        institutionId: undefined,
+      };
+      const district = workspaces.activate(deo);
+      expect((await district.application.deo.getDashboard()).data.districtId).toBe('d-1');
+
+      const school = workspaces.activate(base);
+      expect((await school.application.deo.getDashboard()).data.districtId).toBeNull();
+    } finally {
+      workspaces.close();
+      fs.rmSync(directory, { recursive: true, force: true });
+    }
+  });
 });

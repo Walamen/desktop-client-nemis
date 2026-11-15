@@ -29,6 +29,8 @@ import type {
   IAssignmentRepository,
   IAssignmentSubmissionRepository,
   ICountyUsersReadModel,
+  IDistrictOverviewReadModel,
+  IDistrictAlertStore,
   ISchoolUsersReadModel,
 } from '@nemis-desktop/application';
 import type { DatabaseLogger, DatabaseManager } from '../../database/DatabaseManager';
@@ -47,6 +49,8 @@ import { SqliteSubjectRepository } from '../repositories/sqlite/business/SqliteS
 import { SqliteInstitutionRepository } from '../repositories/sqlite/business/SqliteInstitutionRepository';
 import { SqliteDistrictRepository } from '../repositories/sqlite/business/SqliteDistrictRepository';
 import { SqliteCountyAnalyticsReadModel } from '../repositories/sqlite/business/SqliteCountyAnalyticsReadModel';
+import { SqliteDistrictOverviewReadModel } from '../repositories/sqlite/business/SqliteDistrictOverviewReadModel';
+import { SqliteDistrictAlertStore } from '../repositories/sqlite/business/SqliteDistrictAlertStore';
 import { SqliteCountyDistrictsReadModel } from '../repositories/sqlite/business/SqliteCountyDistrictsReadModel';
 import { SqliteCountySchoolsReadModel } from '../repositories/sqlite/business/SqliteCountySchoolsReadModel';
 import { SqliteSchoolRegistrationStore } from '../repositories/sqlite/business/SqliteSchoolRegistrationStore';
@@ -119,6 +123,8 @@ export interface DataLayer {
     assignments: IAssignmentRepository;
     assignmentSubmissions: IAssignmentSubmissionRepository;
     countyUsers: ICountyUsersReadModel;
+    districtOverview: IDistrictOverviewReadModel;
+    districtAlerts: IDistrictAlertStore;
     schoolUsers: ISchoolUsersReadModel;
   };
   services: {
@@ -198,6 +204,8 @@ export function createDataLayer(manager: DatabaseManager, log: DatabaseLogger): 
   const assignments = new SqliteAssignmentRepository(context);
   const assignmentSubmissions = new SqliteAssignmentSubmissionRepository(context);
   const countyUsers = new SqliteCountyUsersReadModel(context);
+  const districtOverview = new SqliteDistrictOverviewReadModel(context);
+  const districtAlerts = new SqliteDistrictAlertStore(context);
   const schoolUsers = new SqliteSchoolUsersReadModel(context);
 
   // Services see only the RepositoryError taxonomy: failures of the
@@ -260,6 +268,8 @@ export function createDataLayer(manager: DatabaseManager, log: DatabaseLogger): 
       assignments,
       assignmentSubmissions,
       countyUsers,
+      districtOverview,
+      districtAlerts,
       schoolUsers,
     },
     services: {

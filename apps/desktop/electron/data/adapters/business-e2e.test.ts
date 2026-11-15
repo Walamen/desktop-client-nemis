@@ -150,6 +150,41 @@ describe('business application layer end-to-end against real SQLite', () => {
     });
   });
 
+  it('DEO dashboard and Mark Reviewed run against real SQLite for the workspace district', async () => {
+    const stamp = new Date().toISOString();
+    const db = manager.connection;
+    db.prepare(`INSERT INTO districts (id,name,countyId,isActive) VALUES ('d-1','Buchanan','county-1',1)`).run();
+    db.prepare(`INSERT INTO counties (id,code,name) VALUES ('county-1','GB','Grand Bassa')`).run();
+    db.prepare(
+      `INSERT INTO institutions (id,code,name,type,ownership,countyId,districtId,approvalStatus,version,updatedAt,isActive)
+       VALUES ('s-1','S1','Alpha','PRIMARY','PUBLIC','county-1','d-1','APPROVED',1,?,1)`,
+    ).run(stamp);
+    db.prepare(
+      `INSERT INTO alerts (id,countyId,districtId,institutionId,type,severity,title,description,isResolved,resolvedAt,resolvedBy,metadata,createdAt,updatedAt)
+       VALUES ('a-1',NULL,NULL,'s-1','DATA','CRITICAL','Roof','Leaking',0,NULL,NULL,NULL,?,?)`,
+    ).run(stamp, stamp);
+
+    const app = createApplicationComposition(dataLayer, 'deo-1', silent, 'd-1');
+    const before = (await app.deo.getDashboard()).data;
+    expect(before).toMatchObject({
+      districtId: 'd-1',
+      district: { id: 'd-1', name: 'Buchanan' },
+      county: { id: 'county-1', name: 'Grand Bassa' },
+      stats: { totalSchools: 1 },
+      alertSummary: { total: 1, critical: 1 },
+    });
+    expect(before.schools[0]).toMatchObject({ id: 's-1', complianceStatus: 'Flagged', attendanceRate: null });
+
+    expect((await app.deo.resolveAlert('a-1')).data).toBe(true);
+    const after = (await app.deo.getDashboard()).data;
+    expect(after.alerts).toEqual([]);
+    expect(after.schools[0]).toMatchObject({ complianceStatus: 'Compliant' });
+
+    // Any other workspace has no district: nothing to read, nothing to resolve.
+    const other = createApplicationComposition(dataLayer, 'test-user', silent);
+    expect((await other.deo.getDashboard()).data.districtId).toBeNull();
+  });
+
   it('academic foundation: year -> term -> class -> subject -> assignment, real SQLite joins', async () => {
     seedInstitution();
     const app = createApplicationComposition(dataLayer, 'test-user', silent);

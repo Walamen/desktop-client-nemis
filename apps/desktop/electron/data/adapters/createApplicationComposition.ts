@@ -27,9 +27,12 @@ export function createApplicationComposition(
   dataLayer: DataLayer,
   currentUserId: string,
   logger: IAppLogger = new ConsoleLogger(),
+  /** The district of a DEO workspace (the session scope); null otherwise. */
+  currentDistrictId: string | null = null,
 ): ApplicationLayer {
   const ports: ApplicationPorts = {
     currentUserId,
+    currentDistrictId,
     // Infra — real SQLite.
     deviceGateway: new DeviceGatewayAdapter(dataLayer.repositories.devices),
     settingsGateway: new SettingsGatewayAdapter(
@@ -61,6 +64,8 @@ export function createApplicationComposition(
     countyAudit: dataLayer.repositories.countyAudit,
     countySettings: dataLayer.repositories.countySettings,
     countyUsers: dataLayer.repositories.countyUsers,
+    districtOverview: dataLayer.repositories.districtOverview,
+    districtAlerts: dataLayer.repositories.districtAlerts,
     schoolUsers: dataLayer.repositories.schoolUsers,
     users: dataLayer.repositories.users,
     academicYears: dataLayer.repositories.academicYears,
