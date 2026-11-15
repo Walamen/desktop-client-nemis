@@ -90,6 +90,7 @@ export * from './use-cases/deo/get-deo-dashboard';
 export * from './use-cases/deo/resolve-district-alert';
 export * from './use-cases/deo/get-deo-schools';
 export * from './use-cases/deo/get-deo-school-admins';
+export * from './use-cases/deo/get-deo-teachers';
 export * from './use-cases/deo/district-school-rows';
 export * from './services/deo-application-service';
 export * from './dto/county/county-districts-dto';

@@ -47,6 +47,27 @@ export interface DistrictSchoolAdminRow {
   readonly reportsThisMonth: number;
 }
 
+/** One teaching staff member before the grade state and lead subject are derived. */
+export interface DistrictTeacherRow {
+  readonly id: string;
+  readonly firstName: string;
+  readonly lastName: string;
+  readonly employeeNumber: string;
+  readonly schoolId: string;
+  readonly schoolName: string;
+  readonly approvalStatus: string;
+  /** Distinct, trimmed, sorted. */
+  readonly subjects: string[];
+  /** Grade level of their first current-year class (by grade, then name). */
+  readonly firstClassGrade: string | null;
+  /** No class in the school's current academic year. */
+  readonly unassigned: boolean;
+  /** Current-term assessments they own (class+subject pair, or subject at the school). */
+  readonly ownedAssessments: number;
+  /** Of those, the ones with no grade at all. */
+  readonly ungradedAssessments: number;
+}
+
 /** Raw rows and counts for one district, read from this device's synced
  * database. No arithmetic here: GetDeoDashboardUseCase owns it.
  *
@@ -94,4 +115,6 @@ export interface IDistrictOverviewReadModel {
   /** Unresolved INFRASTRUCTURE_ISSUE alerts per school, school staff
    * requests excluded; a school with none is absent. */
   countOpenInfrastructureIssuesBySchool(districtId: string): { institutionId: string; count: number }[];
+  /** Active TEACHER / ASSISTANT_TEACHER staff of the district's active schools. Unordered. */
+  listTeachers(districtId: string): DistrictTeacherRow[];
 }

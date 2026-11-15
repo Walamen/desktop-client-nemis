@@ -48,6 +48,7 @@ import { mergeOutboxEdits } from './046-merge-outbox-edits';
 import { neverMergeIntoSentRows } from './047-never-merge-into-sent-rows';
 import { addUserOrganizationModules } from './048-add-user-organization-modules';
 import { addInstitutionAdminUserId } from './049-add-institution-admin-user-id';
+import { addGradesAssessmentIndex } from './050-add-grades-assessment-index';
 
 /**
  * Every migration, ascending by version. Append only — never edit or reorder
@@ -103,4 +104,5 @@ export const migrations: readonly Migration[] = [
   neverMergeIntoSentRows,
   addUserOrganizationModules,
   addInstitutionAdminUserId,
+  addGradesAssessmentIndex,
 ];

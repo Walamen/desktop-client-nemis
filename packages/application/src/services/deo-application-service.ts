@@ -1,15 +1,22 @@
-import type { DeoDashboardResult, DeoSchoolAdminsResult, DeoSchoolsResult } from '@nemis-desktop/types';
+import type {
+  DeoDashboardResult,
+  DeoSchoolAdminsResult,
+  DeoSchoolsResult,
+  DeoTeachersResult,
+} from '@nemis-desktop/types';
 import type { ApplicationResponse } from '../core/response';
 import type { GetDeoDashboardUseCase } from '../use-cases/deo/get-deo-dashboard';
 import type { ResolveDistrictAlertUseCase } from '../use-cases/deo/resolve-district-alert';
 import type { GetDeoSchoolsUseCase } from '../use-cases/deo/get-deo-schools';
 import type { GetDeoSchoolAdminsUseCase } from '../use-cases/deo/get-deo-school-admins';
+import type { GetDeoTeachersUseCase } from '../use-cases/deo/get-deo-teachers';
 
 export interface DeoApplicationServiceDeps {
   getDashboard: GetDeoDashboardUseCase;
   resolveAlert: ResolveDistrictAlertUseCase;
   listSchools: GetDeoSchoolsUseCase;
   listSchoolAdmins: GetDeoSchoolAdminsUseCase;
+  listTeachers: GetDeoTeachersUseCase;
 }
 
 /** Everything the DEO (district) portal asks of the application layer. */
@@ -26,6 +33,10 @@ export class DeoApplicationService {
 
   listSchoolAdmins(): Promise<ApplicationResponse<DeoSchoolAdminsResult>> {
     return this.deps.listSchoolAdmins.execute({});
+  }
+
+  listTeachers(): Promise<ApplicationResponse<DeoTeachersResult>> {
+    return this.deps.listTeachers.execute({});
   }
 
   resolveAlert(alertId: string): Promise<ApplicationResponse<boolean>> {

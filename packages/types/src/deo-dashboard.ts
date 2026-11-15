@@ -132,11 +132,49 @@ export interface DeoSchoolAdminsResult {
   schoolsWithoutAdmin: { id: string; name: string }[];
 }
 
+export type TeacherGradesStatus = 'Pending' | 'Submitted' | 'No assessments';
+
+/** One teacher, as DEO Teacher Monitoring shows them. */
+export interface DeoTeacher {
+  id: string;
+  firstName: string;
+  lastName: string;
+  employeeNumber: string;
+  schoolId: string;
+  schoolName: string;
+  /** Distinct, sorted: subject_teachers ∪ class_subject_teachers. */
+  subjects: string[];
+  /** First subject, else first current-year class grade level, else "General". */
+  leadSubject: string;
+  gradesStatus: TeacherGradesStatus;
+  /** approvalStatus is not APPROVED. */
+  pendingApproval: boolean;
+  /** No class in the school's current academic year. */
+  unassigned: boolean;
+}
+
+export interface DeoTeachersSummary {
+  totalTeachers: number;
+  gradesPending: number;
+  pendingApproval: number;
+  unassigned: number;
+}
+
+export interface DeoTeachersResult {
+  districtId: string | null;
+  district: { id: string; name: string } | null;
+  county: { id: string; name: string } | null;
+  /** By last name, then first name. */
+  teachers: DeoTeacher[];
+  summary: DeoTeachersSummary;
+}
+
 /** DEO portal calls on `window.nemis.deo`. */
 export interface DeoApi {
   getDashboard(): Promise<DeoDashboardResult>;
   listSchools(): Promise<DeoSchoolsResult>;
   listSchoolAdmins(): Promise<DeoSchoolAdminsResult>;
+  listTeachers(): Promise<DeoTeachersResult>;
   /** Marks an alert reviewed on this device; the outbox syncs it later. */
   resolveAlert(alertId: string): Promise<boolean>;
 }

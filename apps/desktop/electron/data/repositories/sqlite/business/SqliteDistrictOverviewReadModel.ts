@@ -3,6 +3,7 @@ import type {
   DistrictOverviewRef,
   DistrictReportRow,
   DistrictSchoolAdminRow,
+  DistrictTeacherRow,
   DistrictSchoolRef,
   IDistrictOverviewReadModel,
 } from '@nemis-desktop/application';
@@ -25,6 +26,10 @@ const {
   alerts,
   reports,
   users,
+  subjects: subjects_,
+  subjectTeachers,
+  classTeachers,
+  classSubjectTeachers,
 } = TableNames;
 
 /** The district's active schools (institution alias `i`). One parameter. */
@@ -38,6 +43,19 @@ export const ATTENDANCE_SINCE = `FROM ${classes} c
   JOIN ${institutions} i ON i.id = c.institutionId
   JOIN ${attendance} a ON a.classId = c.id AND a.date >= ?
   WHERE ${DISTRICT_SCHOOLS}`;
+
+/** The district's current-term assessments, each with whether it has any
+ * grade (through idx_grades_assessment, migration 050). One parameter: the
+ * district id. Exported for the query-plan test. */
+export const CURRENT_ASSESSMENTS_SQL = `SELECT a.id, a.classId, a.subjectId, c.institutionId,
+    EXISTS (SELECT 1 FROM grades g WHERE g.assessmentId = a.id) AS graded
+  FROM assessments a
+  JOIN classes c ON c.id = a.classId
+  JOIN institutions i ON i.id = c.institutionId
+  JOIN grading_periods gp ON gp.id = a.gradingPeriodId
+  JOIN terms tm ON tm.id = gp.termId AND tm.isCurrent = 1
+  JOIN academic_years y ON y.id = tm.academicYearId AND y.isCurrent = 1
+  WHERE i.districtId = ? AND i.isActive = 1`;
 
 const ATTENDED = `SUM(CASE WHEN a.status IN ('PRESENT','LATE') THEN 1 ELSE 0 END)`;
 
@@ -347,6 +365,73 @@ export class SqliteDistrictOverviewReadModel implements IDistrictOverviewReadMod
            GROUP BY a.institutionId`,
         )
         .all(districtId) as { institutionId: string; count: number }[];
+    });
+  }
+  listTeachers(districtId: string): DistrictTeacherRow[] {
+    return guarded('SqliteDistrictOverviewReadModel.listTeachers', () => {
+      const teachers = this.#statements
+        .get(
+          `SELECT t.id, t.firstName, t.lastName, t.employeeNumber, t.institutionId AS schoolId,
+                  i.name AS schoolName, t.approvalStatus,
+                  (SELECT c.gradeLevel
+                     FROM (SELECT staffId, classId FROM ${classTeachers}
+                           UNION ALL SELECT staffId, classId FROM ${classSubjectTeachers}) a
+                     JOIN ${classes} c ON c.id = a.classId
+                     JOIN ${academicYears} y ON y.id = c.academicYearId
+                    WHERE a.staffId = t.id AND c.institutionId = t.institutionId AND y.isCurrent = 1
+                    ORDER BY c.gradeLevel, c.name LIMIT 1) AS firstClassGrade
+           FROM ${staff} t JOIN ${institutions} i ON i.id = t.institutionId
+           WHERE ${DISTRICT_SCHOOLS} AND t.isActive = 1 AND t.position IN ('TEACHER','ASSISTANT_TEACHER')`,
+        )
+        .all(districtId) as Array<
+        Omit<DistrictTeacherRow, 'subjects' | 'unassigned' | 'ownedAssessments' | 'ungradedAssessments'>
+      >;
+      if (teachers.length === 0) return [];
+
+      const subjects = new Map<string, string[]>();
+      for (const row of this.#statements
+        .get(
+          `SELECT DISTINCT x.staffId AS staffId, trim(sj.name) AS name
+           FROM (SELECT staffId, subjectId FROM ${subjectTeachers}
+                 UNION SELECT staffId, subjectId FROM ${classSubjectTeachers}) x
+           JOIN ${subjects_} sj ON sj.id = x.subjectId
+           JOIN ${staff} t ON t.id = x.staffId JOIN ${institutions} i ON i.id = t.institutionId
+           WHERE ${DISTRICT_SCHOOLS}
+           ORDER BY name`,
+        )
+        .all(districtId) as { staffId: string; name: string }[]) {
+        const list = subjects.get(row.staffId) ?? [];
+        if (!list.includes(row.name)) list.push(row.name);
+        subjects.set(row.staffId, list);
+      }
+
+      const states = new Map(
+        (
+          this.#statements
+            .get(
+              `WITH cur AS (${CURRENT_ASSESSMENTS_SQL})
+               SELECT t.id AS staffId, COUNT(cur.id) AS owned,
+                      COALESCE(SUM(CASE WHEN cur.graded = 0 THEN 1 ELSE 0 END), 0) AS ungraded
+               FROM ${staff} t
+               JOIN cur ON cur.institutionId = t.institutionId
+                AND (EXISTS (SELECT 1 FROM ${classSubjectTeachers} p
+                              WHERE p.staffId = t.id AND p.classId = cur.classId AND p.subjectId = cur.subjectId)
+                     OR EXISTS (SELECT 1 FROM ${subjectTeachers} s
+                                 WHERE s.staffId = t.id AND s.subjectId = cur.subjectId))
+               WHERE t.isActive = 1
+               GROUP BY t.id`,
+            )
+            .all(districtId) as { staffId: string; owned: number; ungraded: number }[]
+        ).map((row) => [row.staffId, row]),
+      );
+
+      return teachers.map((row) => ({
+        ...row,
+        subjects: [...(subjects.get(row.id) ?? [])].sort((a, b) => a.localeCompare(b)),
+        unassigned: row.firstClassGrade === null,
+        ownedAssessments: states.get(row.id)?.owned ?? 0,
+        ungradedAssessments: states.get(row.id)?.ungraded ?? 0,
+      }));
     });
   }
 }

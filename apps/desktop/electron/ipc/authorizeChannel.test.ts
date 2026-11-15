@@ -149,6 +149,7 @@ describe('authorizeChannel', () => {
       IpcChannels.DEO_RESOLVE_ALERT,
       IpcChannels.DEO_LIST_SCHOOLS,
       IpcChannels.DEO_LIST_SCHOOL_ADMINS,
+      IpcChannels.DEO_LIST_TEACHERS,
     ];
     expect(new Set(channels)).toEqual(new Set(DEO_CHANNELS));
     for (const channel of channels) {

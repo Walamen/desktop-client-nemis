@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createTestContext, type TestContext } from '../../../testing/createTestContext';
-import { ATTENDANCE_SINCE, SqliteDistrictOverviewReadModel } from './SqliteDistrictOverviewReadModel';
+import {
+  ATTENDANCE_SINCE,
+  CURRENT_ASSESSMENTS_SQL,
+  SqliteDistrictOverviewReadModel,
+} from './SqliteDistrictOverviewReadModel';
 
 const NOW = '2026-01-01T00:00:00.000Z';
 
@@ -520,6 +524,158 @@ describe('SqliteDistrictOverviewReadModel', () => {
       issue('i-5', 's-a', { metadata: JSON.stringify({ staffId: 'stf-1' }) });
       issue('i-6', 's-other');
       expect(readModel.countOpenInfrastructureIssuesBySchool('d-1')).toEqual([{ institutionId: 's-a', count: 2 }]);
+    });
+  });
+
+  describe('teacher monitoring', () => {
+    function teacherRow(id: string, institutionId: string, opts: { position?: string; isActive?: number; approvalStatus?: string; lastName?: string } = {}) {
+      run(
+        `INSERT INTO staff (id,institutionId,firstName,lastName,dateOfBirth,gender,phoneNumber,employeeNumber,position,employmentType,dateOfJoining,isActive,approvalStatus,createdAt,updatedAt)
+         VALUES (?,?,'First',?,'1990-01-01','FEMALE','0770000000',?,?,'FULL_TIME','2020-01-01',?,?,?,?)`,
+        id, institutionId, opts.lastName ?? `Last ${id}`, `E-${id}`, opts.position ?? 'TEACHER', opts.isActive ?? 1,
+        opts.approvalStatus ?? 'APPROVED', NOW, NOW,
+      );
+    }
+    function yearOf(id: string, institutionId: string, isCurrent: number) {
+      run(
+        `INSERT INTO academic_years (id,institutionId,code,startDate,endDate,isCurrent,status,version,updatedAt)
+         VALUES (?,?,?, '2026-01-01','2026-12-31',?,?,1,?)`,
+        id, institutionId, id, isCurrent, isCurrent ? 'ACTIVE' : 'SETUP', NOW,
+      );
+    }
+    function termOf(id: string, yearId: string, isCurrent: number) {
+      run(
+        `INSERT INTO terms (id,academicYearId,name,startDate,endDate,isCurrent,version,updatedAt) VALUES (?,?,?,'2026-01-01','2026-12-31',?,1,?)`,
+        id, yearId, id, isCurrent, NOW,
+      );
+    }
+    function classIn(id: string, institutionId: string, yearId: string, gradeLevel: string) {
+      run(
+        `INSERT INTO classes (id,institutionId,academicYearId,name,gradeLevel,isActive,version,updatedAt) VALUES (?,?,?,?,?,1,1,?)`,
+        id, institutionId, yearId, `Class ${id}`, gradeLevel, NOW,
+      );
+    }
+    function subjectIn(id: string, institutionId: string, name: string) {
+      run(`INSERT INTO subjects (id,institutionId,name,code,isActive,version,updatedAt) VALUES (?,?,?,?,1,1,?)`, id, institutionId, name, id, NOW);
+    }
+    function period(id: string, institutionId: string, yearId: string, termId: string) {
+      run(
+        `INSERT INTO grading_periods (id,institutionId,academicYearId,termId,name,code,periodType,sequence,maxMarks,passingMarks,startDate,endDate,isActive,createdAt,updatedAt)
+         VALUES (?,?,?,?,?,?,'PERIOD',1,100,50,'2026-01-01','2026-12-31',1,?,?)`,
+        id, institutionId, yearId, termId, id, id, NOW, NOW,
+      );
+    }
+    function assessment(id: string, classId: string, subjectId: string, gradingPeriodId: string) {
+      run(
+        `INSERT INTO assessment_templates (id,classId,subjectId,name,type,totalMarks,weight,date,createdAt,updatedAt)
+         VALUES (?,?,?,?,'TEST',100,1,'2026-11-01',?,?)`,
+        `tpl-${id}`, classId, subjectId, id, NOW, NOW,
+      );
+      run(
+        `INSERT INTO assessments (id,templateId,classId,subjectId,gradingPeriodId,name,type,totalMarks,weight,date,createdAt,updatedAt)
+         VALUES (?,?,?,?,?,?,'TEST',100,1,'2026-11-01',?,?)`,
+        id, `tpl-${id}`, classId, subjectId, gradingPeriodId, id, NOW, NOW,
+      );
+    }
+    function grade(id: string, assessmentId: string, classId: string, subjectId: string, gradingPeriodId: string) {
+      run(
+        `INSERT INTO grades (id,studentId,subjectId,assessmentId,marksObtained,classId,gradingPeriodId,isPublished,maxMarks,status,createdAt,updatedAt)
+         VALUES (?,'st-1',?,?,80,?,?,0,100,'DRAFT',?,?)`,
+        id, subjectId, assessmentId, classId, gradingPeriodId, NOW, NOW,
+      );
+    }
+    const pair = (staffId: string, classId: string, subjectId: string) =>
+      run(`INSERT INTO class_subject_teachers (id,classId,subjectId,staffId,assignedAt,version,updatedAt) VALUES (?,?,?,?,?,1,?)`, `cst-${staffId}-${classId}-${subjectId}`, classId, subjectId, staffId, NOW, NOW);
+    const bySubject = (staffId: string, subjectId: string) =>
+      run(`INSERT INTO subject_teachers (id,subjectId,staffId,assignedAt,version,updatedAt) VALUES (?,?,?,?,1,?)`, `st-${staffId}-${subjectId}`, subjectId, staffId, NOW, NOW);
+    const classTeacher = (staffId: string, classId: string) =>
+      run(`INSERT INTO class_teachers (id,classId,staffId,isClassTeacher,assignedAt,version,updatedAt) VALUES (?,?,?,1,?,1,?)`, `ct-${staffId}-${classId}`, classId, staffId, NOW, NOW);
+
+    /** s-a: current year y-a (term t-a current, t-old past), last year y-past. */
+    function seedSchool() {
+      seedDistrict();
+      yearOf('y-a', 's-a', 1);
+      yearOf('y-past', 's-a', 0);
+      termOf('t-a', 'y-a', 1);
+      termOf('t-old', 'y-a', 0);
+      termOf('t-past', 'y-past', 1);
+      classIn('c-1', 's-a', 'y-a', 'GRADE_3');
+      classIn('c-2', 's-a', 'y-a', 'GRADE_1');
+      classIn('c-past', 's-a', 'y-past', 'GRADE_9');
+      subjectIn('sj-m', 's-a', 'Mathematics');
+      subjectIn('sj-e', 's-a', ' English ');
+      period('gp-a', 's-a', 'y-a', 't-a');
+      period('gp-old', 's-a', 'y-a', 't-old');
+      period('gp-past', 's-a', 'y-past', 't-past');
+    }
+
+    it('lists active teaching staff of the district only', () => {
+      seedSchool();
+      teacherRow('t-1', 's-a');
+      teacherRow('t-2', 's-a', { position: 'PRINCIPAL' });
+      teacherRow('t-3', 's-a', { isActive: 0 });
+      teacherRow('t-4', 's-other');
+      teacherRow('t-5', 's-off');
+      expect(readModel.listTeachers('d-1').map((t) => t.id)).toEqual(['t-1']);
+    });
+
+    it('reads subjects from both assignment tables, trimmed and distinct', () => {
+      seedSchool();
+      teacherRow('t-1', 's-a');
+      bySubject('t-1', 'sj-m');
+      pair('t-1', 'c-1', 'sj-e');
+      pair('t-1', 'c-2', 'sj-m');
+      expect(readModel.listTeachers('d-1')[0]).toMatchObject({
+        subjects: ['English', 'Mathematics'],
+        firstClassGrade: 'GRADE_1',
+        unassigned: false,
+      });
+    });
+
+    it('is unassigned with no class in the current year, even with a past one', () => {
+      seedSchool();
+      teacherRow('t-1', 's-a');
+      classTeacher('t-1', 'c-past');
+      expect(readModel.listTeachers('d-1')[0]).toMatchObject({ firstClassGrade: null, unassigned: true });
+    });
+
+    it('counts owned and ungraded current-term assessments by class pair or by subject', () => {
+      seedSchool();
+      teacherRow('t-pair', 's-a');
+      teacherRow('t-subject', 's-a');
+      teacherRow('t-none', 's-a');
+      pair('t-pair', 'c-1', 'sj-m');
+      bySubject('t-subject', 'sj-e');
+      assessment('a-1', 'c-1', 'sj-m', 'gp-a'); // t-pair, ungraded
+      assessment('a-2', 'c-2', 'sj-m', 'gp-a'); // other class: nobody's
+      assessment('a-3', 'c-1', 'sj-e', 'gp-a'); // t-subject, graded
+      assessment('a-4', 'c-2', 'sj-e', 'gp-a'); // t-subject, graded
+      assessment('a-5', 'c-1', 'sj-m', 'gp-old'); // past term: ignored
+      assessment('a-6', 'c-past', 'sj-e', 'gp-past'); // past year: ignored
+      grade('g-1', 'a-3', 'c-1', 'sj-e', 'gp-a');
+      grade('g-2', 'a-4', 'c-2', 'sj-e', 'gp-a');
+      const rows = Object.fromEntries(
+        readModel.listTeachers('d-1').map((t) => [t.id, [t.ownedAssessments, t.ungradedAssessments]]),
+      );
+      expect(rows).toEqual({ 't-pair': [1, 1], 't-subject': [2, 0], 't-none': [0, 0] });
+    });
+
+    it('carries the approval status and school name', () => {
+      seedSchool();
+      teacherRow('t-1', 's-a', { approvalStatus: 'PENDING' });
+      expect(readModel.listTeachers('d-1')[0]).toMatchObject({
+        approvalStatus: 'PENDING',
+        schoolId: 's-a',
+        schoolName: 'Alpha',
+        employeeNumber: 'E-t-1',
+      });
+    });
+
+    it('looks grades up by assessment through an index', () => {
+      const plan = (db.prepare(`EXPLAIN QUERY PLAN ${CURRENT_ASSESSMENTS_SQL}`).all('d-1') as { detail: string }[])
+        .map((row) => row.detail)
+        .join(String.fromCharCode(10));
+      expect(plan).toMatch(/USING (COVERING )?INDEX idx_grades_assessment/);
     });
   });
 

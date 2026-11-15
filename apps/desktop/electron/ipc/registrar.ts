@@ -54,6 +54,7 @@ import { registerAssignmentHandlers } from '@app/ipc/handlers/teacher/assignment
 import {
   registerDeoDashboardHandlers,
   registerDeoSchoolAdminHandlers,
+  registerDeoTeacherHandlers,
   registerDeoSchoolHandlers,
 } from '@app/ipc/handlers/deo';
 // County (CEO) portal — see electron/ipc/handlers/county/.
@@ -116,6 +117,7 @@ export function registerIpcHandlers(
   registerDeoDashboardHandlers(securedHandle, app);
   registerDeoSchoolHandlers(securedHandle, app);
   registerDeoSchoolAdminHandlers(securedHandle, app);
+  registerDeoTeacherHandlers(securedHandle, app);
   registerCountyDistrictHandlers(securedHandle, app);
   registerCountySchoolHandlers(securedHandle, app);
   registerCountyGuardianHandlers(securedHandle, app);

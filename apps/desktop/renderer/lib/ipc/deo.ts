@@ -9,5 +9,6 @@ export const deoIpc = {
     resolveAlert: (alertId) => query(() => deoBridge.resolveAlert(alertId)),
     listSchools: () => query(() => deoBridge.listSchools()),
     listSchoolAdmins: () => query(() => deoBridge.listSchoolAdmins()),
+    listTeachers: () => query(() => deoBridge.listTeachers()),
   }),
 };
