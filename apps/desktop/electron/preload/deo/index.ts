@@ -5,6 +5,7 @@ import { invoke } from '../invoke';
 export const deoDashboardApi: DeoApi = {
   getDashboard: () => invoke(IpcChannels.DEO_GET_DASHBOARD),
   resolveAlert: (alertId) => invoke(IpcChannels.DEO_RESOLVE_ALERT, alertId),
+  listSchools: () => invoke(IpcChannels.DEO_LIST_SCHOOLS),
 };
 
 /** The NemisApi slice the DEO (district) portal owns. Add each new area as

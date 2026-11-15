@@ -51,7 +51,7 @@ import { YearStructureCopyService } from '@app/data/services/YearStructureCopySe
 import { registerTeacherDashboardHandlers } from '@app/ipc/handlers/teacher/dashboard';
 import { registerAssignmentHandlers } from '@app/ipc/handlers/teacher/assignments';
 // DEO (district) portal — see electron/ipc/handlers/deo/.
-import { registerDeoDashboardHandlers } from '@app/ipc/handlers/deo';
+import { registerDeoDashboardHandlers, registerDeoSchoolHandlers } from '@app/ipc/handlers/deo';
 // County (CEO) portal — see electron/ipc/handlers/county/.
 import {
   registerCountyDashboardHandlers,
@@ -110,6 +110,7 @@ export function registerIpcHandlers(
   registerDashboardHandlers(securedHandle, app);
   registerCountyDashboardHandlers(securedHandle, app);
   registerDeoDashboardHandlers(securedHandle, app);
+  registerDeoSchoolHandlers(securedHandle, app);
   registerCountyDistrictHandlers(securedHandle, app);
   registerCountySchoolHandlers(securedHandle, app);
   registerCountyGuardianHandlers(securedHandle, app);

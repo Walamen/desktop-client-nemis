@@ -7,5 +7,6 @@ export const deoIpc = {
   deo: group<DeoApplicationService>('deo', {
     getDashboard: () => query(() => deoBridge.getDashboard()),
     resolveAlert: (alertId) => query(() => deoBridge.resolveAlert(alertId)),
+    listSchools: () => query(() => deoBridge.listSchools()),
   }),
 };
