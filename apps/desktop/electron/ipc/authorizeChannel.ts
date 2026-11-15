@@ -237,6 +237,14 @@ export const COUNTY_ADMIN_CHANNELS: ReadonlySet<IpcChannel> = new Set<IpcChannel
   IpcChannels.COUNTY_BULK_CREATE_USERS,
 ]);
 
+// DEO (district) portal — district-wide aggregates and the one write the
+// dashboard makes. The use cases scope everything to the district of the
+// signed-in officer; no other role's screens use them.
+export const DEO_CHANNELS: ReadonlySet<IpcChannel> = new Set<IpcChannel>([
+  IpcChannels.DEO_GET_DASHBOARD,
+  IpcChannels.DEO_RESOLVE_ALERT,
+]);
+
 // Office staff follow the module classification of a channel. A session saved
 // by an older build has no modules; that reads as an empty set.
 function assertOfficeAccess(workspaces: WorkspaceManager, access: ChannelAccess): void {
@@ -299,6 +307,9 @@ export function authorizeChannel(channel: IpcChannel, workspaces: WorkspaceManag
   }
   if (COUNTY_ADMIN_CHANNELS.has(channel) && role !== SystemRole.COUNTY_ADMIN) {
     throw new ForbiddenError('This view requires a county administrator workspace.');
+  }
+  if (DEO_CHANNELS.has(channel) && role !== SystemRole.DEO) {
+    throw new ForbiddenError('This view requires a district education officer workspace.');
   }
   // Every other channel (identity, device, settings, sync, generic
   // schoolAdmin records, and TEACHER_GET_DASHBOARD) stays open to any

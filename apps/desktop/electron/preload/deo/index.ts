@@ -1,4 +1,14 @@
-/** DEO portal — no NemisApi channels of its own yet. Add DEO-specific
- * preload API pieces here, the same way school-admin/ and teacher/ are
- * organized, once new IPC channels exist for this portal. */
-export {};
+import { IpcChannels } from '@nemis-desktop/types';
+import type { DeoApi } from '@nemis-desktop/types';
+import { invoke } from '../invoke';
+
+export const deoDashboardApi: DeoApi = {
+  getDashboard: () => invoke(IpcChannels.DEO_GET_DASHBOARD),
+  resolveAlert: (alertId) => invoke(IpcChannels.DEO_RESOLVE_ALERT, alertId),
+};
+
+/** The NemisApi slice the DEO (district) portal owns. Add each new area as
+ * its own file and spread it in here, the same way county/ is organized. */
+export const deoApi = {
+  deo: { ...deoDashboardApi },
+};

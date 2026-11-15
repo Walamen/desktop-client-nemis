@@ -59,6 +59,7 @@ import type {
   SchoolSummaryResult,
 } from './dashboard';
 import type { CountyDashboardResult } from './county-dashboard';
+import type { DeoApi } from './deo-dashboard';
 import type {
   CreateSchoolUserRequest,
   CreateSchoolUserResult,
@@ -500,6 +501,7 @@ export interface NemisApi {
   settings: SettingsApi;
   dashboard: DashboardApi;
   county: CountyApi;
+  deo: DeoApi;
   school: SchoolApi;
   institution: InstitutionApi;
   academicYear: AcademicYearApi;

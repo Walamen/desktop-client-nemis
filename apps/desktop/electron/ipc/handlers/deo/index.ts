@@ -1,4 +1,3 @@
-/** DEO portal — no IPC handlers of its own yet. Add DEO-specific handlers
- * here, the same way school-admin/ and teacher/ are organized, once new
- * channels exist for this portal. */
-export {};
+/** DEO (district) portal IPC handlers, one file per area, organized the same
+ * way as county/, school-admin/ and teacher/. */
+export { registerDeoDashboardHandlers } from './dashboard';

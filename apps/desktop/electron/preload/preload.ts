@@ -5,7 +5,7 @@ import { schoolAdminApi, teacherDirectoryApi } from './school-admin';
 import { teacherDashboardApi, assignmentApi } from './teacher';
 import { deepFreeze } from './deep-freeze';
 import { countyApi } from './county';
-import './deo';
+import { deoApi } from './deo';
 import './ministry-portal';
 
 /** Renderer-facing bridge, composed from per-portal files — the same split
@@ -17,7 +17,8 @@ import './ministry-portal';
  *                   timetable
  *   teacher/      — the teacher's own dashboard method
  *   county/       — the County (CEO) dashboard
- *   deo/, ministry-portal/ — placeholders, no channels yet
+ *   deo/          — the DEO (district) dashboard
+ *   ministry-portal/ — placeholder, no channels yet
  * `teacher` is the one NemisApi key genuinely owned by two portals — merged
  * here the same way lib/ipc/index.ts merges the ApplicationLayer `teachers`
  * service on the renderer side. */
@@ -25,6 +26,7 @@ const nemisApi: NemisApi = {
   ...sharedApi,
   ...schoolAdminApi,
   ...countyApi,
+  ...deoApi,
   teacher: {
     ...teacherDirectoryApi,
     ...teacherDashboardApi,

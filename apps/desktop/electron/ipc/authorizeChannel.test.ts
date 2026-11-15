@@ -5,6 +5,7 @@ import type { WorkspaceManager } from '@app/workspace/WorkspaceManager';
 import {
   authorizeChannel,
   COUNTY_ADMIN_CHANNELS,
+  DEO_CHANNELS,
   GOVERNMENT_YEAR_ARCHIVE_CHANNELS,
   PUBLIC_CHANNELS,
   REPORT_CARD_CHANNELS,
@@ -139,6 +140,27 @@ describe('authorizeChannel', () => {
       ]) {
         expect(() => authorizeChannel(channel, workspace(role))).toThrow(/county administrator/);
       }
+    }
+  });
+
+  it('allows every DEO channel only for a district education officer', () => {
+    const channels = [IpcChannels.DEO_GET_DASHBOARD, IpcChannels.DEO_RESOLVE_ALERT];
+    expect(new Set(channels)).toEqual(new Set(DEO_CHANNELS));
+    for (const channel of channels) {
+      expect(() => authorizeChannel(channel, workspace(SystemRole.DEO))).not.toThrow();
+      for (const role of [
+        SystemRole.COUNTY_ADMIN,
+        SystemRole.MINISTRY_ADMIN,
+        SystemRole.INSTITUTION_ADMIN,
+        SystemRole.INSTITUTION_STAFF,
+        SystemRole.TEACHER,
+      ]) {
+        expect(() => authorizeChannel(channel, workspace(role))).toThrow(ForbiddenError);
+        expect(() => authorizeChannel(channel, workspace(role))).toThrow(
+          'This view requires a district education officer workspace.',
+        );
+      }
+      expect(() => authorizeChannel(channel, workspace())).toThrow(/Sign in/);
     }
   });
 
@@ -475,6 +497,7 @@ describe('authorizeChannel for school office staff', () => {
       ...REPORT_CARD_CHANNELS,
       ...TEACHER_ONLY_CHANNELS,
       ...COUNTY_ADMIN_CHANNELS,
+      ...DEO_CHANNELS,
       ...GOVERNMENT_YEAR_ARCHIVE_CHANNELS,
       ...OPEN_TO_OFFICE_STAFF,
     ]);
