@@ -284,8 +284,10 @@ export class SqliteDistrictOverviewReadModel implements IDistrictOverviewReadMod
           `SELECT a.institutionId AS institutionId, trim(a.firstName || ' ' || a.lastName) AS name
            FROM ${institutionAdmin} a JOIN ${institutions} i ON i.id = a.institutionId
            WHERE ${DISTRICT_SCHOOLS} AND a.isActive = 1
-             AND a.id = (SELECT MIN(b.id) FROM ${institutionAdmin} b
-                         WHERE b.institutionId = a.institutionId AND b.isActive = 1)`,
+             -- Lowest user id first, as the server picks (districts.service.ts).
+             AND a.id = (SELECT b.id FROM ${institutionAdmin} b
+                         WHERE b.institutionId = a.institutionId AND b.isActive = 1
+                         ORDER BY COALESCE(b.userId, b.id), b.id LIMIT 1)`,
         )
         .all(districtId) as { institutionId: string; name: string }[];
     });
@@ -305,25 +307,26 @@ export class SqliteDistrictOverviewReadModel implements IDistrictOverviewReadMod
   }
   listSchoolAdmins(districtId: string, monthStartIso: string, nextMonthIso: string): DistrictSchoolAdminRow[] {
     return guarded('SqliteDistrictOverviewReadModel.listSchoolAdmins', () => {
-      // institution_admin.id is the user id; the users row carries the
+      // One row per membership; the person is COALESCE(userId, id) (id was
+      // the user id before migration 049). The users row carries the
       // account state. A missing users row reads as an active account with
       // no dates rather than hiding the admin.
       const rows = this.#statements
         .get(
-          `SELECT a.id AS userId, a.firstName, a.lastName,
+          `SELECT COALESCE(a.userId, a.id) AS userId, a.firstName, a.lastName,
                   COALESCE(u.photoUrl, a.photoUrl) AS photoUrl,
                   i.id AS schoolId, i.name AS schoolName,
                   (SELECT s.employeeNumber FROM ${staff} s
-                    WHERE s.userId = a.id AND s.institutionId = a.institutionId
+                    WHERE s.userId = COALESCE(a.userId, a.id) AND s.institutionId = a.institutionId
                     ORDER BY s.id LIMIT 1) AS employeeNumber,
                   COALESCE(u.isActive, 1) AS isActive,
                   u.createdAt AS joinedAt, u.lastLoginAt AS lastLoginAt,
                   (SELECT COUNT(*) FROM ${reports} r
-                    WHERE r.submittedById = a.id AND r.schoolId = a.institutionId
+                    WHERE r.submittedById = COALESCE(a.userId, a.id) AND r.schoolId = a.institutionId
                       AND r.submittedAt >= ? AND r.submittedAt < ?) AS reportsThisMonth
            FROM ${institutionAdmin} a
            JOIN ${institutions} i ON i.id = a.institutionId
-           LEFT JOIN ${users} u ON u.id = a.id
+           LEFT JOIN ${users} u ON u.id = COALESCE(a.userId, a.id)
            WHERE ${DISTRICT_SCHOOLS} AND a.isActive = 1`,
         )
         .all(monthStartIso, nextMonthIso, districtId) as (Omit<DistrictSchoolAdminRow, 'isActive'> & {

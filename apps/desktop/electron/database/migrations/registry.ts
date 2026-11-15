@@ -47,6 +47,7 @@ import { dropGradeEntryWindowClasses } from './045-drop-grade-entry-window-class
 import { mergeOutboxEdits } from './046-merge-outbox-edits';
 import { neverMergeIntoSentRows } from './047-never-merge-into-sent-rows';
 import { addUserOrganizationModules } from './048-add-user-organization-modules';
+import { addInstitutionAdminUserId } from './049-add-institution-admin-user-id';
 
 /**
  * Every migration, ascending by version. Append only — never edit or reorder
@@ -101,4 +102,5 @@ export const migrations: readonly Migration[] = [
   mergeOutboxEdits,
   neverMergeIntoSentRows,
   addUserOrganizationModules,
+  addInstitutionAdminUserId,
 ];

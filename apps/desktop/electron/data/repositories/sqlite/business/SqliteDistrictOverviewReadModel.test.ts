@@ -473,6 +473,38 @@ describe('SqliteDistrictOverviewReadModel', () => {
       expect(readModel.listSchoolAdmins('d-1', ...MONTH)[0]!.reportsThisMonth).toBe(2);
     });
 
+    it('shows a person who runs two schools once at each school', () => {
+      seedDistrict();
+      account('u-1');
+      const membership = (id: string, institutionId: string) =>
+        run(
+          `INSERT INTO institution_admin (id,userId,institutionId,firstName,lastName,position,photoUrl,isActive)
+           VALUES (?,'u-1',?,'Ann','Doe','PRINCIPAL',NULL,1)`,
+          id, institutionId,
+        );
+      membership('org-a', 's-a');
+      membership('org-b', 's-b');
+      staffFor('u-1', 's-b', 'EMP-B');
+      reportBy('r-1', 's-a', 'u-1', '2026-11-05T00:00:00.000Z');
+      const rows = readModel
+        .listSchoolAdmins('d-1', ...MONTH)
+        .map((row) => [row.userId, row.schoolId, row.employeeNumber, row.reportsThisMonth])
+        .sort();
+      expect(rows).toEqual([
+        ['u-1', 's-a', null, 1],
+        ['u-1', 's-b', 'EMP-B', 0],
+      ]);
+    });
+
+    it('names the School Admin with the lowest user id, as the server does', () => {
+      seedDistrict();
+      run(
+        `INSERT INTO institution_admin (id,userId,institutionId,firstName,lastName,position,isActive)
+         VALUES ('org-a','u-9','s-a','Zed','Last','PRINCIPAL',1), ('org-z','u-1','s-a','Ann','First','PRINCIPAL',1)`,
+      );
+      expect(readModel.schoolAdminNameBySchool('d-1')).toEqual([{ institutionId: 's-a', name: 'Ann First' }]);
+    });
+
     it('counts open infrastructure issues per school, without school staff requests', () => {
       seedDistrict();
       const issue = (id: string, institutionId: string, opts: { type?: string; isResolved?: number; metadata?: string | null } = {}) =>
