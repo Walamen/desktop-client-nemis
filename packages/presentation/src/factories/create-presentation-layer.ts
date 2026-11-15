@@ -20,6 +20,7 @@ import { DashboardViewModel } from '../view-models/dashboard/dashboard-view-mode
 import { DeviceViewModel } from '../view-models/device/device-view-model';
 import { SchoolsViewModel } from '../view-models/institution/schools-view-model';
 import { CountyDashboardViewModel } from '../view-models/county/county-dashboard-view-model';
+import { DeoDashboardViewModel } from '../view-models/deo/deo-dashboard-view-model';
 import { CountyDistrictsViewModel } from '../view-models/county/county-districts-view-model';
 import { CountyDistrictDetailViewModel } from '../view-models/county/county-district-detail-view-model';
 import { CountySchoolsViewModel } from '../view-models/county/county-schools-view-model';
@@ -76,6 +77,7 @@ export interface PresentationViewModels {
   readonly settings: SettingsViewModel;
   readonly schools: SchoolsViewModel;
   readonly countyDashboard: CountyDashboardViewModel;
+  readonly deoDashboard: DeoDashboardViewModel;
   readonly countyDistricts: CountyDistrictsViewModel;
   readonly countyDistrictDetail: CountyDistrictDetailViewModel;
   readonly countySchools: CountySchoolsViewModel;
@@ -172,6 +174,7 @@ export function createPresentationLayer(
     }),
     schools: new SchoolsViewModel({ institution: app.institution }),
     countyDashboard: new CountyDashboardViewModel({ county: app.county }),
+    deoDashboard: new DeoDashboardViewModel({ deo: app.deo }),
     countyDistricts: new CountyDistrictsViewModel({ county: app.county }),
     countyDistrictDetail: new CountyDistrictDetailViewModel({ county: app.county }),
     countySchools: new CountySchoolsViewModel({ county: app.county }),
