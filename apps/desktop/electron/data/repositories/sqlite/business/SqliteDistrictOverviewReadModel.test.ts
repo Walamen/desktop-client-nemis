@@ -178,8 +178,51 @@ describe('SqliteDistrictOverviewReadModel', () => {
   it('lists the active schools of the district by name, with their levels', () => {
     seedDistrict();
     expect(readModel.listActiveSchools('d-1')).toEqual([
-      { id: 's-a', name: 'Alpha', code: 'S-A', levels: [] },
-      { id: 's-b', name: 'Beta', code: 'S-B', levels: ['PRIMARY', 'JUNIOR_HIGH'] },
+      { id: 's-a', name: 'Alpha', code: 'S-A', levels: [], metadataPrincipal: null },
+      { id: 's-b', name: 'Beta', code: 'S-B', levels: ['PRIMARY', 'JUNIOR_HIGH'], metadataPrincipal: null },
+    ]);
+  });
+
+  it('reads the principal from the school profile, and survives a malformed one', () => {
+    seedDistrict();
+    const profile = (id: string, value: string | null) =>
+      run(`UPDATE institutions SET profile = ? WHERE id = ?`, value, id);
+    profile('s-a', JSON.stringify({ contact: { principal: '  Musu Kollie ' } }));
+    profile('s-b', JSON.stringify({ principalName: 'Jallah Doe', levels: ['PRIMARY'] }));
+    expect(readModel.listActiveSchools('d-1').map((s) => s.metadataPrincipal)).toEqual(['Musu Kollie', 'Jallah Doe']);
+    profile('s-a', 'not json');
+    profile('s-b', JSON.stringify({ contact: { principal: 42 } }));
+    expect(readModel.listActiveSchools('d-1').map((s) => [s.metadataPrincipal, s.levels])).toEqual([
+      [null, []],
+      [null, []],
+    ]);
+  });
+
+  it('names the first active School Admin of each school', () => {
+    seedDistrict();
+    const admin = (id: string, institutionId: string, first: string, last: string, isActive = 1) =>
+      run(
+        `INSERT INTO institution_admin (id,institutionId,firstName,lastName,position,isActive) VALUES (?,?,?,?,'PRINCIPAL',?)`,
+        id, institutionId, first, last, isActive,
+      );
+    admin('adm-2', 's-a', 'Second', 'Admin');
+    admin('adm-1', 's-a', 'Jallah', 'Doe');
+    admin('adm-3', 's-b', 'Gone', 'Away', 0);
+    admin('adm-4', 's-other', 'Else', 'Where');
+    expect(readModel.schoolAdminNameBySchool('d-1')).toEqual([{ institutionId: 's-a', name: 'Jallah Doe' }]);
+  });
+
+  it('lists the months in which each school submitted a report', () => {
+    seedDistrict();
+    report('r-1', 's-a', '2026-09-01T00:00:00.000Z');
+    report('r-2', 's-a', '2026-09-30T23:59:59.000Z');
+    report('r-3', 's-a', '2026-11-16');
+    report('r-4', 's-a', '2026-08-31T23:59:59.000Z');
+    report('r-5', 's-b', null);
+    report('r-6', 's-other', '2026-10-05T00:00:00.000Z');
+    expect(readModel.reportMonthsBySchool('d-1', '2026-09-01')).toEqual([
+      { institutionId: 's-a', month: '2026-09' },
+      { institutionId: 's-a', month: '2026-11' },
     ]);
   });
 

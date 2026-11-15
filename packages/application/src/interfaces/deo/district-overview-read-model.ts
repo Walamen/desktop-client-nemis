@@ -9,6 +9,8 @@ export interface DistrictSchoolRef {
   readonly name: string;
   readonly code: string;
   readonly levels: string[];
+  /** The profile's principal (contact.principal, then principalName). */
+  readonly metadataPrincipal?: string | null;
 }
 
 export interface DistrictAlertRow {
@@ -65,4 +67,9 @@ export interface IDistrictOverviewReadModel {
   listSubmittedReports(districtId: string, limit: number): DistrictReportRow[];
   /** The newest submittedAt per school; a school with none is absent. */
   lastSubmissionBySchool(districtId: string): { institutionId: string; submittedAt: string }[];
+  /** The first active School Admin of each school (by id), full name. */
+  schoolAdminNameBySchool(districtId: string): { institutionId: string; name: string }[];
+  /** Each month (YYYY-MM) on or after sinceDate in which a school submitted
+   * a report; one row per school and month. */
+  reportMonthsBySchool(districtId: string, sinceDate: string): { institutionId: string; month: string }[];
 }

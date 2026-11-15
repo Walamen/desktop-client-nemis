@@ -23,6 +23,8 @@ function school(name: string, performanceStatus: DeoSchoolRow['performanceStatus
     performanceStatus,
     complianceStatus: 'Compliant',
     feeCollectionRate: null,
+    principalName: null,
+    reportMonths: [false, false, false],
   };
 }
 

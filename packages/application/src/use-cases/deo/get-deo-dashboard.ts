@@ -15,11 +15,10 @@ import type {
 import type { IClock } from '../../interfaces/clock';
 import type { IAppLogger } from '../../interfaces/app-logger';
 import { invokeUseCase } from '../../pipeline/use-case-invoker';
-import { daysBetween, schoolStanding, worstSeverity } from './school-standing';
+import { buildDistrictSchoolRows, localDateIso } from './district-school-rows';
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const SEVERITY_RANK: Readonly<Record<string, number>> = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
-const ATTENDANCE_WINDOW_DAYS = 30;
 const TREND_MONTHS = 6;
 const MAX_ALERTS = 50;
 const MAX_SUBMISSIONS = 50;
@@ -52,13 +51,11 @@ export class GetDeoDashboardUseCase implements QueryHandler<
 
       const { readModel } = this.deps;
       const now = new Date(this.deps.clock.now());
-      const today = localDateIso(now);
-
       const district = readModel.getDistrict(districtId);
       const county = district ? readModel.getCounty(district.countyId) : null;
 
       const openAlerts = readModel.listOpenAlerts(districtId);
-      const schools = this.#schoolRows(districtId, today, openAlerts);
+      const schools = buildDistrictSchoolRows(this.deps, districtId, now, openAlerts);
       const billing = schools.filter(
         (school): school is DeoSchoolRow & { feeCollectionRate: number } => school.feeCollectionRate !== null,
       );
@@ -93,57 +90,6 @@ export class GetDeoDashboardUseCase implements QueryHandler<
       });
     });
   }
-
-  #schoolRows(districtId: string, today: string, openAlerts: readonly DistrictAlertRow[]): DeoSchoolRow[] {
-    const { readModel } = this.deps;
-    const students = byInstitution(readModel.countActiveStudentsBySchool(districtId), (row) => row.count);
-    const teachers = byInstitution(readModel.countTeachingStaffBySchool(districtId), (row) => row.count);
-    const attendance = byInstitution(
-      readModel.attendanceBySchool(districtId, addDays(today, -ATTENDANCE_WINDOW_DAYS)),
-      (row) => row,
-    );
-    const lastAttendance = byInstitution(readModel.lastAttendanceDateBySchool(districtId), (row) => row.date);
-    const inTerm = new Set(readModel.schoolsWithRunningTerm(districtId, today));
-    const lastSubmission = byInstitution(readModel.lastSubmissionBySchool(districtId), (row) => row.submittedAt);
-    const fees = byInstitution(this.deps.finance.listSchools(), (row) => row);
-    const alertsBySchool = new Map<string, string[]>();
-    for (const alert of openAlerts) {
-      if (!alert.institutionId) continue;
-      const severities = alertsBySchool.get(alert.institutionId) ?? [];
-      severities.push(alert.severity);
-      alertsBySchool.set(alert.institutionId, severities);
-    }
-
-    return readModel.listActiveSchools(districtId).map((school) => {
-      const window = attendance.get(school.id);
-      const last = lastAttendance.get(school.id);
-      const activeStudents = students.get(school.id) ?? 0;
-      const teachingStaff = teachers.get(school.id) ?? 0;
-      const standing = schoolStanding({
-        records30: window?.records ?? 0,
-        attended30: window?.attended ?? 0,
-        daysSinceAttendance: last ? daysBetween(last, today) : null,
-        termRunning: inTerm.has(school.id),
-        worstOpenAlert: worstSeverity(alertsBySchool.get(school.id) ?? []),
-        activeStudents,
-        teachingStaff,
-      });
-      const fee = fees.get(school.id);
-      return {
-        id: school.id,
-        name: school.name,
-        code: school.code,
-        levels: school.levels,
-        students: activeStudents,
-        teachers: teachingStaff,
-        attendanceRate: standing.attendanceRate,
-        lastSubmissionAt: lastSubmission.get(school.id) ?? null,
-        performanceStatus: standing.performanceStatus,
-        complianceStatus: standing.complianceStatus,
-        feeCollectionRate: fee && fee.totalExpected > 0 ? fee.collectionRate : null,
-      };
-    });
-  }
 }
 
 function emptyDashboard(): DeoDashboardResult {
@@ -162,13 +108,6 @@ function emptyDashboard(): DeoDashboardResult {
 
 function sum(values: readonly number[]): number {
   return values.reduce((total, value) => total + value, 0);
-}
-
-function byInstitution<Row extends { institutionId: string }, Value>(
-  rows: readonly Row[],
-  pick: (row: Row) => Value,
-): Map<string, Value> {
-  return new Map(rows.map((row) => [row.institutionId, pick(row)]));
 }
 
 function countFor(rows: readonly { gender: string; count: number }[], gender: string): number {
@@ -192,19 +131,6 @@ function summarise(alerts: readonly DistrictAlertRow[]): DeoAlertSummary {
     medium: count('MEDIUM'),
     low: count('LOW'),
   };
-}
-
-/** The device's local calendar date as YYYY-MM-DD. */
-function localDateIso(date: Date): string {
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${date.getFullYear()}-${month}-${day}`;
-}
-
-function addDays(dateIso: string, days: number): string {
-  const date = new Date(`${dateIso}T00:00:00.000Z`);
-  date.setUTCDate(date.getUTCDate() + days);
-  return date.toISOString().slice(0, 10);
 }
 
 /** The first day (local) of each of the last six months, oldest first. Built

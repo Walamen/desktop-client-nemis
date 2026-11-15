@@ -41,6 +41,8 @@ function school(
     performanceStatus: 'Good',
     complianceStatus: 'Compliant',
     feeCollectionRate: null,
+    principalName: null,
+    reportMonths: [false, false, false],
     ...overrides,
   };
 }

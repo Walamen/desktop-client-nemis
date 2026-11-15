@@ -10,8 +10,20 @@ import { StatementCache } from '../../base/StatementCache';
 import type { RepositoryContext } from '../../base/RepositoryContext';
 import { guarded, notSchoolStaffRequest } from './support';
 
-const { students, institutions, districts, counties, staff, classes, attendance, terms, academicYears, alerts, reports } =
-  TableNames;
+const {
+  students,
+  institutions,
+  institutionAdmin,
+  districts,
+  counties,
+  staff,
+  classes,
+  attendance,
+  terms,
+  academicYears,
+  alerts,
+  reports,
+} = TableNames;
 
 /** The district's active schools (institution alias `i`). One parameter. */
 const DISTRICT_SCHOOLS = `i.districtId = ? AND i.isActive = 1`;
@@ -27,14 +39,33 @@ const ATTENDANCE_SINCE = `FROM ${classes} c
 
 const ATTENDED = `SUM(CASE WHEN a.status IN ('PRESENT','LATE') THEN 1 ELSE 0 END)`;
 
-function levelsOf(profile: string | null): string[] {
-  if (!profile) return [];
+function parseProfile(profile: string | null): Record<string, unknown> | null {
+  if (!profile) return null;
   try {
-    const levels = (JSON.parse(profile) as { levels?: unknown } | null)?.levels;
-    return Array.isArray(levels) ? levels.filter((level): level is string => typeof level === 'string') : [];
+    const value: unknown = JSON.parse(profile);
+    return typeof value === 'object' && value !== null && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : null;
   } catch {
-    return [];
+    return null;
   }
+}
+
+function levelsOf(profile: Record<string, unknown> | null): string[] {
+  const levels = profile?.levels;
+  return Array.isArray(levels) ? levels.filter((level): level is string => typeof level === 'string') : [];
+}
+
+function text(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+/** contact.principal, then principalName (Nemis getInstitutionContact). */
+function principalOf(profile: Record<string, unknown> | null): string | null {
+  const contact = profile?.contact;
+  const fromContact =
+    typeof contact === 'object' && contact !== null ? text((contact as Record<string, unknown>).principal) : null;
+  return fromContact ?? text(profile?.principalName);
 }
 
 /** Read-only SQLite adapter for IDistrictOverviewReadModel (DEO dashboard). */
@@ -72,7 +103,16 @@ export class SqliteDistrictOverviewReadModel implements IDistrictOverviewReadMod
            ORDER BY i.name COLLATE NOCASE ASC, i.id ASC`,
         )
         .all(districtId) as { id: string; name: string; code: string; profile: string | null }[];
-      return rows.map((row) => ({ id: row.id, name: row.name, code: row.code, levels: levelsOf(row.profile) }));
+      return rows.map((row) => {
+        const profile = parseProfile(row.profile);
+        return {
+          id: row.id,
+          name: row.name,
+          code: row.code,
+          levels: levelsOf(profile),
+          metadataPrincipal: principalOf(profile),
+        };
+      });
     });
   }
 
@@ -231,6 +271,34 @@ export class SqliteDistrictOverviewReadModel implements IDistrictOverviewReadMod
            GROUP BY r.schoolId`,
         )
         .all(districtId) as { institutionId: string; submittedAt: string }[];
+    });
+  }
+
+  schoolAdminNameBySchool(districtId: string): { institutionId: string; name: string }[] {
+    return guarded('SqliteDistrictOverviewReadModel.schoolAdminNameBySchool', () => {
+      // The first active admin by id, as the County school detail reads it.
+      return this.#statements
+        .get(
+          `SELECT a.institutionId AS institutionId, trim(a.firstName || ' ' || a.lastName) AS name
+           FROM ${institutionAdmin} a JOIN ${institutions} i ON i.id = a.institutionId
+           WHERE ${DISTRICT_SCHOOLS} AND a.isActive = 1
+             AND a.id = (SELECT MIN(b.id) FROM ${institutionAdmin} b
+                         WHERE b.institutionId = a.institutionId AND b.isActive = 1)`,
+        )
+        .all(districtId) as { institutionId: string; name: string }[];
+    });
+  }
+
+  reportMonthsBySchool(districtId: string, sinceDate: string): { institutionId: string; month: string }[] {
+    return guarded('SqliteDistrictOverviewReadModel.reportMonthsBySchool', () => {
+      return this.#statements
+        .get(
+          `SELECT DISTINCT r.schoolId AS institutionId, substr(r.submittedAt, 1, 7) AS month
+           FROM ${reports} r JOIN ${institutions} i ON i.id = r.schoolId
+           WHERE ${DISTRICT_SCHOOLS} AND r.submittedAt IS NOT NULL AND r.submittedAt >= ?
+           ORDER BY institutionId ASC, month ASC`,
+        )
+        .all(districtId, sinceDate) as { institutionId: string; month: string }[];
     });
   }
 }

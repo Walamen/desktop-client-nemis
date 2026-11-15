@@ -43,6 +43,11 @@ export interface DeoSchoolRow {
   complianceStatus: SchoolComplianceStatus;
   /** Current-year collection rate; null when the school bills nothing. */
   feeCollectionRate: number | null;
+  /** The active School Admin, else the profile's principal; null if neither. */
+  principalName: string | null;
+  /** The last three calendar months, oldest first: did the school submit a
+   * report dated in that month? */
+  reportMonths: boolean[];
 }
 
 /** A school report submitted to the district. */
@@ -86,9 +91,20 @@ export interface DeoDashboardResult {
   submissions: DeoSubmissionRow[];
 }
 
+/** The Schools Management page. */
+export interface DeoSchoolsResult {
+  /** Null when the signed-in DEO has no district assigned. */
+  districtId: string | null;
+  district: { id: string; name: string } | null;
+  county: { id: string; name: string } | null;
+  /** Active schools, by name. */
+  schools: DeoSchoolRow[];
+}
+
 /** DEO portal calls on `window.nemis.deo`. */
 export interface DeoApi {
   getDashboard(): Promise<DeoDashboardResult>;
+  listSchools(): Promise<DeoSchoolsResult>;
   /** Marks an alert reviewed on this device; the outbox syncs it later. */
   resolveAlert(alertId: string): Promise<boolean>;
 }

@@ -24,6 +24,8 @@ export class InMemoryDistrictOverviewReadModel implements IDistrictOverviewReadM
   alerts: DistrictAlertRow[] = [];
   reports: DistrictReportRow[] = [];
   lastSubmissions: { institutionId: string; submittedAt: string }[] = [];
+  schoolAdmins: { institutionId: string; name: string }[] = [];
+  reportMonths: { institutionId: string; month: string }[] = [];
   readonly calls: { method: string; args: unknown[] }[] = [];
 
   #record(method: string, ...args: unknown[]): void {
@@ -88,6 +90,14 @@ export class InMemoryDistrictOverviewReadModel implements IDistrictOverviewReadM
   lastSubmissionBySchool(districtId: string) {
     this.#record('lastSubmissionBySchool', districtId);
     return this.lastSubmissions;
+  }
+  schoolAdminNameBySchool(districtId: string) {
+    this.#record('schoolAdminNameBySchool', districtId);
+    return this.schoolAdmins;
+  }
+  reportMonthsBySchool(districtId: string, sinceDate: string) {
+    this.#record('reportMonthsBySchool', districtId, sinceDate);
+    return this.reportMonths;
   }
 }
 

@@ -77,7 +77,7 @@ import type {
   SchoolSummaryResult,
 } from './dashboard';
 import type { CountyDashboardResult } from './county-dashboard';
-import type { DeoDashboardResult } from './deo-dashboard';
+import type { DeoDashboardResult, DeoSchoolsResult } from './deo-dashboard';
 import type {
   CountyAssignDeoRequest,
   CountyDistrictDetailResult,
@@ -248,6 +248,7 @@ export interface IpcContract {
   'county:get-dashboard': { args: []; result: CountyDashboardResult };
   'deo:get-dashboard': { args: []; result: DeoDashboardResult };
   'deo:resolve-alert': { args: [alertId: string]; result: boolean };
+  'deo:list-schools': { args: []; result: DeoSchoolsResult };
   'county:list-districts': { args: []; result: CountyDistrictsResult };
   'county:get-district': { args: [districtId: string]; result: CountyDistrictDetailResult | null };
   'county:assign-deo': { args: [request: CountyAssignDeoRequest]; result: OnlineCommandResult<null> };
@@ -514,6 +515,7 @@ export const IpcChannels = {
   COUNTY_GET_DASHBOARD: 'county:get-dashboard',
   DEO_GET_DASHBOARD: 'deo:get-dashboard',
   DEO_RESOLVE_ALERT: 'deo:resolve-alert',
+  DEO_LIST_SCHOOLS: 'deo:list-schools',
   COUNTY_LIST_DISTRICTS: 'county:list-districts',
   COUNTY_GET_DISTRICT: 'county:get-district',
   COUNTY_ASSIGN_DEO: 'county:assign-deo',
