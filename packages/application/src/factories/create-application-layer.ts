@@ -61,6 +61,11 @@ import { GetCountyDistrictDetailUseCase } from '../use-cases/county/get-county-d
 import type { ICountyAnalyticsReadModel } from '../interfaces/county/county-analytics-read-model';
 import { GetCountyDashboardUseCase } from '../use-cases/county/get-county-dashboard';
 import { CountyApplicationService } from '../services/county-application-service';
+import type { IDistrictOverviewReadModel } from '../interfaces/deo/district-overview-read-model';
+import type { IDistrictAlertStore } from '../interfaces/deo/district-alert-store';
+import { GetDeoDashboardUseCase } from '../use-cases/deo/get-deo-dashboard';
+import { ResolveDistrictAlertUseCase } from '../use-cases/deo/resolve-district-alert';
+import { DeoApplicationService } from '../services/deo-application-service';
 import type { IStudentRepository } from '../interfaces/students/student-repository';
 import type { IGuardianRepository } from '../interfaces/students/guardian-repository';
 import type { IEnrollmentRepository } from '../interfaces/academics/enrollment-repository';
@@ -240,6 +245,13 @@ export interface ApplicationPorts {
   gradingConfigs: IGradingConfigRepository;
   /** The authenticated user's id for this workspace (see GetCurrentUserDeps). */
   currentUserId: string;
+  /** The district of a DEO workspace; null for every other role, and for a
+   * DEO with no district assigned. */
+  currentDistrictId: string | null;
+  /** DEO dashboard: district rows and counts. */
+  districtOverview: IDistrictOverviewReadModel;
+  /** DEO dashboard: marking an alert reviewed. */
+  districtAlerts: IDistrictAlertStore;
   deviceGateway: IDeviceGateway;
   settingsGateway: ISettingsGateway;
   unitOfWork: IUnitOfWork;
@@ -263,6 +275,7 @@ export interface ApplicationLayer {
   infra: InfraApplicationService;
   reporting: ReportingApplicationService;
   county: CountyApplicationService;
+  deo: DeoApplicationService;
   teachers: TeacherApplicationService;
   timetables: TimetableApplicationService;
   assignments: AssignmentsApplicationService;
@@ -712,8 +725,25 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
     }),
   });
 
+  const deo = new DeoApplicationService({
+    getDashboard: new GetDeoDashboardUseCase({
+      readModel: ports.districtOverview,
+      finance: ports.countyFinance,
+      currentDistrictId: ports.currentDistrictId,
+      clock,
+      logger,
+    }),
+    resolveAlert: new ResolveDistrictAlertUseCase({
+      store: ports.districtAlerts,
+      currentDistrictId: ports.currentDistrictId,
+      currentUserId: ports.currentUserId,
+      clock,
+      logger,
+    }),
+  });
+
   return {
-    students, academics, attendance, assessments, identity, institution, infra, reporting, county,
+    students, academics, attendance, assessments, identity, institution, infra, reporting, county, deo,
     teachers,
     timetables, assignments,
   };

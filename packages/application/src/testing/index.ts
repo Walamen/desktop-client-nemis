@@ -14,3 +14,4 @@ export * from './teachers';
 export * from './timetables';
 export * from './assignments';
 export * from './county';
+export * from './deo/in-memory-district-overview';

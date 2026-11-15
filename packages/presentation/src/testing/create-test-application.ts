@@ -21,6 +21,8 @@ import {
   InMemoryCountyAuditReadModel,
   InMemoryCountySettingsReadModel,
   InMemoryCountyUsersReadModel,
+  InMemoryDistrictAlertStore,
+  InMemoryDistrictOverviewReadModel,
   InMemorySchoolUsersReadModel,
   InMemoryDistrictRepository,
   InMemoryEnrollmentRepository,
@@ -77,6 +79,9 @@ export interface TestPorts {
   schoolUsers: InMemorySchoolUsersReadModel;
   gradingConfigs: InMemoryGradingConfigRepository;
   currentUserId: string;
+  currentDistrictId: string | null;
+  districtOverview: InMemoryDistrictOverviewReadModel;
+  districtAlerts: InMemoryDistrictAlertStore;
   deviceGateway: InMemoryDeviceGateway;
   settingsGateway: InMemorySettingsGateway;
   unitOfWork: PassthroughUnitOfWork;
@@ -130,6 +135,9 @@ export function createTestApplication(): { app: ApplicationLayer; ports: TestPor
     schoolUsers: new InMemorySchoolUsersReadModel(),
     gradingConfigs: new InMemoryGradingConfigRepository(),
     currentUserId: 'usr-1',
+    currentDistrictId: 'd-1',
+    districtOverview: new InMemoryDistrictOverviewReadModel(),
+    districtAlerts: new InMemoryDistrictAlertStore(),
     deviceGateway: new InMemoryDeviceGateway(),
     settingsGateway: new InMemorySettingsGateway(),
     unitOfWork: new PassthroughUnitOfWork(),

@@ -37,6 +37,10 @@ import {
 } from '../testing/county/in-memory-county-messaging';
 import { InMemoryCountyAuditReadModel, InMemoryCountySettingsReadModel } from '../testing/county/in-memory-county-audit';
 import { InMemoryCountyUsersReadModel } from '../testing/county/in-memory-county-users-read-model';
+import {
+  InMemoryDistrictAlertStore,
+  InMemoryDistrictOverviewReadModel,
+} from '../testing/deo/in-memory-district-overview';
 import { InMemorySchoolUsersReadModel } from '../testing/institution/in-memory-school-users-read-model';
 import { InMemoryGradingConfigRepository } from '../testing/institution/in-memory-grading-config-repository';
 import { InMemoryDeviceGateway } from '../testing/infra/in-memory-device-gateway';
@@ -46,7 +50,7 @@ import { InMemoryAssignmentRepository } from '../testing/assignments/in-memory-a
 import { InMemoryAssignmentSubmissionRepository } from '../testing/assignments/in-memory-assignment-submission-repository';
 import { InMemoryHeaderNotificationsReadModel } from '../testing/identity/in-memory-header-notifications';
 
-function buildLayer() {
+function buildLayer(currentDistrictId: string | null = null) {
   const subjects = new InMemorySubjectRepository();
   const classes = new InMemoryClassRepository(subjects);
   const terms = new InMemoryTermRepository();
@@ -83,6 +87,9 @@ function buildLayer() {
     schoolUsers: new InMemorySchoolUsersReadModel(),
     gradingConfigs: new InMemoryGradingConfigRepository(),
     currentUserId: 'test-user',
+    currentDistrictId,
+    districtOverview: new InMemoryDistrictOverviewReadModel(),
+    districtAlerts: new InMemoryDistrictAlertStore(),
     deviceGateway: new InMemoryDeviceGateway(),
     settingsGateway: new InMemorySettingsGateway(),
     unitOfWork: new PassthroughUnitOfWork(),
@@ -120,5 +127,15 @@ describe('createApplicationLayer', () => {
       appVersion: '1.0.0',
     });
     expect(res.data.id).toBe('dev-1');
+  });
+
+  it('exposes a deo service scoped to the district of the signed-in officer', async () => {
+    const assigned = await buildLayer('d-1').deo.getDashboard();
+    expect(assigned.data.districtId).toBe('d-1');
+    expect((await buildLayer('d-1').deo.resolveAlert('a-1')).data).toBe(true);
+
+    const unassigned = buildLayer(null);
+    expect((await unassigned.deo.getDashboard()).data.districtId).toBeNull();
+    expect((await unassigned.deo.resolveAlert('a-1')).data).toBe(false);
   });
 });
