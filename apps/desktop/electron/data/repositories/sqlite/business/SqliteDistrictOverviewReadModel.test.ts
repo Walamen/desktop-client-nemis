@@ -585,6 +585,17 @@ describe('SqliteDistrictOverviewReadModel', () => {
       expect(counts()).toEqual({});
     });
 
+    it('ignores classes of an inactive school and pupils whose own school is inactive', () => {
+      seedDistrict();
+      klass('c-a', 's-a');
+      klass('c-off', 's-off');
+      const markedAtClosed = student('s-a'); // their absences are in a closed school's class
+      marks(markedAtClosed, 'c-off', 'ABSENT', 10);
+      const ofClosed = student('s-off'); // marked in an open school, but belongs to the closed one
+      marks(ofClosed, 'c-a', 'ABSENT', 10);
+      expect(counts()).toEqual({});
+    });
+
     it('reads attendance through an index, never a full scan', () => {
       const plan = (
         db.prepare(`EXPLAIN QUERY PLAN ${AT_RISK_STUDENTS_SQL}`).all(since, 'd-1', 'd-1') as { detail: string }[]

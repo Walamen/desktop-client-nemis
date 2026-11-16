@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import type { DeoEnrollmentSchool, DeoStudentsResult } from '@nemis-desktop/types';
 import { PresentationProvider } from '@/lib/presentation/presentation-provider';
 import { createRendererPresentation } from '@/lib/presentation/create-renderer-presentation';
@@ -114,6 +114,20 @@ describe('DEO Students & Enrollment page', () => {
     renderPage();
     await screen.findByText('Alpha Academy');
     expect(screen.queryByText('Dropout Alerts')).toBeNull();
+  });
+
+  it('on failure shows only the error, never zero cards, and Retry reloads', async () => {
+    const listStudents = vi
+      .fn<() => Promise<DeoStudentsResult>>()
+      .mockRejectedValueOnce(new Error('database locked'))
+      .mockResolvedValue(RESULT);
+    (window as unknown as { nemis: unknown }).nemis = { deo: { listStudents } };
+    renderPage();
+    expect(await screen.findByText('Failed to load enrollment data.')).toBeTruthy();
+    expect(screen.queryByText('Total Enrollment')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(await screen.findByText('Alpha Academy')).toBeTruthy();
+    expect(listStudents).toHaveBeenCalledTimes(2);
   });
 
   it('explains when no district is assigned', async () => {

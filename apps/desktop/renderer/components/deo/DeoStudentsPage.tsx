@@ -22,6 +22,23 @@ function formatSubmissionDate(value: string | null): string {
   return new Date(value).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
 }
 
+function Banner({ place }: { place: string }) {
+  return (
+    <div className="bg-slate-900 text-white px-6 py-5 flex items-center justify-between">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-0.5">DEO Portal</p>
+        <h1 className="text-xl font-bold text-white">Students & Enrollment</h1>
+      </div>
+      {place ? (
+        <div className="text-right">
+          <p className="text-xs text-slate-400 uppercase tracking-widest">District</p>
+          <p className="text-sm font-semibold text-slate-200 mt-0.5">{place}</p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 /** DEO Students & Enrollment, ported from portal-web
  * app/government/deo/students/page.tsx and computed on this device.
  * Rules: docs/superpowers/specs/2026-11-15-deo-students-design.md. */
@@ -37,6 +54,25 @@ export function DeoStudentsPage() {
     return (
       <div className="min-h-screen bg-slate-100 flex items-center justify-center">
         <Spinner size="lg" />
+      </div>
+    );
+  }
+
+  // A failed load has no data: show only the error, never zero cards an
+  // officer could read as real figures.
+  if (state.status === 'error') {
+    return (
+      <div className="min-h-screen bg-slate-100 font-['Sora']">
+        <Banner place="" />
+        <div className="px-6 py-6">
+          <div className="bg-white border border-gray-300 rounded-2xl p-6 text-center py-12">
+            <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-3" />
+            <p className="text-gray-600 text-sm">Failed to load enrollment data.</p>
+            <button type="button" onClick={() => void vm.load()} className="mt-2 text-sm underline text-red-700">
+              Retry
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -65,18 +101,7 @@ export function DeoStudentsPage() {
 
   return (
     <div className="min-h-screen bg-slate-100 font-['Sora']">
-      <div className="bg-slate-900 text-white px-6 py-5 flex items-center justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-0.5">DEO Portal</p>
-          <h1 className="text-xl font-bold text-white">Students & Enrollment</h1>
-        </div>
-        {place ? (
-          <div className="text-right">
-            <p className="text-xs text-slate-400 uppercase tracking-widest">District</p>
-            <p className="text-sm font-semibold text-slate-200 mt-0.5">{place}</p>
-          </div>
-        ) : null}
-      </div>
+      <Banner place={place} />
 
       <div className="px-6 py-6 space-y-5">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -161,15 +186,7 @@ export function DeoStudentsPage() {
 
         <div className="bg-white border border-gray-300 rounded-2xl p-6">
           <h3 className="text-lg font-bold text-gray-900 mb-4">Enrollment by School</h3>
-          {state.status === 'error' ? (
-            <div className="text-center py-12">
-              <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-3" />
-              <p className="text-gray-600 text-sm">Failed to load enrollment data.</p>
-              <button type="button" onClick={() => void vm.load()} className="mt-2 text-sm underline text-red-700">
-                Retry
-              </button>
-            </div>
-          ) : schools.length === 0 ? (
+          {schools.length === 0 ? (
             <div className="text-center py-12">
               <GraduationCap className="w-12 h-12 text-gray-400 mx-auto mb-3" />
               <p className="text-gray-600 text-sm">No enrollment data found</p>
