@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { PresentationProvider } from '@/lib/presentation/presentation-provider';
 import { createRendererPresentation } from '@/lib/presentation/create-renderer-presentation';
@@ -63,7 +63,18 @@ function installBaseMock() {
   return (window as unknown as { nemis: { timetable: { getTeacherSchedule: ReturnType<typeof vi.fn>; periods: ReturnType<typeof vi.fn> } } }).nemis;
 }
 
+// The page opens on today's weekday tab, and the only mocked entry is on
+// MONDAY. Pin the clock to a Monday so the test does not depend on the day it
+// runs. Only Date is faked; waitFor and promises keep real timers.
+const A_MONDAY = new Date(2026, 10, 16, 9, 0, 0); // local time, 16 Nov 2026
+
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(A_MONDAY);
+});
+
 afterEach(() => {
+  vi.useRealTimers();
   delete (window as unknown as { nemis?: unknown }).nemis;
 });
 
