@@ -87,6 +87,9 @@ import type {
   DeoFinanceResult,
   DeoFinanceAuditEntry,
   DeoNotificationsResult,
+  DeoSettingsResult,
+  DeoSettingsRemote,
+  DeoSettingsSaveRequest,
   DeoAttendanceReportQuery,
   DeoReportQuery,
   DeoReportScope,
@@ -276,6 +279,9 @@ export interface IpcContract {
   'deo:notifications-list': { args: []; result: DeoNotificationsResult };
   'deo:notifications-mark-read': { args: [notificationId: string]; result: boolean };
   'deo:notifications-mark-all-read': { args: []; result: number };
+  'deo:settings': { args: []; result: DeoSettingsResult };
+  'deo:settings-remote': { args: []; result: OnlineCommandResult<DeoSettingsRemote> };
+  'deo:settings-save': { args: [request: DeoSettingsSaveRequest]; result: OnlineCommandResult<null> };
   'deo:report-scope': { args: []; result: DeoReportScope };
   'deo:report-enrollment': { args: [query: DeoReportQuery]; result: CountyEnrollmentReport };
   'deo:report-attendance': { args: [query: DeoAttendanceReportQuery]; result: CountyAttendanceReport };
@@ -562,6 +568,9 @@ export const IpcChannels = {
   DEO_NOTIFICATIONS_LIST: 'deo:notifications-list',
   DEO_NOTIFICATIONS_MARK_READ: 'deo:notifications-mark-read',
   DEO_NOTIFICATIONS_MARK_ALL_READ: 'deo:notifications-mark-all-read',
+  DEO_SETTINGS: 'deo:settings',
+  DEO_SETTINGS_REMOTE: 'deo:settings-remote',
+  DEO_SETTINGS_SAVE: 'deo:settings-save',
   DEO_REPORT_SCOPE: 'deo:report-scope',
   DEO_ENROLLMENT_REPORT: 'deo:report-enrollment',
   DEO_ATTENDANCE_REPORT: 'deo:report-attendance',

@@ -58,6 +58,7 @@ import {
   registerDeoTransferHandlers,
   registerDeoFinanceHandlers,
   registerDeoMessagingHandlers,
+  registerDeoSettingsHandlers,
   registerDeoReportHandlers,
   registerDeoTeacherHandlers,
   registerDeoSchoolHandlers,
@@ -161,6 +162,8 @@ export function registerIpcHandlers(
   registerCountyDeoHandlers(securedHandle, gateway, refresh);
   registerCountyMessagingHandlers(securedHandle, app, gateway, refresh, presence);
   registerDeoMessagingHandlers(securedHandle, app, gateway, refresh);
+  // A DEO workspace's scope id is its district (DEO_CHANNELS admit only DEOs).
+  registerDeoSettingsHandlers(securedHandle, app, gateway, refresh, () => workspaces.active.user.scope.scopeId);
   registerCountyUserCommandHandlers(securedHandle, gateway, refresh, () => workspaces.active.user.scope.scopeId);
   registerCountyRegistrationHandlers(securedHandle, app, (timeoutMs) => syncWorker.pullNow(timeoutMs));
   registerCountyStudentHandlers(securedHandle, app, {

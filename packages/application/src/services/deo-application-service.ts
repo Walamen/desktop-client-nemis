@@ -8,6 +8,7 @@ import type {
   DeoFinanceAuditEntry,
   DeoFinanceResult,
   DeoNotificationsResult,
+  DeoSettingsResult,
   CountyDirectMessage,
   CountyMessagingOverview,
   CountyAcademicReport,
@@ -34,6 +35,7 @@ import type {
   MarkAllDeoNotificationsReadUseCase,
   MarkDeoNotificationReadUseCase,
 } from '../use-cases/deo/get-deo-messaging';
+import type { GetDeoSettingsUseCase } from '../use-cases/deo/get-deo-settings';
 import type { DeoReportUseCase, GetDeoReportScopeUseCase } from '../use-cases/deo/deo-reports';
 
 export interface DeoApplicationServiceDeps {
@@ -51,6 +53,7 @@ export interface DeoApplicationServiceDeps {
   listNotifications: GetDeoNotificationsUseCase;
   markNotificationRead: MarkDeoNotificationReadUseCase;
   markAllNotificationsRead: MarkAllDeoNotificationsReadUseCase;
+  getSettings: GetDeoSettingsUseCase;
   getReportScope: GetDeoReportScopeUseCase;
   getEnrollmentReport: DeoReportUseCase<DeoReportQuery, CountyEnrollmentReport>;
   getAttendanceReport: DeoReportUseCase<DeoAttendanceReportQuery, CountyAttendanceReport>;
@@ -112,6 +115,10 @@ export class DeoApplicationService {
 
   markAllNotificationsRead(): Promise<ApplicationResponse<number>> {
     return this.deps.markAllNotificationsRead.execute({});
+  }
+
+  getSettings(): Promise<ApplicationResponse<DeoSettingsResult>> {
+    return this.deps.getSettings.execute({});
   }
 
   getReportScope(): Promise<ApplicationResponse<DeoReportScope>> {

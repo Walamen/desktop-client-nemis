@@ -1232,6 +1232,39 @@ export function assertCountySendMessageArgs(args: readonly unknown[]): void {
   assertMessageText(request.content, 'content');
 }
 
+/** deo:settings-save: names 1–100 after trimming, phone ≤ 50, office address
+ * ≤ 255, passwords 8–128 and only as a pair (the server's rules). The
+ * district is never accepted from the renderer. */
+export function assertDeoSettingsSaveArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [request] = args;
+  if (!isPlainObject(request)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(request, ['firstName', 'lastName', 'phoneNumber', 'officeAddress', 'currentPassword', 'newPassword']);
+  for (const field of ['firstName', 'lastName'] as const) {
+    assertString(request[field], field, 100);
+    if (!(request[field] as string).trim()) throw new IPCError(`${field} cannot be empty.`);
+  }
+  // Phone and office address may be cleared, so an empty string is allowed.
+  if (typeof request.phoneNumber !== 'string' || request.phoneNumber.length > 50) {
+    throw new IPCError('Expected a phone number of at most 50 characters.');
+  }
+  if (
+    request.officeAddress !== undefined &&
+    (typeof request.officeAddress !== 'string' || request.officeAddress.length > 255)
+  ) {
+    throw new IPCError('Expected an office address of at most 255 characters.');
+  }
+  const hasCurrent = request.currentPassword !== undefined;
+  const hasNew = request.newPassword !== undefined;
+  if (hasCurrent !== hasNew) throw new IPCError('The current and new password come together.');
+  if (hasNew) {
+    for (const field of ['currentPassword', 'newPassword'] as const) {
+      assertString(request[field], field, 128);
+      if ((request[field] as string).length < 8) throw new IPCError(`${field} must be at least 8 characters.`);
+    }
+  }
+}
+
 /** messaging:online-users — at most 500 user ids. */
 export function assertOnlineUsersArgs(args: readonly unknown[]): void {
   assertArity(args, 1);

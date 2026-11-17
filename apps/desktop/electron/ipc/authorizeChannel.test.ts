@@ -167,6 +167,9 @@ describe('authorizeChannel', () => {
       IpcChannels.DEO_NOTIFICATIONS_LIST,
       IpcChannels.DEO_NOTIFICATIONS_MARK_READ,
       IpcChannels.DEO_NOTIFICATIONS_MARK_ALL_READ,
+      IpcChannels.DEO_SETTINGS,
+      IpcChannels.DEO_SETTINGS_REMOTE,
+      IpcChannels.DEO_SETTINGS_SAVE,
     ];
     expect(new Set(channels)).toEqual(new Set(DEO_CHANNELS));
     for (const channel of channels) {

@@ -807,6 +807,30 @@ describe('BackendProvisioningGateway', () => {
       expect(init.method).toBe('PATCH');
     });
 
+    it('getDistrictSettings reads only the office address from the district settings', async () => {
+      const fetchMock = vi.fn(async () => response({ profile: { officeAddress: 'Main Street', email: 'x' }, notificationPreferences: {} }));
+      vi.stubGlobal('fetch', fetchMock);
+      expect(await buildGateway().getDistrictSettings('d-1')).toEqual({ officeAddress: 'Main Street' });
+      const [url, init] = fetchMock.mock.calls[0] as unknown as [URL, RequestInit];
+      expect(url).toEqual(new URL('https://nemis.example/districts/d-1/settings'));
+      expect(init.method).toBe('GET');
+      vi.stubGlobal('fetch', vi.fn(async () => response({ profile: {} })));
+      expect(await buildGateway().getDistrictSettings('d-1')).toEqual({ officeAddress: null });
+      vi.stubGlobal('fetch', vi.fn(async () => response({})));
+      await expect(buildGateway().getDistrictSettings('d-1')).rejects.toThrow('Malformed server response.');
+    });
+
+    it('updateDistrictSettings PATCHes the settings with the request as-is', async () => {
+      const fetchMock = vi.fn(async () => response({ profile: {} }));
+      vi.stubGlobal('fetch', fetchMock);
+      const body = { firstName: 'Dee', lastName: 'Officer', phoneNumber: '', officeAddress: 'Main' };
+      expect(await buildGateway().updateDistrictSettings('d-1', body)).toBeNull();
+      const [url, init] = fetchMock.mock.calls[0] as unknown as [URL, RequestInit];
+      expect(url).toEqual(new URL('https://nemis.example/districts/d-1/settings'));
+      expect(init.method).toBe('PATCH');
+      expect(JSON.parse(String(init.body))).toEqual(body);
+    });
+
     it('sessionCookie restores the session and returns its cookie header', async () => {
       const cookie = await buildGateway().sessionCookie();
       expect(cookie).toContain('access_token=');

@@ -18,6 +18,7 @@ export const deoIpc = {
     listNotifications: () => query(() => deoBridge.listNotifications()),
     markNotificationRead: (notificationId) => query(() => deoBridge.markNotificationRead(notificationId)),
     markAllNotificationsRead: () => query(() => deoBridge.markAllNotificationsRead()),
+    getSettings: () => query(() => deoBridge.getSettings()),
     getReportScope: () => query(() => deoBridge.getReportScope()),
     getEnrollmentReport: (q) => query(() => deoBridge.getEnrollmentReport(q)),
     getAttendanceReport: (q) => query(() => deoBridge.getAttendanceReport(q)),

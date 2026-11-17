@@ -341,6 +341,30 @@ export interface DeoNotificationsResult {
   unread: number;
 }
 
+/** DEO Settings, read from this device (docs/superpowers/specs/2026-11-17-deo-settings-design.md).
+ * `profile` is null when the signed-in user's row was never synced. */
+export interface DeoSettingsResult {
+  districtId: string | null;
+  district: { id: string; name: string } | null;
+  county: { id: string; name: string } | null;
+  profile: { firstName: string; lastName: string; email: string | null; phoneNumber: string | null } | null;
+}
+
+/** What only the server holds (not synced): fetched when connected. */
+export interface DeoSettingsRemote {
+  officeAddress: string | null;
+}
+
+/** Save Changes (online). Passwords come as a pair or not at all. */
+export interface DeoSettingsSaveRequest {
+  firstName: string;
+  lastName: string;
+  phoneNumber: string;
+  officeAddress?: string;
+  currentPassword?: string;
+  newPassword?: string;
+}
+
 /** DEO Generate Reports: the district comes from the session; only a school may be chosen. */
 export interface DeoReportQuery {
   schoolId?: string;
@@ -379,6 +403,10 @@ export interface DeoApi {
   markConversationRead(conversationId: string): Promise<OnlineCommandResult<null>>;
   /** Of these users, the ones the live socket says are online now. */
   getOnlineUsers(userIds: string[]): Promise<string[]>;
+  /** Settings: the profile offline; office address and saving need a connection. */
+  getSettings(): Promise<DeoSettingsResult>;
+  getRemoteSettings(): Promise<OnlineCommandResult<DeoSettingsRemote>>;
+  saveSettings(request: DeoSettingsSaveRequest): Promise<OnlineCommandResult<null>>;
   /** Notifications: the user's own, offline; marking read syncs through the outbox. */
   listNotifications(): Promise<DeoNotificationsResult>;
   markNotificationRead(notificationId: string): Promise<boolean>;

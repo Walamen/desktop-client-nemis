@@ -165,4 +165,13 @@ export interface IDistrictOverviewReadModel {
    * it. One organisation per user (the lowest id), sorted by first name,
    * last name. */
   listMessageContacts(districtId: string, currentUserId: string): CountyMessageRecipient[];
+  /** The signed-in user's synced profile; null when the row is missing. */
+  getUserProfile(userId: string): DeoUserProfile | null;
+}
+
+export interface DeoUserProfile {
+  readonly firstName: string;
+  readonly lastName: string;
+  readonly email: string | null;
+  readonly phoneNumber: string | null;
 }

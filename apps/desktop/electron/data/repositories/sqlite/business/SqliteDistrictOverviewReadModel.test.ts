@@ -1107,6 +1107,17 @@ describe('SqliteDistrictOverviewReadModel', () => {
       expect(readModel.listMessageContacts('d-1', 'deo-1').filter((c) => c.userId === 'adm-a')).toHaveLength(1);
     });
 
+    it("reads the signed-in user's synced profile, null when the row is missing", () => {
+      run("UPDATE users SET phoneNumber = '0770000000' WHERE id = 'deo-1'");
+      expect(readModel.getUserProfile('deo-1')).toEqual({
+        firstName: 'Me',
+        lastName: 'Self',
+        email: 'deo-1@x.lr',
+        phoneNumber: '0770000000',
+      });
+      expect(readModel.getUserProfile('nobody')).toBeNull();
+    });
+
     it('has no County Admin when the district row is missing', () => {
       expect(readModel.listMessageContacts('d-unknown', 'deo-1')).toEqual([]);
     });

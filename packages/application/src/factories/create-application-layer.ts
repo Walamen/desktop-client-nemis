@@ -78,6 +78,7 @@ import {
   MarkAllDeoNotificationsReadUseCase,
   MarkDeoNotificationReadUseCase,
 } from '../use-cases/deo/get-deo-messaging';
+import { GetDeoSettingsUseCase } from '../use-cases/deo/get-deo-settings';
 import { DeoReportUseCase, GetDeoReportScopeUseCase } from '../use-cases/deo/deo-reports';
 import { DeoApplicationService } from '../services/deo-application-service';
 import type { IStudentRepository } from '../interfaces/students/student-repository';
@@ -803,6 +804,12 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
     listNotifications: new GetDeoNotificationsUseCase(deoMessagingDeps),
     markNotificationRead: new MarkDeoNotificationReadUseCase(deoMessagingDeps),
     markAllNotificationsRead: new MarkAllDeoNotificationsReadUseCase(deoMessagingDeps),
+    getSettings: new GetDeoSettingsUseCase({
+      readModel: ports.districtOverview,
+      currentDistrictId: ports.currentDistrictId,
+      currentUserId: ports.currentUserId,
+      logger,
+    }),
     getReportScope: new GetDeoReportScopeUseCase({
       districtOverview: ports.districtOverview,
       reports: ports.countyReports,

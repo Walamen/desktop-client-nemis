@@ -10,6 +10,8 @@ import {
   PROVISIONING_COLLECTIONS,
   isSchoolModule,
   type CreateSchoolUserRequest,
+  type DeoSettingsRemote,
+  type DeoSettingsSaveRequest,
   type CreateSchoolUserResult,
   type SchoolModule,
   type SchoolOfficeUser,
@@ -533,6 +535,28 @@ export class BackendProvisioningGateway {
     return null;
   }
 
+  /** DEO Settings: the office address, the one setting the device does not
+   * sync. The district is the session's, chosen by the caller. */
+  async getDistrictSettings(districtId: string): Promise<DeoSettingsRemote> {
+    return this.authorized(
+      `/districts/${encodeURIComponent(districtId)}/settings`,
+      { method: 'GET' },
+      toDeoSettingsRemote,
+      ONLINE_COMMAND,
+    );
+  }
+
+  /** DEO Settings: Save Changes (profile, office address, password). */
+  async updateDistrictSettings(districtId: string, request: DeoSettingsSaveRequest): Promise<null> {
+    await this.authorized(
+      `/districts/${encodeURIComponent(districtId)}/settings`,
+      { method: 'PATCH', body: JSON.stringify(request) },
+      () => undefined,
+      ONLINE_COMMAND,
+    );
+    return null;
+  }
+
   /** The session's cookie header for the live socket (RealtimeClient). Main
    * process only: it never crosses IPC or reaches a log. Single-flight like
    * every request, so it never races a refresh. */
@@ -885,6 +909,13 @@ function toSchoolRegistrationAcceptance(value: unknown): SchoolRegistrationAccep
         ? { email: entry.email, defaultPassword: entry.defaultPassword }
         : null,
   };
+}
+
+function toDeoSettingsRemote(value: unknown): DeoSettingsRemote {
+  const profile = asRecord(value).profile;
+  if (profile === null || typeof profile !== 'object') throw new Error('Malformed server response.');
+  const officeAddress = (profile as Record<string, unknown>).officeAddress;
+  return { officeAddress: typeof officeAddress === 'string' ? officeAddress : null };
 }
 
 function toSchoolResults(value: unknown): SchoolSearchResult[] {

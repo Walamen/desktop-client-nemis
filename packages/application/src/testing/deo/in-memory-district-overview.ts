@@ -3,6 +3,7 @@ import type {
   DistrictSchoolAdminRow,
   DistrictTeacherRow,
   DistrictTransferRow,
+  DeoUserProfile,
   DistrictOverviewRef,
   DistrictReportRow,
   DistrictSchoolRef,
@@ -40,6 +41,7 @@ export class InMemoryDistrictOverviewReadModel implements IDistrictOverviewReadM
   paymentMonths: { month: string; amount: number }[] = [];
   auditEntries: DeoFinanceAuditEntry[] = [];
   messageContacts: CountyMessageRecipient[] = [];
+  userProfile: DeoUserProfile | null = null;
   readonly calls: { method: string; args: unknown[] }[] = [];
 
   #record(method: string, ...args: unknown[]): void {
@@ -144,6 +146,10 @@ export class InMemoryDistrictOverviewReadModel implements IDistrictOverviewReadM
   paymentsByMonth(districtId: string, sinceIso: string) {
     this.#record('paymentsByMonth', districtId, sinceIso);
     return this.paymentMonths;
+  }
+  getUserProfile(userId: string): DeoUserProfile | null {
+    this.#record('getUserProfile', userId);
+    return this.userProfile;
   }
   listMessageContacts(districtId: string, currentUserId: string): CountyMessageRecipient[] {
     this.#record('listMessageContacts', districtId, currentUserId);

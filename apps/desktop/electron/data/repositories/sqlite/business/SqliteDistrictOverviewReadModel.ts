@@ -6,6 +6,7 @@ import type {
   DistrictTeacherRow,
   DistrictTransferRow,
   DistrictSchoolRef,
+  DeoUserProfile,
   IDistrictOverviewReadModel,
 } from '@nemis-desktop/application';
 import { LOW_ATTENDANCE_RATE, MIN_RECORDS_TO_JUDGE } from '@nemis-desktop/application';
@@ -618,6 +619,15 @@ export class SqliteDistrictOverviewReadModel implements IDistrictOverviewReadMod
         )
         .all(limit) as DeoFinanceAuditEntry[],
     );
+  }
+
+  getUserProfile(userId: string): DeoUserProfile | null {
+    return guarded('SqliteDistrictOverviewReadModel.getUserProfile', () => {
+      const row = this.#statements
+        .get(`SELECT firstName, lastName, email, phoneNumber FROM users WHERE id = ?`)
+        .get(userId) as DeoUserProfile | undefined;
+      return row ?? null;
+    });
   }
 
   listMessageContacts(districtId: string, currentUserId: string): CountyMessageRecipient[] {
