@@ -1,4 +1,5 @@
 import { IpcChannels, type DeoSettingsSaveRequest } from '@nemis-desktop/types';
+import { RemoteRejectedError, UnauthorizedError } from '@nemis-desktop/shared';
 import type { ApplicationLayer } from '@nemis-desktop/application';
 import type { BackendProvisioningGateway } from '@app/provisioning/BackendProvisioningGateway';
 import type { IpcHandle } from '@app/ipc/registrar';
@@ -24,16 +25,24 @@ export function registerDeoSettingsHandlers(
     refreshed: false,
   }));
   handle(IpcChannels.DEO_SETTINGS_SAVE, assertDeoSettingsSaveArgs, (request: DeoSettingsSaveRequest) =>
-    runOnline(
-      () =>
-        gateway.updateDistrictSettings(sessionDistrictId(), {
+    runOnline(async () => {
+      try {
+        return await gateway.updateDistrictSettings(sessionDistrictId(), {
           ...request,
           firstName: request.firstName.trim(),
           lastName: request.lastName.trim(),
           phoneNumber: request.phoneNumber.trim(),
           ...(request.officeAddress !== undefined ? { officeAddress: request.officeAddress.trim() } : {}),
-        }),
-      refresh,
-    ),
+        });
+      } catch (error) {
+        // The gateway reads every 401 as a lost session. With a password
+        // change it is the server refusing the current password (the session
+        // was restored just before this request), so say that.
+        if (error instanceof UnauthorizedError && request.newPassword !== undefined) {
+          throw new RemoteRejectedError(401, 'Current password is incorrect.', { cause: error });
+        }
+        throw error;
+      }
+    }, refresh),
   );
 }

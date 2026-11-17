@@ -11,6 +11,9 @@ describe('DEO settings form rules (same as portal-web lib/deo-settings.ts)', () 
     [{ ...form, firstName: ' ' }, 'First and last name cannot be empty.'],
     [{ ...form, newPassword: 'newpassword' }, 'Enter your current password to change it.'],
     [{ ...form, currentPassword: 'oldpassword', newPassword: 'short' }, 'The new password must be at least 8 characters.'],
+    [{ ...form, currentPassword: 'oldpassword', newPassword: '          ' }, 'The new password cannot be only spaces.'],
+    [{ ...form, currentPassword: 'old', newPassword: 'newpassword' }, 'The current password must be at least 8 characters.'],
+    [{ ...form, currentPassword: 'oldpassword', newPassword: 'x'.repeat(129) }, 'Passwords can be at most 128 characters.'],
     [{ ...form, currentPassword: 'oldpassword', newPassword: 'newpassword' }, null],
   ])('%p gives %p', (input, error) => {
     expect(settingsFormError(input)).toBe(error);

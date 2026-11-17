@@ -34,6 +34,14 @@ Web layout reference: `2026-11-14-deo-portal-web-design-reference.md` §4.12.
     - `deo:settings-save` → PATCH with `{ firstName, lastName, phoneNumber, officeAddress?, currentPassword?, newPassword? }`, then a pull (`runOnline`).
   - IPC validation: names 1–100 characters after trimming, phone ≤ 50, office address ≤ 255, passwords 8–128 and only as a pair, no other keys.
 
+## Review fixes
+
+- A wrong current password said "The email or password is incorrect." on the desktop (the gateway reads every 401 as a lost session). With a password change, the settings handler now reports "Current password is incorrect."
+- Saved but not yet pulled back: the page keeps what was typed and says the change shows after the next sync, instead of flashing the old row.
+- Reconnecting no longer replaces an office address being edited; a failed address load says so, with Retry, and is logged.
+- Both apps' form checks also refuse a spaces-only new password, a current password under 8 characters, and passwords over 128.
+- A failed reload after the page has shown data keeps the form on screen.
+
 ## Accepted
 
 - The web Header keeps showing the old name until the next sign-in or reload (it reads the login session).

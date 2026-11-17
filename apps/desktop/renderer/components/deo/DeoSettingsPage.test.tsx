@@ -67,7 +67,8 @@ describe('DEO Settings page', () => {
     const { deo } = renderPage({
       overrides: {
         saveSettings: vi.fn(async () => {
-          throw new Error('[UNAUTHORIZED] Current password is incorrect');
+          // What the settings handler's RemoteRejectedError becomes over IPC.
+          throw new Error('[REMOTE_REJECTED] Current password is incorrect.');
         }),
       },
     });
@@ -99,6 +100,43 @@ describe('DEO Settings page', () => {
     await act(() => layer.viewModels.deoSettings.load());
     expect(screen.getByDisplayValue('Deborah')).toBeTruthy();
     expect(screen.queryByDisplayValue('Server Dee')).toBeNull();
+  });
+
+  it('saved but not yet synced back: keeps what was typed and says it will show after the next sync', async () => {
+    const { deo } = renderPage({ overrides: { saveSettings: vi.fn(async () => ({ data: null, refreshed: false })) } });
+    await screen.findByDisplayValue('Main Street');
+    fireEvent.change(screen.getByDisplayValue('Dee'), { target: { value: 'Deborah' } });
+    save();
+    expect(await screen.findByText('Settings saved. They will show here after the next sync.')).toBeTruthy();
+    expect(screen.getByDisplayValue('Deborah')).toBeTruthy();
+    expect(deo.getSettings).toHaveBeenCalledTimes(1);
+  });
+
+  it('reconnecting never replaces an office address the user is editing', async () => {
+    const { layer } = renderPage();
+    const address = await screen.findByDisplayValue('Main Street');
+    fireEvent.change(address, { target: { value: 'New Road' } });
+    act(() => layer.stores.connectivity.setOnline(false));
+    act(() => layer.stores.connectivity.setOnline(true));
+    await waitFor(() => expect(screen.getByDisplayValue('New Road')).toBeTruthy());
+    expect(screen.queryByDisplayValue('Main Street')).toBeNull();
+  });
+
+  it('a failed office address load says so and can be retried', async () => {
+    let fail = true;
+    const { deo } = renderPage({
+      overrides: {
+        getRemoteSettings: vi.fn(async () => {
+          if (fail) throw new Error('[OFFLINE] down');
+          return { data: { officeAddress: 'Main Street' }, refreshed: false };
+        }),
+      },
+    });
+    expect(await screen.findByText(/The office address could not be loaded/)).toBeTruthy();
+    fail = false;
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(await screen.findByDisplayValue('Main Street')).toBeTruthy();
+    expect(deo.getRemoteSettings).toHaveBeenCalledTimes(2);
   });
 
   it('says so when no district is assigned', async () => {

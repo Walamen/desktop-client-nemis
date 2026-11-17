@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ApplicationLayer } from '@nemis-desktop/application';
 import type { IpcChannel } from '@nemis-desktop/types';
-import { IPCError } from '@nemis-desktop/shared';
+import { IPCError, RemoteRejectedError, UnauthorizedError } from '@nemis-desktop/shared';
 import type { IpcHandle, IpcValidator } from '@app/ipc/registrar';
 import { registerDeoSettingsHandlers, type DeoSettingsGateway } from './settings';
 
@@ -64,6 +64,21 @@ describe('deo settings channels', () => {
   ])('refuses %s', (_label, request) => {
     const { call } = setup();
     expect(() => call('deo:settings-save', request)).toThrow(IPCError);
+  });
+
+  it('a 401 on a password change means the current password was wrong, and says so', async () => {
+    const { gateway, refresh, call } = setup();
+    vi.mocked(gateway.updateDistrictSettings).mockRejectedValue(new UnauthorizedError());
+    const rejection = call('deo:settings-save', { ...valid, currentPassword: 'wrongpassword', newPassword: 'newpassword' });
+    await expect(rejection).rejects.toBeInstanceOf(RemoteRejectedError);
+    await expect(rejection).rejects.toMatchObject({ status: 401, remoteMessage: 'Current password is incorrect.' });
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it('a 401 without a password change is still a signed-out session', async () => {
+    const { gateway, call } = setup();
+    vi.mocked(gateway.updateDistrictSettings).mockRejectedValue(new UnauthorizedError());
+    await expect(call('deo:settings-save', valid)).rejects.toBeInstanceOf(UnauthorizedError);
   });
 
   it('lets the phone and office address be cleared', async () => {

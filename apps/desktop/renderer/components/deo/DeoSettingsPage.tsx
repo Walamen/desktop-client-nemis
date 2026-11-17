@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { AlertTriangle, LockKeyhole, Save, WifiOff } from 'lucide-react';
 import { Spinner } from '@nemis-desktop/ui';
 import { settingsFormError } from '@nemis-desktop/presentation';
+import type { DeoSettingsResult } from '@nemis-desktop/types';
 import { useDeoSettingsViewModel } from '@/lib/presentation/hooks/deo';
 import { useConnectivityStore } from '@/lib/presentation/hooks/shared';
 import { useViewModel } from '@/hooks/use-view-model';
@@ -64,6 +65,8 @@ export function DeoSettingsPage() {
 
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [addressLoaded, setAddressLoaded] = useState(false);
+  const [addressFailed, setAddressFailed] = useState(false);
+  const [addressAttempt, setAddressAttempt] = useState(0);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -71,14 +74,19 @@ export function DeoSettingsPage() {
     void vm.load();
   }, [vm]);
 
-  const data = state.status === 'success' || state.status === 'refreshing' ? state.data : null;
+  // A failed reload after the page has shown data keeps the form on screen.
+  const lastData = useRef<DeoSettingsResult | null>(null);
+  if (state.status === 'success' || state.status === 'refreshing') lastData.current = state.data;
+  const data = lastData.current;
   const profile = data?.profile ?? null;
 
   // The synced profile fills the form; a later sync refreshes it, but never
-  // over edits the user has not saved yet.
-  const dirtyRef = useRef(false);
+  // over edits the user has not saved yet, nor over just-saved values the
+  // device has not received back yet.
+  const namesDirty = useRef(false);
+  const addressDirty = useRef(false);
   useEffect(() => {
-    if (!profile || dirtyRef.current) return;
+    if (!profile || namesDirty.current) return;
     setForm((current) => ({
       ...current,
       firstName: profile.firstName,
@@ -95,17 +103,26 @@ export function DeoSettingsPage() {
       .getRemoteSettings()
       .then((result) => {
         if (cancelled) return;
-        setForm((current) => ({ ...current, officeAddress: result.data.officeAddress ?? '' }));
+        // Reconnecting must not replace an address the user is editing.
+        if (!addressDirty.current) {
+          setForm((current) => ({ ...current, officeAddress: result.data.officeAddress ?? '' }));
+        }
         setAddressLoaded(true);
+        setAddressFailed(false);
       })
-      .catch(() => undefined);
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        console.error('DEO settings: the office address could not be loaded', error);
+        setAddressFailed(true);
+      });
     return () => {
       cancelled = true;
     };
-  }, [online, data?.districtId]);
+  }, [online, data?.districtId, addressAttempt]);
 
   const set = (field: keyof FormState) => (event: { target: { value: string } }) => {
-    dirtyRef.current = true;
+    if (field === 'officeAddress') addressDirty.current = true;
+    else if (field === 'firstName' || field === 'lastName' || field === 'phoneNumber') namesDirty.current = true;
     setForm((current) => ({ ...current, [field]: event.target.value }));
   };
 
@@ -118,7 +135,7 @@ export function DeoSettingsPage() {
     }
     setSaving(true);
     try {
-      await deoBridge.saveSettings({
+      const result = await deoBridge.saveSettings({
         firstName: form.firstName,
         lastName: form.lastName,
         phoneNumber: form.phoneNumber,
@@ -127,9 +144,17 @@ export function DeoSettingsPage() {
         ...(form.newPassword ? { currentPassword: form.currentPassword, newPassword: form.newPassword } : {}),
       });
       setForm((current) => ({ ...current, currentPassword: '', newPassword: '' }));
-      setFeedback({ type: 'success', text: 'Settings saved successfully.' });
-      dirtyRef.current = false;
-      await vm.load();
+      addressDirty.current = false;
+      if (result.refreshed) {
+        // The pull brought the saved row back: the synced profile is current.
+        namesDirty.current = false;
+        setFeedback({ type: 'success', text: 'Settings saved successfully.' });
+        await vm.load();
+      } else {
+        // Saved on the server, but this device has not caught up: keep what
+        // was typed on screen rather than show the old row.
+        setFeedback({ type: 'success', text: 'Settings saved. They will show here after the next sync.' });
+      }
     } catch (saveError) {
       setFeedback({
         type: 'error',
@@ -142,7 +167,7 @@ export function DeoSettingsPage() {
     }
   };
 
-  if (state.status === 'error') {
+  if (state.status === 'error' && !data) {
     return (
       <div className="min-h-screen bg-slate-100 font-['Sora']">
         <Banner />
@@ -273,7 +298,16 @@ export function DeoSettingsPage() {
                   className={INPUT}
                 />
               </Field>
-              {!addressLoaded ? <p className="mt-1 text-xs text-gray-500">Loads when you are online.</p> : null}
+              {addressFailed && online ? (
+                <p className="mt-1 text-xs text-error">
+                  The office address could not be loaded.{' '}
+                  <button type="button" onClick={() => setAddressAttempt((n) => n + 1)} className="underline">
+                    Retry
+                  </button>
+                </p>
+              ) : !addressLoaded ? (
+                <p className="mt-1 text-xs text-gray-500">Loads when you are online.</p>
+              ) : null}
             </div>
           </div>
         </div>
