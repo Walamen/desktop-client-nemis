@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { PresentationProvider } from '@/lib/presentation/presentation-provider';
 import { createRendererPresentation } from '@/lib/presentation/create-renderer-presentation';
 import TeacherTimetablePage from './page';
@@ -94,5 +94,36 @@ describe('Teacher timetable page', () => {
     expect(await screen.findByText('Grade 10A')).toBeInTheDocument();
     expect(screen.getByText('Mathematics')).toBeInTheDocument();
     expect(screen.queryByText(/something went wrong/i)).toBeNull();
+  });
+
+  async function renderPage() {
+    installBaseMock();
+    const layer = createRendererPresentation();
+    await layer.bootstrap.run();
+    render(
+      <PresentationProvider layer={layer}>
+        <TeacherTimetablePage />
+      </PresentationProvider>,
+    );
+  }
+
+  it("opens on today's weekday tab, so a Monday class is hidden on a Wednesday until Monday is chosen", async () => {
+    vi.setSystemTime(new Date(2026, 10, 18, 9, 0, 0)); // local Wednesday
+    await renderPage();
+
+    const wednesday = await screen.findByRole('button', { name: /Wednesday/ });
+    expect(wednesday).toHaveTextContent('(Today)');
+    expect(screen.queryByText('Grade 10A')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: /Monday/ }));
+    expect(await screen.findByText('Grade 10A')).toBeInTheDocument();
+  });
+
+  it('opens on Monday at the weekend, with no tab marked as today', async () => {
+    vi.setSystemTime(new Date(2026, 10, 21, 9, 0, 0)); // local Saturday
+    await renderPage();
+
+    expect(await screen.findByText('Grade 10A')).toBeInTheDocument();
+    expect(screen.queryByText('(Today)')).toBeNull();
   });
 });
