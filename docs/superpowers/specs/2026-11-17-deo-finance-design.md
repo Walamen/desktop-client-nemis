@@ -37,7 +37,7 @@ Shared rule file: Nemis `common/district/finance-status.ts`, desktop `packages/a
 - **Rate bar colour (Flagged tab):** ≥ 80 emerald, ≥ 30 amber, else red.
 - **Summary:** totals of the rows; `complianceRate` = round(totalCollected / totalAllocation × 100) (0 when none); `schoolsBilling` = allocation > 0; `schoolsBehind` = status Behind.
 - **School order (Overview):** rate descending, then name, then id.
-- **Trend:** non-reversed payments at the district's active schools in the last six calendar months including this one (any academic year — it is a time series), summed per month, oldest first, label "Nov". Months use the machine's local calendar on each side.
+- **Trend:** non-reversed payments at the district's active schools in the last six calendar months including this one (any academic year — it is a time series), summed per month, oldest first, label "Nov". Months use the machine's local calendar on each side. Both pages show "No completed payments recorded in the last six months." when every month is zero (the server always sends six months, so the web's old empty check never fired).
 
 ### Finance audit entries
 
@@ -72,9 +72,9 @@ Audit entry: `{ id, timestamp, actorName, action, entityType, entityId }`.
   - New `GET /districts/:id/finance-audit?limit=` (DEO, SUPER_ADMIN, COUNTY_ADMIN; `enforceDistrictAccess`; limit 1–100, default 50).
   - District snapshot: `auditLogs` now ships for `DISTRICT` scope = `districtFinanceAudit` rows in the 365-day window (delta by timestamp with the County 5-minute overlap), mapped to the existing desktop columns (`actorScope` = `auditScopeLabel`).
 - **Desktop:**
-  - Migration 051 forces one full resync so DEO devices receive the existing history (the table already exists, migration 039). The importer's 365-day prune already applies.
+  - Migration 051 forces one full resync on district devices only (`provisioning_metadata.scopeType = 'DISTRICT'`) so they receive the existing history (the table already exists, migration 039). The importer's 365-day prune already applies.
   - Read model (district overview): `financeBySchool(districtId)`, `lastPaymentBySchool(districtId)`, `paymentsByMonth(districtId, since)`, `listFinanceAudit(limit)`.
-  - `GetDeoFinanceUseCase` and `GetDeoFinanceAuditUseCase` (district from the session; WorkflowException when none), channels `deo:finance` and `deo:finance-audit`, DEO-only, no arguments.
+  - `GetDeoFinanceUseCase` and `GetDeoFinanceAuditUseCase` (district from the session; with none, an empty page with `districtId: null` and no reads, as the Transfers use case does), channels `deo:finance` and `deo:finance-audit`, DEO-only, no arguments.
 
 ## Page (both apps; §4.9 layout)
 
