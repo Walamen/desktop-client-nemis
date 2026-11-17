@@ -21,7 +21,7 @@ describe('CountyMessagesViewModel', () => {
   it('select loads the thread for a conversation; a pending recipient has no thread', async () => {
     const { app, ports } = createTestApplication();
     ports.countyMessaging.messagesByConversation.set('c-1', []);
-    const vm = new CountyMessagesViewModel({ county: app.county });
+    const vm = new CountyMessagesViewModel({ source: app.county });
     await vm.select(recipient('deo-1'), 'c-1');
     expect(vm.store.getState()).toMatchObject({ selectedConversationId: 'c-1', pendingRecipient: null });
     expect(vm.store.getState().messages).toEqual({ status: 'success', data: [] });
@@ -32,7 +32,7 @@ describe('CountyMessagesViewModel', () => {
 
   it('after a conversation is started, selecting by user opens it', async () => {
     const { app, ports } = createTestApplication();
-    const vm = new CountyMessagesViewModel({ county: app.county });
+    const vm = new CountyMessagesViewModel({ source: app.county });
     await vm.select(recipient('deo-1'), null);
     ports.countyMessaging.overview = { recipients: [recipient('deo-1')], conversations: [conversation('c-9', 'deo-1')] };
     ports.countyMessaging.messagesByConversation.set('c-9', []);
@@ -44,7 +44,7 @@ describe('CountyMessagesViewModel', () => {
   it('a message event reloads the overview and the open thread', async () => {
     const { app, ports } = createTestApplication();
     ports.countyMessaging.messagesByConversation.set('c-1', []);
-    const vm = new CountyMessagesViewModel({ county: app.county });
+    const vm = new CountyMessagesViewModel({ source: app.county });
     await vm.select(recipient('deo-1'), 'c-1');
     ports.countyMessaging.overview = { recipients: [], conversations: [conversation('c-1', 'deo-1')] };
     ports.countyMessaging.messagesByConversation.set('c-1', [
@@ -59,7 +59,7 @@ describe('CountyMessagesViewModel', () => {
 
   it('presence: online ids are replaced, then events add and remove', async () => {
     const { app } = createTestApplication();
-    const vm = new CountyMessagesViewModel({ county: app.county });
+    const vm = new CountyMessagesViewModel({ source: app.county });
     vm.setOnlineUsers(['a', 'b']);
     await vm.onRealtime({ type: 'presence', userId: 'c', online: true });
     await vm.onRealtime({ type: 'presence', userId: 'a', online: false });

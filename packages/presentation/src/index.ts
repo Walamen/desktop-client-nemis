@@ -112,6 +112,8 @@ export * from './view-models/deo/deo-transfers-view-model';
 export * from './view-models/deo/deo-transfers-views';
 export * from './view-models/deo/deo-finance-view-model';
 export * from './view-models/deo/deo-finance-views';
+export * from './view-models/deo/deo-notifications-view-model';
+export * from './view-models/deo/deo-notifications-views';
 export * from './view-models/deo/deo-reports-view-model';
 export * from './view-models/deo/deo-teachers-view-model';
 export * from './view-models/deo/deo-teachers-views';

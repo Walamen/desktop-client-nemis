@@ -20,11 +20,15 @@ export interface CountyMessagesState {
   readonly onlineUserIds: readonly string[];
 }
 
+/** The reads the Messages page needs; the County and DEO application
+ * services both provide them (each for its own signed-in user and contacts). */
+export type MessagingReads = Pick<CountyApplicationService, 'getMessagingOverview' | 'listDirectMessages'>;
+
 export interface CountyMessagesViewModelDeps {
-  readonly county: CountyApplicationService;
+  readonly source: MessagingReads;
 }
 
-/** County Messages page (reads). Start/send/mark-read are online commands
+/** County and DEO Messages pages (reads). Start/send/mark-read are online commands
  * the page sends through the bridge, then reloads here (Districts precedent). */
 export class CountyMessagesViewModel {
   readonly store = createStore<CountyMessagesState>(() => ({
@@ -40,7 +44,7 @@ export class CountyMessagesViewModel {
   async loadOverview(): Promise<void> {
     await trackQuery({
       access: { get: () => this.store.getState().overview, set: (overview) => this.store.setState({ overview }) },
-      fetch: () => this.deps.county.getMessagingOverview(),
+      fetch: () => this.deps.source.getMessagingOverview(),
       map: (result) => result,
     });
   }
@@ -83,7 +87,7 @@ export class CountyMessagesViewModel {
     if (!conversationId) return;
     await trackQuery({
       access: { get: () => this.store.getState().messages, set: (messages) => this.store.setState({ messages }) },
-      fetch: () => this.deps.county.listDirectMessages(conversationId),
+      fetch: () => this.deps.source.listDirectMessages(conversationId),
       map: (rows) => rows,
     });
   }

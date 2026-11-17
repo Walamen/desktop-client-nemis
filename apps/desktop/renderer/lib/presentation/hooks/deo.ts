@@ -9,5 +9,7 @@ export const useDeoSchoolAdminsViewModel = () => usePresentation().viewModels.de
 export const useDeoStudentsViewModel = () => usePresentation().viewModels.deoStudents;
 export const useDeoTransfersViewModel = () => usePresentation().viewModels.deoTransfers;
 export const useDeoFinanceViewModel = () => usePresentation().viewModels.deoFinance;
+export const useDeoMessagesViewModel = () => usePresentation().viewModels.deoMessages;
+export const useDeoNotificationsViewModel = () => usePresentation().viewModels.deoNotifications;
 export const useDeoReportsViewModel = () => usePresentation().viewModels.deoReports;
 export const useDeoTeachersViewModel = () => usePresentation().viewModels.deoTeachers;

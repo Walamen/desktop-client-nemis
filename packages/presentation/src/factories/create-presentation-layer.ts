@@ -26,6 +26,7 @@ import { DeoSchoolAdminsViewModel } from '../view-models/deo/deo-school-admins-v
 import { DeoStudentsViewModel } from '../view-models/deo/deo-students-view-model';
 import { DeoTransfersViewModel } from '../view-models/deo/deo-transfers-view-model';
 import { DeoFinanceViewModel } from '../view-models/deo/deo-finance-view-model';
+import { DeoNotificationsViewModel } from '../view-models/deo/deo-notifications-view-model';
 import { DeoReportsViewModel } from '../view-models/deo/deo-reports-view-model';
 import { DeoTeachersViewModel } from '../view-models/deo/deo-teachers-view-model';
 import { CountyDistrictsViewModel } from '../view-models/county/county-districts-view-model';
@@ -90,6 +91,8 @@ export interface PresentationViewModels {
   readonly deoStudents: DeoStudentsViewModel;
   readonly deoTransfers: DeoTransfersViewModel;
   readonly deoFinance: DeoFinanceViewModel;
+  readonly deoMessages: CountyMessagesViewModel;
+  readonly deoNotifications: DeoNotificationsViewModel;
   readonly deoReports: DeoReportsViewModel;
   readonly deoTeachers: DeoTeachersViewModel;
   readonly countyDistricts: CountyDistrictsViewModel;
@@ -194,6 +197,9 @@ export function createPresentationLayer(
     deoStudents: new DeoStudentsViewModel({ deo: app.deo }),
     deoTransfers: new DeoTransfersViewModel({ deo: app.deo }),
     deoFinance: new DeoFinanceViewModel({ deo: app.deo }),
+    // The County Messages view model, reading the DEO's contacts and conversations.
+    deoMessages: new CountyMessagesViewModel({ source: app.deo }),
+    deoNotifications: new DeoNotificationsViewModel({ deo: app.deo }),
     deoReports: new DeoReportsViewModel({ deo: app.deo }),
     deoTeachers: new DeoTeachersViewModel({ deo: app.deo }),
     countyDistricts: new CountyDistrictsViewModel({ county: app.county }),
@@ -212,7 +218,7 @@ export function createPresentationLayer(
     countyFinance: new CountyFinanceViewModel({ county: app.county }),
     countyFeeRules: new CountyFeeRulesViewModel({ county: app.county }),
     countyReports: new CountyReportsViewModel({ county: app.county }),
-    countyMessages: new CountyMessagesViewModel({ county: app.county }),
+    countyMessages: new CountyMessagesViewModel({ source: app.county }),
     countyNotifications: new CountyNotificationsViewModel({ county: app.county }),
     countyAudit: new CountyAuditViewModel({ county: app.county }),
     countySettings: new CountySettingsViewModel({ county: app.county }),
