@@ -103,6 +103,8 @@ describe('SqliteCountyMessagingReadModel', () => {
       unreadCount: 2,
     });
     expect(conversations[2]).toMatchObject({ lastMessage: null, unreadCount: 0 });
+    // The DEO Messages page reads the same list without the County recipients.
+    expect(readModel.listConversations('ceo-1')).toEqual(conversations);
   });
 
   it('messages are oldest first with isOwn and senderName', () => {

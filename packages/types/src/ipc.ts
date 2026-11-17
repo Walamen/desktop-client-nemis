@@ -86,6 +86,7 @@ import type {
   DeoTransfersResult,
   DeoFinanceResult,
   DeoFinanceAuditEntry,
+  DeoNotificationsResult,
   DeoAttendanceReportQuery,
   DeoReportQuery,
   DeoReportScope,
@@ -267,6 +268,14 @@ export interface IpcContract {
   'deo:list-transfers': { args: []; result: DeoTransfersResult };
   'deo:finance': { args: []; result: DeoFinanceResult };
   'deo:finance-audit': { args: []; result: DeoFinanceAuditEntry[] };
+  'deo:messaging-overview': { args: []; result: CountyMessagingOverview };
+  'deo:messaging-messages': { args: [conversationId: string]; result: CountyDirectMessage[] | null };
+  'deo:messaging-start': { args: [request: CountyStartConversationRequest]; result: OnlineCommandResult<null> };
+  'deo:messaging-send': { args: [request: CountySendMessageRequest]; result: OnlineCommandResult<null> };
+  'deo:messaging-mark-read': { args: [conversationId: string]; result: OnlineCommandResult<null> };
+  'deo:notifications-list': { args: []; result: DeoNotificationsResult };
+  'deo:notifications-mark-read': { args: [notificationId: string]; result: boolean };
+  'deo:notifications-mark-all-read': { args: []; result: number };
   'deo:report-scope': { args: []; result: DeoReportScope };
   'deo:report-enrollment': { args: [query: DeoReportQuery]; result: CountyEnrollmentReport };
   'deo:report-attendance': { args: [query: DeoAttendanceReportQuery]; result: CountyAttendanceReport };
@@ -545,6 +554,14 @@ export const IpcChannels = {
   DEO_LIST_TRANSFERS: 'deo:list-transfers',
   DEO_FINANCE: 'deo:finance',
   DEO_FINANCE_AUDIT: 'deo:finance-audit',
+  DEO_MESSAGING_OVERVIEW: 'deo:messaging-overview',
+  DEO_MESSAGING_MESSAGES: 'deo:messaging-messages',
+  DEO_MESSAGING_START: 'deo:messaging-start',
+  DEO_MESSAGING_SEND: 'deo:messaging-send',
+  DEO_MESSAGING_MARK_READ: 'deo:messaging-mark-read',
+  DEO_NOTIFICATIONS_LIST: 'deo:notifications-list',
+  DEO_NOTIFICATIONS_MARK_READ: 'deo:notifications-mark-read',
+  DEO_NOTIFICATIONS_MARK_ALL_READ: 'deo:notifications-mark-all-read',
   DEO_REPORT_SCOPE: 'deo:report-scope',
   DEO_ENROLLMENT_REPORT: 'deo:report-enrollment',
   DEO_ATTENDANCE_REPORT: 'deo:report-attendance',

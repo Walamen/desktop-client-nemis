@@ -7,6 +7,9 @@ import type {
   DeoTransfersResult,
   DeoFinanceAuditEntry,
   DeoFinanceResult,
+  DeoNotificationsResult,
+  CountyDirectMessage,
+  CountyMessagingOverview,
   CountyAcademicReport,
   CountyAttendanceReport,
   CountyEnrollmentReport,
@@ -24,6 +27,13 @@ import type { GetDeoTeachersUseCase } from '../use-cases/deo/get-deo-teachers';
 import type { GetDeoStudentsUseCase } from '../use-cases/deo/get-deo-students';
 import type { GetDeoTransfersUseCase } from '../use-cases/deo/get-deo-transfers';
 import type { GetDeoFinanceAuditUseCase, GetDeoFinanceUseCase } from '../use-cases/deo/get-deo-finance';
+import type {
+  GetDeoMessagesUseCase,
+  GetDeoMessagingOverviewUseCase,
+  GetDeoNotificationsUseCase,
+  MarkAllDeoNotificationsReadUseCase,
+  MarkDeoNotificationReadUseCase,
+} from '../use-cases/deo/get-deo-messaging';
 import type { DeoReportUseCase, GetDeoReportScopeUseCase } from '../use-cases/deo/deo-reports';
 
 export interface DeoApplicationServiceDeps {
@@ -36,6 +46,11 @@ export interface DeoApplicationServiceDeps {
   listTransfers: GetDeoTransfersUseCase;
   getFinance: GetDeoFinanceUseCase;
   listFinanceAudit: GetDeoFinanceAuditUseCase;
+  getMessagingOverview: GetDeoMessagingOverviewUseCase;
+  listDirectMessages: GetDeoMessagesUseCase;
+  listNotifications: GetDeoNotificationsUseCase;
+  markNotificationRead: MarkDeoNotificationReadUseCase;
+  markAllNotificationsRead: MarkAllDeoNotificationsReadUseCase;
   getReportScope: GetDeoReportScopeUseCase;
   getEnrollmentReport: DeoReportUseCase<DeoReportQuery, CountyEnrollmentReport>;
   getAttendanceReport: DeoReportUseCase<DeoAttendanceReportQuery, CountyAttendanceReport>;
@@ -77,6 +92,26 @@ export class DeoApplicationService {
 
   listFinanceAudit(): Promise<ApplicationResponse<DeoFinanceAuditEntry[]>> {
     return this.deps.listFinanceAudit.execute({});
+  }
+
+  getMessagingOverview(): Promise<ApplicationResponse<CountyMessagingOverview>> {
+    return this.deps.getMessagingOverview.execute({});
+  }
+
+  listDirectMessages(conversationId: string): Promise<ApplicationResponse<CountyDirectMessage[] | null>> {
+    return this.deps.listDirectMessages.execute({ conversationId });
+  }
+
+  listNotifications(): Promise<ApplicationResponse<DeoNotificationsResult>> {
+    return this.deps.listNotifications.execute({});
+  }
+
+  markNotificationRead(notificationId: string): Promise<ApplicationResponse<boolean>> {
+    return this.deps.markNotificationRead.execute({ notificationId });
+  }
+
+  markAllNotificationsRead(): Promise<ApplicationResponse<number>> {
+    return this.deps.markAllNotificationsRead.execute({});
   }
 
   getReportScope(): Promise<ApplicationResponse<DeoReportScope>> {

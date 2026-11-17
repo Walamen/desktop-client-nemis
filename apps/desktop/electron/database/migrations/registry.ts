@@ -50,6 +50,7 @@ import { addUserOrganizationModules } from './048-add-user-organization-modules'
 import { addInstitutionAdminUserId } from './049-add-institution-admin-user-id';
 import { addGradesAssessmentIndex } from './050-add-grades-assessment-index';
 import { resyncDistrictFinanceAudit } from './051-resync-district-finance-audit';
+import { resyncDistrictMessages } from './052-resync-district-messages';
 
 /**
  * Every migration, ascending by version. Append only — never edit or reorder
@@ -107,4 +108,5 @@ export const migrations: readonly Migration[] = [
   addInstitutionAdminUserId,
   addGradesAssessmentIndex,
   resyncDistrictFinanceAudit,
+  resyncDistrictMessages,
 ];

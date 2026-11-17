@@ -56,6 +56,10 @@ export class SqliteCountyMessagingReadModel implements ICountyMessagingReadModel
     }));
   }
 
+  listConversations(currentUserId: string): CountyDirectConversation[] {
+    return guarded('SqliteCountyMessagingReadModel.listConversations', () => this.#conversations(currentUserId));
+  }
+
   listMessages(conversationId: string, currentUserId: string): CountyDirectMessage[] | null {
     return guarded('SqliteCountyMessagingReadModel.listMessages', () => {
       const db = this.#repository.connection;

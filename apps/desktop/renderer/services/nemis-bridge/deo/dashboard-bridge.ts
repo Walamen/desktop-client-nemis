@@ -7,6 +7,12 @@ import type {
   DeoTransfersResult,
   DeoFinanceResult,
   DeoFinanceAuditEntry,
+  DeoNotificationsResult,
+  CountyDirectMessage,
+  CountyMessagingOverview,
+  CountySendMessageRequest,
+  CountyStartConversationRequest,
+  OnlineCommandResult,
   CountyAcademicReport,
   CountyAttendanceReport,
   CountyEnrollmentReport,
@@ -26,6 +32,19 @@ export const dashboardBridge = {
   listTransfers: (): Promise<DeoTransfersResult> => api().deo.listTransfers(),
   getFinance: (): Promise<DeoFinanceResult> => api().deo.getFinance(),
   listFinanceAudit: (): Promise<DeoFinanceAuditEntry[]> => api().deo.listFinanceAudit(),
+  getMessagingOverview: (): Promise<CountyMessagingOverview> => api().deo.getMessagingOverview(),
+  listDirectMessages: (conversationId: string): Promise<CountyDirectMessage[] | null> =>
+    api().deo.listDirectMessages(conversationId),
+  startConversation: (request: CountyStartConversationRequest): Promise<OnlineCommandResult<null>> =>
+    api().deo.startConversation(request),
+  sendDirectMessage: (request: CountySendMessageRequest): Promise<OnlineCommandResult<null>> =>
+    api().deo.sendDirectMessage(request),
+  markConversationRead: (conversationId: string): Promise<OnlineCommandResult<null>> =>
+    api().deo.markConversationRead(conversationId),
+  getOnlineUsers: (userIds: string[]): Promise<string[]> => api().deo.getOnlineUsers(userIds),
+  listNotifications: (): Promise<DeoNotificationsResult> => api().deo.listNotifications(),
+  markNotificationRead: (notificationId: string): Promise<boolean> => api().deo.markNotificationRead(notificationId),
+  markAllNotificationsRead: (): Promise<number> => api().deo.markAllNotificationsRead(),
   getReportScope: (): Promise<DeoReportScope> => api().deo.getReportScope(),
   getEnrollmentReport: (query: DeoReportQuery): Promise<CountyEnrollmentReport> => api().deo.getEnrollmentReport(query),
   getAttendanceReport: (query: DeoAttendanceReportQuery): Promise<CountyAttendanceReport> =>

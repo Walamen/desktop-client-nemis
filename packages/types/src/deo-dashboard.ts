@@ -6,6 +6,14 @@ import type {
   CountyReportSchool,
   CountyStaffComplianceReport,
 } from './county-reports';
+import type {
+  CountyDirectMessage,
+  CountyMessagingOverview,
+  CountySendMessageRequest,
+  CountyStartConversationRequest,
+} from './county-messaging';
+import type { CountyNotification } from './county-notifications';
+import type { OnlineCommandResult } from './registry';
 
 /** IPC wire shapes for the DEO (district) dashboard. Kept structurally
  * identical to the application-layer output, so the main-process handler
@@ -323,6 +331,16 @@ export interface DeoFinanceAuditEntry {
   entityId: string | null;
 }
 
+/** DEO Notifications: every notification of the signed-in user on this
+ * device, newest first (docs/superpowers/specs/2026-11-17-deo-messages-notifications-design.md). */
+export interface DeoNotificationsResult {
+  districtId: string | null;
+  district: { id: string; name: string } | null;
+  county: { id: string; name: string } | null;
+  items: CountyNotification[];
+  unread: number;
+}
+
 /** DEO Generate Reports: the district comes from the session; only a school may be chosen. */
 export interface DeoReportQuery {
   schoolId?: string;
@@ -353,6 +371,18 @@ export interface DeoApi {
   getFinance(): Promise<DeoFinanceResult>;
   /** The newest 50 finance audit entries of the district. */
   listFinanceAudit(): Promise<DeoFinanceAuditEntry[]>;
+  /** Messages: read from this device; start/send/mark-read are online-only. */
+  getMessagingOverview(): Promise<CountyMessagingOverview>;
+  listDirectMessages(conversationId: string): Promise<CountyDirectMessage[] | null>;
+  startConversation(request: CountyStartConversationRequest): Promise<OnlineCommandResult<null>>;
+  sendDirectMessage(request: CountySendMessageRequest): Promise<OnlineCommandResult<null>>;
+  markConversationRead(conversationId: string): Promise<OnlineCommandResult<null>>;
+  /** Of these users, the ones the live socket says are online now. */
+  getOnlineUsers(userIds: string[]): Promise<string[]>;
+  /** Notifications: the user's own, offline; marking read syncs through the outbox. */
+  listNotifications(): Promise<DeoNotificationsResult>;
+  markNotificationRead(notificationId: string): Promise<boolean>;
+  markAllNotificationsRead(): Promise<number>;
   getReportScope(): Promise<DeoReportScope>;
   getEnrollmentReport(query: DeoReportQuery): Promise<CountyEnrollmentReport>;
   getAttendanceReport(query: DeoAttendanceReportQuery): Promise<CountyAttendanceReport>;

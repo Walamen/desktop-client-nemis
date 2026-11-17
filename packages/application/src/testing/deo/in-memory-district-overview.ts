@@ -9,7 +9,7 @@ import type {
   IDistrictOverviewReadModel,
 } from '../../interfaces/deo/district-overview-read-model';
 import type { IDistrictAlertStore } from '../../interfaces/deo/district-alert-store';
-import type { DeoFinanceAuditEntry } from '@nemis-desktop/types';
+import type { CountyMessageRecipient, DeoFinanceAuditEntry } from '@nemis-desktop/types';
 
 /** Settable canned rows. `calls` records every method name with its
  * arguments, so a test can prove what was (or was not) asked. */
@@ -39,6 +39,7 @@ export class InMemoryDistrictOverviewReadModel implements IDistrictOverviewReadM
   lastPayments: { institutionId: string; paidAt: string }[] = [];
   paymentMonths: { month: string; amount: number }[] = [];
   auditEntries: DeoFinanceAuditEntry[] = [];
+  messageContacts: CountyMessageRecipient[] = [];
   readonly calls: { method: string; args: unknown[] }[] = [];
 
   #record(method: string, ...args: unknown[]): void {
@@ -143,6 +144,10 @@ export class InMemoryDistrictOverviewReadModel implements IDistrictOverviewReadM
   paymentsByMonth(districtId: string, sinceIso: string) {
     this.#record('paymentsByMonth', districtId, sinceIso);
     return this.paymentMonths;
+  }
+  listMessageContacts(districtId: string, currentUserId: string): CountyMessageRecipient[] {
+    this.#record('listMessageContacts', districtId, currentUserId);
+    return this.messageContacts;
   }
   listFinanceAudit(limit: number): DeoFinanceAuditEntry[] {
     this.#record('listFinanceAudit', limit);

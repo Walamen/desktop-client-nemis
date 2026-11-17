@@ -1,4 +1,5 @@
 import type {
+  CountyDirectConversation,
   CountyDirectMessage,
   CountyMessagingOverview,
   CountyNotificationsPage,
@@ -10,6 +11,9 @@ import type {
 export interface ICountyMessagingReadModel {
   /** Eligible recipients (server COUNTY_ADMIN rule) and the user's conversations. */
   getOverview(currentUserId: string): CountyMessagingOverview;
+  /** The user's conversations, newest message first. Not county-specific:
+   * the DEO Messages page reads them too. */
+  listConversations(currentUserId: string): CountyDirectConversation[];
   /** A conversation's messages, oldest first; null when the user is not in it. */
   listMessages(conversationId: string, currentUserId: string): CountyDirectMessage[] | null;
 }

@@ -9,7 +9,7 @@ import type {
   IDistrictOverviewReadModel,
 } from '@nemis-desktop/application';
 import { LOW_ATTENDANCE_RATE, MIN_RECORDS_TO_JUDGE } from '@nemis-desktop/application';
-import { GradeLevel, type DeoFinanceAuditEntry } from '@nemis-desktop/types';
+import { GradeLevel, type CountyMessageRecipient, type DeoFinanceAuditEntry } from '@nemis-desktop/types';
 import { TableNames } from '../../../../database/schema/tableNames';
 import { StatementCache } from '../../base/StatementCache';
 import type { RepositoryContext } from '../../base/RepositoryContext';
@@ -618,5 +618,28 @@ export class SqliteDistrictOverviewReadModel implements IDistrictOverviewReadMod
         )
         .all(limit) as DeoFinanceAuditEntry[],
     );
+  }
+
+  listMessageContacts(districtId: string, currentUserId: string): CountyMessageRecipient[] {
+    return guarded('SqliteDistrictOverviewReadModel.listMessageContacts', () => {
+      const rows = this.#statements
+        .get(
+          `SELECT u.id AS userId, u.firstName, u.lastName, u.photoUrl, o.role, o.institutionId,
+                  i.name AS institutionName, d.id AS districtId, d.name AS districtName
+           FROM users u
+           JOIN user_organizations o ON o.userId = u.id AND o.isActive = 1
+           LEFT JOIN ${institutions} i ON i.id = o.institutionId
+           LEFT JOIN ${districts} d ON d.id = COALESCE(o.districtId, i.districtId)
+           WHERE u.isActive = 1 AND u.id <> @me
+             AND ((o.role = 'COUNTY_ADMIN'
+                   AND o.countyId = (SELECT dd.countyId FROM ${districts} dd WHERE dd.id = @district))
+               OR (o.role = 'INSTITUTION_ADMIN' AND (o.districtId = @district OR i.districtId = @district)))
+           ORDER BY u.firstName, u.lastName, u.id, o.id`,
+        )
+        .all({ me: currentUserId, district: districtId }) as CountyMessageRecipient[];
+      // One organisation per person: the first row, i.e. the lowest id.
+      const seen = new Set<string>();
+      return rows.filter((row) => !seen.has(row.userId) && seen.add(row.userId));
+    });
   }
 }

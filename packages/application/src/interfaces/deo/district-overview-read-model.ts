@@ -1,4 +1,4 @@
-import type { DeoFinanceAuditEntry } from '@nemis-desktop/types';
+import type { CountyMessageRecipient, DeoFinanceAuditEntry } from '@nemis-desktop/types';
 
 export interface DistrictOverviewRef {
   readonly id: string;
@@ -158,4 +158,11 @@ export interface IDistrictOverviewReadModel {
   /** The newest fee rule, obligation and payment audit entries on this device
    * (a district device holds only its district's), newest first. */
   listFinanceAudit(limit: number): DeoFinanceAuditEntry[];
+  /** Who the DEO may message (server DirectMessagesService.listEligibleRecipients,
+   * DEO branch): active users other than `currentUserId` with an active
+   * organisation that is COUNTY_ADMIN of the district's county, or
+   * INSTITUTION_ADMIN whose districtId is the district or whose school is in
+   * it. One organisation per user (the lowest id), sorted by first name,
+   * last name. */
+  listMessageContacts(districtId: string, currentUserId: string): CountyMessageRecipient[];
 }

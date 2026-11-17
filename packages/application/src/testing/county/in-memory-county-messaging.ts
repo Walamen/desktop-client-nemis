@@ -1,4 +1,5 @@
 import type {
+  CountyDirectConversation,
   CountyDirectMessage,
   CountyMessagingOverview,
   CountyNotificationsPage,
@@ -18,6 +19,11 @@ export class InMemoryCountyMessagingReadModel implements ICountyMessagingReadMod
   getOverview(currentUserId: string): CountyMessagingOverview {
     this.lastUserId = currentUserId;
     return this.overview;
+  }
+
+  listConversations(currentUserId: string): CountyDirectConversation[] {
+    this.lastUserId = currentUserId;
+    return this.overview.conversations;
   }
 
   listMessages(conversationId: string, currentUserId: string): CountyDirectMessage[] | null {

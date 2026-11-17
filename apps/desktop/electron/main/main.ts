@@ -162,7 +162,9 @@ function bootstrap(): void {
         emit: broadcastEvent,
         shouldRun: () => {
           try {
-            return !!networkMonitor?.isOnline() && workspaces!.active.user.role === SystemRole.COUNTY_ADMIN;
+            // The County and DEO Messages pages: live messages and online dots.
+            const role = workspaces!.active.user.role;
+            return !!networkMonitor?.isOnline() && (role === SystemRole.COUNTY_ADMIN || role === SystemRole.DEO);
           } catch {
             return false;
           }

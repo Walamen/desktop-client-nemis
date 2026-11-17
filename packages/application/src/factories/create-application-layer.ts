@@ -71,6 +71,13 @@ import { GetDeoTeachersUseCase } from '../use-cases/deo/get-deo-teachers';
 import { GetDeoStudentsUseCase } from '../use-cases/deo/get-deo-students';
 import { GetDeoTransfersUseCase } from '../use-cases/deo/get-deo-transfers';
 import { GetDeoFinanceAuditUseCase, GetDeoFinanceUseCase } from '../use-cases/deo/get-deo-finance';
+import {
+  GetDeoMessagesUseCase,
+  GetDeoMessagingOverviewUseCase,
+  GetDeoNotificationsUseCase,
+  MarkAllDeoNotificationsReadUseCase,
+  MarkDeoNotificationReadUseCase,
+} from '../use-cases/deo/get-deo-messaging';
 import { DeoReportUseCase, GetDeoReportScopeUseCase } from '../use-cases/deo/deo-reports';
 import { DeoApplicationService } from '../services/deo-application-service';
 import type { IStudentRepository } from '../interfaces/students/student-repository';
@@ -732,6 +739,14 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
     }),
   });
 
+  const deoMessagingDeps = {
+    districtOverview: ports.districtOverview,
+    messaging: ports.countyMessaging,
+    notifications: ports.countyNotifications,
+    currentDistrictId: ports.currentDistrictId,
+    currentUserId: ports.currentUserId,
+    logger,
+  };
   const deo = new DeoApplicationService({
     getDashboard: new GetDeoDashboardUseCase({
       readModel: ports.districtOverview,
@@ -783,6 +798,11 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
       currentDistrictId: ports.currentDistrictId,
       logger,
     }),
+    getMessagingOverview: new GetDeoMessagingOverviewUseCase(deoMessagingDeps),
+    listDirectMessages: new GetDeoMessagesUseCase(deoMessagingDeps),
+    listNotifications: new GetDeoNotificationsUseCase(deoMessagingDeps),
+    markNotificationRead: new MarkDeoNotificationReadUseCase(deoMessagingDeps),
+    markAllNotificationsRead: new MarkAllDeoNotificationsReadUseCase(deoMessagingDeps),
     getReportScope: new GetDeoReportScopeUseCase({
       districtOverview: ports.districtOverview,
       reports: ports.countyReports,

@@ -1042,4 +1042,73 @@ describe('SqliteDistrictOverviewReadModel', () => {
       expect(readModel.listFinanceAudit(50).map((e) => e.id)).toEqual(['e4', 'e3', 'e1']);
     });
   });
+
+  describe('message contacts', () => {
+    const user = (id: string, firstName: string, lastName: string, isActive = 1) =>
+      run(
+        `INSERT INTO users (id,firstName,lastName,email,isActive,version,updatedAt,photoUrl) VALUES (?,?,?,?,?,1,?,NULL)`,
+        id, firstName, lastName, `${id}@x.lr`, isActive, NOW,
+      );
+    const org = (
+      id: string,
+      userId: string,
+      role: string,
+      opts: { countyId?: string | null; districtId?: string | null; institutionId?: string | null; isActive?: number } = {},
+    ) =>
+      run(
+        `INSERT INTO user_organizations (id,userId,role,institutionId,countyId,districtId,isActive) VALUES (?,?,?,?,?,?,?)`,
+        id, userId, role, opts.institutionId ?? null, opts.countyId ?? null, opts.districtId ?? null, opts.isActive ?? 1,
+      );
+
+    beforeEach(() => {
+      district('d-1', 'Buchanan', 'county-1');
+      district('d-2', 'Owensgrove', 'county-1');
+      school('s-a', 'd-1', { name: 'Alpha' });
+      school('s-o', 'd-2', { name: 'Other District School' });
+      user('deo-1', 'Me', 'Self');
+      org('o-me', 'deo-1', 'DEO', { districtId: 'd-1', countyId: 'county-1' });
+      user('ceo-1', 'Cee', 'Oh');
+      org('o-ceo', 'ceo-1', 'COUNTY_ADMIN', { countyId: 'county-1' });
+      user('ceo-x', 'Far', 'County');
+      org('o-ceo-x', 'ceo-x', 'COUNTY_ADMIN', { countyId: 'county-2' });
+      user('ceo-gone', 'Old', 'Ceo');
+      org('o-ceo-gone', 'ceo-gone', 'COUNTY_ADMIN', { countyId: 'county-1', isActive: 0 });
+      user('adm-a', 'Ann', 'Admin');
+      org('o-adm-a', 'adm-a', 'INSTITUTION_ADMIN', { institutionId: 's-a' });
+      user('adm-d', 'Bea', 'Direct');
+      org('o-adm-d', 'adm-d', 'INSTITUTION_ADMIN', { districtId: 'd-1' });
+      user('adm-o', 'Out', 'Side');
+      org('o-adm-o', 'adm-o', 'INSTITUTION_ADMIN', { institutionId: 's-o' });
+      user('adm-off', 'Off', 'Line', 0);
+      org('o-adm-off', 'adm-off', 'INSTITUTION_ADMIN', { institutionId: 's-a' });
+      user('teacher', 'Tee', 'Cher');
+      org('o-teacher', 'teacher', 'TEACHER', { institutionId: 's-a' });
+    });
+
+    it("lists the county's County Admin and the district's School Admins, active, without me, by name", () => {
+      const contacts = readModel.listMessageContacts('d-1', 'deo-1');
+      expect(contacts.map((c) => c.userId)).toEqual(['adm-a', 'adm-d', 'ceo-1']);
+      expect(contacts[0]).toEqual({
+        userId: 'adm-a',
+        firstName: 'Ann',
+        lastName: 'Admin',
+        photoUrl: null,
+        role: 'INSTITUTION_ADMIN',
+        institutionId: 's-a',
+        institutionName: 'Alpha',
+        districtId: 'd-1',
+        districtName: 'Buchanan',
+      });
+      expect(contacts[2]).toMatchObject({ role: 'COUNTY_ADMIN', institutionId: null, districtId: null });
+    });
+
+    it('keeps one organisation per person, the lowest id', () => {
+      org('o-adm-a-2', 'adm-a', 'INSTITUTION_ADMIN', { districtId: 'd-1' });
+      expect(readModel.listMessageContacts('d-1', 'deo-1').filter((c) => c.userId === 'adm-a')).toHaveLength(1);
+    });
+
+    it('has no County Admin when the district row is missing', () => {
+      expect(readModel.listMessageContacts('d-unknown', 'deo-1')).toEqual([]);
+    });
+  });
 });

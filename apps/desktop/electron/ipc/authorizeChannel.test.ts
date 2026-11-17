@@ -159,6 +159,14 @@ describe('authorizeChannel', () => {
       IpcChannels.DEO_STAFF_REPORT,
       IpcChannels.DEO_FINANCE,
       IpcChannels.DEO_FINANCE_AUDIT,
+      IpcChannels.DEO_MESSAGING_OVERVIEW,
+      IpcChannels.DEO_MESSAGING_MESSAGES,
+      IpcChannels.DEO_MESSAGING_START,
+      IpcChannels.DEO_MESSAGING_SEND,
+      IpcChannels.DEO_MESSAGING_MARK_READ,
+      IpcChannels.DEO_NOTIFICATIONS_LIST,
+      IpcChannels.DEO_NOTIFICATIONS_MARK_READ,
+      IpcChannels.DEO_NOTIFICATIONS_MARK_ALL_READ,
     ];
     expect(new Set(channels)).toEqual(new Set(DEO_CHANNELS));
     for (const channel of channels) {
