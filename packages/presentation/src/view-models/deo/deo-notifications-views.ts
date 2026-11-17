@@ -32,8 +32,17 @@ const DEO = '/government/deo';
  * `/deo/dashboard` for an assignment. */
 export function deoNotificationLink(link: string | null | undefined): string | null {
   if (!link || !link.startsWith('/') || link.startsWith('//')) return null;
+  // Never leave the DEO pages through a dot segment (`/government/deo/../x`).
+  if (link.split(/[?#]/)[0]!.split('/').some((segment) => segment === '..' || segment === '.')) return null;
   const message = /^\/messages\/([^/?#]+)$/.exec(link);
-  if (message) return `${DEO}/messages?conv=${encodeURIComponent(decodeURIComponent(message[1]!))}`;
+  if (message) {
+    // A malformed escape (e.g. %E0) must hide the link, not break the page.
+    try {
+      return `${DEO}/messages?conv=${encodeURIComponent(decodeURIComponent(message[1]!))}`;
+    } catch {
+      return null;
+    }
+  }
   if (link === '/deo' || link === '/deo/dashboard') return DEO;
   const [path = ''] = link.split('?');
   if (path === DEO || path.startsWith(`${DEO}/`)) return link;

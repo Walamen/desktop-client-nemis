@@ -104,8 +104,11 @@ export function DeoMessagesPanel() {
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
 
+  // The view model outlives the page, so a deep link must wait for a load
+  // started by this visit, never act on a list from an earlier one.
+  const [freshOverview, setFreshOverview] = useState(false);
   useRevalidateOnSync(() => {
-    void vm.loadOverview();
+    void vm.loadOverview().then(() => setFreshOverview(true));
     void vm.reloadThread();
   }, []);
   useRealtime((event) => void vm.onRealtime(event));
@@ -141,12 +144,13 @@ export function DeoMessagesPanel() {
   const targetConversationId = searchParams.get('conv');
   const deepLinkedRef = useRef(false);
   useEffect(() => {
-    if (deepLinkedRef.current || !overviewReady) return;
+    if (deepLinkedRef.current || !freshOverview || !overviewReady) return;
     deepLinkedRef.current = true;
     if (targetUserId) {
-      const recipient = recipients.find((r) => r.userId === targetUserId);
+      const conv = conversations.find((c) => c.counterpart.userId === targetUserId);
+      // No longer a contact but talked to before: open the past conversation.
+      const recipient = recipients.find((r) => r.userId === targetUserId) ?? (conv ? counterpartAsRecipient(conv) : null);
       if (!recipient) return;
-      const conv = conversations.find((c) => c.counterpart.userId === recipient.userId);
       handleSelectItem(recipient, conv?.id ?? null);
       if (recipient.role === 'COUNTY_ADMIN' || recipient.role === 'INSTITUTION_ADMIN') setRoleFilter(recipient.role);
       return;
@@ -157,8 +161,8 @@ export function DeoMessagesPanel() {
       const recipient = recipients.find((r) => r.userId === conv.counterpart.userId) ?? counterpartAsRecipient(conv);
       handleSelectItem(recipient, conv.id);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once, when the overview first arrives
-  }, [overviewReady]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once, when this visit's overview arrives
+  }, [freshOverview, overviewReady]);
 
   // Opening a conversation marks it read on the server (online only); the
   // pull then clears the unread badge locally.
@@ -176,13 +180,14 @@ export function DeoMessagesPanel() {
   // School Admins: conversations first (newest), then by name; past
   // conversations with people who are no longer contacts last.
   const { schoolAdminItems, pastItems } = useMemo(() => {
+    // Built from every contact, so the County Admin's conversation is never
+    // mistaken for a past one; then split.
     const reachable = new Set(recipients.map((r) => r.userId));
-    const items = buildSidebarItems(
-      recipients.filter((r) => r.role === 'INSTITUTION_ADMIN'),
-      conversations,
-    );
+    const items = buildSidebarItems(recipients, conversations);
     return {
-      schoolAdminItems: items.filter((item) => reachable.has(item.recipient.userId)),
+      schoolAdminItems: items.filter(
+        (item) => reachable.has(item.recipient.userId) && item.recipient.role === 'INSTITUTION_ADMIN',
+      ),
       pastItems: items.filter((item) => !reachable.has(item.recipient.userId) && item.conversation),
     };
   }, [recipients, conversations]);

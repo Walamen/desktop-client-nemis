@@ -29,6 +29,8 @@ describe('DEO notification helpers (same rules as portal-web lib/deo-notificatio
     ['/school-admin/dashboard', null],
     ['https://example.com', null],
     ['//evil.example/x', null],
+    ['/government/deo/../county/x', null],
+    ['/messages/%E0', null],
     [null, null],
   ])('maps link %p to %p', (link, route) => {
     expect(deoNotificationLink(link)).toBe(route);

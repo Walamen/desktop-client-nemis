@@ -28,7 +28,8 @@ Web layout reference: `2026-11-14-deo-portal-web-design-reference.md` §4.10 and
   - `WARNING`: DEADLINE_REMINDER, BULK_UPLOAD_FAILED, SCHOOL_REJECTED, STUDENT_TRANSFER_REJECTED, DEO_UNASSIGNED, TRANSFER_CANCELLED
   - `SUCCESS`: SCHOOL_APPROVED, STUDENT_TRANSFER_APPROVED, BULK_UPLOAD_COMPLETED, DEO_ASSIGNED
   - `INFO`: everything else
-- **Notifications page:** the §4.11 layout. Filter pills All / Unread then one per card type that has items, each with its count; newest first; 20 per page with Load more (the County fix N4); Mark as Read per card; Mark All as Read; Open (marks read, then navigates) only when the link maps.
+- **Notifications page:** the §4.11 layout. Filter pills All / Unread then one per card type that has items, each with its count; newest first; 50 per page with Load more (the server's page cap); Mark as Read per card; Mark All as Read; Open (marks read, then navigates) only when the link maps. On the web, All and Unread are the server's totals and the type pills count the loaded pages; the desktop holds every row and counts them all.
+- **Links:** a link with a `.` or `..` segment, or a malformed escape, hides Open.
 
 ## Data
 
@@ -43,6 +44,13 @@ Web layout reference: `2026-11-14-deo-portal-web-design-reference.md` §4.10 and
 
 - **Messages (§4.10):** banner "DEO Portal" / "Messages"; the two-pane panel; County Admin pinned with the crown; composer disabled offline on the desktop ("Messages need a connection to send.").
 - **Notifications (§4.11):** banner "DEO Portal" / "Notifications"; heading "Notifications" over "DEO Portal · <District> · <County>"; the unread count; pills; tinted cards.
+
+## Review fixes and accepted gaps
+
+- Fixed: the County Admin was listed twice (pinned and under School Admins) once a conversation existed; a desktop deep link could act on the list from an earlier visit (it now waits for this visit's load); `?userId=` for someone who is no longer a contact now opens the past conversation.
+- Accepted: the desktop finds the County Admin through the district's county; the server uses the DEO membership's `countyId`. For a DEO whose membership lacks `countyId`, the desktop lists the County Admin but the server refuses to start that conversation.
+- Accepted: a School Admin membership with only `districtId` (no school in the district) is a contact on the server but never reaches the device (the roster ships memberships by institution).
+- Accepted: district devices now hold the County Admin's user row (email, phone, last login), as County devices already hold DEO rows.
 
 ## Out of scope
 

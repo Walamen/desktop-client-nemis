@@ -26,12 +26,14 @@ const overview = {
   conversations: [
     conversation('c-a', 'adm-a', 'Ann', 'INSTITUTION_ADMIN', 'Alpha School'),
     conversation('c-gone', 'moved-1', 'Moe', 'INSTITUTION_ADMIN', 'Old School'),
+    conversation('c-ceo', 'ceo-1', 'Cee', 'COUNTY_ADMIN'),
   ],
 };
 
-function renderWith(opts: { online?: boolean } = {}) {
+function renderWith(opts: { online?: boolean; overview?: typeof overview; earlierVisit?: typeof overview } = {}) {
+  let current = opts.earlierVisit ?? opts.overview ?? overview;
   const deo = {
-    getMessagingOverview: vi.fn(async () => overview),
+    getMessagingOverview: vi.fn(async () => current),
     listDirectMessages: vi.fn(async () => []),
     sendDirectMessage: vi.fn(async () => ({ data: null, refreshed: true })),
     startConversation: vi.fn(async () => ({ data: null, refreshed: true })),
@@ -44,12 +46,27 @@ function renderWith(opts: { online?: boolean } = {}) {
   };
   const layer = createRendererPresentation();
   layer.stores.connectivity.setOnline(opts.online ?? true);
-  render(
-    <PresentationProvider layer={layer}>
-      <DeoMessagesPanel />
-    </PresentationProvider>,
-  );
-  return { deo };
+  return {
+    deo,
+    async mount() {
+      if (opts.earlierVisit) {
+        // An earlier visit left this list in the session-wide view model.
+        await layer.viewModels.deoMessages.loadOverview();
+        current = opts.overview ?? overview;
+      }
+      render(
+        <PresentationProvider layer={layer}>
+          <DeoMessagesPanel />
+        </PresentationProvider>,
+      );
+    },
+  };
+}
+
+async function renderPanel(opts: Parameters<typeof renderWith>[0] = {}) {
+  const harness = renderWith(opts);
+  await harness.mount();
+  return { deo: harness.deo };
 }
 
 afterEach(() => {
@@ -59,7 +76,7 @@ afterEach(() => {
 
 describe('DEO Messages panel', () => {
   it('pins the County Admin, then School Admins (conversations first), then past conversations', async () => {
-    renderWith();
+    await renderPanel();
     await waitFor(() => expect(screen.getByText('Cee Doe')).toBeInTheDocument());
     // The filter button and the pinned contact's role line.
     expect(screen.getAllByText('County Admin')).toHaveLength(2);
@@ -71,8 +88,28 @@ describe('DEO Messages panel', () => {
     }
   });
 
+  it('lists the County Admin once, pinned, even with a conversation', async () => {
+    await renderPanel();
+    await waitFor(() => expect(screen.getByText('Cee Doe')).toBeInTheDocument());
+    expect(screen.getAllByText('Cee Doe')).toHaveLength(1);
+    expect(screen.getByText('3 contacts')).toBeInTheDocument();
+  });
+
+  it('a ?conv= link after an earlier visit waits for the list this visit loads', async () => {
+    search = new URLSearchParams('conv=c-new');
+    const fresh = { ...overview, conversations: [...overview.conversations, conversation('c-new', 'adm-b', 'Bob', 'INSTITUTION_ADMIN')] };
+    const { deo } = await renderPanel({ earlierVisit: overview, overview: fresh });
+    await waitFor(() => expect(deo.listDirectMessages).toHaveBeenCalledWith('c-new'));
+  });
+
+  it('?userId= for someone no longer a contact opens the past conversation', async () => {
+    search = new URLSearchParams('userId=moved-1');
+    const { deo } = await renderPanel();
+    await waitFor(() => expect(deo.listDirectMessages).toHaveBeenCalledWith('c-gone'));
+  });
+
   it('filters by role and finds a school admin by school', async () => {
-    renderWith();
+    await renderPanel();
     await waitFor(() => expect(screen.getByText('Cee Doe')).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: 'County Admin' }));
     expect(screen.queryByText('Ann Doe')).toBeNull();
@@ -86,7 +123,7 @@ describe('DEO Messages panel', () => {
 
   it('?userId= opens that person, starting a new chat when there is none', async () => {
     search = new URLSearchParams('userId=adm-b');
-    const { deo } = renderWith();
+    const { deo } = await renderPanel();
     await waitFor(() => expect(screen.getByText('Start your conversation with Bob.')).toBeInTheDocument());
     fireEvent.change(screen.getByPlaceholderText(/Type a message/), { target: { value: 'Hello' } });
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
@@ -95,14 +132,14 @@ describe('DEO Messages panel', () => {
 
   it('?userId= with a conversation opens it and marks it read online', async () => {
     search = new URLSearchParams('userId=adm-a');
-    const { deo } = renderWith();
+    const { deo } = await renderPanel();
     await waitFor(() => expect(deo.listDirectMessages).toHaveBeenCalledWith('c-a'));
     await waitFor(() => expect(deo.markConversationRead).toHaveBeenCalledWith('c-a'));
   });
 
   it('offline, the conversation still opens but sending is disabled', async () => {
     search = new URLSearchParams('conv=c-a');
-    const { deo } = renderWith({ online: false });
+    const { deo } = await renderPanel({ online: false });
     await waitFor(() => expect(deo.listDirectMessages).toHaveBeenCalledWith('c-a'));
     expect(screen.getByText('Messages need a connection to send.')).toBeInTheDocument();
     expect(deo.markConversationRead).not.toHaveBeenCalled();
