@@ -1,4 +1,5 @@
-import { ComingSoon } from '@/components/shell/ComingSoon';
+import { DeoSettingsPage } from '@/components/deo/DeoSettingsPage';
+
 export default function Page() {
-  return <ComingSoon title="District Settings" />;
+  return <DeoSettingsPage />;
 }

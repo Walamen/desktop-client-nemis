@@ -27,6 +27,7 @@ import { DeoStudentsViewModel } from '../view-models/deo/deo-students-view-model
 import { DeoTransfersViewModel } from '../view-models/deo/deo-transfers-view-model';
 import { DeoFinanceViewModel } from '../view-models/deo/deo-finance-view-model';
 import { DeoNotificationsViewModel } from '../view-models/deo/deo-notifications-view-model';
+import { DeoSettingsViewModel } from '../view-models/deo/deo-settings-view-model';
 import { DeoReportsViewModel } from '../view-models/deo/deo-reports-view-model';
 import { DeoTeachersViewModel } from '../view-models/deo/deo-teachers-view-model';
 import { CountyDistrictsViewModel } from '../view-models/county/county-districts-view-model';
@@ -93,6 +94,7 @@ export interface PresentationViewModels {
   readonly deoFinance: DeoFinanceViewModel;
   readonly deoMessages: CountyMessagesViewModel;
   readonly deoNotifications: DeoNotificationsViewModel;
+  readonly deoSettings: DeoSettingsViewModel;
   readonly deoReports: DeoReportsViewModel;
   readonly deoTeachers: DeoTeachersViewModel;
   readonly countyDistricts: CountyDistrictsViewModel;
@@ -200,6 +202,7 @@ export function createPresentationLayer(
     // The County Messages view model, reading the DEO's contacts and conversations.
     deoMessages: new CountyMessagesViewModel({ source: app.deo }),
     deoNotifications: new DeoNotificationsViewModel({ deo: app.deo }),
+    deoSettings: new DeoSettingsViewModel({ deo: app.deo }),
     deoReports: new DeoReportsViewModel({ deo: app.deo }),
     deoTeachers: new DeoTeachersViewModel({ deo: app.deo }),
     countyDistricts: new CountyDistrictsViewModel({ county: app.county }),

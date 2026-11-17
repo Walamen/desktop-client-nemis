@@ -11,5 +11,6 @@ export const useDeoTransfersViewModel = () => usePresentation().viewModels.deoTr
 export const useDeoFinanceViewModel = () => usePresentation().viewModels.deoFinance;
 export const useDeoMessagesViewModel = () => usePresentation().viewModels.deoMessages;
 export const useDeoNotificationsViewModel = () => usePresentation().viewModels.deoNotifications;
+export const useDeoSettingsViewModel = () => usePresentation().viewModels.deoSettings;
 export const useDeoReportsViewModel = () => usePresentation().viewModels.deoReports;
 export const useDeoTeachersViewModel = () => usePresentation().viewModels.deoTeachers;
