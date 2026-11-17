@@ -10,6 +10,7 @@ export const deoIpc = {
     listSchools: () => query(() => deoBridge.listSchools()),
     listSchoolAdmins: () => query(() => deoBridge.listSchoolAdmins()),
     listStudents: () => query(() => deoBridge.listStudents()),
+    listTransfers: () => query(() => deoBridge.listTransfers()),
     listTeachers: () => query(() => deoBridge.listTeachers()),
   }),
 };

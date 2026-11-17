@@ -68,6 +68,27 @@ export interface DistrictTeacherRow {
   readonly ungradedAssessments: number;
 }
 
+/** One transfer touching the district, before lapse and the awaited school are derived. */
+export interface DistrictTransferRow {
+  readonly id: string;
+  /** The denormalised name, else "Unknown pupil". */
+  readonly studentName: string;
+  readonly studentNemisId: string | null;
+  readonly fromSchool: { readonly id: string; readonly name: string };
+  readonly toSchool: { readonly id: string; readonly name: string };
+  readonly fromInDistrict: boolean;
+  readonly toInDistrict: boolean;
+  readonly status: string;
+  readonly initiatedBy: string;
+  readonly lapsesAt: string | null;
+  readonly requestedGrade: string | null;
+  readonly reason: string;
+  readonly reviewNotes: string | null;
+  readonly createdAt: string;
+  readonly requestedDate: string | null;
+  readonly reviewedAt: string | null;
+}
+
 /** Raw rows and counts for one district, read from this device's synced
  * database. No arithmetic here: GetDeoDashboardUseCase owns it.
  *
@@ -119,6 +140,8 @@ export interface IDistrictOverviewReadModel {
    * records on or after sinceDate (in the district's active schools) and
    * attended × 100 < 80 × records, LATE attending. Schools with none are absent. */
   countAtRiskStudentsBySchool(districtId: string, sinceDate: string): { institutionId: string; count: number }[];
+  /** Transfers whose from- or to-school is in the district (active or not), newest first then by id. */
+  listTransfers(districtId: string): DistrictTransferRow[];
   /** Active TEACHER / ASSISTANT_TEACHER staff of the district's active schools. Unordered. */
   listTeachers(districtId: string): DistrictTeacherRow[];
 }

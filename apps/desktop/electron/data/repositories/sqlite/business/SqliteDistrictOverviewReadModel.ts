@@ -4,6 +4,7 @@ import type {
   DistrictReportRow,
   DistrictSchoolAdminRow,
   DistrictTeacherRow,
+  DistrictTransferRow,
   DistrictSchoolRef,
   IDistrictOverviewReadModel,
 } from '@nemis-desktop/application';
@@ -32,6 +33,7 @@ const {
   subjectTeachers,
   classTeachers,
   classSubjectTeachers,
+  studentTransfers,
 } = TableNames;
 
 /** KG, K1, K2, GRADE_1 … GRADE_12: the server's GradeLevel enum order. */
@@ -405,6 +407,64 @@ export class SqliteDistrictOverviewReadModel implements IDistrictOverviewReadMod
         .get(AT_RISK_STUDENTS_SQL)
         .all(sinceDate, districtId, districtId) as { institutionId: string; count: number }[],
     );
+  }
+
+  listTransfers(districtId: string): DistrictTransferRow[] {
+    return guarded('SqliteDistrictOverviewReadModel.listTransfers', () => {
+      const rows = this.#statements
+        .get(
+          `SELECT t.id, t.studentName, t.studentNemisId,
+                  t.fromInstitutionId, COALESCE(t.fromInstitutionName, fi.name) AS fromName,
+                  t.toInstitutionId, COALESCE(t.toInstitutionName, ti.name) AS toName,
+                  CASE WHEN fi.districtId = ? THEN 1 ELSE 0 END AS fromInDistrict,
+                  CASE WHEN ti.districtId = ? THEN 1 ELSE 0 END AS toInDistrict,
+                  t.status, t.initiatedBy, t.lapsesAt, t.toGradeLevel, t.reason, t.reviewNotes,
+                  t.createdAt, t.requestedDate, t.reviewedAt
+           FROM ${studentTransfers} t
+           LEFT JOIN ${institutions} fi ON fi.id = t.fromInstitutionId
+           LEFT JOIN ${institutions} ti ON ti.id = t.toInstitutionId
+           WHERE fi.districtId = ? OR ti.districtId = ?
+           ORDER BY t.createdAt DESC, t.id ASC`,
+        )
+        .all(districtId, districtId, districtId, districtId) as Array<{
+        id: string;
+        studentName: string | null;
+        studentNemisId: string | null;
+        fromInstitutionId: string;
+        fromName: string | null;
+        toInstitutionId: string;
+        toName: string | null;
+        fromInDistrict: number;
+        toInDistrict: number;
+        status: string;
+        initiatedBy: string;
+        lapsesAt: string | null;
+        toGradeLevel: string | null;
+        reason: string;
+        reviewNotes: string | null;
+        createdAt: string;
+        requestedDate: string | null;
+        reviewedAt: string | null;
+      }>;
+      return rows.map((row) => ({
+        id: row.id,
+        studentName: row.studentName?.trim() || 'Unknown pupil',
+        studentNemisId: row.studentNemisId,
+        fromSchool: { id: row.fromInstitutionId, name: row.fromName ?? 'Unknown school' },
+        toSchool: { id: row.toInstitutionId, name: row.toName ?? 'Unknown school' },
+        fromInDistrict: row.fromInDistrict === 1,
+        toInDistrict: row.toInDistrict === 1,
+        status: row.status,
+        initiatedBy: row.initiatedBy,
+        lapsesAt: row.lapsesAt,
+        requestedGrade: row.toGradeLevel,
+        reason: row.reason,
+        reviewNotes: row.reviewNotes,
+        createdAt: row.createdAt,
+        requestedDate: row.requestedDate,
+        reviewedAt: row.reviewedAt,
+      }));
+    });
   }
 
   listTeachers(districtId: string): DistrictTeacherRow[] {

@@ -4,6 +4,7 @@ import type {
   DeoSchoolsResult,
   DeoStudentsResult,
   DeoTeachersResult,
+  DeoTransfersResult,
 } from '@nemis-desktop/types';
 import { api } from '../api';
 
@@ -13,5 +14,6 @@ export const dashboardBridge = {
   listSchools: (): Promise<DeoSchoolsResult> => api().deo.listSchools(),
   listSchoolAdmins: (): Promise<DeoSchoolAdminsResult> => api().deo.listSchoolAdmins(),
   listStudents: (): Promise<DeoStudentsResult> => api().deo.listStudents(),
+  listTransfers: (): Promise<DeoTransfersResult> => api().deo.listTransfers(),
   listTeachers: (): Promise<DeoTeachersResult> => api().deo.listTeachers(),
 };

@@ -83,6 +83,7 @@ import type {
   DeoSchoolsResult,
   DeoStudentsResult,
   DeoTeachersResult,
+  DeoTransfersResult,
 } from './deo-dashboard';
 import type {
   CountyAssignDeoRequest,
@@ -258,6 +259,7 @@ export interface IpcContract {
   'deo:list-school-admins': { args: []; result: DeoSchoolAdminsResult };
   'deo:list-teachers': { args: []; result: DeoTeachersResult };
   'deo:list-students': { args: []; result: DeoStudentsResult };
+  'deo:list-transfers': { args: []; result: DeoTransfersResult };
   'county:list-districts': { args: []; result: CountyDistrictsResult };
   'county:get-district': { args: [districtId: string]; result: CountyDistrictDetailResult | null };
   'county:assign-deo': { args: [request: CountyAssignDeoRequest]; result: OnlineCommandResult<null> };
@@ -528,6 +530,7 @@ export const IpcChannels = {
   DEO_LIST_SCHOOL_ADMINS: 'deo:list-school-admins',
   DEO_LIST_TEACHERS: 'deo:list-teachers',
   DEO_LIST_STUDENTS: 'deo:list-students',
+  DEO_LIST_TRANSFERS: 'deo:list-transfers',
   COUNTY_LIST_DISTRICTS: 'county:list-districts',
   COUNTY_GET_DISTRICT: 'county:get-district',
   COUNTY_ASSIGN_DEO: 'county:assign-deo',

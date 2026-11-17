@@ -214,6 +214,43 @@ export interface DeoStudentsResult {
   dropoutAlerts: DeoDropoutAlert[];
 }
 
+/** Which way a transfer crosses the district boundary. */
+export type TransferDirection = 'INTO' | 'OUT_OF' | 'WITHIN';
+
+/** One transfer on DEO Transfers (oversight only: schools decide). */
+export interface DeoTransfer {
+  id: string;
+  studentName: string;
+  studentNemisId: string | null;
+  fromSchool: { id: string; name: string };
+  toSchool: { id: string; name: string };
+  direction: TransferDirection;
+  /** As stored: a lapsed request stays PENDING. */
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+  /** A RECEIVING_SCHOOL request past lapsesAt: the asking school may complete it. */
+  lapsed: boolean;
+  initiatedBy: 'ORIGIN_SCHOOL' | 'RECEIVING_SCHOOL';
+  /** The school expected to act next; null once decided or cancelled. */
+  awaitingSchool: { id: string; name: string } | null;
+  requestedGrade: string | null;
+  reason: string;
+  reviewNotes: string | null;
+  createdAt: string;
+  requestedDate: string | null;
+  reviewedAt: string | null;
+}
+
+/** DEO Transfers, from this device. The server builds the same for the web
+ * (Nemis districts.service.ts getDistrictTransferOverview). */
+export interface DeoTransfersResult {
+  districtId: string | null;
+  district: { id: string; name: string } | null;
+  county: { id: string; name: string } | null;
+  /** Newest first, then by id. */
+  transfers: DeoTransfer[];
+  summary: { pending: number; lapsed: number };
+}
+
 /** DEO portal calls on `window.nemis.deo`. */
 export interface DeoApi {
   getDashboard(): Promise<DeoDashboardResult>;
@@ -221,6 +258,7 @@ export interface DeoApi {
   listSchoolAdmins(): Promise<DeoSchoolAdminsResult>;
   listTeachers(): Promise<DeoTeachersResult>;
   listStudents(): Promise<DeoStudentsResult>;
+  listTransfers(): Promise<DeoTransfersResult>;
   /** Marks an alert reviewed on this device; the outbox syncs it later. */
   resolveAlert(alertId: string): Promise<boolean>;
 }

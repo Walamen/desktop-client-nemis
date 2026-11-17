@@ -8,6 +8,7 @@ export const deoDashboardApi: DeoApi = {
   listSchools: () => invoke(IpcChannels.DEO_LIST_SCHOOLS),
   listSchoolAdmins: () => invoke(IpcChannels.DEO_LIST_SCHOOL_ADMINS),
   listStudents: () => invoke(IpcChannels.DEO_LIST_STUDENTS),
+  listTransfers: () => invoke(IpcChannels.DEO_LIST_TRANSFERS),
   listTeachers: () => invoke(IpcChannels.DEO_LIST_TEACHERS),
 };
 

@@ -2,6 +2,7 @@ import type {
   DistrictAlertRow,
   DistrictSchoolAdminRow,
   DistrictTeacherRow,
+  DistrictTransferRow,
   DistrictOverviewRef,
   DistrictReportRow,
   DistrictSchoolRef,
@@ -32,6 +33,7 @@ export class InMemoryDistrictOverviewReadModel implements IDistrictOverviewReadM
   infrastructureIssues: { institutionId: string; count: number }[] = [];
   teacherRows: DistrictTeacherRow[] = [];
   atRiskStudents: { institutionId: string; count: number }[] = [];
+  transferRows: DistrictTransferRow[] = [];
   readonly calls: { method: string; args: unknown[] }[] = [];
 
   #record(method: string, ...args: unknown[]): void {
@@ -112,6 +114,10 @@ export class InMemoryDistrictOverviewReadModel implements IDistrictOverviewReadM
   countAtRiskStudentsBySchool(districtId: string, sinceDate: string) {
     this.#record('countAtRiskStudentsBySchool', districtId, sinceDate);
     return this.atRiskStudents;
+  }
+  listTransfers(districtId: string): DistrictTransferRow[] {
+    this.#record('listTransfers', districtId);
+    return this.transferRows;
   }
   countOpenInfrastructureIssuesBySchool(districtId: string) {
     this.#record('countOpenInfrastructureIssuesBySchool', districtId);

@@ -4,4 +4,5 @@ export { registerDeoDashboardHandlers } from './dashboard';
 export { registerDeoSchoolHandlers } from './schools';
 export { registerDeoSchoolAdminHandlers } from './school-admins';
 export { registerDeoStudentHandlers } from './students';
+export { registerDeoTransferHandlers } from './transfers';
 export { registerDeoTeacherHandlers } from './teachers';

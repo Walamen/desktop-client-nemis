@@ -4,6 +4,7 @@ import type {
   DeoSchoolsResult,
   DeoStudentsResult,
   DeoTeachersResult,
+  DeoTransfersResult,
 } from '@nemis-desktop/types';
 import type { ApplicationResponse } from '../core/response';
 import type { GetDeoDashboardUseCase } from '../use-cases/deo/get-deo-dashboard';
@@ -12,6 +13,7 @@ import type { GetDeoSchoolsUseCase } from '../use-cases/deo/get-deo-schools';
 import type { GetDeoSchoolAdminsUseCase } from '../use-cases/deo/get-deo-school-admins';
 import type { GetDeoTeachersUseCase } from '../use-cases/deo/get-deo-teachers';
 import type { GetDeoStudentsUseCase } from '../use-cases/deo/get-deo-students';
+import type { GetDeoTransfersUseCase } from '../use-cases/deo/get-deo-transfers';
 
 export interface DeoApplicationServiceDeps {
   getDashboard: GetDeoDashboardUseCase;
@@ -20,6 +22,7 @@ export interface DeoApplicationServiceDeps {
   listSchoolAdmins: GetDeoSchoolAdminsUseCase;
   listTeachers: GetDeoTeachersUseCase;
   listStudents: GetDeoStudentsUseCase;
+  listTransfers: GetDeoTransfersUseCase;
 }
 
 /** Everything the DEO (district) portal asks of the application layer. */
@@ -44,6 +47,10 @@ export class DeoApplicationService {
 
   listStudents(): Promise<ApplicationResponse<DeoStudentsResult>> {
     return this.deps.listStudents.execute({});
+  }
+
+  listTransfers(): Promise<ApplicationResponse<DeoTransfersResult>> {
+    return this.deps.listTransfers.execute({});
   }
 
   resolveAlert(alertId: string): Promise<ApplicationResponse<boolean>> {

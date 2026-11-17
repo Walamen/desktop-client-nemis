@@ -528,6 +528,90 @@ describe('SqliteDistrictOverviewReadModel', () => {
     });
   });
 
+  describe('district transfers', () => {
+    function transferRow(
+      id: string,
+      from: string,
+      to: string,
+      opts: {
+        createdAt?: string;
+        status?: string;
+        studentName?: string | null;
+        fromName?: string | null;
+        toName?: string | null;
+      } = {},
+    ) {
+      run(
+        `INSERT INTO student_transfers (id,studentId,fromInstitutionId,toInstitutionId,requestedBy,reason,status,
+           createdAt,updatedAt,initiatedBy,lapsesAt,studentName,studentNemisId,fromInstitutionName,toInstitutionName,
+           toGradeLevel,requestedDate,reviewNotes,reviewedAt)
+         VALUES (?,?,?,?,'u-1','Family moved',?,?,?,'RECEIVING_SCHOOL','2026-11-20T00:00:00.000Z',?,'100000000001',?,?,
+           'GRADE_4','2026-11-25T00:00:00.000Z',NULL,NULL)`,
+        id,
+        `st-${id}`,
+        from,
+        to,
+        opts.status ?? 'PENDING',
+        opts.createdAt ?? '2026-11-10T09:00:00.000Z',
+        NOW,
+        opts.studentName === undefined ? 'Musu Kollie' : opts.studentName,
+        opts.fromName === undefined ? `Synced ${from}` : opts.fromName,
+        opts.toName === undefined ? `Synced ${to}` : opts.toName,
+      );
+    }
+
+    it('lists transfers into, out of and within the district, newest first, others excluded', () => {
+      seedDistrict();
+      transferRow('within', 's-a', 's-b', { createdAt: '2026-11-12T00:00:00.000Z' });
+      transferRow('out', 's-a', 's-far', { createdAt: '2026-11-11T00:00:00.000Z' });
+      transferRow('into', 's-far', 's-b', { createdAt: '2026-11-11T00:00:00.000Z' });
+      transferRow('closed', 's-off', 's-other', { createdAt: '2026-11-09T00:00:00.000Z' });
+      transferRow('elsewhere', 's-other', 's-far');
+      expect(
+        readModel.listTransfers('d-1').map((t) => [t.id, t.fromInDistrict, t.toInDistrict]),
+      ).toEqual([
+        ['within', true, true],
+        ['into', false, true],
+        ['out', true, false],
+        ['closed', true, false],
+      ]);
+    });
+
+    it('carries the fields the page shows', () => {
+      seedDistrict();
+      transferRow('t-1', 's-a', 's-b');
+      expect(readModel.listTransfers('d-1')[0]).toEqual({
+        id: 't-1',
+        studentName: 'Musu Kollie',
+        studentNemisId: '100000000001',
+        fromSchool: { id: 's-a', name: 'Synced s-a' },
+        toSchool: { id: 's-b', name: 'Synced s-b' },
+        fromInDistrict: true,
+        toInDistrict: true,
+        status: 'PENDING',
+        initiatedBy: 'RECEIVING_SCHOOL',
+        lapsesAt: '2026-11-20T00:00:00.000Z',
+        requestedGrade: 'GRADE_4',
+        reason: 'Family moved',
+        reviewNotes: null,
+        createdAt: '2026-11-10T09:00:00.000Z',
+        requestedDate: '2026-11-25T00:00:00.000Z',
+        reviewedAt: null,
+      });
+    });
+
+    it('falls back to the local school name, then "Unknown school"; a nameless pupil is "Unknown pupil"', () => {
+      seedDistrict();
+      transferRow('t-1', 's-a', 's-far', { fromName: null, toName: null, studentName: null });
+      const [row] = readModel.listTransfers('d-1');
+      expect(row).toMatchObject({
+        studentName: 'Unknown pupil',
+        fromSchool: { id: 's-a', name: 'Alpha' },
+        toSchool: { id: 's-far', name: 'Unknown school' },
+      });
+    });
+  });
+
   describe('pupils at risk', () => {
     /** n records for one pupil from a start day, one per day. */
     function marks(studentId: string, classId: string, status: string, n: number, from = '2026-10-20') {

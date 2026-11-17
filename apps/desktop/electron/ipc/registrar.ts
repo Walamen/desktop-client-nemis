@@ -55,6 +55,7 @@ import {
   registerDeoDashboardHandlers,
   registerDeoSchoolAdminHandlers,
   registerDeoStudentHandlers,
+  registerDeoTransferHandlers,
   registerDeoTeacherHandlers,
   registerDeoSchoolHandlers,
 } from '@app/ipc/handlers/deo';
@@ -119,6 +120,7 @@ export function registerIpcHandlers(
   registerDeoSchoolHandlers(securedHandle, app);
   registerDeoSchoolAdminHandlers(securedHandle, app);
   registerDeoStudentHandlers(securedHandle, app);
+  registerDeoTransferHandlers(securedHandle, app);
   registerDeoTeacherHandlers(securedHandle, app);
   registerCountyDistrictHandlers(securedHandle, app);
   registerCountySchoolHandlers(securedHandle, app);
