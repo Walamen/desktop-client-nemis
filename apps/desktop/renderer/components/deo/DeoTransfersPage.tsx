@@ -80,8 +80,11 @@ export function DeoTransfersPage() {
 
   if (state.status === 'idle' || state.status === 'loading') {
     return (
-      <div className="min-h-screen bg-slate-100 flex items-center justify-center">
-        <Spinner size="lg" />
+      <div className="min-h-screen bg-slate-100 font-['Sora']">
+        <Banner pending={0} lapsed={0} />
+        <div className="flex justify-center py-16">
+          <Spinner size="lg" />
+        </div>
       </div>
     );
   }

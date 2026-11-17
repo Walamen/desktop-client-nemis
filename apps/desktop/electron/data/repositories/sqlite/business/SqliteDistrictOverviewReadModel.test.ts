@@ -584,8 +584,9 @@ describe('SqliteDistrictOverviewReadModel', () => {
         id: 't-1',
         studentName: 'Musu Kollie',
         studentNemisId: '100000000001',
-        fromSchool: { id: 's-a', name: 'Synced s-a' },
-        toSchool: { id: 's-b', name: 'Synced s-b' },
+        // District schools read their current local name, not the copy saved with the transfer.
+        fromSchool: { id: 's-a', name: 'Alpha' },
+        toSchool: { id: 's-b', name: 'Beta' },
         fromInDistrict: true,
         toInDistrict: true,
         status: 'PENDING',
@@ -598,6 +599,12 @@ describe('SqliteDistrictOverviewReadModel', () => {
         requestedDate: '2026-11-25T00:00:00.000Z',
         reviewedAt: null,
       });
+    });
+
+    it('names an outside school from the transfer copy', () => {
+      seedDistrict();
+      transferRow('t-1', 's-a', 's-far');
+      expect(readModel.listTransfers('d-1')[0]!.toSchool).toEqual({ id: 's-far', name: 'Synced s-far' });
     });
 
     it('falls back to the local school name, then "Unknown school"; a nameless pupil is "Unknown pupil"', () => {

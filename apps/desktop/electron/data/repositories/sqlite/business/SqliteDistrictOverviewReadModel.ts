@@ -414,8 +414,8 @@ export class SqliteDistrictOverviewReadModel implements IDistrictOverviewReadMod
       const rows = this.#statements
         .get(
           `SELECT t.id, t.studentName, t.studentNemisId,
-                  t.fromInstitutionId, COALESCE(t.fromInstitutionName, fi.name) AS fromName,
-                  t.toInstitutionId, COALESCE(t.toInstitutionName, ti.name) AS toName,
+                  t.fromInstitutionId, COALESCE(fi.name, t.fromInstitutionName) AS fromName,
+                  t.toInstitutionId, COALESCE(ti.name, t.toInstitutionName) AS toName,
                   CASE WHEN fi.districtId = ? THEN 1 ELSE 0 END AS fromInDistrict,
                   CASE WHEN ti.districtId = ? THEN 1 ELSE 0 END AS toInDistrict,
                   t.status, t.initiatedBy, t.lapsesAt, t.toGradeLevel, t.reason, t.reviewNotes,

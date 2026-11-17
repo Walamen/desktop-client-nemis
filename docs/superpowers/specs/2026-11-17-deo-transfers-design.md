@@ -76,6 +76,12 @@ Schools decide transfers. The school that did not ask reviews the request, and a
 - **Empty states:** "No transfer requests match these filters."
 - **Desktop states:** loading, error only (never empty filters) with Retry, no district, refresh on sync.
 
+## Accepted debt (review 2026-11-17)
+
+- The desktop names a district school from its current local row and an outside school from the copy saved with the transfer; a renamed outside school, or a renamed pupil, stays stale on the device until the transfer itself changes. The server always reads current names.
+- A school moved between districts is not re-shipped by the district delta: the device keeps its old districtId (and a school moving in brings no older transfers) until a full re-provision. Every DEO page shares this.
+- The desktop chip shows Lapsed in amber, the web in violet: the desktop chip is shared with the School Admin transfer pages.
+
 ## Out of scope
 
 A "Remind school" action (needs messaging, piece 9), and any DEO decision on a transfer.

@@ -126,6 +126,12 @@ describe('DEO Transfers page (oversight only)', () => {
     expect(await screen.findByText('Musu Kollie')).toBeTruthy();
   });
 
+  it('keeps the banner on screen while loading', () => {
+    mockNemis(() => new Promise<DeoTransfersResult>(() => {}));
+    renderPage();
+    expect(screen.getByText('Student Transfer Requests')).toBeTruthy();
+  });
+
   it('explains when no district is assigned', async () => {
     mockNemis(async () => ({ ...RESULT, districtId: null, transfers: [] }));
     renderPage();
