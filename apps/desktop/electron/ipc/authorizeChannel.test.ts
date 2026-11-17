@@ -157,6 +157,8 @@ describe('authorizeChannel', () => {
       IpcChannels.DEO_ATTENDANCE_REPORT,
       IpcChannels.DEO_ACADEMIC_REPORT,
       IpcChannels.DEO_STAFF_REPORT,
+      IpcChannels.DEO_FINANCE,
+      IpcChannels.DEO_FINANCE_AUDIT,
     ];
     expect(new Set(channels)).toEqual(new Set(DEO_CHANNELS));
     for (const channel of channels) {

@@ -5,6 +5,8 @@ import type {
   DeoStudentsResult,
   DeoTeachersResult,
   DeoTransfersResult,
+  DeoFinanceResult,
+  DeoFinanceAuditEntry,
   CountyAcademicReport,
   CountyAttendanceReport,
   CountyEnrollmentReport,
@@ -22,6 +24,8 @@ export const dashboardBridge = {
   listSchoolAdmins: (): Promise<DeoSchoolAdminsResult> => api().deo.listSchoolAdmins(),
   listStudents: (): Promise<DeoStudentsResult> => api().deo.listStudents(),
   listTransfers: (): Promise<DeoTransfersResult> => api().deo.listTransfers(),
+  getFinance: (): Promise<DeoFinanceResult> => api().deo.getFinance(),
+  listFinanceAudit: (): Promise<DeoFinanceAuditEntry[]> => api().deo.listFinanceAudit(),
   getReportScope: (): Promise<DeoReportScope> => api().deo.getReportScope(),
   getEnrollmentReport: (query: DeoReportQuery): Promise<CountyEnrollmentReport> => api().deo.getEnrollmentReport(query),
   getAttendanceReport: (query: DeoAttendanceReportQuery): Promise<CountyAttendanceReport> =>

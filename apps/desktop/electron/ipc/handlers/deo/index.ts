@@ -5,5 +5,6 @@ export { registerDeoSchoolHandlers } from './schools';
 export { registerDeoSchoolAdminHandlers } from './school-admins';
 export { registerDeoStudentHandlers } from './students';
 export { registerDeoTransferHandlers } from './transfers';
+export { registerDeoFinanceHandlers } from './finance';
 export { registerDeoReportHandlers } from './reports';
 export { registerDeoTeacherHandlers } from './teachers';

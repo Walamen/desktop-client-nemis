@@ -9,6 +9,7 @@ import type {
   IDistrictOverviewReadModel,
 } from '../../interfaces/deo/district-overview-read-model';
 import type { IDistrictAlertStore } from '../../interfaces/deo/district-alert-store';
+import type { DeoFinanceAuditEntry } from '@nemis-desktop/types';
 
 /** Settable canned rows. `calls` records every method name with its
  * arguments, so a test can prove what was (or was not) asked. */
@@ -34,6 +35,10 @@ export class InMemoryDistrictOverviewReadModel implements IDistrictOverviewReadM
   teacherRows: DistrictTeacherRow[] = [];
   atRiskStudents: { institutionId: string; count: number }[] = [];
   transferRows: DistrictTransferRow[] = [];
+  financeRows: { institutionId: string; allocation: number; collected: number }[] = [];
+  lastPayments: { institutionId: string; paidAt: string }[] = [];
+  paymentMonths: { month: string; amount: number }[] = [];
+  auditEntries: DeoFinanceAuditEntry[] = [];
   readonly calls: { method: string; args: unknown[] }[] = [];
 
   #record(method: string, ...args: unknown[]): void {
@@ -126,6 +131,22 @@ export class InMemoryDistrictOverviewReadModel implements IDistrictOverviewReadM
   reportMonthsBySchool(districtId: string, sinceDate: string) {
     this.#record('reportMonthsBySchool', districtId, sinceDate);
     return this.reportMonths;
+  }
+  financeBySchool(districtId: string) {
+    this.#record('financeBySchool', districtId);
+    return this.financeRows;
+  }
+  lastPaymentBySchool(districtId: string) {
+    this.#record('lastPaymentBySchool', districtId);
+    return this.lastPayments;
+  }
+  paymentsByMonth(districtId: string, sinceIso: string) {
+    this.#record('paymentsByMonth', districtId, sinceIso);
+    return this.paymentMonths;
+  }
+  listFinanceAudit(limit: number): DeoFinanceAuditEntry[] {
+    this.#record('listFinanceAudit', limit);
+    return this.auditEntries.slice(0, limit);
   }
 }
 

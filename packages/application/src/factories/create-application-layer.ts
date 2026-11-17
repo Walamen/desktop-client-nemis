@@ -70,6 +70,7 @@ import { GetDeoSchoolAdminsUseCase } from '../use-cases/deo/get-deo-school-admin
 import { GetDeoTeachersUseCase } from '../use-cases/deo/get-deo-teachers';
 import { GetDeoStudentsUseCase } from '../use-cases/deo/get-deo-students';
 import { GetDeoTransfersUseCase } from '../use-cases/deo/get-deo-transfers';
+import { GetDeoFinanceAuditUseCase, GetDeoFinanceUseCase } from '../use-cases/deo/get-deo-finance';
 import { DeoReportUseCase, GetDeoReportScopeUseCase } from '../use-cases/deo/deo-reports';
 import { DeoApplicationService } from '../services/deo-application-service';
 import type { IStudentRepository } from '../interfaces/students/student-repository';
@@ -769,6 +770,17 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
       readModel: ports.districtOverview,
       currentDistrictId: ports.currentDistrictId,
       clock,
+      logger,
+    }),
+    getFinance: new GetDeoFinanceUseCase({
+      readModel: ports.districtOverview,
+      currentDistrictId: ports.currentDistrictId,
+      clock,
+      logger,
+    }),
+    listFinanceAudit: new GetDeoFinanceAuditUseCase({
+      readModel: ports.districtOverview,
+      currentDistrictId: ports.currentDistrictId,
       logger,
     }),
     getReportScope: new GetDeoReportScopeUseCase({

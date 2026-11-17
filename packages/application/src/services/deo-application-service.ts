@@ -5,6 +5,8 @@ import type {
   DeoStudentsResult,
   DeoTeachersResult,
   DeoTransfersResult,
+  DeoFinanceAuditEntry,
+  DeoFinanceResult,
   CountyAcademicReport,
   CountyAttendanceReport,
   CountyEnrollmentReport,
@@ -21,6 +23,7 @@ import type { GetDeoSchoolAdminsUseCase } from '../use-cases/deo/get-deo-school-
 import type { GetDeoTeachersUseCase } from '../use-cases/deo/get-deo-teachers';
 import type { GetDeoStudentsUseCase } from '../use-cases/deo/get-deo-students';
 import type { GetDeoTransfersUseCase } from '../use-cases/deo/get-deo-transfers';
+import type { GetDeoFinanceAuditUseCase, GetDeoFinanceUseCase } from '../use-cases/deo/get-deo-finance';
 import type { DeoReportUseCase, GetDeoReportScopeUseCase } from '../use-cases/deo/deo-reports';
 
 export interface DeoApplicationServiceDeps {
@@ -31,6 +34,8 @@ export interface DeoApplicationServiceDeps {
   listTeachers: GetDeoTeachersUseCase;
   listStudents: GetDeoStudentsUseCase;
   listTransfers: GetDeoTransfersUseCase;
+  getFinance: GetDeoFinanceUseCase;
+  listFinanceAudit: GetDeoFinanceAuditUseCase;
   getReportScope: GetDeoReportScopeUseCase;
   getEnrollmentReport: DeoReportUseCase<DeoReportQuery, CountyEnrollmentReport>;
   getAttendanceReport: DeoReportUseCase<DeoAttendanceReportQuery, CountyAttendanceReport>;
@@ -64,6 +69,14 @@ export class DeoApplicationService {
 
   listTransfers(): Promise<ApplicationResponse<DeoTransfersResult>> {
     return this.deps.listTransfers.execute({});
+  }
+
+  getFinance(): Promise<ApplicationResponse<DeoFinanceResult>> {
+    return this.deps.getFinance.execute({});
+  }
+
+  listFinanceAudit(): Promise<ApplicationResponse<DeoFinanceAuditEntry[]>> {
+    return this.deps.listFinanceAudit.execute({});
   }
 
   getReportScope(): Promise<ApplicationResponse<DeoReportScope>> {

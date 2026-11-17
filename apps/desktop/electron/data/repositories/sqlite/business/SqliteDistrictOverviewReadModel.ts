@@ -9,7 +9,7 @@ import type {
   IDistrictOverviewReadModel,
 } from '@nemis-desktop/application';
 import { LOW_ATTENDANCE_RATE, MIN_RECORDS_TO_JUDGE } from '@nemis-desktop/application';
-import { GradeLevel } from '@nemis-desktop/types';
+import { GradeLevel, type DeoFinanceAuditEntry } from '@nemis-desktop/types';
 import { TableNames } from '../../../../database/schema/tableNames';
 import { StatementCache } from '../../base/StatementCache';
 import type { RepositoryContext } from '../../base/RepositoryContext';
@@ -34,6 +34,10 @@ const {
   classTeachers,
   classSubjectTeachers,
   studentTransfers,
+  feeObligations,
+  feePayments,
+  feePaymentReversals,
+  auditLogs,
 } = TableNames;
 
 /** KG, K1, K2, GRADE_1 … GRADE_12: the server's GradeLevel enum order. */
@@ -92,6 +96,17 @@ export const CURRENT_ASSESSMENTS_SQL = `SELECT a.id, a.classId, a.subjectId, c.i
   WHERE i.districtId = ? AND i.isActive = 1`;
 
 const ATTENDED = `SUM(CASE WHEN a.status IN ('PRESENT','LATE') THEN 1 ELSE 0 END)`;
+
+/** Payments (alias `p`) at the district's active schools that count: not
+ * reversed on the server, and no reversal recorded on this device yet. */
+const COUNTED_PAYMENTS = `FROM ${feePayments} p
+  JOIN ${institutions} i ON i.id = p.institutionId
+  WHERE ${DISTRICT_SCHOOLS} AND p.isReversed = 0
+    AND NOT EXISTS (SELECT 1 FROM ${feePaymentReversals} rv WHERE rv.paymentId = p.id)`;
+
+/** What the server writes for fee rules, obligations and payments
+ * (Nemis fees/district-finance-audit.ts FINANCE_AUDIT_ENTITY_TYPES). */
+const FINANCE_AUDIT_TYPES = `('feeRule','feeObligation','feePayment')`;
 
 function parseProfile(profile: string | null): Record<string, unknown> | null {
   if (!profile) return null;
@@ -548,5 +563,55 @@ export class SqliteDistrictOverviewReadModel implements IDistrictOverviewReadMod
         ungradedAssessments: states.get(row.id)?.ungraded ?? 0,
       }));
     });
+  }
+
+  financeBySchool(districtId: string): { institutionId: string; allocation: number; collected: number }[] {
+    return guarded('SqliteDistrictOverviewReadModel.financeBySchool', () =>
+      this.#statements
+        .get(
+          `SELECT o.institutionId AS institutionId, SUM(o.requiredAmount) AS allocation, SUM(o.totalPaid) AS collected
+           FROM ${feeObligations} o
+           JOIN ${academicYears} y ON y.id = o.academicYearId AND y.isCurrent = 1
+           JOIN ${institutions} i ON i.id = o.institutionId
+           WHERE ${DISTRICT_SCHOOLS}
+           GROUP BY o.institutionId`,
+        )
+        .all(districtId) as { institutionId: string; allocation: number; collected: number }[],
+    );
+  }
+
+  lastPaymentBySchool(districtId: string): { institutionId: string; paidAt: string }[] {
+    return guarded('SqliteDistrictOverviewReadModel.lastPaymentBySchool', () =>
+      this.#statements
+        .get(`SELECT p.institutionId AS institutionId, MAX(p.paidAt) AS paidAt ${COUNTED_PAYMENTS} GROUP BY p.institutionId`)
+        .all(districtId) as { institutionId: string; paidAt: string }[],
+    );
+  }
+
+  paymentsByMonth(districtId: string, sinceIso: string): { month: string; amount: number }[] {
+    return guarded('SqliteDistrictOverviewReadModel.paymentsByMonth', () =>
+      this.#statements
+        .get(
+          // 'localtime': months follow this machine's calendar, as the server's do its own.
+          `SELECT strftime('%Y-%m', p.paidAt, 'localtime') AS month, SUM(p.amount) AS amount
+           ${COUNTED_PAYMENTS} AND p.paidAt >= ?
+           GROUP BY month ORDER BY month`,
+        )
+        .all(districtId, sinceIso) as { month: string; amount: number }[],
+    );
+  }
+
+  listFinanceAudit(limit: number): DeoFinanceAuditEntry[] {
+    return guarded('SqliteDistrictOverviewReadModel.listFinanceAudit', () =>
+      this.#statements
+        .get(
+          `SELECT id, timestamp, actorName, action, entityType, entityId
+           FROM ${auditLogs}
+           WHERE entityType IN ${FINANCE_AUDIT_TYPES}
+           ORDER BY timestamp DESC, id DESC
+           LIMIT ?`,
+        )
+        .all(limit) as DeoFinanceAuditEntry[],
+    );
   }
 }

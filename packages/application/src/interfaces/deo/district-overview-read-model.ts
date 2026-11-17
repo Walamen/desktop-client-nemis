@@ -1,3 +1,5 @@
+import type { DeoFinanceAuditEntry } from '@nemis-desktop/types';
+
 export interface DistrictOverviewRef {
   readonly id: string;
   readonly name: string;
@@ -144,4 +146,16 @@ export interface IDistrictOverviewReadModel {
   listTransfers(districtId: string): DistrictTransferRow[];
   /** Active TEACHER / ASSISTANT_TEACHER staff of the district's active schools. Unordered. */
   listTeachers(districtId: string): DistrictTeacherRow[];
+  /** Fee obligations in each school's current academic year: Σ requiredAmount
+   * (allocation) and Σ totalPaid (collected). A school with none is absent. */
+  financeBySchool(districtId: string): { institutionId: string; allocation: number; collected: number }[];
+  /** The newest payment per school, any year, skipping reversed payments (a
+   * reversed flag or a local reversal row). A school with none is absent. */
+  lastPaymentBySchool(districtId: string): { institutionId: string; paidAt: string }[];
+  /** Non-reversed payments with paidAt >= sinceIso, summed per month of this
+   * machine's local calendar (`month` is YYYY-MM). */
+  paymentsByMonth(districtId: string, sinceIso: string): { month: string; amount: number }[];
+  /** The newest fee rule, obligation and payment audit entries on this device
+   * (a district device holds only its district's), newest first. */
+  listFinanceAudit(limit: number): DeoFinanceAuditEntry[];
 }

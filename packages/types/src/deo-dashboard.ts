@@ -260,6 +260,69 @@ export interface DeoTransfersResult {
   summary: { pending: number; lapsed: number };
 }
 
+export type DeoFinanceStatus = 'On Track' | 'At Risk' | 'Behind' | 'No Data';
+
+/** One school on the DEO Finance page, its current academic year. */
+export interface DeoFinanceSchool {
+  schoolId: string;
+  schoolName: string;
+  schoolCode: string;
+  /** The active School Admin, else the metadata principal, else "Not recorded". */
+  principalName: string;
+  allocation: number;
+  collected: number;
+  /** Never negative. */
+  outstanding: number;
+  complianceRate: number;
+  studentCount: number;
+  lastPaymentAt: string | null;
+  status: DeoFinanceStatus;
+}
+
+/** A Flagged Activity row: a school that billed or collected anything. */
+export interface DeoFinanceFlaggedRow {
+  schoolId: string;
+  schoolName: string;
+  schoolCode: string;
+  expected: number;
+  collected: number;
+  outstanding: number;
+  collectionRate: number;
+  isFlagged: boolean;
+}
+
+/** DEO Finance, from this device. Rules: docs/superpowers/specs/2026-11-17-deo-finance-design.md;
+ * the server builds the same for the web (Nemis districts.service.ts getDistrictFinance). */
+export interface DeoFinanceResult {
+  districtId: string | null;
+  district: { id: string; name: string } | null;
+  county: { id: string; name: string } | null;
+  summary: {
+    totalAllocation: number;
+    totalCollected: number;
+    totalOutstanding: number;
+    complianceRate: number;
+    schoolsBilling: number;
+    schoolsBehind: number;
+  };
+  /** Six months, oldest first, label "Nov". */
+  trend: { period: string; amount: number }[];
+  /** Best rate first, then name, then id. */
+  schools: DeoFinanceSchool[];
+  /** Lowest rate first, then name. */
+  flagged: DeoFinanceFlaggedRow[];
+}
+
+/** A fee rule, obligation or payment audit entry of the district, synced from the server. */
+export interface DeoFinanceAuditEntry {
+  id: string;
+  timestamp: string;
+  actorName: string;
+  action: string;
+  entityType: string;
+  entityId: string | null;
+}
+
 /** DEO Generate Reports: the district comes from the session; only a school may be chosen. */
 export interface DeoReportQuery {
   schoolId?: string;
@@ -287,6 +350,9 @@ export interface DeoApi {
   listTeachers(): Promise<DeoTeachersResult>;
   listStudents(): Promise<DeoStudentsResult>;
   listTransfers(): Promise<DeoTransfersResult>;
+  getFinance(): Promise<DeoFinanceResult>;
+  /** The newest 50 finance audit entries of the district. */
+  listFinanceAudit(): Promise<DeoFinanceAuditEntry[]>;
   getReportScope(): Promise<DeoReportScope>;
   getEnrollmentReport(query: DeoReportQuery): Promise<CountyEnrollmentReport>;
   getAttendanceReport(query: DeoAttendanceReportQuery): Promise<CountyAttendanceReport>;

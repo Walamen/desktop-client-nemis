@@ -84,6 +84,8 @@ import type {
   DeoStudentsResult,
   DeoTeachersResult,
   DeoTransfersResult,
+  DeoFinanceResult,
+  DeoFinanceAuditEntry,
   DeoAttendanceReportQuery,
   DeoReportQuery,
   DeoReportScope,
@@ -263,6 +265,8 @@ export interface IpcContract {
   'deo:list-teachers': { args: []; result: DeoTeachersResult };
   'deo:list-students': { args: []; result: DeoStudentsResult };
   'deo:list-transfers': { args: []; result: DeoTransfersResult };
+  'deo:finance': { args: []; result: DeoFinanceResult };
+  'deo:finance-audit': { args: []; result: DeoFinanceAuditEntry[] };
   'deo:report-scope': { args: []; result: DeoReportScope };
   'deo:report-enrollment': { args: [query: DeoReportQuery]; result: CountyEnrollmentReport };
   'deo:report-attendance': { args: [query: DeoAttendanceReportQuery]; result: CountyAttendanceReport };
@@ -539,6 +543,8 @@ export const IpcChannels = {
   DEO_LIST_TEACHERS: 'deo:list-teachers',
   DEO_LIST_STUDENTS: 'deo:list-students',
   DEO_LIST_TRANSFERS: 'deo:list-transfers',
+  DEO_FINANCE: 'deo:finance',
+  DEO_FINANCE_AUDIT: 'deo:finance-audit',
   DEO_REPORT_SCOPE: 'deo:report-scope',
   DEO_ENROLLMENT_REPORT: 'deo:report-enrollment',
   DEO_ATTENDANCE_REPORT: 'deo:report-attendance',

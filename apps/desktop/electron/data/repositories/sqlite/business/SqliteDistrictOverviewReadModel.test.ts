@@ -940,4 +940,97 @@ describe('SqliteDistrictOverviewReadModel', () => {
     expect(plan).not.toMatch(/SCAN a(\s|$)/m);
     expect(elapsed).toBeLessThan(5000);
   }, 60_000);
+
+  describe('district finance', () => {
+    function yearRow(id: string, institutionId: string, isCurrent: number) {
+      run(
+        `INSERT INTO academic_years (id,institutionId,code,startDate,endDate,isCurrent,status,version,updatedAt)
+         VALUES (?,?,?,'2026-09-01','2027-07-01',?,'ACTIVE',1,?)`,
+        id, institutionId, id, isCurrent, NOW,
+      );
+    }
+    function obligation(id: string, institutionId: string, academicYearId: string, requiredAmount: number, totalPaid: number) {
+      run(
+        `INSERT INTO fee_obligations (id,studentId,feeRuleId,institutionId,academicYearId,termId,requiredAmount,totalPaid,status,createdBy,createdAt,updatedAt)
+         VALUES (?,'st-1',?,?,?,'t-1',?,?,'PARTIALLY_PAID','u',?,?)`,
+        id, `rule-${id}`, institutionId, academicYearId, requiredAmount, totalPaid, NOW, NOW,
+      );
+    }
+    function payment(id: string, institutionId: string, amount: number, paidAt: string, isReversed = 0) {
+      run(
+        `INSERT INTO fee_payments (id,obligationId,studentId,institutionId,amount,method,receiptNumber,recordedBy,isReversed,paidAt,createdAt,updatedAt)
+         VALUES (?,'o-1','st-1',?,?,'CASH',?,'u',?,?,?,?)`,
+        id, institutionId, amount, `R-${id}`, isReversed, paidAt, NOW, NOW,
+      );
+    }
+    function audit(id: string, entityType: string, timestamp: string) {
+      run(
+        `INSERT INTO audit_logs (id,userId,action,entityType,entityId,timestamp,actorName,actorScope)
+         VALUES (?,'u-1','CREATE',?,?,?,'Ama Bursar','School')`,
+        id, entityType, `ent-${id}`, timestamp,
+      );
+    }
+
+    beforeEach(() => {
+      district('d-1', 'Buchanan');
+      district('d-2', 'Owensgrove');
+      school('a', 'd-1');
+      school('b', 'd-1');
+      school('x', 'd-1', { isActive: 0 });
+      school('o', 'd-2');
+      yearRow('y-a', 'a', 1);
+      yearRow('y-a-old', 'a', 0);
+      yearRow('y-b', 'b', 1);
+      yearRow('y-x', 'x', 1);
+      yearRow('y-o', 'o', 1);
+      obligation('o1', 'a', 'y-a', 100, 40);
+      obligation('o2', 'a', 'y-a', 50, 50);
+      obligation('o3', 'a', 'y-a-old', 999, 999);
+      obligation('o4', 'b', 'y-b', 200, 0);
+      obligation('o5', 'x', 'y-x', 70, 70);
+      obligation('o6', 'o', 'y-o', 30, 30);
+      payment('p1', 'a', 40, '2026-11-10T12:00:00.000Z');
+      payment('p2', 'a', 50, '2026-11-12T12:00:00.000Z', 1);
+      payment('p3', 'a', 25, '2026-11-14T12:00:00.000Z');
+      run(
+        `INSERT INTO fee_payment_reversals (id,paymentId,institutionId,reason,reversedBy,reversedAt,createdAt,updatedAt)
+         VALUES ('r-1','p3','a','Wrong amount','u',?,?,?)`,
+        NOW, NOW, NOW,
+      );
+      payment('p4', 'a', 30, '2026-06-15T12:00:00.000Z');
+      payment('p5', 'o', 9, '2026-11-15T12:00:00.000Z');
+      payment('p6', 'x', 7, '2026-11-15T12:00:00.000Z');
+    });
+
+    it("sums each active school's current-year obligations only", () => {
+      expect(readModel.financeBySchool('d-1').sort((l, r) => l.institutionId.localeCompare(r.institutionId))).toEqual([
+        { institutionId: 'a', allocation: 150, collected: 90 },
+        { institutionId: 'b', allocation: 200, collected: 0 },
+      ]);
+    });
+
+    it('takes the newest payment per school, skipping reversed ones and pending local reversals', () => {
+      expect(readModel.lastPaymentBySchool('d-1')).toEqual([{ institutionId: 'a', paidAt: '2026-11-10T12:00:00.000Z' }]);
+    });
+
+    it('sums non-reversed payments per local month from the window start', () => {
+      expect(readModel.paymentsByMonth('d-1', '2026-06-01T00:00:00.000Z')).toEqual([
+        { month: '2026-06', amount: 30 },
+        { month: '2026-11', amount: 40 },
+      ]);
+      expect(readModel.paymentsByMonth('d-1', '2026-07-01T00:00:00.000Z')).toEqual([{ month: '2026-11', amount: 40 }]);
+    });
+
+    it('lists the newest finance audit entries only', () => {
+      audit('e1', 'feePayment', '2026-11-10T10:00:00.000Z');
+      audit('e2', 'Student', '2026-11-16T10:00:00.000Z');
+      audit('e3', 'feeRule', '2026-11-12T10:00:00.000Z');
+      audit('e4', 'feeObligation', '2026-11-12T10:00:00.000Z');
+      expect(readModel.listFinanceAudit(2)).toEqual([
+        { id: 'e4', timestamp: '2026-11-12T10:00:00.000Z', actorName: 'Ama Bursar', action: 'CREATE', entityType: 'feeObligation', entityId: 'ent-e4' },
+        { id: 'e3', timestamp: '2026-11-12T10:00:00.000Z', actorName: 'Ama Bursar', action: 'CREATE', entityType: 'feeRule', entityId: 'ent-e3' },
+      ]);
+      expect(readModel.listFinanceAudit(50).map((e) => e.id)).toEqual(['e4', 'e3', 'e1']);
+    });
+  });
 });
