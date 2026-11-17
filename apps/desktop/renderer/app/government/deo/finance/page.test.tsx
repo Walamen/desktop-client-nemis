@@ -116,6 +116,20 @@ describe('DEO Finance page', () => {
     expect(within(rows[1]!).getByText('Monitor')).toBeTruthy();
   });
 
+  it('moves between tabs with the arrow keys and labels the panel by its tab', async () => {
+    mockNemis(async () => RESULT);
+    renderPage();
+    const overview = await screen.findByRole('tab', { name: 'Overview' });
+    expect(overview.getAttribute('tabindex')).toBe('0');
+    fireEvent.keyDown(overview, { key: 'ArrowRight' });
+    const flagged = screen.getByRole('tab', { name: 'Flagged Activity' });
+    expect(flagged.getAttribute('aria-selected')).toBe('true');
+    expect(document.activeElement).toBe(flagged);
+    expect(screen.getByRole('tabpanel', { name: 'Flagged Activity' })).toBeTruthy();
+    fireEvent.keyDown(flagged, { key: 'ArrowLeft' });
+    expect(overview.getAttribute('aria-selected')).toBe('true');
+  });
+
   it('loads the audit entries only when the Audit Logs tab opens', async () => {
     const deo = mockNemis(async () => RESULT);
     renderPage();

@@ -47,7 +47,9 @@ Shared rule file: Nemis `common/district/finance-status.ts`, desktop `packages/a
 - **Window:** the last 365 days (same as the County audit trail). The page shows the newest 50, newest first.
 - **Shown:** time, actor name (first + last, else email), action, `entityType #first-8-of-entityId`.
 
-Server helper `districtFinanceAudit(tx, districtId, { since?, take? })` in `fees/district-finance-audit.ts` feeds both the route and the snapshot so they agree.
+Server helper `districtFinanceAudit(tx, districtId, { since?, take? })` in `fees/district-finance-audit.ts` feeds both the route and the snapshot so they agree. It pages by keyset on (timestamp, id), never OFFSET, and the snapshot asks for at most the newest 500 entries per sync (the page shows 50), so it stays cheap inside the snapshot transaction. After a long offline spell a device therefore skips anything older than those 500; accepted.
+
+**Offline fee work is audited too (review fix).** Fee rules, obligations and payments that school desktops push through the sync applier now write the same audit entries as the online fee services (`feeRule` / `feeObligation` / `feePayment`, action from the operation type, `metadata.source = "desktop-sync"`), inside the per-operation transaction. Before, the DEO's tab missed every fee change made offline.
 
 ## Data
 

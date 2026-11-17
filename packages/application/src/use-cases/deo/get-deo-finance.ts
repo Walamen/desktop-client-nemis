@@ -140,7 +140,12 @@ function flaggedRows(schools: DeoFinanceSchool[]): DeoFinanceFlaggedRow[] {
       collectionRate: school.complianceRate,
       isFlagged: isFinanceFlagged(school.complianceRate, school.outstanding),
     }))
-    .sort((a, b) => a.collectionRate - b.collectionRate || a.schoolName.localeCompare(b.schoolName));
+    .sort(
+      (a, b) =>
+        a.collectionRate - b.collectionRate ||
+        a.schoolName.localeCompare(b.schoolName) ||
+        a.schoolId.localeCompare(b.schoolId),
+    );
 }
 
 export interface GetDeoFinanceAuditDeps {

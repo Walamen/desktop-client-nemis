@@ -426,13 +426,28 @@ export function DeoFinancePage() {
       <Banner place={place} />
       <div className="px-6 py-6 space-y-5">
         <div className="border-b border-gray-200">
-          <div role="tablist" aria-label="Finance views" className="flex gap-6 overflow-x-auto">
+          <div
+            role="tablist"
+            aria-label="Finance views"
+            className="flex gap-6 overflow-x-auto"
+            onKeyDown={(event) => {
+              if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+              const index = TABS.findIndex((item) => item.id === tab);
+              const step = event.key === 'ArrowRight' ? 1 : TABS.length - 1;
+              const next = TABS[(index + step) % TABS.length]!;
+              open(next.id);
+              document.getElementById(`finance-tab-${next.id}`)?.focus();
+            }}
+          >
             {TABS.map((item) => (
               <button
                 key={item.id}
+                id={`finance-tab-${item.id}`}
                 type="button"
                 role="tab"
                 aria-selected={tab === item.id}
+                aria-controls="finance-panel"
+                tabIndex={tab === item.id ? 0 : -1}
                 onClick={() => open(item.id)}
                 className={`pb-3 text-sm font-medium whitespace-nowrap transition-colors ${
                   tab === item.id ? 'text-secondary border-b-2 border-secondary' : 'text-gray-500 hover:text-gray-700'
@@ -444,19 +459,21 @@ export function DeoFinancePage() {
           </div>
         </div>
 
-        {tab === 'audit' ? (
-          <AuditLogs />
-        ) : state.status === 'error' ? (
-          <ErrorBox message="Failed to load district finance data." onRetry={() => void vm.loadFinance()} />
-        ) : !data ? (
-          <div className="flex justify-center py-16">
-            <Spinner size="lg" />
-          </div>
-        ) : tab === 'overview' ? (
-          <Overview data={data} />
-        ) : (
-          <FlaggedActivity data={data} />
-        )}
+        <div id="finance-panel" role="tabpanel" aria-labelledby={`finance-tab-${tab}`} className="space-y-5">
+          {tab === 'audit' ? (
+            <AuditLogs />
+          ) : state.status === 'error' ? (
+            <ErrorBox message="Failed to load district finance data." onRetry={() => void vm.loadFinance()} />
+          ) : !data ? (
+            <div className="flex justify-center py-16">
+              <Spinner size="lg" />
+            </div>
+          ) : tab === 'overview' ? (
+            <Overview data={data} />
+          ) : (
+            <FlaggedActivity data={data} />
+          )}
+        </div>
       </div>
     </div>
   );

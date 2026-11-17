@@ -345,18 +345,23 @@ export class SqliteDistrictOverviewReadModel implements IDistrictOverviewReadMod
 
   schoolAdminNameBySchool(districtId: string): { institutionId: string; name: string }[] {
     return guarded('SqliteDistrictOverviewReadModel.schoolAdminNameBySchool', () => {
-      // The first active admin by id, as the County school detail reads it.
-      return this.#statements
+      // The active admin with the lowest user id whose name is not blank, as
+      // the server picks (districts.service.ts firstAdminNameBySchool).
+      // Trimmed in JS: SQLite trim() strips only spaces.
+      const rows = this.#statements
         .get(
-          `SELECT a.institutionId AS institutionId, trim(a.firstName || ' ' || a.lastName) AS name
+          `SELECT a.institutionId AS institutionId, a.firstName AS firstName, a.lastName AS lastName
            FROM ${institutionAdmin} a JOIN ${institutions} i ON i.id = a.institutionId
            WHERE ${DISTRICT_SCHOOLS} AND a.isActive = 1
-             -- Lowest user id first, as the server picks (districts.service.ts).
-             AND a.id = (SELECT b.id FROM ${institutionAdmin} b
-                         WHERE b.institutionId = a.institutionId AND b.isActive = 1
-                         ORDER BY COALESCE(b.userId, b.id), b.id LIMIT 1)`,
+           ORDER BY a.institutionId, COALESCE(a.userId, a.id), a.id`,
         )
-        .all(districtId) as { institutionId: string; name: string }[];
+        .all(districtId) as { institutionId: string; firstName: string | null; lastName: string | null }[];
+      const names = new Map<string, string>();
+      for (const row of rows) {
+        const name = [row.firstName, row.lastName].filter(Boolean).join(' ').trim();
+        if (name && !names.has(row.institutionId)) names.set(row.institutionId, name);
+      }
+      return [...names].map(([institutionId, name]) => ({ institutionId, name }));
     });
   }
 

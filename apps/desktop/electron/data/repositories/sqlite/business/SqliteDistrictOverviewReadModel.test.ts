@@ -510,6 +510,15 @@ describe('SqliteDistrictOverviewReadModel', () => {
       expect(readModel.schoolAdminNameBySchool('d-1')).toEqual([{ institutionId: 's-a', name: 'Ann First' }]);
     });
 
+    it('skips an admin with a blank name, as the server does', () => {
+      seedDistrict();
+      run(
+        `INSERT INTO institution_admin (id,userId,institutionId,firstName,lastName,position,isActive)
+         VALUES ('org-blank','u-0','s-a',' ','','PRINCIPAL',1), ('org-z','u-1','s-a','Ann','First','PRINCIPAL',1)`,
+      );
+      expect(readModel.schoolAdminNameBySchool('d-1')).toEqual([{ institutionId: 's-a', name: 'Ann First' }]);
+    });
+
     it('counts open infrastructure issues per school, without school staff requests', () => {
       seedDistrict();
       const issue = (id: string, institutionId: string, opts: { type?: string; isResolved?: number; metadata?: string | null } = {}) =>

@@ -135,6 +135,23 @@ describe('GetDeoFinanceUseCase', () => {
   });
 });
 
+describe('GetDeoFinanceUseCase ties', () => {
+  it('orders flagged schools with the same rate and name by id', async () => {
+    const readModel = model();
+    readModel.schools = [
+      { id: 'z', name: 'Twin', code: 'Z', levels: [] },
+      { id: 'y', name: 'Twin', code: 'Y', levels: [] },
+    ];
+    readModel.financeRows = [
+      { institutionId: 'z', allocation: 100, collected: 10 },
+      { institutionId: 'y', allocation: 100, collected: 10 },
+    ];
+    const { data } = await run(readModel);
+    expect(data.flagged.map((r) => r.schoolId)).toEqual(['y', 'z']);
+    expect(data.schools.map((r) => r.schoolId)).toEqual(['y', 'z']);
+  });
+});
+
 describe('GetDeoFinanceAuditUseCase', () => {
   it('reads the newest 50 entries for a district device, nothing without a district', async () => {
     const readModel = model();
