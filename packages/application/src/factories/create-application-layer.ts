@@ -70,6 +70,7 @@ import { GetDeoSchoolAdminsUseCase } from '../use-cases/deo/get-deo-school-admin
 import { GetDeoTeachersUseCase } from '../use-cases/deo/get-deo-teachers';
 import { GetDeoStudentsUseCase } from '../use-cases/deo/get-deo-students';
 import { GetDeoTransfersUseCase } from '../use-cases/deo/get-deo-transfers';
+import { DeoReportUseCase, GetDeoReportScopeUseCase } from '../use-cases/deo/deo-reports';
 import { DeoApplicationService } from '../services/deo-application-service';
 import type { IStudentRepository } from '../interfaces/students/student-repository';
 import type { IGuardianRepository } from '../interfaces/students/guardian-repository';
@@ -768,6 +769,41 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
       readModel: ports.districtOverview,
       currentDistrictId: ports.currentDistrictId,
       clock,
+      logger,
+    }),
+    getReportScope: new GetDeoReportScopeUseCase({
+      districtOverview: ports.districtOverview,
+      reports: ports.countyReports,
+      currentDistrictId: ports.currentDistrictId,
+      logger,
+    }),
+    // The County report rules, pinned to the officer's district.
+    getEnrollmentReport: new DeoReportUseCase({
+      name: 'GetDeoEnrollmentReport',
+      reports: ports.countyReports,
+      inner: new GetCountyEnrollmentReportUseCase(reportDeps),
+      currentDistrictId: ports.currentDistrictId,
+      logger,
+    }),
+    getAttendanceReport: new DeoReportUseCase({
+      name: 'GetDeoAttendanceReport',
+      reports: ports.countyReports,
+      inner: new GetCountyAttendanceReportUseCase(reportDeps),
+      currentDistrictId: ports.currentDistrictId,
+      logger,
+    }),
+    getAcademicReport: new DeoReportUseCase({
+      name: 'GetDeoAcademicReport',
+      reports: ports.countyReports,
+      inner: new GetCountyAcademicReportUseCase(reportDeps),
+      currentDistrictId: ports.currentDistrictId,
+      logger,
+    }),
+    getStaffComplianceReport: new DeoReportUseCase({
+      name: 'GetDeoStaffComplianceReport',
+      reports: ports.countyReports,
+      inner: new GetCountyStaffComplianceReportUseCase(reportDeps),
+      currentDistrictId: ports.currentDistrictId,
       logger,
     }),
     resolveAlert: new ResolveDistrictAlertUseCase({

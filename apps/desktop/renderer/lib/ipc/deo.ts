@@ -11,6 +11,11 @@ export const deoIpc = {
     listSchoolAdmins: () => query(() => deoBridge.listSchoolAdmins()),
     listStudents: () => query(() => deoBridge.listStudents()),
     listTransfers: () => query(() => deoBridge.listTransfers()),
+    getReportScope: () => query(() => deoBridge.getReportScope()),
+    getEnrollmentReport: (q) => query(() => deoBridge.getEnrollmentReport(q)),
+    getAttendanceReport: (q) => query(() => deoBridge.getAttendanceReport(q)),
+    getAcademicReport: (q) => query(() => deoBridge.getAcademicReport(q)),
+    getStaffComplianceReport: (q) => query(() => deoBridge.getStaffComplianceReport(q)),
     listTeachers: () => query(() => deoBridge.listTeachers()),
   }),
 };

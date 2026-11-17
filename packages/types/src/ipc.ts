@@ -84,6 +84,9 @@ import type {
   DeoStudentsResult,
   DeoTeachersResult,
   DeoTransfersResult,
+  DeoAttendanceReportQuery,
+  DeoReportQuery,
+  DeoReportScope,
 } from './deo-dashboard';
 import type {
   CountyAssignDeoRequest,
@@ -260,6 +263,11 @@ export interface IpcContract {
   'deo:list-teachers': { args: []; result: DeoTeachersResult };
   'deo:list-students': { args: []; result: DeoStudentsResult };
   'deo:list-transfers': { args: []; result: DeoTransfersResult };
+  'deo:report-scope': { args: []; result: DeoReportScope };
+  'deo:report-enrollment': { args: [query: DeoReportQuery]; result: CountyEnrollmentReport };
+  'deo:report-attendance': { args: [query: DeoAttendanceReportQuery]; result: CountyAttendanceReport };
+  'deo:report-academic': { args: [query: DeoReportQuery]; result: CountyAcademicReport };
+  'deo:report-staff-compliance': { args: [query: DeoReportQuery]; result: CountyStaffComplianceReport };
   'county:list-districts': { args: []; result: CountyDistrictsResult };
   'county:get-district': { args: [districtId: string]; result: CountyDistrictDetailResult | null };
   'county:assign-deo': { args: [request: CountyAssignDeoRequest]; result: OnlineCommandResult<null> };
@@ -531,6 +539,11 @@ export const IpcChannels = {
   DEO_LIST_TEACHERS: 'deo:list-teachers',
   DEO_LIST_STUDENTS: 'deo:list-students',
   DEO_LIST_TRANSFERS: 'deo:list-transfers',
+  DEO_REPORT_SCOPE: 'deo:report-scope',
+  DEO_ENROLLMENT_REPORT: 'deo:report-enrollment',
+  DEO_ATTENDANCE_REPORT: 'deo:report-attendance',
+  DEO_ACADEMIC_REPORT: 'deo:report-academic',
+  DEO_STAFF_REPORT: 'deo:report-staff-compliance',
   COUNTY_LIST_DISTRICTS: 'county:list-districts',
   COUNTY_GET_DISTRICT: 'county:get-district',
   COUNTY_ASSIGN_DEO: 'county:assign-deo',

@@ -1299,6 +1299,25 @@ function assertCountyReportScope(args: readonly unknown[], extraKeys: readonly s
   return query;
 }
 
+/** DEO Generate Reports: only an optional school; the district is the session's. */
+export function assertDeoReportQueryArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [query] = args;
+  if (!isPlainObject(query)) throw new IPCError('Expected a query object.');
+  assertKnownKeys(query, ['schoolId']);
+  if (query.schoolId !== undefined) assertString(query.schoolId, 'schoolId', ID_MAX_LENGTH);
+}
+
+/** The DEO Attendance report adds its time period. */
+export function assertDeoAttendanceReportQueryArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [query] = args;
+  if (!isPlainObject(query)) throw new IPCError('Expected a query object.');
+  assertKnownKeys(query, ['schoolId', 'period']);
+  if (query.schoolId !== undefined) assertString(query.schoolId, 'schoolId', ID_MAX_LENGTH);
+  assertOptionalEnumMember(query.period, 'period', ['DAILY', 'WEEKLY', 'MONTHLY']);
+}
+
 /** County Generate Reports: no districtId = county-wide. */
 export function assertCountyEnrollmentReportQueryArgs(args: readonly unknown[]): void {
   assertCountyReportScope(args, []);

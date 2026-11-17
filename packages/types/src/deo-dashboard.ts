@@ -1,3 +1,12 @@
+import type {
+  CountyAcademicReport,
+  CountyAttendancePeriod,
+  CountyAttendanceReport,
+  CountyEnrollmentReport,
+  CountyReportSchool,
+  CountyStaffComplianceReport,
+} from './county-reports';
+
 /** IPC wire shapes for the DEO (district) dashboard. Kept structurally
  * identical to the application-layer output, so the main-process handler
  * returns the DTO directly and the renderer hands it to the presentation
@@ -251,6 +260,25 @@ export interface DeoTransfersResult {
   summary: { pending: number; lapsed: number };
 }
 
+/** DEO Generate Reports: the district comes from the session; only a school may be chosen. */
+export interface DeoReportQuery {
+  schoolId?: string;
+}
+
+export interface DeoAttendanceReportQuery extends DeoReportQuery {
+  /** Defaults to WEEKLY (last 28 days). */
+  period?: CountyAttendancePeriod;
+}
+
+/** DEO Generate Reports header, export letterhead and School filter. */
+export interface DeoReportScope {
+  districtId: string | null;
+  district: { id: string; name: string } | null;
+  county: { id: string; name: string; code: string | null } | null;
+  /** The district's active schools, by name. */
+  schools: CountyReportSchool[];
+}
+
 /** DEO portal calls on `window.nemis.deo`. */
 export interface DeoApi {
   getDashboard(): Promise<DeoDashboardResult>;
@@ -259,6 +287,11 @@ export interface DeoApi {
   listTeachers(): Promise<DeoTeachersResult>;
   listStudents(): Promise<DeoStudentsResult>;
   listTransfers(): Promise<DeoTransfersResult>;
+  getReportScope(): Promise<DeoReportScope>;
+  getEnrollmentReport(query: DeoReportQuery): Promise<CountyEnrollmentReport>;
+  getAttendanceReport(query: DeoAttendanceReportQuery): Promise<CountyAttendanceReport>;
+  getAcademicReport(query: DeoReportQuery): Promise<CountyAcademicReport>;
+  getStaffComplianceReport(query: DeoReportQuery): Promise<CountyStaffComplianceReport>;
   /** Marks an alert reviewed on this device; the outbox syncs it later. */
   resolveAlert(alertId: string): Promise<boolean>;
 }

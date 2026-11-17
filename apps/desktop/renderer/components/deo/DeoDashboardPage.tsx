@@ -484,7 +484,7 @@ export function DeoDashboardPage() {
                     caption: 'Message all schools',
                   },
                   {
-                    href: '/government/deo/reports',
+                    href: '/government/deo/reports/automated',
                     icon: FileText,
                     title: 'Generate Report',
                     caption: 'Create district reports',

@@ -9,6 +9,11 @@ export const deoDashboardApi: DeoApi = {
   listSchoolAdmins: () => invoke(IpcChannels.DEO_LIST_SCHOOL_ADMINS),
   listStudents: () => invoke(IpcChannels.DEO_LIST_STUDENTS),
   listTransfers: () => invoke(IpcChannels.DEO_LIST_TRANSFERS),
+  getReportScope: () => invoke(IpcChannels.DEO_REPORT_SCOPE),
+  getEnrollmentReport: (query) => invoke(IpcChannels.DEO_ENROLLMENT_REPORT, query),
+  getAttendanceReport: (query) => invoke(IpcChannels.DEO_ATTENDANCE_REPORT, query),
+  getAcademicReport: (query) => invoke(IpcChannels.DEO_ACADEMIC_REPORT, query),
+  getStaffComplianceReport: (query) => invoke(IpcChannels.DEO_STAFF_REPORT, query),
   listTeachers: () => invoke(IpcChannels.DEO_LIST_TEACHERS),
 };
 

@@ -213,7 +213,7 @@ export const sidebarConfigs: Record<DesktopPortalRole, SidebarConfig> = {
       {
         label: 'REPORTS',
         items: [
-          { name: 'Reports', href: '/government/deo/reports', icon: FileBarChart },
+          { name: 'Generate Reports', href: '/government/deo/reports/automated', icon: FileBarChart },
           { name: 'Finance', href: '/government/deo/finance', icon: DollarSign },
         ],
       },

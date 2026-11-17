@@ -247,6 +247,11 @@ export const DEO_CHANNELS: ReadonlySet<IpcChannel> = new Set<IpcChannel>([
   IpcChannels.DEO_LIST_SCHOOL_ADMINS,
   IpcChannels.DEO_LIST_STUDENTS,
   IpcChannels.DEO_LIST_TRANSFERS,
+  IpcChannels.DEO_REPORT_SCOPE,
+  IpcChannels.DEO_ENROLLMENT_REPORT,
+  IpcChannels.DEO_ATTENDANCE_REPORT,
+  IpcChannels.DEO_ACADEMIC_REPORT,
+  IpcChannels.DEO_STAFF_REPORT,
   IpcChannels.DEO_LIST_TEACHERS,
 ]);
 
