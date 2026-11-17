@@ -18,6 +18,10 @@ export interface CountyReportSchool {
 export interface CountyEnrollmentReportQuery {
   districtId?: string;
   schoolId?: string;
+  /** DEO reports only (set by the DEO use cases, never by a renderer: the
+   * County validator rejects the key). Scope by district alone, as the
+   * server's district generators do, ignoring the school's countyId. */
+  districtOnly?: boolean;
 }
 
 export interface CountyEnrollmentSchoolRow {

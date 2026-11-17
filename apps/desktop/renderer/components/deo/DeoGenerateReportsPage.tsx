@@ -73,18 +73,23 @@ export function DeoGenerateReportsPage() {
 
   const scope = isReady(scopeState) ? scopeState.data : null;
   const hasDistrict = !!scope?.districtId;
+  // A school a sync removed from the district counts as All Schools, so the
+  // filter never asks for a school the report would refuse.
+  const schoolId = selectedSchoolId && scope?.schools.some((s) => s.id === selectedSchoolId) ? selectedSchoolId : '';
 
   const loadReport = () => {
     if (!hasDistrict) return;
-    const query: DeoReportQuery = selectedSchoolId ? { schoolId: selectedSchoolId } : {};
+    const query: DeoReportQuery = schoolId ? { schoolId } : {};
     void vm.loadReport(selectedReport, query, period);
   };
+  /** Any change of report or filter clears the last export's message. */
+  const resetExport = () => setExportState({ kind: 'idle' });
 
   useRevalidateOnSync(() => {
     void vm.loadScope();
   }, [vm]);
   // Each report loads only while it is the chosen one, as the web skips its queries.
-  useRevalidateOnSync(loadReport, [hasDistrict, selectedReport, selectedSchoolId, period]);
+  useRevalidateOnSync(loadReport, [hasDistrict, selectedReport, schoolId, period]);
 
   const reportState =
     selectedReport === 'ATTENDANCE'
@@ -96,9 +101,13 @@ export function DeoGenerateReportsPage() {
           : enrollmentState;
   const reportData =
     reportState.status === 'success' || reportState.status === 'refreshing' ? reportState.data : undefined;
-  const isLoading = reportState.status === 'idle' || reportState.status === 'loading';
+  const scopeFailed = scopeState.status === 'error';
+  const isLoading = !scopeFailed && (reportState.status === 'idle' || reportState.status === 'loading');
   const isRefreshing = isLoading || reportState.status === 'refreshing';
+  const reportError = reportState.status === 'error' ? reportState.error : scopeFailed ? scopeState.error : null;
   const isExporting = exportState.kind === 'exporting';
+  // Not while refreshing: the old filter's data is still on screen then.
+  const canExport = reportState.status === 'success' && !isExporting;
   const reportName = REPORT_TYPES.find((type) => type.id === selectedReport)?.name;
 
   /** Builds the letterhead file in the renderer, then saves it through the app. */
@@ -108,9 +117,9 @@ export function DeoGenerateReportsPage() {
     try {
       const exports = await import('@/lib/reports/automatedReportExport');
       const user = isReady(userState) ? userState.data : null;
+      // The web DEO export's district header: a DEO file is not a County
+      // Education Office file, so no county letterhead.
       const options: ExportOptions = {
-        countyName: scope?.county?.name,
-        countyCode: scope?.county?.code ?? undefined,
         generatedBy: user?.fullName || user?.email || 'District Education Officer',
         countyWide: false,
       };
@@ -151,6 +160,7 @@ export function DeoGenerateReportsPage() {
             type="button"
             onClick={() => setShowFilters((open) => !open)}
             aria-expanded={showFilters}
+            aria-controls="deo-report-filters"
             className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium text-slate-300 bg-slate-800 border border-slate-700 hover:bg-slate-700 transition-colors"
           >
             <Building2 className="w-4 h-4" aria-hidden />
@@ -171,7 +181,7 @@ export function DeoGenerateReportsPage() {
 
       <div className="px-6 py-6 space-y-5">
         {showFilters ? (
-          <div className="bg-white border border-gray-300 rounded-2xl p-4">
+          <div id="deo-report-filters" className="bg-white border border-gray-300 rounded-2xl p-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
                 <label htmlFor="deo-report-school" className="block text-sm font-medium text-gray-700 mb-1">
@@ -179,8 +189,11 @@ export function DeoGenerateReportsPage() {
                 </label>
                 <select
                   id="deo-report-school"
-                  value={selectedSchoolId}
-                  onChange={(e) => setSelectedSchoolId(e.target.value)}
+                  value={schoolId}
+                  onChange={(e) => {
+                    setSelectedSchoolId(e.target.value);
+                    resetExport();
+                  }}
                   className={SELECT_CLASS}
                 >
                   <option value="">All Schools</option>
@@ -199,7 +212,10 @@ export function DeoGenerateReportsPage() {
                   <select
                     id="deo-report-period"
                     value={period}
-                    onChange={(e) => setPeriod(e.target.value as CountyAttendancePeriod)}
+                    onChange={(e) => {
+                      setPeriod(e.target.value as CountyAttendancePeriod);
+                      resetExport();
+                    }}
                     className={SELECT_CLASS}
                   >
                     {PERIODS.map((option) => (
@@ -222,7 +238,10 @@ export function DeoGenerateReportsPage() {
               <button
                 key={type.id}
                 type="button"
-                onClick={() => setSelectedReport(type.id)}
+                onClick={() => {
+                  setSelectedReport(type.id);
+                  resetExport();
+                }}
                 aria-pressed={isSelected}
                 className={`p-4 rounded-2xl border text-left transition-colors ${
                   isSelected ? 'border-secondary border-2 bg-sky-50' : 'border-slate-300 bg-white hover:border-gray-400'
@@ -240,7 +259,7 @@ export function DeoGenerateReportsPage() {
 
         <div className="bg-white border border-gray-300 rounded-2xl p-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap" aria-live="polite">
               <FileText className="w-5 h-5 text-gray-500" aria-hidden />
               <span className="font-medium text-gray-700">{reportName} Report</span>
               {reportData ? (
@@ -271,7 +290,7 @@ export function DeoGenerateReportsPage() {
                   key={format}
                   type="button"
                   onClick={() => void handleExport(format)}
-                  disabled={!reportData || isLoading || isExporting}
+                  disabled={!canExport}
                   className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50"
                 >
                   <Icon className="w-4 h-4" aria-hidden />
@@ -282,21 +301,27 @@ export function DeoGenerateReportsPage() {
           </div>
         </div>
 
-        {reportState.status === 'error' ? (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-6">
+        {reportError ? (
+          <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-6">
             <div className="flex items-center gap-3">
               <AlertTriangle className="w-6 h-6 text-red-500" aria-hidden />
               <div>
                 <h3 className="font-medium text-red-800">Failed to load report</h3>
-                <p className="text-sm text-red-600">Please try again or contact support.</p>
-                <button type="button" onClick={loadReport} className="mt-1 text-sm underline text-red-700">
+                <p className="text-sm text-red-600">
+                  {reportError.userMessage || 'Please try again or contact support.'}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => (scopeFailed ? void vm.loadScope() : loadReport())}
+                  className="mt-1 text-sm underline text-red-700"
+                >
                   Retry
                 </button>
               </div>
             </div>
           </div>
         ) : isLoading ? (
-          <div className="flex items-center justify-center py-12">
+          <div role="status" className="flex items-center justify-center py-12">
             <Spinner size="lg" />
             <span className="ml-3 text-gray-600">Generating report...</span>
           </div>

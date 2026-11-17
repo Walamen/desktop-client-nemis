@@ -18,6 +18,9 @@ import { qualificationList } from './SqliteCountyTeachersReadModel';
 
 /** The county's active schools (institution alias `i`). */
 const ACTIVE_SCHOOLS = `i.isActive = 1 AND ${OWN_COUNTY}`;
+/** DEO scope: the server's district generators read { districtId, isActive }
+ * only, so a district school whose countyId differs still counts. */
+const DISTRICT_ONLY_SCHOOLS = `i.isActive = 1`;
 const TREND_MONTHS = 6;
 const ATTENDANCE_TREND_DAYS = 14;
 /** The server's getTeachingPositions(). */
@@ -60,10 +63,14 @@ export class SqliteCountyReportsReadModel implements ICountyReportsReadModel {
     });
   }
 
-  listSchools(districtId: string): CountyReportSchool[] {
+  listSchools(districtId: string, options: { districtOnly?: boolean } = {}): CountyReportSchool[] {
     return guarded('SqliteCountyReportsReadModel.listSchools', () =>
       this.#repository.connection
-        .prepare(`SELECT i.id, i.name FROM institutions i WHERE ${ACTIVE_SCHOOLS} AND i.districtId = ? ORDER BY i.name, i.id`)
+        .prepare(
+          `SELECT i.id, i.name FROM institutions i
+           WHERE ${options.districtOnly ? DISTRICT_ONLY_SCHOOLS : ACTIVE_SCHOOLS} AND i.districtId = ?
+           ORDER BY i.name, i.id`,
+        )
         .all(districtId) as CountyReportSchool[],
     );
   }
@@ -414,7 +421,7 @@ export class SqliteCountyReportsReadModel implements ICountyReportsReadModel {
 
 /** Active own-county schools, optionally one district and one school (alias `i`). */
 function reportScope(query: CountyEnrollmentReportQuery): Scope {
-  const where = [ACTIVE_SCHOOLS];
+  const where = [query.districtOnly && query.districtId ? DISTRICT_ONLY_SCHOOLS : ACTIVE_SCHOOLS];
   const params: unknown[] = [];
   if (query.districtId) {
     where.push('i.districtId = ?');

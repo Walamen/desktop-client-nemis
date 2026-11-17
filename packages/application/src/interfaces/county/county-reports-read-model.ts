@@ -25,8 +25,9 @@ export type CountyStaffComplianceReportData = CountyReportData<CountyStaffCompli
 export interface ICountyReportsReadModel {
   /** The county's code and its active districts, by name. */
   getOptions(): { countyCode: string | null; districts: { id: string; name: string }[] };
-  /** A district's active own-county schools, by name. */
-  listSchools(districtId: string): CountyReportSchool[];
+  /** A district's active own-county schools, by name; with districtOnly,
+   * every active school of the district whatever its countyId (DEO). */
+  listSchools(districtId: string, options?: { districtOnly?: boolean }): CountyReportSchool[];
   /** counties/districts generate*EnrollmentReport; `nowIso` anchors the six-month trend. */
   getEnrollmentReport(query: CountyEnrollmentReportQuery, nowIso: string): CountyEnrollmentReportData;
   /** generate*AttendanceReport; the period window ends at `nowIso`. */

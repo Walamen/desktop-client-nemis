@@ -134,6 +134,18 @@ describe('SqliteCountyReportsReadModel', () => {
       expect(report.summary).toMatchObject({ totalSchools: 2, totalStudents: 4, totalMale: 1, totalFemale: 2 });
     });
 
+    it('a DEO (districtOnly) report keeps a district school whose county is set differently, as the server does', () => {
+      const report = readModel.getEnrollmentReport({ districtId: 'd-1', districtOnly: true }, NOW);
+      expect(report.bySchool.map((s) => s.schoolId)).toEqual(['sch-a', 'sch-b', 'sch-f']);
+      expect(report.summary.totalStudents).toBe(5);
+      expect(readModel.listSchools('d-1', { districtOnly: true }).map((s) => s.id)).toEqual(['sch-a', 'sch-b', 'sch-f']);
+      expect(readModel.getStaffComplianceReport({ districtId: 'd-1', districtOnly: true }).bySchool.map((s) => s.schoolId)).toEqual([
+        'sch-a',
+        'sch-b',
+        'sch-f',
+      ]);
+    });
+
     it('the school filter narrows schools, students and the trend', () => {
       const report = readModel.getEnrollmentReport({ districtId: 'd-1', schoolId: 'sch-a' }, NOW);
       expect(report.bySchool.map((s) => s.schoolId)).toEqual(['sch-a']);

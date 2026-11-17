@@ -70,4 +70,11 @@ describe('county reports channels', () => {
     expect(() => call('county:enrollment-report', 'query')).toThrow(IPCError);
     expect(() => call('county:enrollment-report', { schoolId: 7 })).toThrow(IPCError);
   });
+
+  it('never lets a renderer widen the scope with the DEO-only districtOnly flag', () => {
+    const { call } = setup();
+    for (const channel of ['county:enrollment-report', 'county:attendance-report', 'county:academic-report', 'county:staff-report']) {
+      expect(() => call(channel, { districtId: 'd-1', districtOnly: true })).toThrow(IPCError);
+    }
+  });
 });

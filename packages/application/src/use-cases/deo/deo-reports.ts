@@ -34,7 +34,7 @@ export class GetDeoReportScopeUseCase implements QueryHandler<
         districtId,
         district: district ? { id: district.id, name: district.name } : null,
         county: county ? { ...county, code: this.deps.reports.getOptions().countyCode } : null,
-        schools: this.deps.reports.listSchools(districtId),
+        schools: this.deps.reports.listSchools(districtId, { districtOnly: true }),
       });
     });
   }
@@ -45,7 +45,7 @@ export interface DeoReportDeps<Q, R> {
   name: string;
   reports: ICountyReportsReadModel;
   /** The County report use case: the same rules, here pinned to one district. */
-  inner: QueryHandler<Q & { districtId: string }, ApplicationResponse<R>>;
+  inner: QueryHandler<Q & { districtId: string; districtOnly: true }, ApplicationResponse<R>>;
   currentDistrictId: string | null;
   logger: IAppLogger;
 }
@@ -62,10 +62,12 @@ export class DeoReportUseCase<Q extends { schoolId?: string }, R>
     return invokeUseCase(this.deps.name, this.deps.logger, async () => {
       const districtId = this.deps.currentDistrictId;
       if (!districtId) throw new WorkflowException('No district is assigned to this workspace.');
-      if (query.schoolId && !this.deps.reports.listSchools(districtId).some((school) => school.id === query.schoolId)) {
+      const schools = this.deps.reports.listSchools(districtId, { districtOnly: true });
+      if (query.schoolId && !schools.some((school) => school.id === query.schoolId)) {
         throw new WorkflowException('That school is not in your district.');
       }
-      return this.deps.inner.execute({ ...query, districtId });
+      // districtOnly: scope as the server's district generators do (no county filter).
+      return this.deps.inner.execute({ ...query, districtId, districtOnly: true });
     });
   }
 }

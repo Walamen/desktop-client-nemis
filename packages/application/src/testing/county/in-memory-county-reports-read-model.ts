@@ -63,7 +63,10 @@ export class InMemoryCountyReportsReadModel implements ICountyReportsReadModel {
     return this.options;
   }
 
-  listSchools(districtId: string): CountyReportSchool[] {
+  lastListSchoolsOptions: { districtOnly?: boolean } | undefined = undefined;
+
+  listSchools(districtId: string, options?: { districtOnly?: boolean }): CountyReportSchool[] {
+    this.lastListSchoolsOptions = options;
     return this.schoolsByDistrict.get(districtId) ?? [];
   }
 

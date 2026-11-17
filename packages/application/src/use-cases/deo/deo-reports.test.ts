@@ -34,7 +34,7 @@ function world(districtId: string | null = 'd-1') {
   };
   const wrap = <Q extends { schoolId?: string }, R>(
     name: string,
-    inner: { execute(query: Q & { districtId: string }): Promise<{ data: R }> },
+      inner: { execute(query: Q & { districtId: string; districtOnly: true }): Promise<{ data: R }> },
   ) => new DeoReportUseCase<Q, R>({ name, reports, inner: inner as never, currentDistrictId: districtId, logger });
   return {
     overview,
@@ -73,12 +73,13 @@ describe('DeoReportUseCase', () => {
   it('always scopes a report to the session district, with or without a school', async () => {
     const w = world();
     const { data } = await w.enrollment.execute({});
-    expect(w.reports.lastEnrollmentQuery).toEqual({ districtId: 'd-1' });
+    expect(w.reports.lastEnrollmentQuery).toEqual({ districtId: 'd-1', districtOnly: true });
     expect(data).toMatchObject({ reportType: 'ENROLLMENT', district: { id: 'd-1', name: 'Buchanan' }, generatedAt: NOW });
     await w.academic.execute({ schoolId: 's-2' });
-    expect(w.reports.lastAcademicQuery).toEqual({ districtId: 'd-1', schoolId: 's-2' });
+    expect(w.reports.lastAcademicQuery).toEqual({ districtId: 'd-1', schoolId: 's-2', districtOnly: true });
+    expect(w.reports.lastListSchoolsOptions).toEqual({ districtOnly: true });
     await w.staff.execute({});
-    expect(w.reports.lastStaffQuery).toEqual({ districtId: 'd-1' });
+    expect(w.reports.lastStaffQuery).toEqual({ districtId: 'd-1', districtOnly: true });
   });
 
   it('passes the attendance period through', async () => {

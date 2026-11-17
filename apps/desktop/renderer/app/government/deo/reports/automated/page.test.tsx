@@ -97,7 +97,7 @@ describe('DEO Automated Reports page', () => {
     await waitFor(() => expect(deo.getAttendanceReport).toHaveBeenLastCalledWith({ period: 'MONTHLY' }));
   });
 
-  it('exports with the county letterhead and saves through the app', async () => {
+  it('exports with the district header the web DEO file uses, and saves through the app', async () => {
     renderWith();
     expect(screen.getByRole('button', { name: 'PDF' })).toBeDisabled();
     await waitFor(() => expect(screen.getByRole('button', { name: 'PDF' })).not.toBeDisabled());
@@ -105,8 +105,12 @@ describe('DEO Automated Reports page', () => {
     await waitFor(() => expect(screen.getByText(/Saved to D:\\Reports\\enrollment\.pdf/)).toBeInTheDocument());
     expect(exportsLib.exportToPDF).toHaveBeenCalledWith(
       expect.objectContaining({ reportType: 'ENROLLMENT' }),
-      expect.objectContaining({ countyName: 'Grand Bassa', countyCode: 'GB', countyWide: false }),
+      expect.objectContaining({ countyWide: false, generatedBy: 'District Education Officer' }),
     );
+    // No county letterhead: a DEO file is not a County Education Office file.
+    expect(exportsLib.exportToPDF.mock.calls[0]![1]).not.toHaveProperty('countyName');
+    fireEvent.click(screen.getByRole('button', { name: /Attendance/ }));
+    expect(screen.queryByText(/Saved to/)).not.toBeInTheDocument();
   });
 
   it('a failed report shows the error and Retry reloads it', async () => {
@@ -122,6 +126,22 @@ describe('DEO Automated Reports page', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
     await waitFor(() => expect(screen.getAllByText('Alpha School').length).toBeGreaterThan(0));
     expect(deo.getEnrollmentReport).toHaveBeenCalledTimes(2);
+  });
+
+  it('a failed scope load shows the error with Retry, not an endless spinner', async () => {
+    let calls = 0;
+    const deo = renderWith({
+      getReportScope: vi.fn(async () => {
+        calls += 1;
+        if (calls === 1) throw new Error('database locked');
+        return scope;
+      }),
+    });
+    expect(await screen.findByText('Failed to load report')).toBeInTheDocument();
+    expect(screen.queryByText('Generating report...')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    await waitFor(() => expect(screen.getAllByText('Alpha School').length).toBeGreaterThan(0));
+    expect(deo.getEnrollmentReport).toHaveBeenCalledTimes(1);
   });
 
   it('explains when no district is assigned', async () => {
