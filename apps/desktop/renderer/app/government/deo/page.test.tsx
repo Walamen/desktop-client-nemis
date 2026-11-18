@@ -209,7 +209,9 @@ describe('DEO dashboard page', () => {
     const nemis = mockNemis(DASHBOARD);
     renderPage();
     await waitFor(() => expect(screen.getByText('Quick Actions')).toBeInTheDocument());
-    expect(screen.getByText('Send Broadcast').closest('a')).toHaveAttribute('href', '/government/deo/communications');
+    expect(screen.queryByText('Send Broadcast')).not.toBeInTheDocument();
+    expect(screen.getByText('Generate Report').closest('a')).toHaveAttribute('href', '/government/deo/reports/automated');
+    expect(screen.getByText('Schedule Visit').closest('a')).toHaveAttribute('href', '/government/deo/schools');
     await waitFor(() => expect(nemis.yearArchives.list).toHaveBeenCalled());
   });
 });

@@ -9,7 +9,6 @@ import {
   ChevronLeft,
   ChevronRight,
   FileText,
-  Megaphone,
   Search,
 } from 'lucide-react';
 import { Card, Spinner } from '@nemis-desktop/ui';
@@ -475,14 +474,8 @@ export function DeoDashboardPage() {
             {/* 8. Quick actions */}
             <div className="bg-white rounded-lg border border-slate-300 p-6">
               <h3 className="text-base font-semibold text-gray-900 mb-4">Quick Actions</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {[
-                  {
-                    href: '/government/deo/communications',
-                    icon: Megaphone,
-                    title: 'Send Broadcast',
-                    caption: 'Message all schools',
-                  },
                   {
                     href: '/government/deo/reports/automated',
                     icon: FileText,
