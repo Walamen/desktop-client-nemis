@@ -1,7 +1,12 @@
-import { ComingSoon } from '@/components/shell/ComingSoon';
+import { Suspense } from 'react';
+import { DeoSchoolDetailPage } from '@/components/deo/DeoSchoolDetailPage';
 
-/** The school detail page is the next task (DEO sub pages); rows on the
- * Schools page already link here with ?id=. */
+// useSearchParams() in a statically exported route must sit under a Suspense
+// boundary, or `next build` fails.
 export default function Page() {
-  return <ComingSoon title="School detail" />;
+  return (
+    <Suspense fallback={null}>
+      <DeoSchoolDetailPage />
+    </Suspense>
+  );
 }
