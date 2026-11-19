@@ -165,6 +165,12 @@ export interface IDistrictOverviewReadModel {
    * it. One organisation per user (the lowest id), sorted by first name,
    * last name. */
   listMessageContacts(districtId: string, currentUserId: string): CountyMessageRecipient[];
+  /** A school's street/town address and establishedYear (details); null when the school row is missing. */
+  getSchoolProfile(schoolId: string): { address: string | null; establishedYear: number | null } | null;
+  /** Active students of one school per gender value. */
+  countSchoolStudentsByGender(schoolId: string): { gender: string; count: number }[];
+  /** Active students of one school per grade level, in GradeLevel order, null last. */
+  countSchoolStudentsByGrade(schoolId: string): { gradeLevel: string | null; students: number }[];
   /** The signed-in user's synced profile; null when the row is missing. */
   getUserProfile(userId: string): DeoUserProfile | null;
 }

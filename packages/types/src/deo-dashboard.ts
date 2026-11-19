@@ -118,6 +118,22 @@ export interface DeoSchoolsResult {
   schools: DeoSchoolRow[];
 }
 
+/** One school on the DEO School detail page (Nemis DistrictSchoolDetail). */
+export interface DeoSchoolDetail extends DeoSchoolRow {
+  address: string | null;
+  establishedYear: number | null;
+  gender: { male: number; female: number };
+  enrollmentByGrade: { gradeLevel: string | null; students: number }[];
+  academic: { totalGrades: number; averageScore: number | null };
+}
+
+export interface DeoSchoolDetailResult {
+  /** Null when the signed-in DEO has no district assigned. */
+  districtId: string | null;
+  /** Null when the school is not an active school of the district. */
+  school: DeoSchoolDetail | null;
+}
+
 /** One School Admin account, as the School Admin Directory shows it. */
 export interface DeoSchoolAdmin {
   userId: string;

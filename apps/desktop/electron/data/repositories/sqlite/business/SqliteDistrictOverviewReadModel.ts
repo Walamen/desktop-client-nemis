@@ -621,6 +621,44 @@ export class SqliteDistrictOverviewReadModel implements IDistrictOverviewReadMod
     );
   }
 
+  getSchoolProfile(schoolId: string): { address: string | null; establishedYear: number | null } | null {
+    return guarded('SqliteDistrictOverviewReadModel.getSchoolProfile', () => {
+      const row = this.#statements
+        .get(`SELECT street, communityTown, details FROM ${institutions} WHERE id = ?`)
+        .get(schoolId) as { street: string | null; communityTown: string | null; details: string | null } | undefined;
+      if (!row) return null;
+      const parts = [row.street, row.communityTown].map((part) => part?.trim() ?? '').filter((part) => part !== '');
+      const year = parseProfile(row.details)?.establishedYear;
+      return {
+        address: parts.length > 0 ? parts.join(', ') : null,
+        establishedYear: typeof year === 'number' && Number.isInteger(year) ? year : null,
+      };
+    });
+  }
+
+  countSchoolStudentsByGender(schoolId: string): { gender: string; count: number }[] {
+    return guarded('SqliteDistrictOverviewReadModel.countSchoolStudentsByGender', () =>
+      this.#statements
+        .get(`SELECT gender, COUNT(*) AS count FROM ${students} WHERE institutionId = ? AND isActive = 1 GROUP BY gender`)
+        .all(schoolId) as { gender: string; count: number }[],
+    );
+  }
+
+  countSchoolStudentsByGrade(schoolId: string): { gradeLevel: string | null; students: number }[] {
+    return guarded('SqliteDistrictOverviewReadModel.countSchoolStudentsByGrade', () => {
+      const rows = this.#statements
+        .get(
+          `SELECT gradeLevel, COUNT(*) AS students FROM ${students}
+           WHERE institutionId = ? AND isActive = 1 GROUP BY gradeLevel`,
+        )
+        .all(schoolId) as { gradeLevel: string | null; students: number }[];
+      // gradeLevel is TEXT in SQLite: order in code. Null last, unknown strings after known grades.
+      const rank = (grade: string | null): number =>
+        grade === null ? Number.MAX_SAFE_INTEGER : (GRADE_RANK.get(grade) ?? Number.MAX_SAFE_INTEGER - 1);
+      return rows.sort((a, b) => rank(a.gradeLevel) - rank(b.gradeLevel) || (a.gradeLevel ?? '').localeCompare(b.gradeLevel ?? ''));
+    });
+  }
+
   getUserProfile(userId: string): DeoUserProfile | null {
     return guarded('SqliteDistrictOverviewReadModel.getUserProfile', () => {
       const row = this.#statements

@@ -42,6 +42,9 @@ export class InMemoryDistrictOverviewReadModel implements IDistrictOverviewReadM
   auditEntries: DeoFinanceAuditEntry[] = [];
   messageContacts: CountyMessageRecipient[] = [];
   userProfile: DeoUserProfile | null = null;
+  schoolProfile: { address: string | null; establishedYear: number | null } | null = null;
+  schoolGender: { gender: string; count: number }[] = [];
+  schoolGrades: { gradeLevel: string | null; students: number }[] = [];
   readonly calls: { method: string; args: unknown[] }[] = [];
 
   #record(method: string, ...args: unknown[]): void {
@@ -146,6 +149,18 @@ export class InMemoryDistrictOverviewReadModel implements IDistrictOverviewReadM
   paymentsByMonth(districtId: string, sinceIso: string) {
     this.#record('paymentsByMonth', districtId, sinceIso);
     return this.paymentMonths;
+  }
+  getSchoolProfile(schoolId: string): { address: string | null; establishedYear: number | null } | null {
+    this.#record('getSchoolProfile', schoolId);
+    return this.schoolProfile;
+  }
+  countSchoolStudentsByGender(schoolId: string) {
+    this.#record('countSchoolStudentsByGender', schoolId);
+    return this.schoolGender;
+  }
+  countSchoolStudentsByGrade(schoolId: string) {
+    this.#record('countSchoolStudentsByGrade', schoolId);
+    return this.schoolGrades;
   }
   getUserProfile(userId: string): DeoUserProfile | null {
     this.#record('getUserProfile', userId);

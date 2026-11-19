@@ -20,10 +20,21 @@ describe('SqliteDistrictOverviewReadModel', () => {
   function district(id: string, name: string, countyId = 'county-1') {
     run(`INSERT INTO districts (id,name,countyId,isActive) VALUES (?,?,?,1)`, id, name, countyId);
   }
-  function school(id: string, districtId: string | null, opts: { name?: string; isActive?: number; levels?: string[] } = {}) {
+  function school(
+    id: string,
+    districtId: string | null,
+    opts: {
+      name?: string;
+      isActive?: number;
+      levels?: string[];
+      street?: string | null;
+      communityTown?: string | null;
+      details?: string | null;
+    } = {},
+  ) {
     run(
-      `INSERT INTO institutions (id,code,name,type,ownership,countyId,districtId,approvalStatus,profile,version,updatedAt,isActive)
-       VALUES (?,?,?,'PRIMARY','PUBLIC','county-1',?,'APPROVED',?,1,?,?)`,
+      `INSERT INTO institutions (id,code,name,type,ownership,countyId,districtId,approvalStatus,profile,version,updatedAt,isActive,street,communityTown,details)
+       VALUES (?,?,?,'PRIMARY','PUBLIC','county-1',?,'APPROVED',?,1,?,?,?,?,?)`,
       id,
       id.toUpperCase(),
       opts.name ?? `School ${id}`,
@@ -31,17 +42,24 @@ describe('SqliteDistrictOverviewReadModel', () => {
       opts.levels ? JSON.stringify({ levels: opts.levels }) : null,
       NOW,
       opts.isActive ?? 1,
+      opts.street ?? null,
+      opts.communityTown ?? null,
+      opts.details ?? null,
     );
   }
-  function student(institutionId: string, opts: { gender?: string; isActive?: number; createdAt?: string | null } = {}) {
+  function student(
+    institutionId: string,
+    opts: { gender?: string; isActive?: number; createdAt?: string | null; gradeLevel?: string | null } = {},
+  ) {
     seq += 1;
     run(
       `INSERT INTO students (id,institutionId,firstName,lastName,nemisId,dateOfBirth,gender,gradeLevel,isActive,version,updatedAt,createdAt)
-       VALUES (?,?,'First','Last',?,'2015-01-01',?,NULL,?,1,?,?)`,
+       VALUES (?,?,'First','Last',?,'2015-01-01',?,?,?,1,?,?)`,
       `st-${seq}`,
       institutionId,
       String(seq).padStart(12, '0'),
       opts.gender ?? 'MALE',
+      opts.gradeLevel ?? null,
       opts.isActive ?? 1,
       NOW,
       opts.createdAt ?? null,
@@ -1120,6 +1138,54 @@ describe('SqliteDistrictOverviewReadModel', () => {
 
     it('has no County Admin when the district row is missing', () => {
       expect(readModel.listMessageContacts('d-unknown', 'deo-1')).toEqual([]);
+    });
+  });
+  describe('school detail reads', () => {
+    it('getSchoolProfile joins trimmed address parts and reads an integer establishedYear', () => {
+      school('s-a', 'd-1', { street: '  ', communityTown: 'Sinkor', details: '{"establishedYear":1998}' });
+      expect(readModel.getSchoolProfile('s-a')).toEqual({ address: 'Sinkor', establishedYear: 1998 });
+    });
+
+    it('getSchoolProfile gives nulls for no address and a non-integer year', () => {
+      school('s-a', 'd-1', { details: '{"establishedYear":"1998"}' });
+      expect(readModel.getSchoolProfile('s-a')).toEqual({ address: null, establishedYear: null });
+    });
+
+    it('getSchoolProfile is null for an unknown id', () => {
+      expect(readModel.getSchoolProfile('nope')).toBeNull();
+    });
+
+    it('countSchoolStudentsByGender counts active students of one school', () => {
+      school('s-a', 'd-1');
+      school('s-b', 'd-1');
+      student('s-a', { gender: 'MALE' });
+      student('s-a', { gender: 'MALE' });
+      student('s-a', { gender: 'FEMALE' });
+      student('s-a', { gender: 'OTHER' });
+      student('s-a', { gender: 'FEMALE', isActive: 0 });
+      student('s-b', { gender: 'MALE' });
+      const rows = [...readModel.countSchoolStudentsByGender('s-a')].sort((a, b) => a.gender.localeCompare(b.gender));
+      expect(rows).toEqual([
+        { gender: 'FEMALE', count: 1 },
+        { gender: 'MALE', count: 2 },
+        { gender: 'OTHER', count: 1 },
+      ]);
+    });
+
+    it('countSchoolStudentsByGrade orders by GradeLevel with null last', () => {
+      school('s-a', 'd-1');
+      student('s-a', { gradeLevel: 'GRADE_10' });
+      student('s-a', { gradeLevel: 'GRADE_2' });
+      student('s-a', { gradeLevel: 'GRADE_2' });
+      student('s-a', { gradeLevel: null });
+      student('s-a', { gradeLevel: 'KG' });
+      student('s-a', { gradeLevel: 'GRADE_1', isActive: 0 });
+      expect(readModel.countSchoolStudentsByGrade('s-a')).toEqual([
+        { gradeLevel: 'KG', students: 1 },
+        { gradeLevel: 'GRADE_2', students: 2 },
+        { gradeLevel: 'GRADE_10', students: 1 },
+        { gradeLevel: null, students: 1 },
+      ]);
     });
   });
 });
