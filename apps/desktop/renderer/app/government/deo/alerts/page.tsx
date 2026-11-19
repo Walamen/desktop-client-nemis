@@ -1,6 +1,6 @@
-import { SchoolAdminCollectionPage } from '@/components/school-admin/SchoolAdminModulePages';
+import { DeoAlertsPage } from '@/components/deo/DeoAlertsPage';
+
+/** The web's DEO Alerts page, read from this device. */
 export default function Page() {
-  return <SchoolAdminCollectionPage title="District alerts" description="Alerts from schools in this district." sections={[
-    { collection: 'alerts', label: 'Alerts', columns: ['institutionId', 'type', 'severity', 'title', 'isResolved', 'updatedAt'] },
-  ]} />;
+  return <DeoAlertsPage />;
 }
