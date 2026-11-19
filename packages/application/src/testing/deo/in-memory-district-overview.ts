@@ -1,4 +1,5 @@
 import type {
+  DistrictAlertListRow,
   DistrictAlertRow,
   DistrictSchoolAdminRow,
   DistrictTeacherRow,
@@ -27,6 +28,7 @@ export class InMemoryDistrictOverviewReadModel implements IDistrictOverviewReadM
   attendanceMonths: { month: string; records: number; attended: number }[] = [];
   termSchools: string[] = [];
   alerts: DistrictAlertRow[] = [];
+  districtAlerts: DistrictAlertListRow[] = [];
   reports: DistrictReportRow[] = [];
   lastSubmissions: { institutionId: string; submittedAt: string }[] = [];
   schoolAdmins: { institutionId: string; name: string }[] = [];
@@ -103,6 +105,10 @@ export class InMemoryDistrictOverviewReadModel implements IDistrictOverviewReadM
   listOpenAlerts(districtId: string): DistrictAlertRow[] {
     this.#record('listOpenAlerts', districtId);
     return this.alerts;
+  }
+  listDistrictAlerts(districtId: string, filter: 'open' | 'resolved' | 'all'): DistrictAlertListRow[] {
+    this.#record('listDistrictAlerts', districtId, filter);
+    return this.districtAlerts;
   }
   listSubmittedReports(districtId: string, limit: number): DistrictReportRow[] {
     this.#record('listSubmittedReports', districtId, limit);

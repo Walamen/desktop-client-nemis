@@ -1,4 +1,5 @@
 import type {
+  DistrictAlertListRow,
   DistrictAlertRow,
   DistrictOverviewRef,
   DistrictReportRow,
@@ -311,9 +312,31 @@ export class SqliteDistrictOverviewReadModel implements IDistrictOverviewReadMod
            WHERE a.isResolved = 0
              AND ${notSchoolStaffRequest('a.metadata')}
              AND (a.districtId = ?
-                  OR a.institutionId IN (SELECT i.id FROM ${institutions} i WHERE i.districtId = ?))`,
+                  OR a.institutionId IN (SELECT i.id FROM ${institutions} i WHERE i.districtId = ? AND i.isActive = 1))`,
         )
         .all(districtId, districtId) as DistrictAlertRow[];
+    });
+  }
+
+  listDistrictAlerts(districtId: string, filter: 'open' | 'resolved' | 'all'): DistrictAlertListRow[] {
+    return guarded('SqliteDistrictOverviewReadModel.listDistrictAlerts', () => {
+      const resolvedClause = filter === 'open' ? 'AND a.isResolved = 0' : filter === 'resolved' ? 'AND a.isResolved = 1' : '';
+      const rows = this.#statements
+        .get(
+          `SELECT a.id, a.type, a.severity, a.title, a.description, a.institutionId,
+                  s.name AS schoolName, a.isResolved, a.resolvedAt, a.createdAt
+           FROM ${alerts} a
+           LEFT JOIN ${institutions} s ON s.id = a.institutionId
+           WHERE ${notSchoolStaffRequest('a.metadata')}
+             ${resolvedClause}
+             AND (a.districtId = ?
+                  OR a.institutionId IN (SELECT i.id FROM ${institutions} i WHERE i.districtId = ? AND i.isActive = 1))
+           ORDER BY a.isResolved ASC,
+                    CASE a.severity WHEN 'CRITICAL' THEN 0 WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 WHEN 'LOW' THEN 3 ELSE 4 END ASC,
+                    a.createdAt DESC, a.id ASC`,
+        )
+        .all(districtId, districtId) as (Omit<DistrictAlertListRow, 'isResolved'> & { isResolved: number })[];
+      return rows.map((row) => ({ ...row, isResolved: row.isResolved === 1 }));
     });
   }
 

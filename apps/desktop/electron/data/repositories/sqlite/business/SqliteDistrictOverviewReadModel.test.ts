@@ -130,11 +130,11 @@ describe('SqliteDistrictOverviewReadModel', () => {
   }
   function alert(
     id: string,
-    opts: { countyId?: string | null; districtId?: string | null; institutionId?: string | null; isResolved?: number; severity?: string },
+    opts: { countyId?: string | null; districtId?: string | null; institutionId?: string | null; isResolved?: number; severity?: string; createdAt?: string; resolvedAt?: string },
   ) {
     run(
       `INSERT INTO alerts (id,countyId,districtId,institutionId,type,severity,title,description,isResolved,resolvedAt,resolvedBy,metadata,createdAt,updatedAt)
-       VALUES (?,?,?,?,'DATA',?,?,'D',?,NULL,NULL,NULL,?,?)`,
+       VALUES (?,?,?,?,'DATA',?,?,'D',?,?,NULL,NULL,?,?)`,
       id,
       opts.countyId ?? null,
       opts.districtId ?? null,
@@ -142,7 +142,8 @@ describe('SqliteDistrictOverviewReadModel', () => {
       opts.severity ?? 'HIGH',
       `Alert ${id}`,
       opts.isResolved ?? 0,
-      NOW,
+      opts.resolvedAt ?? null,
+      opts.createdAt ?? NOW,
       NOW,
     );
   }
@@ -410,6 +411,76 @@ describe('SqliteDistrictOverviewReadModel', () => {
       description: 'D',
       institutionId: 's-a',
       createdAt: NOW,
+    });
+  });
+
+  it('leaves an inactive school’s alert out of the open list', () => {
+    seedDistrict();
+    alert('a-active', { institutionId: 's-a' });
+    alert('a-off', { institutionId: 's-off' });
+    expect(readModel.listOpenAlerts('d-1').map((row) => row.id)).toEqual(['a-active']);
+  });
+
+  describe('listDistrictAlerts', () => {
+    const ids = (filter: 'open' | 'resolved' | 'all') => readModel.listDistrictAlerts('d-1', filter).map((row) => row.id);
+    const seedMixed = () => {
+      seedDistrict();
+      alert('a-district', { districtId: 'd-1', severity: 'LOW' });
+      alert('a-school', { institutionId: 's-a', severity: 'LOW', createdAt: '2026-01-02T00:00:00.000Z' });
+      alert('a-off', { institutionId: 's-off' });
+      alert('a-other', { districtId: 'd-2' });
+      alert('a-other-school', { institutionId: 's-other' });
+      alert('a-county', { countyId: 'county-1' });
+      alert('a-request', { institutionId: 's-a' });
+      run(`UPDATE alerts SET metadata = ? WHERE id = 'a-request'`, JSON.stringify({ staffId: 'stf-1' }));
+    };
+
+    it("open: the district's and an active school's alerts, in order; nothing else", () => {
+      seedMixed();
+      expect(ids('open')).toEqual(['a-school', 'a-district']);
+    });
+
+    it('resolved: only resolved alerts, with resolvedAt', () => {
+      seedMixed();
+      alert('a-done', { districtId: 'd-1', isResolved: 1, resolvedAt: '2026-02-01T00:00:00.000Z' });
+      const rows = readModel.listDistrictAlerts('d-1', 'resolved');
+      expect(rows.map((row) => row.id)).toEqual(['a-done']);
+      expect(rows[0]).toMatchObject({ isResolved: true, resolvedAt: '2026-02-01T00:00:00.000Z' });
+    });
+
+    it('all: open before resolved', () => {
+      seedMixed();
+      alert('a-done', { districtId: 'd-1', isResolved: 1, severity: 'CRITICAL', resolvedAt: NOW });
+      expect(ids('all')).toEqual(['a-school', 'a-district', 'a-done']);
+    });
+
+    it('returns schoolName (null when district-tagged) and a boolean isResolved', () => {
+      seedMixed();
+      const rows = readModel.listDistrictAlerts('d-1', 'open');
+      expect(rows.find((row) => row.id === 'a-school')).toEqual({
+        id: 'a-school',
+        type: 'DATA',
+        severity: 'LOW',
+        title: 'Alert a-school',
+        description: 'D',
+        institutionId: 's-a',
+        schoolName: 'Alpha',
+        isResolved: false,
+        resolvedAt: null,
+        createdAt: '2026-01-02T00:00:00.000Z',
+      });
+      expect(rows.find((row) => row.id === 'a-district')).toMatchObject({ schoolName: null, institutionId: null, isResolved: false });
+    });
+
+    it('orders open alerts CRITICAL, HIGH, MEDIUM, LOW, then newest, then id', () => {
+      seedDistrict();
+      alert('a-low', { districtId: 'd-1', severity: 'LOW' });
+      alert('a-med', { districtId: 'd-1', severity: 'MEDIUM' });
+      alert('a-high-b', { districtId: 'd-1', severity: 'HIGH' });
+      alert('a-high-a', { districtId: 'd-1', severity: 'HIGH' });
+      alert('a-high-new', { districtId: 'd-1', severity: 'HIGH', createdAt: '2026-06-01T00:00:00.000Z' });
+      alert('a-crit', { districtId: 'd-1', severity: 'CRITICAL' });
+      expect(ids('open')).toEqual(['a-crit', 'a-high-new', 'a-high-a', 'a-high-b', 'a-med', 'a-low']);
     });
   });
 

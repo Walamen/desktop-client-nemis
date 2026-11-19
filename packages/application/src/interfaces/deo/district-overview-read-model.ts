@@ -25,6 +25,13 @@ export interface DistrictAlertRow {
   readonly createdAt: string;
 }
 
+export interface DistrictAlertListRow {
+  readonly id: string; readonly type: string; readonly severity: string;
+  readonly title: string; readonly description: string;
+  readonly institutionId: string | null; readonly schoolName: string | null;
+  readonly isResolved: boolean; readonly resolvedAt: string | null; readonly createdAt: string;
+}
+
 export interface DistrictReportRow {
   readonly id: string;
   readonly schoolId: string;
@@ -122,6 +129,8 @@ export interface IDistrictOverviewReadModel {
   /** Unresolved alerts tagged with the district or raised against one of its
    * schools. County-level alerts are excluded. Unordered. */
   listOpenAlerts(districtId: string): DistrictAlertRow[];
+  /** The district's alerts by the dashboard rule (district-tagged or an active school's; no staff requests; no county-level), in page order. */
+  listDistrictAlerts(districtId: string, filter: 'open' | 'resolved' | 'all'): DistrictAlertListRow[];
   /** School reports with a submittedAt, newest first. */
   listSubmittedReports(districtId: string, limit: number): DistrictReportRow[];
   /** The newest submittedAt per school; a school with none is absent. */

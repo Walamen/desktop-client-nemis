@@ -28,7 +28,7 @@ export class SqliteDistrictAlertStore implements IDistrictAlertStore {
              WHERE id = ? AND isResolved = 0
                AND ${notSchoolStaffRequest('metadata')}
                AND (districtId = ?
-                    OR institutionId IN (SELECT i.id FROM ${institutions} i WHERE i.districtId = ?))`,
+                    OR institutionId IN (SELECT i.id FROM ${institutions} i WHERE i.districtId = ? AND i.isActive = 1))`,
           )
           .run(at, resolvedBy, at, alertId, districtId, districtId).changes > 0
       );

@@ -85,6 +85,14 @@ describe('SqliteDistrictAlertStore', () => {
     expect(queued()).toEqual([]);
   });
 
+  it('refuses an alert raised against an inactive school', () => {
+    run(`UPDATE institutions SET isActive = 0 WHERE id = 's-1'`);
+    run(`DELETE FROM sync_queue`);
+    expect(store.resolve('d-1', 'a-school', 'deo-1', NOW)).toBe(false);
+    expect(row('a-school')).toMatchObject({ isResolved: 0, resolvedBy: null, updatedAt: STAMP });
+    expect(queued()).toEqual([]);
+  });
+
   it('leaves an already resolved alert as it was', () => {
     expect(store.resolve('d-1', 'a-done', 'deo-1', NOW)).toBe(false);
     expect(row('a-done')).toMatchObject({ resolvedAt: null, resolvedBy: null, updatedAt: STAMP });
