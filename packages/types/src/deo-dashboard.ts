@@ -137,12 +137,25 @@ export interface DeoSchoolDetailResult {
 export type DeoComplianceStatus = 'APPROVED' | 'PENDING' | 'REJECTED' | 'MISSING';
 /** One row of the Reports & Compliance page (Nemis DistrictComplianceItem). */
 export interface DeoComplianceItem {
-  id: string; schoolId: string; schoolName: string; schoolCode: string;
+  id: string;
+  schoolId: string;
+  schoolName: string;
+  schoolCode: string;
   /** Registration | Teacher Roster | Monthly Reports */
-  reportType: string; period: string; submittedBy: string; note: string;
-  date: string | null; status: DeoComplianceStatus;
+  reportType: string;
+  period: string;
+  submittedBy: string;
+  note: string;
+  date: string | null;
+  status: DeoComplianceStatus;
 }
-export interface DeoComplianceSummary { total: number; approved: number; pending: number; rejected: number; missing: number }
+export interface DeoComplianceSummary {
+  total: number;
+  approved: number;
+  pending: number;
+  rejected: number;
+  missing: number;
+}
 export interface DeoReportsComplianceResult {
   districtId: string | null;
   district: { id: string; name: string } | null;

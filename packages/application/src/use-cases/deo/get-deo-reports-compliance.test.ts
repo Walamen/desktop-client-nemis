@@ -88,7 +88,10 @@ describe('GetDeoReportsComplianceUseCase', () => {
   });
 
   it('header names come from the district and county', async () => {
-    const { data } = await new GetDeoReportsComplianceUseCase(deps(readModelWithSchools())).execute({});
+    const readModel = readModelWithSchools();
+    const { data } = await new GetDeoReportsComplianceUseCase(deps(readModel)).execute({});
+    expect(readModel.argsOf('listSchoolRegistrations')).toEqual(['d-1']);
+    expect(readModel.argsOf('teacherRosterBySchool')).toEqual(['d-1']);
     expect(data.districtId).toBe('d-1');
     expect(data.district).toEqual({ id: 'd-1', name: 'Buchanan' });
     expect(data.county).toEqual({ id: 'c-1', name: 'Grand Bassa' });

@@ -204,6 +204,7 @@ describe('SqliteDistrictOverviewReadModel', () => {
     school('s-null', 'd-1');
     school('s-bad', 'd-1', { details: 'not json' });
     school('s-odd', 'd-1', { details: '{"approvedAt":5,"createdAt":""}' });
+    school('s-date', 'd-1', { details: '{"approvedAt":"not-a-date","createdAt":"2025-01-05T00:00:00.000Z"}' });
     school('s-off', 'd-1', { isActive: 0, details: '{"createdAt":"2025-01-05T00:00:00.000Z"}' });
     school('s-other', 'd-2', { details: '{"createdAt":"2025-01-05T00:00:00.000Z"}' });
     const rows = [...readModel.listSchoolRegistrations('d-1')].sort((a, b) =>
@@ -212,6 +213,7 @@ describe('SqliteDistrictOverviewReadModel', () => {
     expect(rows).toEqual([
       { institutionId: 's-a', approvalStatus: 'APPROVED', approvedAt: '2025-02-10T00:00:00.000Z', createdAt: '2025-01-05T00:00:00.000Z' },
       { institutionId: 's-bad', approvalStatus: 'APPROVED', approvedAt: null, createdAt: null },
+      { institutionId: 's-date', approvalStatus: 'APPROVED', approvedAt: null, createdAt: '2025-01-05T00:00:00.000Z' },
       { institutionId: 's-null', approvalStatus: 'APPROVED', approvedAt: null, createdAt: null },
       { institutionId: 's-odd', approvalStatus: 'APPROVED', approvedAt: null, createdAt: null },
     ]);

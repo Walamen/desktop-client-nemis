@@ -628,8 +628,9 @@ export class SqliteDistrictOverviewReadModel implements IDistrictOverviewReadMod
       const rows = this.#statements
         .get(`SELECT i.id AS id, i.approvalStatus AS approvalStatus, i.details AS details FROM ${institutions} i WHERE ${DISTRICT_SCHOOLS}`)
         .all(districtId) as { id: string; approvalStatus: string; details: string | null }[];
-      // A date is a non-empty string, else null (older devices lack the keys).
-      const date = (value: unknown): string | null => (typeof value === 'string' && value !== '' ? value : null);
+      // A date is a parseable non-empty string, else null (older devices lack the keys).
+      const date = (value: unknown): string | null =>
+        typeof value === 'string' && value !== '' && !Number.isNaN(Date.parse(value)) ? value : null;
       return rows.map((row) => {
         const details = parseProfile(row.details);
         return {

@@ -61,6 +61,6 @@ export const dashboardBridge = {
   getAcademicReport: (query: DeoReportQuery): Promise<CountyAcademicReport> => api().deo.getAcademicReport(query),
   getStaffComplianceReport: (query: DeoReportQuery): Promise<CountyStaffComplianceReport> =>
     api().deo.getStaffComplianceReport(query),
-    getReportsCompliance: (): Promise<DeoReportsComplianceResult> => api().deo.getReportsCompliance(),
+  getReportsCompliance: (): Promise<DeoReportsComplianceResult> => api().deo.getReportsCompliance(),
   listTeachers: (): Promise<DeoTeachersResult> => api().deo.listTeachers(),
 };
