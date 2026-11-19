@@ -66,6 +66,7 @@ import type { IDistrictAlertStore } from '../interfaces/deo/district-alert-store
 import { GetDeoDashboardUseCase } from '../use-cases/deo/get-deo-dashboard';
 import { ResolveDistrictAlertUseCase } from '../use-cases/deo/resolve-district-alert';
 import { GetDeoSchoolsUseCase } from '../use-cases/deo/get-deo-schools';
+import { GetDeoSchoolDetailUseCase } from '../use-cases/deo/get-deo-school-detail';
 import { GetDeoSchoolAdminsUseCase } from '../use-cases/deo/get-deo-school-admins';
 import { GetDeoTeachersUseCase } from '../use-cases/deo/get-deo-teachers';
 import { GetDeoStudentsUseCase } from '../use-cases/deo/get-deo-students';
@@ -759,6 +760,14 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
     listSchools: new GetDeoSchoolsUseCase({
       readModel: ports.districtOverview,
       finance: ports.countyFinance,
+      currentDistrictId: ports.currentDistrictId,
+      clock,
+      logger,
+    }),
+    getSchool: new GetDeoSchoolDetailUseCase({
+      readModel: ports.districtOverview,
+      finance: ports.countyFinance,
+      reports: ports.countyReports,
       currentDistrictId: ports.currentDistrictId,
       clock,
       logger,
