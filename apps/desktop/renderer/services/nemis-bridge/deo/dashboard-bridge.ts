@@ -1,6 +1,7 @@
 import type {
   DeoDashboardResult,
   DeoSchoolAdminsResult,
+  DeoSchoolDetailResult,
   DeoSchoolsResult,
   DeoStudentsResult,
   DeoTeachersResult,
@@ -30,6 +31,7 @@ export const dashboardBridge = {
   getDashboard: (): Promise<DeoDashboardResult> => api().deo.getDashboard(),
   resolveAlert: (alertId: string): Promise<boolean> => api().deo.resolveAlert(alertId),
   listSchools: (): Promise<DeoSchoolsResult> => api().deo.listSchools(),
+  getSchool: (schoolId: string): Promise<DeoSchoolDetailResult> => api().deo.getSchool(schoolId),
   listSchoolAdmins: (): Promise<DeoSchoolAdminsResult> => api().deo.listSchoolAdmins(),
   listStudents: (): Promise<DeoStudentsResult> => api().deo.listStudents(),
   listTransfers: (): Promise<DeoTransfersResult> => api().deo.listTransfers(),

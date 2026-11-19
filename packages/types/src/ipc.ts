@@ -80,6 +80,7 @@ import type { CountyDashboardResult } from './county-dashboard';
 import type {
   DeoDashboardResult,
   DeoSchoolAdminsResult,
+  DeoSchoolDetailResult,
   DeoSchoolsResult,
   DeoStudentsResult,
   DeoTeachersResult,
@@ -265,6 +266,7 @@ export interface IpcContract {
   'deo:get-dashboard': { args: []; result: DeoDashboardResult };
   'deo:resolve-alert': { args: [alertId: string]; result: boolean };
   'deo:list-schools': { args: []; result: DeoSchoolsResult };
+  'deo:get-school': { args: [schoolId: string]; result: DeoSchoolDetailResult };
   'deo:list-school-admins': { args: []; result: DeoSchoolAdminsResult };
   'deo:list-teachers': { args: []; result: DeoTeachersResult };
   'deo:list-students': { args: []; result: DeoStudentsResult };
@@ -554,6 +556,7 @@ export const IpcChannels = {
   DEO_GET_DASHBOARD: 'deo:get-dashboard',
   DEO_RESOLVE_ALERT: 'deo:resolve-alert',
   DEO_LIST_SCHOOLS: 'deo:list-schools',
+  DEO_GET_SCHOOL: 'deo:get-school',
   DEO_LIST_SCHOOL_ADMINS: 'deo:list-school-admins',
   DEO_LIST_TEACHERS: 'deo:list-teachers',
   DEO_LIST_STUDENTS: 'deo:list-students',

@@ -404,6 +404,7 @@ export interface DeoReportScope {
 export interface DeoApi {
   getDashboard(): Promise<DeoDashboardResult>;
   listSchools(): Promise<DeoSchoolsResult>;
+  getSchool(schoolId: string): Promise<DeoSchoolDetailResult>;
   listSchoolAdmins(): Promise<DeoSchoolAdminsResult>;
   listTeachers(): Promise<DeoTeachersResult>;
   listStudents(): Promise<DeoStudentsResult>;

@@ -148,6 +148,7 @@ describe('authorizeChannel', () => {
       IpcChannels.DEO_GET_DASHBOARD,
       IpcChannels.DEO_RESOLVE_ALERT,
       IpcChannels.DEO_LIST_SCHOOLS,
+      IpcChannels.DEO_GET_SCHOOL,
       IpcChannels.DEO_LIST_SCHOOL_ADMINS,
       IpcChannels.DEO_LIST_TEACHERS,
       IpcChannels.DEO_LIST_STUDENTS,
