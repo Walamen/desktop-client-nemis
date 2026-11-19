@@ -54,26 +54,12 @@ export interface DeoSchoolRow {
   teachers: number;
   /** Last 30 days, PRESENT + LATE over all records; null when none recorded. */
   attendanceRate: number | null;
-  /** Newest submitted school report. */
-  lastSubmissionAt: string | null;
   performanceStatus: SchoolPerformanceStatus;
   complianceStatus: SchoolComplianceStatus;
   /** Current-year collection rate; null when the school bills nothing. */
   feeCollectionRate: number | null;
   /** The active School Admin, else the profile's principal; null if neither. */
   principalName: string | null;
-  /** The last three calendar months, oldest first: did the school submit a
-   * report dated in that month? */
-  reportMonths: boolean[];
-}
-
-/** A school report submitted to the district. */
-export interface DeoSubmissionRow {
-  id: string;
-  schoolName: string;
-  title: string;
-  type: string;
-  submittedAt: string;
 }
 
 export interface DeoChartData {
@@ -104,8 +90,6 @@ export interface DeoDashboardResult {
   /** Active schools, by name. */
   schools: DeoSchoolRow[];
   chartData: DeoChartData;
-  /** Newest first; at most 50. */
-  submissions: DeoSubmissionRow[];
 }
 
 /** The Schools Management page. */
@@ -141,7 +125,7 @@ export interface DeoComplianceItem {
   schoolId: string;
   schoolName: string;
   schoolCode: string;
-  /** Registration | Teacher Roster | Monthly Reports */
+  /** Registration | Teacher Roster */
   reportType: string;
   period: string;
   submittedBy: string;
@@ -207,8 +191,6 @@ export interface DeoSchoolAdmin {
   /** Account creation. */
   joinedAt: string | null;
   lastLoginAt: string | null;
-  /** Reports this admin submitted for this school in the current calendar month. */
-  reportsThisMonth: number;
   /** Unresolved INFRASTRUCTURE_ISSUE alerts raised against the school. */
   openInfrastructureIssues: number;
 }
@@ -270,11 +252,10 @@ export interface DeoEnrollmentSchool {
   teachers: number;
   /** Last 30 days; null when the school recorded none. */
   attendanceRate: number | null;
-  lastSubmissionAt: string | null;
   performanceStatus: SchoolPerformanceStatus;
 }
 
-/** A school with pupils that needs a look: low attendance, flagged, or never reported. */
+/** A school with pupils that needs a look: low attendance or flagged. */
 export interface DeoDropoutAlert {
   schoolId: string;
   schoolName: string;

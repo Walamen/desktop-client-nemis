@@ -3,7 +3,6 @@ import { FixedClock } from '../../testing/fixed-clock';
 import { RecordingLogger } from '../../testing/recording-logger';
 import { InMemoryDistrictOverviewReadModel } from '../../testing/deo/in-memory-district-overview';
 import { GetDeoReportsComplianceUseCase } from './get-deo-reports-compliance';
-import { GetDeoSchoolsUseCase } from './get-deo-schools';
 
 const NOW = '2026-11-16T12:00:00.000Z';
 
@@ -16,11 +15,6 @@ function readModelWithSchools() {
     { id: 's-2', name: 'Beta', code: 'B1', levels: [], metadataPrincipal: null },
   ];
   readModel.schoolAdmins = [{ institutionId: 's-1', name: 'Jallah Doe' }];
-  readModel.reportMonths = [
-    { institutionId: 's-1', month: '2026-09' },
-    { institutionId: 's-1', month: '2026-11' },
-  ];
-  readModel.lastSubmissions = [{ institutionId: 's-1', submittedAt: '2026-11-03T10:00:00.000Z' }];
   readModel.registrations = [
     { institutionId: 's-1', approvalStatus: 'APPROVED', approvedAt: '2025-02-10T00:00:00.000Z', createdAt: '2025-01-05T00:00:00.000Z' },
   ];
@@ -52,20 +46,10 @@ describe('GetDeoReportsComplianceUseCase', () => {
     expect(readModel.calls).toEqual([]);
   });
 
-  it('monthly reports agree with the Schools page', async () => {
-    const readModel = readModelWithSchools();
-    const { data } = await new GetDeoReportsComplianceUseCase(deps(readModel)).execute({});
-    const schools = await new GetDeoSchoolsUseCase(deps(readModel)).execute({});
-    for (const school of schools.data.schools) {
-      const k = school.reportMonths.filter(Boolean).length;
-      const row = data.items.find((i) => i.schoolId === school.id && i.reportType === 'Monthly Reports')!;
-      expect(row.note).toBe(`${k}/3 months with a submitted report`);
-      expect(row.status).toBe(k >= 3 ? 'APPROVED' : k > 0 ? 'PENDING' : 'MISSING');
-    }
-    expect(schools.data.schools.map((s) => s.reportMonths)).toEqual([
-      [true, false, true],
-      [false, false, false],
-    ]);
+  it('has no Monthly Reports row', async () => {
+    const { data } = await new GetDeoReportsComplianceUseCase(deps(readModelWithSchools())).execute({});
+    expect(data.items.some((i) => i.reportType === 'Monthly Reports')).toBe(false);
+    expect(data.items.every((i) => !i.id.endsWith(':monthly-reports'))).toBe(true);
   });
 
   it('registration uses the schools-row principal', async () => {
@@ -75,16 +59,14 @@ describe('GetDeoReportsComplianceUseCase', () => {
     expect(row.status).toBe('APPROVED');
   });
 
-  it('school with nothing gives three MISSING rows', async () => {
+  it('two schools with nothing give four MISSING rows', async () => {
     const readModel = readModelWithSchools();
-    readModel.schools = [readModel.schools[1]!];
     readModel.registrations = [];
     readModel.teacherRoster = [];
-    readModel.reportMonths = [];
-    readModel.lastSubmissions = [];
+    readModel.schoolAdmins = [];
     const { data } = await new GetDeoReportsComplianceUseCase(deps(readModel)).execute({});
-    expect(data.items).toHaveLength(3);
-    expect(data.summary).toEqual({ total: 3, approved: 0, pending: 0, rejected: 0, missing: 3 });
+    expect(data.items).toHaveLength(4);
+    expect(data.summary).toEqual({ total: 4, approved: 0, pending: 0, rejected: 0, missing: 4 });
   });
 
   it('header names come from the district and county', async () => {
@@ -96,8 +78,8 @@ describe('GetDeoReportsComplianceUseCase', () => {
     expect(data.district).toEqual({ id: 'd-1', name: 'Buchanan' });
     expect(data.county).toEqual({ id: 'c-1', name: 'Grand Bassa' });
     expect(data.items.map((i) => i.id)).toEqual([
-      's-1:registration', 's-1:teachers', 's-1:monthly-reports',
-      's-2:registration', 's-2:teachers', 's-2:monthly-reports',
+      's-1:registration', 's-1:teachers',
+      's-2:registration', 's-2:teachers',
     ]);
   });
 });

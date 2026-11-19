@@ -27,7 +27,6 @@ const dashboard: DeoDashboardResult = {
   alertSummary: { total: 0, critical: 0, high: 0, medium: 0, low: 0 },
   schools: [],
   chartData: { enrollmentTrend: [], attendanceTrend: [], genderDistribution: { male: 1, female: 1 } },
-  submissions: [],
 };
 
 describe('deo IPC handlers', () => {

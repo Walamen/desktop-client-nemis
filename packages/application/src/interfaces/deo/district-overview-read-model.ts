@@ -32,15 +32,6 @@ export interface DistrictAlertListRow {
   readonly isResolved: boolean; readonly resolvedAt: string | null; readonly createdAt: string;
 }
 
-export interface DistrictReportRow {
-  readonly id: string;
-  readonly schoolId: string;
-  readonly schoolName: string;
-  readonly title: string;
-  readonly type: string;
-  readonly submittedAt: string;
-}
-
 /** One School Admin account at one school, before the school's issues are joined in. */
 export interface DistrictSchoolAdminRow {
   readonly userId: string;
@@ -53,7 +44,6 @@ export interface DistrictSchoolAdminRow {
   readonly isActive: boolean;
   readonly joinedAt: string | null;
   readonly lastLoginAt: string | null;
-  readonly reportsThisMonth: number;
 }
 
 /** One teaching staff member before the grade state and lead subject are derived. */
@@ -131,19 +121,10 @@ export interface IDistrictOverviewReadModel {
   listOpenAlerts(districtId: string): DistrictAlertRow[];
   /** The district's alerts by the dashboard rule (district-tagged or an active school's; no staff requests; no county-level), in page order. */
   listDistrictAlerts(districtId: string, filter: 'open' | 'resolved' | 'all'): DistrictAlertListRow[];
-  /** School reports with a submittedAt, newest first. */
-  listSubmittedReports(districtId: string, limit: number): DistrictReportRow[];
-  /** The newest submittedAt per school; a school with none is absent. */
-  lastSubmissionBySchool(districtId: string): { institutionId: string; submittedAt: string }[];
   /** The first active School Admin of each school (by id), full name. */
   schoolAdminNameBySchool(districtId: string): { institutionId: string; name: string }[];
-  /** Each month (YYYY-MM) on or after sinceDate in which a school submitted
-   * a report; one row per school and month. */
-  reportMonthsBySchool(districtId: string, sinceDate: string): { institutionId: string; month: string }[];
-  /** Every School Admin of an active school of the district. reportsThisMonth
-   * counts reports the admin submitted for that school with
-   * monthStartIso <= submittedAt < nextMonthIso. Unordered. */
-  listSchoolAdmins(districtId: string, monthStartIso: string, nextMonthIso: string): DistrictSchoolAdminRow[];
+  /** Every School Admin of an active school of the district. Unordered. */
+  listSchoolAdmins(districtId: string): DistrictSchoolAdminRow[];
   /** Unresolved INFRASTRUCTURE_ISSUE alerts per school, school staff
    * requests excluded; a school with none is absent. */
   countOpenInfrastructureIssuesBySchool(districtId: string): { institutionId: string; count: number }[];

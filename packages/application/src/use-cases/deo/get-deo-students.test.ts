@@ -30,9 +30,6 @@ function district() {
   }));
   readModel.lastAttendance = Object.keys(attended).map((institutionId) => ({ institutionId, date: '2026-11-16' }));
   readModel.termSchools = ['flagged'];
-  readModel.lastSubmissions = ids
-    .filter((id) => id !== 'silent')
-    .map((institutionId) => ({ institutionId, submittedAt: '2026-11-01T00:00:00.000Z' }));
   readModel.studentsByGender = [
     { gender: 'MALE', count: 32 },
     { gender: 'FEMALE', count: 18 },
@@ -75,7 +72,7 @@ describe('GetDeoStudentsUseCase', () => {
     expect((await run(empty)).data.summary.avgAttendance).toBeNull();
   });
 
-  it('lists every school with its levels, standing and last submission, by name', async () => {
+  it('lists every school with its levels and standing, by name', async () => {
     const { data } = await run(district());
     expect(data.schools.map((s) => [s.id, s.attendanceRate, s.performanceStatus])).toEqual([
       ['empty', 10, 'Critical'],
@@ -93,20 +90,24 @@ describe('GetDeoStudentsUseCase', () => {
       students: 10,
       teachers: 2,
       attendanceRate: 72,
-      lastSubmissionAt: '2026-11-01T00:00:00.000Z',
       performanceStatus: 'Warning',
     });
   });
 
-  it('alerts on schools with pupils that are low, flagged or never reported, worst first, no-data last', async () => {
+  it('alerts on schools with pupils that are low or flagged, worst first, no-data last', async () => {
     const { data } = await run(district());
     expect(data.dropoutAlerts.map((a) => [a.schoolId, a.reason, a.atRiskStudents])).toEqual([
       ['lower', 'Attendance is 40%', 6],
       ['low', 'Attendance is 72%', 2],
-      ['silent', 'No report submitted yet', 0],
       ['flagged', 'Flagged in district monitoring', 0],
     ]);
     expect(data.dropoutAlerts[0]).toMatchObject({ schoolName: 'School lower', attendanceRate: 40 });
+  });
+
+  it('a school with pupils, good attendance, not Flagged and no report is not a dropout alert', async () => {
+    const { data } = await run(district());
+    expect(data.dropoutAlerts.map((a) => a.schoolId)).not.toContain('silent');
+    expect(data.dropoutAlerts.some((a) => a.reason.includes('report'))).toBe(false);
   });
 
   it('reads nothing when no district is assigned', async () => {

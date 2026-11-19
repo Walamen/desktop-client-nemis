@@ -30,18 +30,13 @@ export class GetDeoSchoolAdminsUseCase implements QueryHandler<
         return ok({ districtId: null, district: null, county: null, admins: [], schoolsWithoutAdmin: [] });
       }
       const { readModel } = this.deps;
-      const now = new Date(this.deps.clock.now());
-      // The current calendar month, in the device's local time.
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-
       const district = readModel.getDistrict(districtId);
       const county = district ? readModel.getCounty(district.countyId) : null;
       const issues = new Map(
         readModel.countOpenInfrastructureIssuesBySchool(districtId).map((row) => [row.institutionId, row.count]),
       );
       const admins = readModel
-        .listSchoolAdmins(districtId, monthStart.toISOString(), nextMonth.toISOString())
+        .listSchoolAdmins(districtId)
         .map((row) => ({ ...row, openInfrastructureIssues: issues.get(row.schoolId) ?? 0 }))
         .sort(
           (a, b) =>

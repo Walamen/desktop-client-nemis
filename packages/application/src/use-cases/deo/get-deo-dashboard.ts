@@ -21,7 +21,6 @@ const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Se
 const SEVERITY_RANK: Readonly<Record<string, number>> = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
 const TREND_MONTHS = 6;
 const MAX_ALERTS = 50;
-const MAX_SUBMISSIONS = 50;
 
 export interface GetDeoDashboardDeps {
   readModel: IDistrictOverviewReadModel;
@@ -84,9 +83,6 @@ export class GetDeoDashboardUseCase implements QueryHandler<
           attendanceTrend: attendanceTrend(now, districtId, readModel),
           genderDistribution: { male: countFor(byGender, 'MALE'), female: countFor(byGender, 'FEMALE') },
         },
-        submissions: readModel
-          .listSubmittedReports(districtId, MAX_SUBMISSIONS)
-          .map(({ id, schoolName, title, type, submittedAt }) => ({ id, schoolName, title, type, submittedAt })),
       });
     });
   }
@@ -102,7 +98,6 @@ function emptyDashboard(): DeoDashboardResult {
     alertSummary: { total: 0, critical: 0, high: 0, medium: 0, low: 0 },
     schools: [],
     chartData: { enrollmentTrend: [], attendanceTrend: [], genderDistribution: { male: 0, female: 0 } },
-    submissions: [],
   };
 }
 

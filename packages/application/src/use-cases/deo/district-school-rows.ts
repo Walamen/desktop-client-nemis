@@ -6,7 +6,6 @@ import type {
 import { daysBetween, schoolStanding, worstSeverity } from './school-standing';
 
 const ATTENDANCE_WINDOW_DAYS = 30;
-const REPORT_MONTHS = 3;
 
 export interface DistrictSchoolRowsDeps {
   readModel: IDistrictOverviewReadModel;
@@ -33,16 +32,7 @@ export function buildDistrictSchoolRows(
   );
   const lastAttendance = byInstitution(readModel.lastAttendanceDateBySchool(districtId), (row) => row.date);
   const inTerm = new Set(readModel.schoolsWithRunningTerm(districtId, today));
-  const lastSubmission = byInstitution(readModel.lastSubmissionBySchool(districtId), (row) => row.submittedAt);
   const adminName = byInstitution(readModel.schoolAdminNameBySchool(districtId), (row) => row.name);
-  const months = reportMonthKeys(now);
-  const firstMonth = months[0] ?? today.slice(0, 7);
-  const monthsWithReports = new Map<string, Set<string>>();
-  for (const row of readModel.reportMonthsBySchool(districtId, `${firstMonth}-01`)) {
-    const set = monthsWithReports.get(row.institutionId) ?? new Set<string>();
-    set.add(row.month);
-    monthsWithReports.set(row.institutionId, set);
-  }
   const fees = byInstitution(deps.finance.listSchools(), (row) => row);
   const alertsBySchool = new Map<string, string[]>();
   for (const alert of openAlerts) {
@@ -67,7 +57,6 @@ export function buildDistrictSchoolRows(
       teachingStaff,
     });
     const fee = fees.get(school.id);
-    const reported = monthsWithReports.get(school.id);
     return {
       id: school.id,
       name: school.name,
@@ -76,22 +65,11 @@ export function buildDistrictSchoolRows(
       students: activeStudents,
       teachers: teachingStaff,
       attendanceRate: standing.attendanceRate,
-      lastSubmissionAt: lastSubmission.get(school.id) ?? null,
       performanceStatus: standing.performanceStatus,
       complianceStatus: standing.complianceStatus,
       feeCollectionRate: fee && fee.totalExpected > 0 ? fee.collectionRate : null,
       principalName: adminName.get(school.id) ?? school.metadataPrincipal ?? null,
-      reportMonths: months.map((month) => Boolean(reported?.has(month))),
     };
-  });
-}
-
-/** The last three calendar months (local), oldest first, as YYYY-MM. Built
- * from year and month so the 29th–31st never overflow. */
-function reportMonthKeys(now: Date): string[] {
-  return Array.from({ length: REPORT_MONTHS }, (_, i) => {
-    const month = new Date(now.getFullYear(), now.getMonth() - (REPORT_MONTHS - 1) + i, 1);
-    return localDateIso(month).slice(0, 7);
   });
 }
 

@@ -71,7 +71,6 @@ describe('GetDeoDashboardUseCase', () => {
       alertSummary: { total: 0, critical: 0, high: 0, medium: 0, low: 0 },
       schools: [],
       chartData: { enrollmentTrend: [], attendanceTrend: [], genderDistribution: { male: 0, female: 0 } },
-      submissions: [],
     });
     expect(readModel.calls).toEqual([]);
   });
@@ -185,13 +184,6 @@ describe('GetDeoDashboardUseCase', () => {
     expect(data.schools.map((s) => s.complianceStatus)).toEqual(['Compliant', 'Needs Review']);
   });
 
-  it('carries the newest submission date per school', async () => {
-    const readModel = twoSchools();
-    readModel.lastSubmissions = [{ institutionId: 's-2', submittedAt: '2026-11-10T09:00:00.000Z' }];
-    const { data } = await run(readModel);
-    expect(data.schools.map((s) => s.lastSubmissionAt)).toEqual([null, '2026-11-10T09:00:00.000Z']);
-  });
-
   it('orders alerts worst first then newest, and summarises them all', async () => {
     const readModel = twoSchools();
     readModel.alerts = [
@@ -265,24 +257,5 @@ describe('GetDeoDashboardUseCase', () => {
     ];
     const { data } = await run(readModel);
     expect(data.chartData.genderDistribution).toEqual({ male: 7, female: 9 });
-  });
-
-  it('lists up to 50 submitted reports', async () => {
-    const readModel = twoSchools();
-    readModel.reports = [
-      {
-        id: 'r-1',
-        schoolId: 's-1',
-        schoolName: 'Alpha',
-        title: 'Week 2 summary',
-        type: 'WEEKLY_SUMMARY',
-        submittedAt: '2026-11-12T10:00:00.000Z',
-      },
-    ];
-    const { data } = await run(readModel);
-    expect(readModel.argsOf('listSubmittedReports')).toEqual(['d-1', 50]);
-    expect(data.submissions).toEqual([
-      { id: 'r-1', schoolName: 'Alpha', title: 'Week 2 summary', type: 'WEEKLY_SUMMARY', submittedAt: '2026-11-12T10:00:00.000Z' },
-    ]);
   });
 });

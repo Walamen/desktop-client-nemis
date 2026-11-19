@@ -37,12 +37,10 @@ function school(
     students: 100,
     teachers: 4,
     attendanceRate: 90,
-    lastSubmissionAt: null,
     performanceStatus: 'Good',
     complianceStatus: 'Compliant',
     feeCollectionRate: null,
     principalName: null,
-    reportMonths: [false, false, false],
     ...overrides,
   };
 }
@@ -75,15 +73,6 @@ const DASHBOARD: DeoDashboardResult = {
     attendanceTrend: [{ period: 'Nov 2026', rate: 82 }],
     genderDistribution: { male: 1200, female: 1280 },
   },
-  submissions: [
-    {
-      id: 'r-1',
-      schoolName: 'Alpha Academy',
-      title: 'Week 2 summary',
-      type: 'WEEKLY_SUMMARY',
-      submittedAt: '2026-11-12T10:00:00.000Z',
-    },
-  ],
 };
 
 const NO_DISTRICT: DeoDashboardResult = {
@@ -95,7 +84,6 @@ const NO_DISTRICT: DeoDashboardResult = {
   alerts: [],
   alertSummary: { total: 0, critical: 0, high: 0, medium: 0, low: 0 },
   schools: [],
-  submissions: [],
 };
 
 function mockNemis(dashboard: DeoDashboardResult) {

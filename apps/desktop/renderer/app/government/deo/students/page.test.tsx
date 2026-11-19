@@ -14,7 +14,6 @@ function school(id: string, name: string, overrides: Partial<DeoEnrollmentSchool
     students: 120,
     teachers: 6,
     attendanceRate: 92,
-    lastSubmissionAt: '2026-11-03T00:00:00.000Z',
     performanceStatus: 'Good',
     ...overrides,
   };
@@ -36,12 +35,11 @@ const RESULT: DeoStudentsResult = {
       levels: ['PRIMARY', 'JUNIOR_HIGH'],
       attendanceRate: null,
       performanceStatus: 'No Data',
-      lastSubmissionAt: null,
     }),
   ],
   dropoutAlerts: [
     { schoolId: 's-3', schoolName: 'Gamma School', attendanceRate: 55, reason: 'Attendance is 55%', atRiskStudents: 14 },
-    { schoolId: 's-2', schoolName: 'Beta High', attendanceRate: null, reason: 'No report submitted yet', atRiskStudents: 0 },
+    { schoolId: 's-2', schoolName: 'Beta High', attendanceRate: null, reason: 'Flagged in district monitoring', atRiskStudents: 0 },
   ],
 };
 

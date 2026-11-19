@@ -71,7 +71,6 @@ export class GetDeoStudentsUseCase implements QueryHandler<
           students: row.students,
           teachers: row.teachers,
           attendanceRate: row.attendanceRate,
-          lastSubmissionAt: row.lastSubmissionAt,
           performanceStatus: row.performanceStatus,
         })),
         dropoutAlerts: dropoutAlerts(rows, atRisk),
@@ -84,12 +83,12 @@ function isLow(rate: number | null): rate is number {
   return rate !== null && rate < LOW_ATTENDANCE_RATE;
 }
 
-/** Schools with pupils that are low, flagged or never reported; worst rate
+/** Schools with pupils that are low or flagged; worst rate
  * first, no data last, then by name. */
 function dropoutAlerts(rows: readonly DeoSchoolRow[], atRisk: ReadonlyMap<string, number>): DeoDropoutAlert[] {
   return rows
     .filter(
-      (row) => row.students > 0 && (isLow(row.attendanceRate) || row.complianceStatus === 'Flagged' || !row.lastSubmissionAt),
+      (row) => row.students > 0 && (isLow(row.attendanceRate) || row.complianceStatus === 'Flagged'),
     )
     .sort(
       (a, b) =>
@@ -102,9 +101,7 @@ function dropoutAlerts(rows: readonly DeoSchoolRow[], atRisk: ReadonlyMap<string
       attendanceRate: row.attendanceRate,
       reason: isLow(row.attendanceRate)
         ? `Attendance is ${row.attendanceRate}%`
-        : row.complianceStatus === 'Flagged'
-          ? 'Flagged in district monitoring'
-          : 'No report submitted yet',
+        : 'Flagged in district monitoring',
       atRiskStudents: atRisk.get(row.id) ?? 0,
     }));
 }

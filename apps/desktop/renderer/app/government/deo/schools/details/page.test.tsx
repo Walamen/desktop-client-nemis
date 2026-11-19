@@ -24,7 +24,6 @@ function school(overrides: Partial<DeoSchoolDetail> = {}): DeoSchoolDetail {
     students: 4,
     teachers: 2,
     attendanceRate: 88,
-    lastSubmissionAt: null,
     performanceStatus: 'Good',
     academic: { totalGrades: 2, averageScore: 75 },
     feeCollectionRate: 60,
@@ -33,7 +32,6 @@ function school(overrides: Partial<DeoSchoolDetail> = {}): DeoSchoolDetail {
       { gradeLevel: 'GRADE_2', students: 3 },
       { gradeLevel: null, students: 1 },
     ],
-    reportMonths: [true, false, true],
     complianceStatus: 'Needs Review',
     ...overrides,
   } as DeoSchoolDetail;

@@ -6,8 +6,6 @@ const base: ComplianceSchoolInput = {
   name: 'Alpha',
   code: 'A1',
   principalName: 'Ada Obi',
-  reportMonths: [true, true, true],
-  lastSubmissionAt: '2026-11-03T10:00:00.000Z',
   approvalStatus: 'APPROVED',
   approvedAt: '2025-02-10T00:00:00.000Z',
   createdAt: '2025-01-05T00:00:00.000Z',
@@ -18,10 +16,10 @@ const rowOf = (school: ComplianceSchoolInput, type: string) =>
   complianceRows(school).find((r) => r.reportType === type)!;
 
 describe('complianceRows', () => {
-  it('returns Registration, Teacher Roster, Monthly Reports in order', () => {
+  it('returns Registration and Teacher Roster in order', () => {
     const rows = complianceRows(base);
-    expect(rows.map((r) => r.id)).toEqual(['s-1:registration', 's-1:teachers', 's-1:monthly-reports']);
-    expect(rows.map((r) => r.reportType)).toEqual(['Registration', 'Teacher Roster', 'Monthly Reports']);
+    expect(rows.map((r) => r.id)).toEqual(['s-1:registration', 's-1:teachers']);
+    expect(rows.map((r) => r.reportType)).toEqual(['Registration', 'Teacher Roster']);
     for (const r of rows) {
       expect(r).toMatchObject({ schoolId: 's-1', schoolName: 'Alpha', schoolCode: 'A1' });
     }
@@ -61,35 +59,6 @@ describe('complianceRows', () => {
     expect(row).toMatchObject({ status, submittedBy, note });
     expect(row.date).toBe(teachers.total === 0 ? null : teachers.newestCreatedAt);
   });
-
-  it.each([
-    [[true, true, true], 'APPROVED', '3/3 months with a submitted report'],
-    [[false, true, false], 'PENDING', '1/3 months with a submitted report'],
-    [[true, false, true], 'PENDING', '2/3 months with a submitted report'],
-    [[false, false, false], 'MISSING', '0/3 months with a submitted report'],
-  ])('monthly reports %j', (reportMonths, status, note) => {
-    expect(rowOf({ ...base, reportMonths }, 'Monthly Reports')).toMatchObject({
-      status,
-      note,
-      submittedBy: 'School reports',
-    });
-  });
-
-  it('monthly reports keep the last submission date even when MISSING', () => {
-    const row = rowOf(
-      { ...base, reportMonths: [false, false, false], lastSubmissionAt: '2026-03-14T00:00:00.000Z' },
-      'Monthly Reports',
-    );
-    expect(row.status).toBe('MISSING');
-    expect(row.date).toBe('2026-03-14T00:00:00.000Z');
-    expect(row.period).toBe('March 2026');
-  });
-
-  it('monthly reports with no submission date show Awaiting submission', () => {
-    const row = rowOf({ ...base, lastSubmissionAt: null }, 'Monthly Reports');
-    expect(row.date).toBeNull();
-    expect(row.period).toBe('Awaiting submission');
-  });
 });
 
 describe('complianceSummary', () => {
@@ -97,9 +66,8 @@ describe('complianceSummary', () => {
     const items = complianceRows({
       ...base,
       approvalStatus: null,
-      reportMonths: [false, false, false],
       teachers: { total: 0, awaitingApproval: 0, newestCreatedAt: null },
     });
-    expect(complianceSummary(items)).toEqual({ total: 3, approved: 0, pending: 0, rejected: 0, missing: 3 });
+    expect(complianceSummary(items)).toEqual({ total: 2, approved: 0, pending: 0, rejected: 0, missing: 2 });
   });
 });

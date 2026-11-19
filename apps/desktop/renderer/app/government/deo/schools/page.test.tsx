@@ -17,12 +17,10 @@ function school(id: string, name: string, overrides: Partial<DeoSchoolRow> = {})
     students: 1200,
     teachers: 30,
     attendanceRate: 88,
-    lastSubmissionAt: null,
     performanceStatus: 'Good',
     complianceStatus: 'Compliant',
     feeCollectionRate: null,
     principalName: 'Jallah Doe',
-    reportMonths: [true, false, true],
     ...overrides,
   };
 }

@@ -6,7 +6,6 @@ import type {
   DistrictTransferRow,
   DeoUserProfile,
   DistrictOverviewRef,
-  DistrictReportRow,
   DistrictSchoolRef,
   IDistrictOverviewReadModel,
 } from '../../interfaces/deo/district-overview-read-model';
@@ -29,10 +28,7 @@ export class InMemoryDistrictOverviewReadModel implements IDistrictOverviewReadM
   termSchools: string[] = [];
   alerts: DistrictAlertRow[] = [];
   districtAlerts: DistrictAlertListRow[] = [];
-  reports: DistrictReportRow[] = [];
-  lastSubmissions: { institutionId: string; submittedAt: string }[] = [];
   schoolAdmins: { institutionId: string; name: string }[] = [];
-  reportMonths: { institutionId: string; month: string }[] = [];
   schoolAdminRows: DistrictSchoolAdminRow[] = [];
   infrastructureIssues: { institutionId: string; count: number }[] = [];
   teacherRows: DistrictTeacherRow[] = [];
@@ -110,20 +106,12 @@ export class InMemoryDistrictOverviewReadModel implements IDistrictOverviewReadM
     this.#record('listDistrictAlerts', districtId, filter);
     return this.districtAlerts;
   }
-  listSubmittedReports(districtId: string, limit: number): DistrictReportRow[] {
-    this.#record('listSubmittedReports', districtId, limit);
-    return this.reports.slice(0, limit);
-  }
-  lastSubmissionBySchool(districtId: string) {
-    this.#record('lastSubmissionBySchool', districtId);
-    return this.lastSubmissions;
-  }
   schoolAdminNameBySchool(districtId: string) {
     this.#record('schoolAdminNameBySchool', districtId);
     return this.schoolAdmins;
   }
-  listSchoolAdmins(districtId: string, monthStartIso: string, nextMonthIso: string): DistrictSchoolAdminRow[] {
-    this.#record('listSchoolAdmins', districtId, monthStartIso, nextMonthIso);
+  listSchoolAdmins(districtId: string): DistrictSchoolAdminRow[] {
+    this.#record('listSchoolAdmins', districtId);
     return this.schoolAdminRows;
   }
   listTeachers(districtId: string): DistrictTeacherRow[] {
@@ -141,10 +129,6 @@ export class InMemoryDistrictOverviewReadModel implements IDistrictOverviewReadM
   countOpenInfrastructureIssuesBySchool(districtId: string) {
     this.#record('countOpenInfrastructureIssuesBySchool', districtId);
     return this.infrastructureIssues;
-  }
-  reportMonthsBySchool(districtId: string, sinceDate: string) {
-    this.#record('reportMonthsBySchool', districtId, sinceDate);
-    return this.reportMonths;
   }
   financeBySchool(districtId: string) {
     this.#record('financeBySchool', districtId);

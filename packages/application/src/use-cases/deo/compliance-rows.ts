@@ -1,7 +1,7 @@
 import type { DeoComplianceItem, DeoComplianceStatus, DeoComplianceSummary } from '@nemis-desktop/types';
 
 /**
- * The three compliance rows a District Education Officer sees per school.
+ * The two compliance rows a District Education Officer sees per school.
  *
  * One rule, two copies: this one serves the offline desktop, and the Nemis
  * server (apps/Server/src/common/district/compliance-rows.ts) computes the
@@ -13,9 +13,6 @@ export interface ComplianceSchoolInput {
   name: string;
   code: string;
   principalName: string | null;
-  /** Last 3 calendar months, from the Schools-page report dots. */
-  reportMonths: boolean[];
-  lastSubmissionAt: string | null;
   approvalStatus: string | null;
   approvedAt: string | null;
   createdAt: string | null;
@@ -87,19 +84,7 @@ export function complianceRows(school: ComplianceSchoolInput): DeoComplianceItem
     status: total === 0 ? 'MISSING' : awaitingApproval > 0 ? 'PENDING' : 'APPROVED',
   };
 
-  const submittedMonths = school.reportMonths.filter(Boolean).length;
-  const monthly: DeoComplianceItem = {
-    ...base,
-    id: `${school.id}:monthly-reports`,
-    reportType: 'Monthly Reports',
-    period: formatCompliancePeriod(school.lastSubmissionAt),
-    submittedBy: 'School reports',
-    note: `${submittedMonths}/3 months with a submitted report`,
-    date: school.lastSubmissionAt,
-    status: submittedMonths >= 3 ? 'APPROVED' : submittedMonths > 0 ? 'PENDING' : 'MISSING',
-  };
-
-  return [registration, roster, monthly];
+  return [registration, roster];
 }
 
 export function complianceSummary(items: DeoComplianceItem[]): DeoComplianceSummary {

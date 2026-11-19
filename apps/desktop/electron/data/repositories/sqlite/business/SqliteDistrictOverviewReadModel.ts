@@ -2,7 +2,6 @@ import type {
   DistrictAlertListRow,
   DistrictAlertRow,
   DistrictOverviewRef,
-  DistrictReportRow,
   DistrictSchoolAdminRow,
   DistrictTeacherRow,
   DistrictTransferRow,
@@ -29,7 +28,6 @@ const {
   terms,
   academicYears,
   alerts,
-  reports,
   users,
   subjects: subjects_,
   subjectTeachers,
@@ -340,33 +338,6 @@ export class SqliteDistrictOverviewReadModel implements IDistrictOverviewReadMod
     });
   }
 
-  listSubmittedReports(districtId: string, limit: number): DistrictReportRow[] {
-    return guarded('SqliteDistrictOverviewReadModel.listSubmittedReports', () => {
-      return this.#statements
-        .get(
-          `SELECT r.id, r.schoolId, i.name AS schoolName, r.title, r.type, r.submittedAt
-           FROM ${reports} r JOIN ${institutions} i ON i.id = r.schoolId
-           WHERE ${DISTRICT_SCHOOLS} AND r.submittedAt IS NOT NULL
-           ORDER BY r.submittedAt DESC, r.id DESC
-           LIMIT ?`,
-        )
-        .all(districtId, limit) as DistrictReportRow[];
-    });
-  }
-
-  lastSubmissionBySchool(districtId: string): { institutionId: string; submittedAt: string }[] {
-    return guarded('SqliteDistrictOverviewReadModel.lastSubmissionBySchool', () => {
-      return this.#statements
-        .get(
-          `SELECT r.schoolId AS institutionId, MAX(r.submittedAt) AS submittedAt
-           FROM ${reports} r JOIN ${institutions} i ON i.id = r.schoolId
-           WHERE ${DISTRICT_SCHOOLS} AND r.submittedAt IS NOT NULL
-           GROUP BY r.schoolId`,
-        )
-        .all(districtId) as { institutionId: string; submittedAt: string }[];
-    });
-  }
-
   schoolAdminNameBySchool(districtId: string): { institutionId: string; name: string }[] {
     return guarded('SqliteDistrictOverviewReadModel.schoolAdminNameBySchool', () => {
       // The active admin with the lowest user id whose name is not blank, as
@@ -389,19 +360,8 @@ export class SqliteDistrictOverviewReadModel implements IDistrictOverviewReadMod
     });
   }
 
-  reportMonthsBySchool(districtId: string, sinceDate: string): { institutionId: string; month: string }[] {
-    return guarded('SqliteDistrictOverviewReadModel.reportMonthsBySchool', () => {
-      return this.#statements
-        .get(
-          `SELECT DISTINCT r.schoolId AS institutionId, substr(r.submittedAt, 1, 7) AS month
-           FROM ${reports} r JOIN ${institutions} i ON i.id = r.schoolId
-           WHERE ${DISTRICT_SCHOOLS} AND r.submittedAt IS NOT NULL AND r.submittedAt >= ?
-           ORDER BY institutionId ASC, month ASC`,
-        )
-        .all(districtId, sinceDate) as { institutionId: string; month: string }[];
-    });
-  }
-  listSchoolAdmins(districtId: string, monthStartIso: string, nextMonthIso: string): DistrictSchoolAdminRow[] {
+
+  listSchoolAdmins(districtId: string): DistrictSchoolAdminRow[] {
     return guarded('SqliteDistrictOverviewReadModel.listSchoolAdmins', () => {
       // One row per membership; the person is COALESCE(userId, id) (id was
       // the user id before migration 049). The users row carries the
@@ -416,16 +376,13 @@ export class SqliteDistrictOverviewReadModel implements IDistrictOverviewReadMod
                     WHERE s.userId = COALESCE(a.userId, a.id) AND s.institutionId = a.institutionId
                     ORDER BY s.id LIMIT 1) AS employeeNumber,
                   COALESCE(u.isActive, 1) AS isActive,
-                  u.createdAt AS joinedAt, u.lastLoginAt AS lastLoginAt,
-                  (SELECT COUNT(*) FROM ${reports} r
-                    WHERE r.submittedById = COALESCE(a.userId, a.id) AND r.schoolId = a.institutionId
-                      AND r.submittedAt >= ? AND r.submittedAt < ?) AS reportsThisMonth
+                  u.createdAt AS joinedAt, u.lastLoginAt AS lastLoginAt
            FROM ${institutionAdmin} a
            JOIN ${institutions} i ON i.id = a.institutionId
            LEFT JOIN ${users} u ON u.id = COALESCE(a.userId, a.id)
            WHERE ${DISTRICT_SCHOOLS} AND a.isActive = 1`,
         )
-        .all(monthStartIso, nextMonthIso, districtId) as (Omit<DistrictSchoolAdminRow, 'isActive'> & {
+        .all(districtId) as (Omit<DistrictSchoolAdminRow, 'isActive'> & {
         isActive: number;
       })[];
       return rows.map((row) => ({ ...row, isActive: row.isActive === 1 }));

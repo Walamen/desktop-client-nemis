@@ -26,7 +26,6 @@ function admin(userId: string, firstName: string, overrides: Partial<DeoSchoolAd
     isActive: true,
     joinedAt: '2025-02-03T00:00:00.000Z',
     lastLoginAt: null,
-    reportsThisMonth: 2,
     openInfrastructureIssues: 0,
     ...overrides,
   };

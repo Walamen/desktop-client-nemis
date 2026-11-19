@@ -17,11 +17,6 @@ function readModelWithSchools() {
     { id: 's-3', name: 'Gamma', code: 'G1', levels: [], metadataPrincipal: null },
   ];
   readModel.schoolAdmins = [{ institutionId: 's-1', name: 'Jallah Doe' }];
-  readModel.reportMonths = [
-    { institutionId: 's-1', month: '2026-09' },
-    { institutionId: 's-1', month: '2026-11' },
-    { institutionId: 's-2', month: '2026-08' }, // outside the window
-  ];
   return readModel;
 }
 
@@ -47,17 +42,6 @@ describe('GetDeoSchoolsUseCase', () => {
   it('names the School Admin first, then the metadata principal, then nobody', async () => {
     const { data } = await run(readModelWithSchools());
     expect(data.schools.map((s) => s.principalName)).toEqual(['Jallah Doe', 'Musu Kollie', null]);
-  });
-
-  it('marks the last three calendar months that had a submitted report, oldest first', async () => {
-    const readModel = readModelWithSchools();
-    const { data } = await run(readModel);
-    expect(readModel.argsOf('reportMonthsBySchool')).toEqual(['d-1', '2026-09-01']);
-    expect(data.schools.map((s) => s.reportMonths)).toEqual([
-      [true, false, true],
-      [false, false, false],
-      [false, false, false],
-    ]);
   });
 
   it('reads nothing when no district is assigned', async () => {

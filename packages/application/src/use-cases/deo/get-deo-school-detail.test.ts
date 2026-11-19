@@ -17,7 +17,6 @@ function setup() {
     { id: 's-2', name: 'Beta', code: 'B1', levels: [], metadataPrincipal: null },
   ];
   readModel.schoolAdmins = [{ institutionId: 's-1', name: 'Jallah Doe' }];
-  readModel.reportMonths = [{ institutionId: 's-1', month: '2026-11' }];
   readModel.schoolProfile = { address: '12 Main St', establishedYear: 1990 };
   readModel.schoolGender = [
     { gender: 'MALE', count: 2 },

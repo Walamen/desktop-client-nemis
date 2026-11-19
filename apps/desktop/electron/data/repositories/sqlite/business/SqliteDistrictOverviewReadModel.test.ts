@@ -147,20 +147,6 @@ describe('SqliteDistrictOverviewReadModel', () => {
       NOW,
     );
   }
-  function report(id: string, schoolId: string, submittedAt: string | null, title = `Report ${id}`) {
-    run(
-      `INSERT INTO reports (id,type,title,description,data,status,comments,schoolId,districtId,countyId,submittedById,reviewedById,submittedAt,reviewedAt,createdAt,updatedAt)
-       VALUES (?,'WEEKLY_SUMMARY',?,NULL,'{}',?,NULL,?,NULL,NULL,NULL,NULL,?,NULL,?,?)`,
-      id,
-      title,
-      submittedAt ? 'SUBMITTED' : 'DRAFT',
-      schoolId,
-      submittedAt,
-      NOW,
-      NOW,
-    );
-  }
-
   beforeEach(() => {
     test = createTestContext();
     db = test.context.connection;
@@ -192,8 +178,6 @@ describe('SqliteDistrictOverviewReadModel', () => {
     expect(readModel.attendanceByMonth('d-1', '2000-01-01')).toEqual([]);
     expect(readModel.schoolsWithRunningTerm('d-1', '2026-11-16')).toEqual([]);
     expect(readModel.listOpenAlerts('d-1')).toEqual([]);
-    expect(readModel.listSubmittedReports('d-1', 50)).toEqual([]);
-    expect(readModel.lastSubmissionBySchool('d-1')).toEqual([]);
   });
 
   it('listSchoolRegistrations reads dates from details', () => {
@@ -278,20 +262,6 @@ describe('SqliteDistrictOverviewReadModel', () => {
     admin('adm-3', 's-b', 'Gone', 'Away', 0);
     admin('adm-4', 's-other', 'Else', 'Where');
     expect(readModel.schoolAdminNameBySchool('d-1')).toEqual([{ institutionId: 's-a', name: 'Jallah Doe' }]);
-  });
-
-  it('lists the months in which each school submitted a report', () => {
-    seedDistrict();
-    report('r-1', 's-a', '2026-09-01T00:00:00.000Z');
-    report('r-2', 's-a', '2026-09-30T23:59:59.000Z');
-    report('r-3', 's-a', '2026-11-16');
-    report('r-4', 's-a', '2026-08-31T23:59:59.000Z');
-    report('r-5', 's-b', null);
-    report('r-6', 's-other', '2026-10-05T00:00:00.000Z');
-    expect(readModel.reportMonthsBySchool('d-1', '2026-09-01')).toEqual([
-      { institutionId: 's-a', month: '2026-09' },
-      { institutionId: 's-a', month: '2026-11' },
-    ]);
   });
 
   it('counts active students and active teaching staff per school', () => {
@@ -494,33 +464,7 @@ describe('SqliteDistrictOverviewReadModel', () => {
     expect(readModel.listOpenAlerts('d-1').map((row) => row.id).sort()).toEqual(['a-garbled', 'a-roof']);
   });
 
-  it('lists submitted reports newest first, and the newest per school', () => {
-    seedDistrict();
-    report('r-old', 's-a', '2026-11-01T08:00:00.000Z');
-    report('r-new', 's-a', '2026-11-12T08:00:00.000Z', 'Week 2 summary');
-    report('r-b', 's-b', '2026-11-05T08:00:00.000Z');
-    report('r-draft', 's-b', null);
-    report('r-other', 's-other', '2026-11-13T08:00:00.000Z');
-    expect(readModel.listSubmittedReports('d-1', 50).map((row) => row.id)).toEqual(['r-new', 'r-b', 'r-old']);
-    expect(readModel.listSubmittedReports('d-1', 2).map((row) => row.id)).toEqual(['r-new', 'r-b']);
-    expect(readModel.listSubmittedReports('d-1', 1)[0]).toEqual({
-      id: 'r-new',
-      schoolId: 's-a',
-      schoolName: 'Alpha',
-      title: 'Week 2 summary',
-      type: 'WEEKLY_SUMMARY',
-      submittedAt: '2026-11-12T08:00:00.000Z',
-    });
-    expect(
-      [...readModel.lastSubmissionBySchool('d-1')].sort((a, b) => a.institutionId.localeCompare(b.institutionId)),
-    ).toEqual([
-      { institutionId: 's-a', submittedAt: '2026-11-12T08:00:00.000Z' },
-      { institutionId: 's-b', submittedAt: '2026-11-05T08:00:00.000Z' },
-    ]);
-  });
-
   describe('school admin directory', () => {
-    const MONTH = ['2026-11-01T00:00:00.000Z', '2026-12-01T00:00:00.000Z'] as const;
     function account(id: string, opts: { isActive?: number; photoUrl?: string | null; createdAt?: string | null; lastLoginAt?: string | null } = {}) {
       run(
         `INSERT INTO users (id,firstName,lastName,email,isActive,version,updatedAt,photoUrl,createdAt,lastLoginAt)
@@ -544,21 +488,13 @@ describe('SqliteDistrictOverviewReadModel', () => {
         `stf-${seq}`, institutionId, userId, employeeNumber, NOW, NOW,
       );
     }
-    function reportBy(id: string, schoolId: string, submittedById: string, submittedAt: string) {
-      run(
-        `INSERT INTO reports (id,type,title,description,data,status,comments,schoolId,districtId,countyId,submittedById,reviewedById,submittedAt,reviewedAt,createdAt,updatedAt)
-         VALUES (?,'WEEKLY_SUMMARY','R',NULL,'{}','SUBMITTED',NULL,?,NULL,NULL,?,NULL,?,NULL,?,?)`,
-        id, schoolId, submittedById, submittedAt, NOW, NOW,
-      );
-    }
-
     it('lists each School Admin of the district with the account details', () => {
       seedDistrict();
       account('u-1', { isActive: 0, photoUrl: 'https://img/a.png' });
       schoolAdmin('u-1', 's-a', 'Ann');
       account('u-9');
       schoolAdmin('u-9', 's-other', 'Elsewhere');
-      expect(readModel.listSchoolAdmins('d-1', ...MONTH)).toEqual([
+      expect(readModel.listSchoolAdmins('d-1')).toEqual([
         {
           userId: 'u-1',
           firstName: 'Ann',
@@ -570,7 +506,6 @@ describe('SqliteDistrictOverviewReadModel', () => {
           isActive: false,
           joinedAt: '2025-02-03T00:00:00.000Z',
           lastLoginAt: '2026-11-14T09:00:00.000Z',
-          reportsThisMonth: 0,
         },
       ]);
     });
@@ -578,7 +513,7 @@ describe('SqliteDistrictOverviewReadModel', () => {
     it('treats an admin whose account row has not synced as active, with no dates', () => {
       seedDistrict();
       schoolAdmin('u-2', 's-b', 'Musu');
-      expect(readModel.listSchoolAdmins('d-1', ...MONTH)[0]).toMatchObject({
+      expect(readModel.listSchoolAdmins('d-1')[0]).toMatchObject({
         userId: 'u-2',
         isActive: true,
         photoUrl: null,
@@ -592,23 +527,10 @@ describe('SqliteDistrictOverviewReadModel', () => {
       account('u-1');
       schoolAdmin('u-1', 's-a', 'Ann');
       staffFor('u-1', 's-b', 'EMP-OTHER');
-      expect(readModel.listSchoolAdmins('d-1', ...MONTH)[0]!.employeeNumber).toBeNull();
+      expect(readModel.listSchoolAdmins('d-1')[0]!.employeeNumber).toBeNull();
       run(`DELETE FROM staff`);
       staffFor('u-1', 's-a', 'EMP-007');
-      expect(readModel.listSchoolAdmins('d-1', ...MONTH)[0]!.employeeNumber).toBe('EMP-007');
-    });
-
-    it('counts reports the admin submitted for that school this month, boundaries included', () => {
-      seedDistrict();
-      account('u-1');
-      schoolAdmin('u-1', 's-a', 'Ann');
-      reportBy('r-1', 's-a', 'u-1', '2026-11-01T00:00:00.000Z');
-      reportBy('r-2', 's-a', 'u-1', '2026-11-30T23:59:59.000Z');
-      reportBy('r-3', 's-a', 'u-1', '2026-10-31T23:59:59.000Z');
-      reportBy('r-4', 's-a', 'u-1', '2026-12-01T00:00:00.000Z');
-      reportBy('r-5', 's-b', 'u-1', '2026-11-10T00:00:00.000Z');
-      reportBy('r-6', 's-a', 'u-other', '2026-11-10T00:00:00.000Z');
-      expect(readModel.listSchoolAdmins('d-1', ...MONTH)[0]!.reportsThisMonth).toBe(2);
+      expect(readModel.listSchoolAdmins('d-1')[0]!.employeeNumber).toBe('EMP-007');
     });
 
     it('shows a person who runs two schools once at each school', () => {
@@ -623,14 +545,13 @@ describe('SqliteDistrictOverviewReadModel', () => {
       membership('org-a', 's-a');
       membership('org-b', 's-b');
       staffFor('u-1', 's-b', 'EMP-B');
-      reportBy('r-1', 's-a', 'u-1', '2026-11-05T00:00:00.000Z');
       const rows = readModel
-        .listSchoolAdmins('d-1', ...MONTH)
-        .map((row) => [row.userId, row.schoolId, row.employeeNumber, row.reportsThisMonth])
+        .listSchoolAdmins('d-1')
+        .map((row) => [row.userId, row.schoolId, row.employeeNumber])
         .sort();
       expect(rows).toEqual([
-        ['u-1', 's-a', null, 1],
-        ['u-1', 's-b', 'EMP-B', 0],
+        ['u-1', 's-a', null],
+        ['u-1', 's-b', 'EMP-B'],
       ]);
     });
 

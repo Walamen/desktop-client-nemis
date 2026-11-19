@@ -55,8 +55,6 @@ export class GetDeoReportsComplianceUseCase implements QueryHandler<
           name: school.name,
           code: school.code,
           principalName: school.principalName,
-          reportMonths: school.reportMonths,
-          lastSubmissionAt: school.lastSubmissionAt,
           approvalStatus: registration?.approvalStatus ?? null,
           approvedAt: registration?.approvedAt ?? null,
           createdAt: registration?.createdAt ?? null,

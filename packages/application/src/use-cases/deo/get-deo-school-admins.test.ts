@@ -19,7 +19,6 @@ function admin(userId: string, schoolId: string, schoolName: string, firstName: 
     isActive: true,
     joinedAt: null,
     lastLoginAt: null,
-    reportsThisMonth: 0,
   };
 }
 
@@ -62,14 +61,10 @@ describe('GetDeoSchoolAdminsUseCase', () => {
     ]);
   });
 
-  it('asks for the current calendar month', async () => {
+  it('asks for the district only', async () => {
     const model = readModel();
     await run(model);
-    expect(model.argsOf('listSchoolAdmins')).toEqual([
-      'd-1',
-      new Date(2026, 10, 1).toISOString(),
-      new Date(2026, 11, 1).toISOString(),
-    ]);
+    expect(model.argsOf('listSchoolAdmins')).toEqual(['d-1']);
   });
 
   it('names the active schools with no School Admin', async () => {
