@@ -164,6 +164,34 @@ export interface DeoReportsComplianceResult {
   items: DeoComplianceItem[];
 }
 
+export type DeoAlertFilter = 'open' | 'resolved' | 'all';
+
+export interface DeoAlertsQuery {
+  filter: DeoAlertFilter;
+  page: number;
+}
+
+export interface DeoAlertListItem {
+  id: string;
+  type: string;
+  severity: string;
+  title: string;
+  description: string;
+  institutionId: string | null;
+  schoolName: string | null;
+  isResolved: boolean;
+  resolvedAt: string | null;
+  createdAt: string;
+}
+
+export interface DeoAlertsResult {
+  districtId: string | null;
+  district: { id: string; name: string } | null;
+  county: { id: string; name: string } | null;
+  alerts: DeoAlertListItem[];
+  meta: { page: number; limit: number; total: number; totalPages: number };
+}
+
 /** One School Admin account, as the School Admin Directory shows it. */
 export interface DeoSchoolAdmin {
   userId: string;

@@ -4,6 +4,8 @@ import type {
   DeoSchoolDetailResult,
   DeoSchoolsResult,
   DeoReportsComplianceResult,
+  DeoAlertsQuery,
+  DeoAlertsResult,
   DeoStudentsResult,
   DeoTeachersResult,
   DeoTransfersResult,
@@ -24,6 +26,7 @@ import type {
 import type { ApplicationResponse } from '../core/response';
 import type { GetDeoDashboardUseCase } from '../use-cases/deo/get-deo-dashboard';
 import type { ResolveDistrictAlertUseCase } from '../use-cases/deo/resolve-district-alert';
+import type { GetDeoAlertsUseCase } from '../use-cases/deo/get-deo-alerts';
 import type { GetDeoSchoolsUseCase } from '../use-cases/deo/get-deo-schools';
 import type { GetDeoReportsComplianceUseCase } from '../use-cases/deo/get-deo-reports-compliance';
 import type { GetDeoSchoolDetailUseCase } from '../use-cases/deo/get-deo-school-detail';
@@ -46,6 +49,7 @@ export interface DeoApplicationServiceDeps {
   getDashboard: GetDeoDashboardUseCase;
   resolveAlert: ResolveDistrictAlertUseCase;
   listSchools: GetDeoSchoolsUseCase;
+  listAlerts: GetDeoAlertsUseCase;
   getSchool: GetDeoSchoolDetailUseCase;
   getReportsCompliance: GetDeoReportsComplianceUseCase;
   listSchoolAdmins: GetDeoSchoolAdminsUseCase;
@@ -77,6 +81,10 @@ export class DeoApplicationService {
 
   listSchools(): Promise<ApplicationResponse<DeoSchoolsResult>> {
     return this.deps.listSchools.execute({});
+  }
+
+  listAlerts(query: DeoAlertsQuery): Promise<ApplicationResponse<DeoAlertsResult>> {
+    return this.deps.listAlerts.execute(query);
   }
 
   getSchool(schoolId: string): Promise<ApplicationResponse<DeoSchoolDetailResult>> {
