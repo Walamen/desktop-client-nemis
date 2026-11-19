@@ -48,12 +48,12 @@ export class DeoAlertsViewModel {
   }
 
   async setFilter(filter: DeoAlertFilter): Promise<void> {
-    this.store.setState({ filter, page: 1 });
+    this.store.setState({ filter, page: 1, failedAlertId: null });
     await this.load();
   }
 
   async setPage(page: number): Promise<void> {
-    this.store.setState({ page });
+    this.store.setState({ page, failedAlertId: null });
     await this.load();
   }
 

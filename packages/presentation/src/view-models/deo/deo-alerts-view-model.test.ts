@@ -112,6 +112,30 @@ describe('DeoAlertsViewModel', () => {
     expect(vm.store.getState()).toMatchObject({ failedAlertId: 'a-1', resolvingAlertId: null });
   });
 
+  it('clears failedAlertId when the filter changes', async () => {
+    const { deo } = makeDeo({
+      resolve: async () => {
+        throw new Error('disk full');
+      },
+    });
+    const vm = new DeoAlertsViewModel({ deo });
+    await vm.resolve('a-1');
+    await vm.setFilter('all');
+    expect(vm.store.getState().failedAlertId).toBeNull();
+  });
+
+  it('clears failedAlertId when the page changes', async () => {
+    const { deo } = makeDeo({
+      resolve: async () => {
+        throw new Error('disk full');
+      },
+    });
+    const vm = new DeoAlertsViewModel({ deo });
+    await vm.resolve('a-1');
+    await vm.setPage(2);
+    expect(vm.store.getState().failedAlertId).toBeNull();
+  });
+
   it('clears failedAlertId when false was returned but the reload no longer lists it open', async () => {
     const { deo } = makeDeo({ resolve: async () => false, list: () => result([]) });
     const vm = new DeoAlertsViewModel({ deo });
