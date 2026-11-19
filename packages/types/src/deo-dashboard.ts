@@ -450,6 +450,7 @@ export interface DeoApi {
   getAttendanceReport(query: DeoAttendanceReportQuery): Promise<CountyAttendanceReport>;
   getAcademicReport(query: DeoReportQuery): Promise<CountyAcademicReport>;
   getStaffComplianceReport(query: DeoReportQuery): Promise<CountyStaffComplianceReport>;
+  getReportsCompliance(): Promise<DeoReportsComplianceResult>;
   /** Marks an alert reviewed on this device; the outbox syncs it later. */
   resolveAlert(alertId: string): Promise<boolean>;
 }

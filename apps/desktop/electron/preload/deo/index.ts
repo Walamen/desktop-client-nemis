@@ -29,6 +29,7 @@ export const deoDashboardApi: DeoApi = {
   getAttendanceReport: (query) => invoke(IpcChannels.DEO_ATTENDANCE_REPORT, query),
   getAcademicReport: (query) => invoke(IpcChannels.DEO_ACADEMIC_REPORT, query),
   getStaffComplianceReport: (query) => invoke(IpcChannels.DEO_STAFF_REPORT, query),
+  getReportsCompliance: () => invoke(IpcChannels.DEO_REPORTS_COMPLIANCE),
   listTeachers: () => invoke(IpcChannels.DEO_LIST_TEACHERS),
 };
 

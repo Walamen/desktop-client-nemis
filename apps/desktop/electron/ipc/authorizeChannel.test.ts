@@ -158,6 +158,7 @@ describe('authorizeChannel', () => {
       IpcChannels.DEO_ATTENDANCE_REPORT,
       IpcChannels.DEO_ACADEMIC_REPORT,
       IpcChannels.DEO_STAFF_REPORT,
+      IpcChannels.DEO_REPORTS_COMPLIANCE,
       IpcChannels.DEO_FINANCE,
       IpcChannels.DEO_FINANCE_AUDIT,
       IpcChannels.DEO_MESSAGING_OVERVIEW,

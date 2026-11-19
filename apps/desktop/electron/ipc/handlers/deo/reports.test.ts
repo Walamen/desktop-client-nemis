@@ -16,6 +16,7 @@ function register() {
     getAttendanceReport: vi.fn(async () => ({ data: { reportType: 'ATTENDANCE' } })),
     getAcademicReport: vi.fn(async () => ({ data: { reportType: 'ACADEMIC' } })),
     getStaffComplianceReport: vi.fn(async () => ({ data: { reportType: 'STAFF_COMPLIANCE' } })),
+    getReportsCompliance: vi.fn(async () => ({ data: { items: [] } })),
   };
   registerDeoReportHandlers(handle, { deo } as unknown as ApplicationLayer);
   return { calls, deo };
@@ -27,6 +28,14 @@ describe('deo report IPC handlers', () => {
     const scope = calls.get('deo:report-scope')!;
     expect(await scope.handler()).toEqual({ districtId: 'd-1' });
     expect(() => scope.validate(['d-2'])).toThrow(IPCError);
+  });
+
+  it('serves reports compliance without arguments', async () => {
+    const { calls, deo } = register();
+    const channel = calls.get('deo:reports-compliance')!;
+    expect(await channel.handler()).toEqual({ items: [] });
+    expect(deo.getReportsCompliance).toHaveBeenCalledTimes(1);
+    expect(() => channel.validate(['d-1'])).toThrow(IPCError);
   });
 
   it('passes a school filter through to each report', async () => {

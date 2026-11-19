@@ -24,4 +24,5 @@ export function registerDeoReportHandlers(handle: IpcHandle, app: ApplicationLay
   handle(IpcChannels.DEO_STAFF_REPORT, assertDeoReportQueryArgs, async (query: DeoReportQuery) =>
     (await app.deo.getStaffComplianceReport(query)).data,
   );
+  handle(IpcChannels.DEO_REPORTS_COMPLIANCE, assertNoArgs, async () => (await app.deo.getReportsCompliance()).data);
 }

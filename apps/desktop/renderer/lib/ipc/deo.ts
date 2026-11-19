@@ -25,6 +25,7 @@ export const deoIpc = {
     getAttendanceReport: (q) => query(() => deoBridge.getAttendanceReport(q)),
     getAcademicReport: (q) => query(() => deoBridge.getAcademicReport(q)),
     getStaffComplianceReport: (q) => query(() => deoBridge.getStaffComplianceReport(q)),
+    getReportsCompliance: () => query(() => deoBridge.getReportsCompliance()),
     listTeachers: () => query(() => deoBridge.listTeachers()),
   }),
 };

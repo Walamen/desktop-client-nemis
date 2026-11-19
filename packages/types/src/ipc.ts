@@ -82,6 +82,7 @@ import type {
   DeoSchoolAdminsResult,
   DeoSchoolDetailResult,
   DeoSchoolsResult,
+  DeoReportsComplianceResult,
   DeoStudentsResult,
   DeoTeachersResult,
   DeoTransfersResult,
@@ -289,6 +290,7 @@ export interface IpcContract {
   'deo:report-attendance': { args: [query: DeoAttendanceReportQuery]; result: CountyAttendanceReport };
   'deo:report-academic': { args: [query: DeoReportQuery]; result: CountyAcademicReport };
   'deo:report-staff-compliance': { args: [query: DeoReportQuery]; result: CountyStaffComplianceReport };
+  'deo:reports-compliance': { args: []; result: DeoReportsComplianceResult };
   'county:list-districts': { args: []; result: CountyDistrictsResult };
   'county:get-district': { args: [districtId: string]; result: CountyDistrictDetailResult | null };
   'county:assign-deo': { args: [request: CountyAssignDeoRequest]; result: OnlineCommandResult<null> };
@@ -579,6 +581,7 @@ export const IpcChannels = {
   DEO_ATTENDANCE_REPORT: 'deo:report-attendance',
   DEO_ACADEMIC_REPORT: 'deo:report-academic',
   DEO_STAFF_REPORT: 'deo:report-staff-compliance',
+  DEO_REPORTS_COMPLIANCE: 'deo:reports-compliance',
   COUNTY_LIST_DISTRICTS: 'county:list-districts',
   COUNTY_GET_DISTRICT: 'county:get-district',
   COUNTY_ASSIGN_DEO: 'county:assign-deo',
