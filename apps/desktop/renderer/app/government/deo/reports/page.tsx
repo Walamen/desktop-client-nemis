@@ -1,7 +1,7 @@
-import { ComingSoon } from '@/components/shell/ComingSoon';
+import { DeoReportsCompliancePage } from '@/components/deo/DeoReportsCompliancePage';
 
-/** The web's Reports & Compliance page (URL-only there); built with the DEO
- * sub pages. Generate Reports lives at reports/automated. */
+/** The web's Reports & Compliance page (URL-only there), read from this
+ * device. Generate Reports lives at reports/automated. */
 export default function Page() {
-  return <ComingSoon title="Reports & Compliance" />;
+  return <DeoReportsCompliancePage />;
 }
