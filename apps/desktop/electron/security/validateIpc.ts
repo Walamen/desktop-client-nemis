@@ -1351,6 +1351,16 @@ export function assertDeoAttendanceReportQueryArgs(args: readonly unknown[]): vo
   assertOptionalEnumMember(query.period, 'period', ['DAILY', 'WEEKLY', 'MONTHLY']);
 }
 
+/** DEO Alerts: the district comes from the workspace, never from the renderer. */
+export function assertDeoAlertsQueryArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [query] = args;
+  if (!isPlainObject(query)) throw new IPCError('Expected a query object.');
+  assertKnownKeys(query, ['filter', 'page']);
+  assertEnumMember(query.filter, 'filter', ['open', 'resolved', 'all']);
+  assertInt(query.page, 'page', 1, 10000);
+}
+
 /** County Generate Reports: no districtId = county-wide. */
 export function assertCountyEnrollmentReportQueryArgs(args: readonly unknown[]): void {
   assertCountyReportScope(args, []);

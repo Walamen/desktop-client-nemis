@@ -5,6 +5,7 @@ import { invoke } from '../invoke';
 export const deoDashboardApi: DeoApi = {
   getDashboard: () => invoke(IpcChannels.DEO_GET_DASHBOARD),
   resolveAlert: (alertId) => invoke(IpcChannels.DEO_RESOLVE_ALERT, alertId),
+  listAlerts: (query) => invoke(IpcChannels.DEO_LIST_ALERTS, query),
   listSchools: () => invoke(IpcChannels.DEO_LIST_SCHOOLS),
   getSchool: (schoolId) => invoke(IpcChannels.DEO_GET_SCHOOL, schoolId),
   listSchoolAdmins: () => invoke(IpcChannels.DEO_LIST_SCHOOL_ADMINS),

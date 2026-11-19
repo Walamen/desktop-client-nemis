@@ -494,4 +494,6 @@ export interface DeoApi {
   getReportsCompliance(): Promise<DeoReportsComplianceResult>;
   /** Marks an alert reviewed on this device; the outbox syncs it later. */
   resolveAlert(alertId: string): Promise<boolean>;
+  /** One page of the district's alerts, open / resolved / all. */
+  listAlerts(query: DeoAlertsQuery): Promise<DeoAlertsResult>;
 }

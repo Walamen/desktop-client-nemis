@@ -243,6 +243,7 @@ export const COUNTY_ADMIN_CHANNELS: ReadonlySet<IpcChannel> = new Set<IpcChannel
 export const DEO_CHANNELS: ReadonlySet<IpcChannel> = new Set<IpcChannel>([
   IpcChannels.DEO_GET_DASHBOARD,
   IpcChannels.DEO_RESOLVE_ALERT,
+  IpcChannels.DEO_LIST_ALERTS,
   IpcChannels.DEO_LIST_SCHOOLS,
   IpcChannels.DEO_GET_SCHOOL,
   IpcChannels.DEO_LIST_SCHOOL_ADMINS,

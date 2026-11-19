@@ -147,6 +147,7 @@ describe('authorizeChannel', () => {
     const channels = [
       IpcChannels.DEO_GET_DASHBOARD,
       IpcChannels.DEO_RESOLVE_ALERT,
+      IpcChannels.DEO_LIST_ALERTS,
       IpcChannels.DEO_LIST_SCHOOLS,
       IpcChannels.DEO_GET_SCHOOL,
       IpcChannels.DEO_LIST_SCHOOL_ADMINS,

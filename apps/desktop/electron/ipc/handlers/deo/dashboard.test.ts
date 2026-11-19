@@ -70,4 +70,36 @@ describe('deo IPC handlers', () => {
     expect(() => validate([42])).toThrow(IPCError);
     expect(() => validate(['x'.repeat(5000)])).toThrow(IPCError);
   });
+
+  it('deo:list-alerts forwards the query and returns the data', async () => {
+    const { calls, handle } = makeHarness();
+    const seen: unknown[] = [];
+    const payload = { alerts: [], meta: { page: 1, limit: 20, total: 0, totalPages: 1 } };
+    const app = {
+      deo: {
+        listAlerts: async (query: unknown) => {
+          seen.push(query);
+          return { data: payload };
+        },
+      },
+    } as unknown as ApplicationLayer;
+    registerDeoDashboardHandlers(handle, app);
+    const call = calls.get('deo:list-alerts');
+    expect(call).toBeDefined();
+    expect(() => call!.validate([{ filter: 'open', page: 1 }])).not.toThrow();
+    expect(await call!.handler({ filter: 'open', page: 1 })).toEqual(payload);
+    expect(seen).toEqual([{ filter: 'open', page: 1 }]);
+  });
+
+  it('deo:list-alerts rejects malformed queries', () => {
+    const { calls, handle } = makeHarness();
+    registerDeoDashboardHandlers(handle, { deo: {} } as unknown as ApplicationLayer);
+    const { validate } = calls.get('deo:list-alerts')!;
+    expect(() => validate([])).toThrow(IPCError);
+    expect(() => validate([{ filter: 'x', page: 1 }])).toThrow(IPCError);
+    expect(() => validate([{ filter: 'open', page: 0 }])).toThrow(IPCError);
+    expect(() => validate([{ filter: 'open', page: 1.5 }])).toThrow(IPCError);
+    expect(() => validate([{ filter: 'open', page: 10001 }])).toThrow(IPCError);
+    expect(() => validate([{ filter: 'open', page: 1, districtId: 'd-2' }])).toThrow(IPCError);
+  });
 });

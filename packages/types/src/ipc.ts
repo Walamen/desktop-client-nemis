@@ -92,6 +92,8 @@ import type {
   DeoSettingsResult,
   DeoSettingsRemote,
   DeoSettingsSaveRequest,
+  DeoAlertsQuery,
+  DeoAlertsResult,
   DeoAttendanceReportQuery,
   DeoReportQuery,
   DeoReportScope,
@@ -266,6 +268,7 @@ export interface IpcContract {
   'county:get-dashboard': { args: []; result: CountyDashboardResult };
   'deo:get-dashboard': { args: []; result: DeoDashboardResult };
   'deo:resolve-alert': { args: [alertId: string]; result: boolean };
+  'deo:list-alerts': { args: [query: DeoAlertsQuery]; result: DeoAlertsResult };
   'deo:list-schools': { args: []; result: DeoSchoolsResult };
   'deo:get-school': { args: [schoolId: string]; result: DeoSchoolDetailResult };
   'deo:list-school-admins': { args: []; result: DeoSchoolAdminsResult };
@@ -557,6 +560,7 @@ export const IpcChannels = {
   COUNTY_GET_DASHBOARD: 'county:get-dashboard',
   DEO_GET_DASHBOARD: 'deo:get-dashboard',
   DEO_RESOLVE_ALERT: 'deo:resolve-alert',
+  DEO_LIST_ALERTS: 'deo:list-alerts',
   DEO_LIST_SCHOOLS: 'deo:list-schools',
   DEO_GET_SCHOOL: 'deo:get-school',
   DEO_LIST_SCHOOL_ADMINS: 'deo:list-school-admins',
