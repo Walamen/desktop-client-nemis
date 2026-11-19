@@ -13,14 +13,9 @@ import { useDeoStudentsViewModel } from '@/lib/presentation/hooks/deo';
 import { useViewModel } from '@/hooks/use-view-model';
 import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 
-const HEADINGS = ['School', 'Level', 'Total', 'Teachers', 'Last Submission', 'Attendance', 'Status'];
+const HEADINGS = ['School', 'Level', 'Total', 'Teachers', 'Attendance', 'Status'];
 /** Circumference of the gender ring (r = 40). */
 const RING = 251.2;
-
-function formatSubmissionDate(value: string | null): string {
-  if (!value) return 'No submission';
-  return new Date(value).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
-}
 
 function Banner({ place }: { place: string }) {
   return (
@@ -221,7 +216,6 @@ export function DeoStudentsPage() {
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-900">{row.students.toLocaleString()}</td>
                         <td className="px-6 py-4 text-sm text-gray-900">{row.teachers.toLocaleString()}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{formatSubmissionDate(row.lastSubmissionAt)}</td>
                         <td className="px-6 py-4">
                           <span className={`text-sm font-semibold ${attendanceColor(row.attendanceRate)}`}>
                             {row.attendanceRate === null ? 'No Data' : `${row.attendanceRate}%`}

@@ -142,7 +142,6 @@ export function DeoDashboardPage() {
   const [schoolSearch, setSchoolSearch] = useState('');
   const [schoolStatus, setSchoolStatus] = useState<PerformanceFilter>('');
   const [schoolPage, setSchoolPage] = useState(1);
-  const [submissionPage, setSubmissionPage] = useState(1);
   const [severity, setSeverity] = useState('');
 
   useRevalidateOnSync(() => {
@@ -165,7 +164,6 @@ export function DeoDashboardPage() {
   const now = new Date();
   const schools = data?.schools ?? [];
   const performance = pageOf(filterPerformance(schools, schoolSearch, schoolStatus), schoolPage);
-  const submissions = pageOf(data?.submissions ?? [], submissionPage);
   const incidents = filterAlerts(data?.alerts ?? [], severity);
   const counts = data?.alertSummary;
 
@@ -273,7 +271,7 @@ export function DeoDashboardPage() {
                     <table className="min-w-full divide-y divide-gray-200">
                       <thead className="bg-gray-50">
                         <tr>
-                          {['School', 'Enrollment', 'Attendance %', 'Teachers', 'Last Submission', 'Status'].map(
+                          {['School', 'Enrollment', 'Attendance %', 'Teachers', 'Status'].map(
                             (heading) => (
                               <th
                                 key={heading}
@@ -295,11 +293,6 @@ export function DeoDashboardPage() {
                                 {school.attendanceRate === null ? '—' : `${school.attendanceRate}%`}
                               </td>
                               <td className="px-4 py-3 text-sm text-gray-600">{school.teachers}</td>
-                              <td className="px-4 py-3 text-sm text-gray-600">
-                                {school.lastSubmissionAt
-                                  ? new Date(school.lastSubmissionAt).toLocaleDateString()
-                                  : '—'}
-                              </td>
                               <td className="px-4 py-3">
                                 <span
                                   className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
@@ -313,7 +306,7 @@ export function DeoDashboardPage() {
                           ))
                         ) : (
                           <tr>
-                            <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">
+                            <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">
                               No schools found.
                             </td>
                           </tr>
@@ -329,51 +322,6 @@ export function DeoDashboardPage() {
                     noun="schools"
                     onPage={setSchoolPage}
                   />
-                </div>
-              </Card>
-            </div>
-
-            {/* 6. Data submission monitoring (school reports) */}
-            <div data-section>
-              <Card title="Data Submission Monitoring">
-                <div className="space-y-4">
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          {['School', 'Report', 'Type', 'Date'].map((heading) => (
-                            <th
-                              key={heading}
-                              className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"
-                            >
-                              {heading}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {submissions.rows.length > 0 ? (
-                          submissions.rows.map((sub) => (
-                            <tr key={sub.id} className="hover:bg-gray-50">
-                              <td className="px-4 py-3 text-sm font-medium text-gray-900">{sub.schoolName}</td>
-                              <td className="px-4 py-3 text-sm text-gray-600">{sub.title}</td>
-                              <td className="px-4 py-3 text-sm text-gray-600">{sub.type.replace(/_/g, ' ')}</td>
-                              <td className="px-4 py-3 text-sm text-gray-600">
-                                {new Date(sub.submittedAt).toLocaleDateString()}
-                              </td>
-                            </tr>
-                          ))
-                        ) : (
-                          <tr>
-                            <td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">
-                              No submissions found.
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                  <Pager page={submissions.page} totalPages={submissions.totalPages} onPage={setSubmissionPage} />
                 </div>
               </Card>
             </div>

@@ -98,7 +98,6 @@ function SchoolDetail({ school, onBack }: { school: DeoSchoolDetail; onBack: () 
   const average = school.academic.averageScore != null ? `${school.academic.averageScore}%` : null;
   const fee = school.feeCollectionRate;
   const maxGradeStudents = Math.max(...school.enrollmentByGrade.map((g) => g.students), 1);
-  const reportsSubmitted = school.reportMonths.filter(Boolean).length;
 
   return (
     <div className="min-h-screen bg-slate-100 font-['Sora']">
@@ -262,7 +261,7 @@ function SchoolDetail({ school, onBack }: { school: DeoSchoolDetail; onBack: () 
         </div>
 
         {/* Additional Info Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6">
           {/* Fee Compliance */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
             <h3 className="text-lg font-bold text-gray-900 mb-4">Fee Compliance</h3>
@@ -284,27 +283,6 @@ function SchoolDetail({ school, onBack }: { school: DeoSchoolDetail; onBack: () 
             ) : (
               <p className="text-sm text-gray-500">No fees billed this year</p>
             )}
-          </div>
-
-          {/* Reports */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Reports</h3>
-            <div className="flex items-center gap-3">
-              <div className="flex gap-1">
-                {school.reportMonths.map((submitted, i) => (
-                  <div
-                    key={i}
-                    className={`w-3 h-3 rounded-full ${submitted ? 'bg-green-500' : 'bg-gray-300'}`}
-                  />
-                ))}
-              </div>
-              <span className="text-sm font-semibold text-gray-900">
-                {reportsSubmitted}/{school.reportMonths.length} submitted
-              </span>
-            </div>
-            <p className="text-xs text-gray-600 mt-2">
-              {reportsSubmitted}/{school.reportMonths.length} months with a submitted report
-            </p>
           </div>
         </div>
       </div>

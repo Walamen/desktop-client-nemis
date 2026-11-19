@@ -92,7 +92,7 @@ describe('DEO Schools page', () => {
     expect(screen.getByText('Gamma School')).toBeInTheDocument();
   });
 
-  it('shows the principal, level, figures, report dots and status', async () => {
+  it('shows the principal, level, figures and status', async () => {
     mockNemis(RESULT);
     renderPage();
     const alpha = (await screen.findByText('Alpha Academy')).closest('tr') as HTMLElement;
@@ -101,8 +101,8 @@ describe('DEO Schools page', () => {
     expect(within(alpha).getByText('1,200')).toBeInTheDocument();
     expect(within(alpha).getByText('88%')).toBeInTheDocument();
     expect(within(alpha).getByText('Compliant')).toBeInTheDocument();
-    const dots = within(alpha).getByTitle('Reports submitted in each of the last three months').children;
-    expect([...dots].map((dot) => dot.className.includes('bg-green-500'))).toEqual([true, false, true]);
+    expect(within(alpha).queryByTitle('Reports submitted in each of the last three months')).not.toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: 'Reports' })).not.toBeInTheDocument();
 
     const beta = screen.getByText('Beta High').closest('tr') as HTMLElement;
     expect(within(beta).getByText('Not recorded')).toBeInTheDocument();

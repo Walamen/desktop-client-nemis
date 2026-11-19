@@ -182,12 +182,13 @@ describe('DEO dashboard page', () => {
     expect(within(table).queryByText('Alpha Academy')).not.toBeInTheDocument();
   });
 
-  it('lists submitted school reports', async () => {
+  it('shows no school-report figures', async () => {
     mockNemis(DASHBOARD);
     renderPage();
-    const section = (await screen.findByText('Data Submission Monitoring')).closest('[data-section]') as HTMLElement;
-    expect(within(section).getByText('Week 2 summary')).toBeInTheDocument();
-    expect(within(section).getByText('WEEKLY SUMMARY')).toBeInTheDocument();
+    expect((await screen.findAllByText('Alpha Academy')).length).toBeGreaterThan(0);
+    expect(screen.queryByText('Data Submission Monitoring')).not.toBeInTheDocument();
+    expect(screen.queryByText('Last Submission')).not.toBeInTheDocument();
+    expect(screen.queryByText('Week 2 summary')).not.toBeInTheDocument();
   });
 
   it('marks an incident reviewed on this device', async () => {

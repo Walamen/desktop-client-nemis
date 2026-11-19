@@ -84,7 +84,10 @@ describe('DEO School detail page', () => {
     const g2 = screen.getByText('Grade 2');
     const none = screen.getByText('Grade not set');
     expect(g2.compareDocumentPosition(none) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(screen.getByText('2/3 months with a submitted report')).toBeInTheDocument();
+    expect(screen.queryByText(/months with a submitted report/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Reports')).not.toBeInTheDocument();
+    expect(screen.getByText('Fee Compliance')).toBeInTheDocument();
+    expect(screen.getByText('Gender Distribution')).toBeInTheDocument();
     expect(screen.queryByText(/All required reports submitted/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Schools' }));
     expect(back).toHaveBeenCalled();

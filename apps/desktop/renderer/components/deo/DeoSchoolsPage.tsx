@@ -125,7 +125,7 @@ export function DeoSchoolsPage() {
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    {['School', 'Level', 'Principal', 'Students', 'Teachers', 'Attendance', 'Reports', 'Status'].map(
+                    {['School', 'Level', 'Principal', 'Students', 'Teachers', 'Attendance', 'Status'].map(
                       (heading) => (
                         <th
                           key={heading}
@@ -167,16 +167,6 @@ export function DeoSchoolsPage() {
                           <span className="text-sm font-semibold text-gray-900">
                             {school.attendanceRate === null ? '—' : `${school.attendanceRate}%`}
                           </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-1" title="Reports submitted in each of the last three months">
-                          {school.reportMonths.map((submitted, i) => (
-                            <div
-                              key={i}
-                              className={`w-2 h-2 rounded-full ${submitted ? 'bg-green-500' : 'bg-gray-300'}`}
-                            />
-                          ))}
                         </div>
                       </td>
                       <td className="px-6 py-4">

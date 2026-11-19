@@ -155,10 +155,6 @@ export function DeoSchoolAdminsPage() {
                           <p className="text-sm text-gray-600">Principal · {admin.schoolName}</p>
                           {idLine ? <p className="text-xs text-gray-500 mt-1">{idLine}</p> : null}
                           <div className="flex flex-wrap gap-3 mt-3 text-xs">
-                            <span className="flex items-center gap-1 text-active">
-                              <span className="w-1.5 h-1.5 bg-active rounded-full" />
-                              <span>Submitted {admin.reportsThisMonth} reports this month</span>
-                            </span>
                             <span className={`flex items-center gap-1 ${hasIssues ? 'text-red-600' : 'text-active'}`}>
                               <span className={`w-1.5 h-1.5 ${hasIssues ? 'bg-red-500' : 'bg-active'} rounded-full`} />
                               <span>{admin.openInfrastructureIssues} open infrastructure issues</span>

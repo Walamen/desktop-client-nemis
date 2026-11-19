@@ -83,7 +83,7 @@ describe('DEO School Admins page', () => {
     const ann = (await screen.findByText('Ann Doe')).closest('[data-admin]') as HTMLElement;
     expect(within(ann).getByText('Principal · Alpha Academy')).toBeInTheDocument();
     expect(within(ann).getByText('ID: EMP-007 · Joined: Feb 03, 2025')).toBeInTheDocument();
-    expect(within(ann).getByText('Submitted 2 reports this month')).toBeInTheDocument();
+    expect(within(ann).queryByText(/reports this month/)).not.toBeInTheDocument();
     expect(within(ann).getByText('Last active: Never signed in')).toBeInTheDocument();
     expect(within(ann).getByText('Active')).toBeInTheDocument();
     expect(within(ann).getByLabelText('Message Ann Doe')).toHaveAttribute('href', '/government/deo/messages?userId=u-1');

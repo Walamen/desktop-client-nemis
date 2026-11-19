@@ -92,11 +92,12 @@ describe('DEO Students & Enrollment page', () => {
     const row = (await screen.findAllByText('Beta High')).map((el) => el.closest('tr')).find(Boolean)!;
     expect(within(row).getByText('Primary, Junior High').className).toContain('indigo');
     expect(within(row).getAllByText('No Data')).toHaveLength(2);
-    expect(within(row).getByText('No submission')).toBeTruthy();
+    expect(within(row).queryByText('No submission')).toBeNull();
+    expect(screen.queryByText('Last Submission')).toBeNull();
     const alpha = screen.getByText('Alpha Academy').closest('tr')!;
     expect(within(alpha).getByText('Primary').className).toContain('purple');
     expect(within(alpha).getByText('92%').className).toContain('green');
-    expect(within(alpha).getByText('Nov 03, 2026')).toBeTruthy();
+    expect(within(alpha).queryByText('Nov 03, 2026')).toBeNull();
     expect(within(alpha).getByText('Good')).toBeTruthy();
   });
 
