@@ -3,14 +3,14 @@
 import type { ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Building2, Users, GraduationCap, CheckCircle, TrendingUp } from 'lucide-react';
-import type { DeoSchoolDetail } from '@nemis-desktop/types';
+import type { DeoSchoolDetail, SchoolComplianceStatus } from '@nemis-desktop/types';
 import { useDeoSchoolDetailViewModel } from '@/lib/presentation/hooks/deo';
 import { useQueryParam } from '@/hooks/use-query-param';
 import { useViewModel } from '@/hooks/use-view-model';
 import { useRevalidateOnSync } from '@/hooks/use-revalidate-on-sync';
 import { deoGradeLabel } from './deo-grade-label';
 
-const COMPLIANCE_CHIP: Record<string, string> = {
+const COMPLIANCE_CHIP: Record<SchoolComplianceStatus, string> = {
   Compliant: 'bg-emerald-900 text-emerald-300',
   'Needs Review': 'bg-amber-900 text-amber-300',
   Flagged: 'bg-red-900 text-red-300',
@@ -120,7 +120,7 @@ function SchoolDetail({ school, onBack }: { school: DeoSchoolDetail; onBack: () 
           </div>
         </div>
         <span
-          className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${COMPLIANCE_CHIP[school.complianceStatus] ?? ''}`}
+          className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${COMPLIANCE_CHIP[school.complianceStatus]}`}
         >
           {school.complianceStatus}
         </span>

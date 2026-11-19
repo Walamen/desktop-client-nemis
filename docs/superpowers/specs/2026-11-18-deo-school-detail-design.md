@@ -111,7 +111,7 @@ The desktop gets a mirrored `DeoSchoolDetail` in `@nemis-desktop/types`. Its fie
 ### Desktop (desktop-client-nemis)
 
 - **Read model** (`IDistrictOverviewReadModel` + `SqliteDistrictOverviewReadModel`), one school at a time:
-  - `getSchoolProfile(schoolId)` → `{ street, communityTown, establishedYear } | null`
+  - `getSchoolProfile(schoolId)` → `{ address, establishedYear } | null` (address = street and communityTown joined with ", ", null when neither)
   - `countSchoolStudentsByGender(schoolId)` → `{ male, female }`
   - `countSchoolStudentsByGrade(schoolId)` → `{ gradeLevel: string | null; students }[]`, sorted in code by the file's existing `GRADE_RANK`, null last (Claude's call: the rank table already lives in that file)
 - **Use case:** `GetDeoSchoolDetailUseCase` (query `{ schoolId: string }`).
