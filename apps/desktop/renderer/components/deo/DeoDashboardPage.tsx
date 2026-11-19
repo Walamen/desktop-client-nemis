@@ -62,8 +62,8 @@ function KpiCard({ label, value, subtitle }: { label: string; value: number | st
 function Pager({ page, totalPages, total, noun, onPage }: {
   page: number;
   totalPages: number;
-  total?: number;
-  noun?: string;
+  total: number;
+  noun: string;
   onPage: (page: number) => void;
 }) {
   if (totalPages <= 1) return null;
@@ -71,7 +71,7 @@ function Pager({ page, totalPages, total, noun, onPage }: {
     <div className="flex items-center justify-between pt-2">
       <p className="text-sm text-gray-500">
         Page {page} of {totalPages}
-        {total !== undefined && noun ? ` (${total} ${noun})` : ''}
+        {` (${total} ${noun})`}
       </p>
       <div className="flex gap-2">
         <button

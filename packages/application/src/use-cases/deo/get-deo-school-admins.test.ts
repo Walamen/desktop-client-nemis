@@ -1,11 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { FixedClock } from '../../testing/fixed-clock';
 import { RecordingLogger } from '../../testing/recording-logger';
 import { InMemoryDistrictOverviewReadModel } from '../../testing/deo/in-memory-district-overview';
 import type { DistrictSchoolAdminRow } from '../../interfaces/deo/district-overview-read-model';
 import { GetDeoSchoolAdminsUseCase } from './get-deo-school-admins';
-
-const NOW = '2026-11-16T12:00:00.000Z';
 
 function admin(userId: string, schoolId: string, schoolName: string, firstName: string): DistrictSchoolAdminRow {
   return {
@@ -44,7 +41,6 @@ function run(model: InMemoryDistrictOverviewReadModel, districtId: string | null
   return new GetDeoSchoolAdminsUseCase({
     readModel: model,
     currentDistrictId: districtId,
-    clock: new FixedClock(NOW),
     logger: new RecordingLogger(),
   }).execute({});
 }

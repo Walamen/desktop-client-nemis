@@ -360,7 +360,6 @@ export class SqliteDistrictOverviewReadModel implements IDistrictOverviewReadMod
     });
   }
 
-
   listSchoolAdmins(districtId: string): DistrictSchoolAdminRow[] {
     return guarded('SqliteDistrictOverviewReadModel.listSchoolAdmins', () => {
       // One row per membership; the person is COALESCE(userId, id) (id was

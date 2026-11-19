@@ -2,7 +2,6 @@ import type { DeoSchoolAdminsResult } from '@nemis-desktop/types';
 import type { QueryHandler } from '../../core/query';
 import { ok, type ApplicationResponse } from '../../core/response';
 import type { IDistrictOverviewReadModel } from '../../interfaces/deo/district-overview-read-model';
-import type { IClock } from '../../interfaces/clock';
 import type { IAppLogger } from '../../interfaces/app-logger';
 import { invokeUseCase } from '../../pipeline/use-case-invoker';
 
@@ -10,7 +9,6 @@ export interface GetDeoSchoolAdminsDeps {
   readModel: IDistrictOverviewReadModel;
   /** The signed-in officer's district; null when none is assigned. */
   currentDistrictId: string | null;
-  clock: IClock;
   logger: IAppLogger;
 }
 

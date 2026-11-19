@@ -24,7 +24,7 @@ const RESULT: DeoReportsComplianceResult = {
   items: [
     item({ id: '1', reportType: 'Registration', status: 'APPROVED' }),
     item({ id: '2', reportType: 'Teacher Roster', status: 'PENDING', date: '2025-02-11T00:00:00.000Z' }),
-    item({ id: '3', reportType: 'Monthly Reports', status: 'MISSING', date: null }),
+    item({ id: '3', reportType: 'Registration', status: 'MISSING', date: null }),
   ],
 };
 
@@ -80,10 +80,11 @@ describe('DEO Reports & Compliance page', () => {
     mockNemis(async () => RESULT);
     renderPage();
     await screen.findByText('Kakata · Margibi');
-    for (const name of ['All', 'Registration', 'Teacher Roster', 'Monthly Reports']) {
+    for (const name of ['All', 'Registration', 'Teacher Roster']) {
       expect(screen.getAllByRole('button', { name }).length).toBeGreaterThan(0);
     }
     expect(screen.queryByRole('button', { name: 'Enrollment' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Monthly Reports' })).not.toBeInTheDocument();
   });
 
   it('filters with no match show the empty text', async () => {

@@ -789,7 +789,6 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
     listSchoolAdmins: new GetDeoSchoolAdminsUseCase({
       readModel: ports.districtOverview,
       currentDistrictId: ports.currentDistrictId,
-      clock,
       logger,
     }),
     listTeachers: new GetDeoTeachersUseCase({
