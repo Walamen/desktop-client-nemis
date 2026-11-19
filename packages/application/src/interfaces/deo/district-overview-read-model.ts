@@ -165,6 +165,10 @@ export interface IDistrictOverviewReadModel {
    * it. One organisation per user (the lowest id), sorted by first name,
    * last name. */
   listMessageContacts(districtId: string, currentUserId: string): CountyMessageRecipient[];
+  /** Active district schools' approval status, with approvedAt / createdAt read from details (null when absent or unparsable). */
+  listSchoolRegistrations(districtId: string): { institutionId: string; approvalStatus: string; approvedAt: string | null; createdAt: string | null }[];
+  /** Active TEACHER / ASSISTANT_TEACHER staff per school: total, awaiting approval (PENDING or UNDER_REVIEW), newest createdAt. A school with none is absent. */
+  teacherRosterBySchool(districtId: string): { institutionId: string; total: number; awaitingApproval: number; newestCreatedAt: string | null }[];
   /** A school's street/town address and establishedYear (details); null when the school row is missing. */
   getSchoolProfile(schoolId: string): { address: string | null; establishedYear: number | null } | null;
   /** Active students of one school per gender value. */

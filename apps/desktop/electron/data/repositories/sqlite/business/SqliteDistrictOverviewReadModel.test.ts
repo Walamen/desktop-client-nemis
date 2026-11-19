@@ -66,7 +66,12 @@ describe('SqliteDistrictOverviewReadModel', () => {
     );
     return `st-${seq}`;
   }
-  function staff(institutionId: string, position = 'TEACHER', isActive = 1) {
+  function staff(
+    institutionId: string,
+    position = 'TEACHER',
+    isActive = 1,
+    opts: { approvalStatus?: string; createdAt?: string } = {},
+  ) {
     seq += 1;
     run(
       `INSERT INTO staff (id,institutionId,firstName,lastName,dateOfBirth,gender,phoneNumber,employeeNumber,position,employmentType,dateOfJoining,isActive,createdAt,updatedAt)
@@ -76,9 +81,10 @@ describe('SqliteDistrictOverviewReadModel', () => {
       `E-${seq}`,
       position,
       isActive,
-      NOW,
+      opts.createdAt ?? NOW,
       NOW,
     );
+    if (opts.approvalStatus) run(`UPDATE staff SET approvalStatus = ? WHERE id = ?`, opts.approvalStatus, `stf-${seq}`);
   }
   function year(id: string, institutionId: string) {
     run(
@@ -187,6 +193,42 @@ describe('SqliteDistrictOverviewReadModel', () => {
     expect(readModel.listOpenAlerts('d-1')).toEqual([]);
     expect(readModel.listSubmittedReports('d-1', 50)).toEqual([]);
     expect(readModel.lastSubmissionBySchool('d-1')).toEqual([]);
+  });
+
+  it('listSchoolRegistrations reads dates from details', () => {
+    district('d-1', 'Buchanan');
+    district('d-2', 'Compound 3');
+    school('s-a', 'd-1', {
+      details: '{"approvedAt":"2025-02-10T00:00:00.000Z","createdAt":"2025-01-05T00:00:00.000Z"}',
+    });
+    school('s-null', 'd-1');
+    school('s-bad', 'd-1', { details: 'not json' });
+    school('s-odd', 'd-1', { details: '{"approvedAt":5,"createdAt":""}' });
+    school('s-off', 'd-1', { isActive: 0, details: '{"createdAt":"2025-01-05T00:00:00.000Z"}' });
+    school('s-other', 'd-2', { details: '{"createdAt":"2025-01-05T00:00:00.000Z"}' });
+    const rows = [...readModel.listSchoolRegistrations('d-1')].sort((a, b) =>
+      a.institutionId.localeCompare(b.institutionId),
+    );
+    expect(rows).toEqual([
+      { institutionId: 's-a', approvalStatus: 'APPROVED', approvedAt: '2025-02-10T00:00:00.000Z', createdAt: '2025-01-05T00:00:00.000Z' },
+      { institutionId: 's-bad', approvalStatus: 'APPROVED', approvedAt: null, createdAt: null },
+      { institutionId: 's-null', approvalStatus: 'APPROVED', approvedAt: null, createdAt: null },
+      { institutionId: 's-odd', approvalStatus: 'APPROVED', approvedAt: null, createdAt: null },
+    ]);
+  });
+
+  it('teacherRosterBySchool counts active teaching staff', () => {
+    seedDistrict();
+    school('s-none', 'd-1');
+    staff('s-a', 'TEACHER', 1, { approvalStatus: 'APPROVED', createdAt: '2025-03-01T00:00:00.000Z' });
+    staff('s-a', 'ASSISTANT_TEACHER', 1, { approvalStatus: 'PENDING', createdAt: '2025-05-01T00:00:00.000Z' });
+    staff('s-a', 'TEACHER', 1, { approvalStatus: 'UNDER_REVIEW', createdAt: '2025-04-01T00:00:00.000Z' });
+    staff('s-a', 'TEACHER', 0, { approvalStatus: 'PENDING', createdAt: '2025-09-01T00:00:00.000Z' });
+    staff('s-a', 'PRINCIPAL', 1, { approvalStatus: 'PENDING', createdAt: '2025-10-01T00:00:00.000Z' });
+    staff('s-other', 'TEACHER', 1, { approvalStatus: 'PENDING' });
+    expect(readModel.teacherRosterBySchool('d-1')).toEqual([
+      { institutionId: 's-a', total: 3, awaitingApproval: 2, newestCreatedAt: '2025-05-01T00:00:00.000Z' },
+    ]);
   });
 
   it('names the district, and the county once its row is synced', () => {

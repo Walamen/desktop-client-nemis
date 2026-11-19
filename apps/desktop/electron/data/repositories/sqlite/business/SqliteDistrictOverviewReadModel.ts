@@ -621,6 +621,44 @@ export class SqliteDistrictOverviewReadModel implements IDistrictOverviewReadMod
     );
   }
 
+  listSchoolRegistrations(
+    districtId: string,
+  ): { institutionId: string; approvalStatus: string; approvedAt: string | null; createdAt: string | null }[] {
+    return guarded('SqliteDistrictOverviewReadModel.listSchoolRegistrations', () => {
+      const rows = this.#statements
+        .get(`SELECT i.id AS id, i.approvalStatus AS approvalStatus, i.details AS details FROM ${institutions} i WHERE ${DISTRICT_SCHOOLS}`)
+        .all(districtId) as { id: string; approvalStatus: string; details: string | null }[];
+      // A date is a non-empty string, else null (older devices lack the keys).
+      const date = (value: unknown): string | null => (typeof value === 'string' && value !== '' ? value : null);
+      return rows.map((row) => {
+        const details = parseProfile(row.details);
+        return {
+          institutionId: row.id,
+          approvalStatus: row.approvalStatus,
+          approvedAt: date(details?.approvedAt),
+          createdAt: date(details?.createdAt),
+        };
+      });
+    });
+  }
+
+  teacherRosterBySchool(
+    districtId: string,
+  ): { institutionId: string; total: number; awaitingApproval: number; newestCreatedAt: string | null }[] {
+    return guarded('SqliteDistrictOverviewReadModel.teacherRosterBySchool', () =>
+      this.#statements
+        .get(
+          `SELECT t.institutionId AS institutionId, COUNT(*) AS total,
+                  SUM(CASE WHEN t.approvalStatus IN ('PENDING','UNDER_REVIEW') THEN 1 ELSE 0 END) AS awaitingApproval,
+                  MAX(t.createdAt) AS newestCreatedAt
+           FROM ${staff} t JOIN ${institutions} i ON i.id = t.institutionId
+           WHERE ${DISTRICT_SCHOOLS} AND t.isActive = 1 AND t.position IN ('TEACHER','ASSISTANT_TEACHER')
+           GROUP BY t.institutionId`,
+        )
+        .all(districtId) as { institutionId: string; total: number; awaitingApproval: number; newestCreatedAt: string | null }[],
+    );
+  }
+
   getSchoolProfile(schoolId: string): { address: string | null; establishedYear: number | null } | null {
     return guarded('SqliteDistrictOverviewReadModel.getSchoolProfile', () => {
       const row = this.#statements
