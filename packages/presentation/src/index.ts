@@ -102,6 +102,7 @@ export * from './view-models/county/county-dashboard-view-model';
 export * from './view-models/county/county-dashboard-views';
 export * from './view-models/deo/deo-dashboard-view-model';
 export * from './view-models/deo/deo-dashboard-views';
+export * from './view-models/deo/deo-analytics-views';
 export * from './view-models/deo/deo-schools-view-model';
 export * from './view-models/deo/deo-school-detail-view-model';
 export * from './view-models/deo/deo-schools-views';
