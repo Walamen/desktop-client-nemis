@@ -12,7 +12,7 @@ import {
 } from "recharts";
 
 interface AttendanceTrendChartProps {
-  data: { period: string; rate: number }[];
+  data: { period: string; rate: number | null }[];
 }
 
 export default function AttendanceTrendChart({
@@ -73,6 +73,7 @@ export default function AttendanceTrendChart({
         <Line
           type="monotone"
           dataKey="rate"
+          connectNulls={false}
           stroke="#3b82f6"
           strokeWidth={3}
           dot={{ fill: "#3b82f6", r: 5 }}
