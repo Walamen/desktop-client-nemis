@@ -63,6 +63,8 @@ export class DeoInfrastructureViewModel {
       return true;
     } catch {
       this.store.setState({ actionError: ACTION_ERROR });
+      // The write may have landed before the call rejected: show what is stored.
+      await this.load().catch(() => undefined);
       return false;
     } finally {
       this.store.setState({ acting: false });

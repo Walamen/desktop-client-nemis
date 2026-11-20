@@ -366,31 +366,33 @@ export function DeoInfrastructurePage() {
                 : 'Escalate to County'
           }
           footer={
-            <>
+            <div className="flex w-full flex-col gap-2">
               {actionError && (
                 <p role="alert" className="w-full text-sm text-red-600">
                   {actionError}
                 </p>
               )}
-              <button
-                type="button"
-                onClick={closeActionModal}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleAction()}
-                disabled={acting || (actionType === 'escalate' && !escalationReason.trim())}
-                className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-sky-700 rounded-lg hover:bg-sky-800 transition-colors disabled:opacity-50"
-              >
-                {acting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {actionType === 'review' && 'Mark as Under Review'}
-                {actionType === 'resolve' && 'Mark as Resolved'}
-                {actionType === 'escalate' && 'Escalate to County'}
-              </button>
-            </>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={closeActionModal}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleAction()}
+                  disabled={acting || (actionType === 'escalate' && !escalationReason.trim())}
+                  className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-sky-700 rounded-lg hover:bg-sky-800 transition-colors disabled:opacity-50"
+                >
+                  {acting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {actionType === 'review' && 'Mark as Under Review'}
+                  {actionType === 'resolve' && 'Mark as Resolved'}
+                  {actionType === 'escalate' && 'Escalate to County'}
+                </button>
+              </div>
+            </div>
           }
         >
           <div className="space-y-4">

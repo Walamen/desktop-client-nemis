@@ -79,6 +79,23 @@ describe('DeoInfrastructureViewModel', () => {
     expect(vm.store.getState().actionError).toBe(SAVE_ERROR);
   });
 
+  it('a rejection still reloads the list', async () => {
+    const { deo, loads } = makeDeo(async () => {
+      throw new Error('boom');
+    });
+    const vm = new DeoInfrastructureViewModel({ deo });
+    expect(await vm.act('review', 'i-1')).toBe(false);
+    expect(loads).toHaveLength(1);
+    expect(vm.store.getState()).toMatchObject({ acting: false, actionError: SAVE_ERROR });
+  });
+
+  it('a false reply still reloads the list', async () => {
+    const { deo, loads } = makeDeo(async () => false);
+    const vm = new DeoInfrastructureViewModel({ deo });
+    await vm.act('review', 'i-1');
+    expect(loads).toHaveLength(1);
+  });
+
   it('clearActionError resets it', async () => {
     const { deo } = makeDeo(async () => false);
     const vm = new DeoInfrastructureViewModel({ deo });

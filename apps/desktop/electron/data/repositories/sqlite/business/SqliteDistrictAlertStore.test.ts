@@ -226,6 +226,14 @@ describe('SqliteDistrictAlertStore', () => {
       expect(full('i-1').countyId).toBe('county-x');
     });
 
+    it('escalate: a blank or whitespace reason is refused and nothing is queued', () => {
+      issue('i-1');
+      expect(store.escalate('d-1', 'i-1', OFFICER, '', NOW)).toBe(false);
+      expect(store.escalate('d-1', 'i-1', OFFICER, '   ', NOW)).toBe(false);
+      expect(full('i-1')).toMatchObject({ isResolved: 0, metadata: { attachments: ['a.jpg'] } });
+      expect(queued()).toEqual([]);
+    });
+
     it('escalate: ESCALATED again is refused', () => {
       issue('i-1', { status: 'ESCALATED' });
       expect(store.escalate('d-1', 'i-1', OFFICER, 'Again', NOW)).toBe(false);
@@ -255,6 +263,7 @@ describe('SqliteDistrictAlertStore', () => {
           resolvedById: 'deo-1',
           resolvedByName: 'Ama Kollie',
           attachments: ['a.jpg'],
+          acknowledgedAt: '2026-10-01T00:00:00.000Z',
         },
       });
     });

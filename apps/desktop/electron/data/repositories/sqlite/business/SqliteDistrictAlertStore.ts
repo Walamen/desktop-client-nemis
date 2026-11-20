@@ -135,7 +135,7 @@ export class SqliteDistrictAlertStore implements IDistrictAlertStore {
     at: string,
   ): boolean {
     const db = this.#repository.connection;
-    const run = db.transaction((): boolean => {
+    return this.#repository.transactions.runImmediate((): boolean => {
       // The WHERE clause is the authorisation: only an unresolved alert of
       // this district, or of one of its active schools, matches. A
       // county-level alert that happens to be on the device does not, and
@@ -175,6 +175,5 @@ export class SqliteDistrictAlertStore implements IDistrictAlertStore {
       }
       return db.prepare(`UPDATE ${alerts} SET ${sets.join(', ')} WHERE id = ?`).run(...params, alertId).changes > 0;
     });
-    return run();
   }
 }
