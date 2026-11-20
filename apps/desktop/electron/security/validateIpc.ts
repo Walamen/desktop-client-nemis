@@ -1361,6 +1361,29 @@ export function assertDeoAlertsQueryArgs(args: readonly unknown[]): void {
   assertInt(query.page, 'page', 1, 10000);
 }
 
+const INFRASTRUCTURE_TEXT_MAX = 2000;
+
+/** DEO Infrastructure Review / Resolve: an issue id and an optional comment. */
+export function assertDeoInfrastructureActionArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [request] = args;
+  if (!isPlainObject(request)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(request, ['issueId', 'comments']);
+  assertString(request.issueId, 'issueId', ID_MAX_LENGTH);
+  assertOptionalString(request.comments, 'comments', INFRASTRUCTURE_TEXT_MAX);
+}
+
+/** DEO Infrastructure Escalate: an issue id and a non-blank reason. */
+export function assertDeoInfrastructureEscalateArgs(args: readonly unknown[]): void {
+  assertArity(args, 1);
+  const [request] = args;
+  if (!isPlainObject(request)) throw new IPCError('Expected a request object.');
+  assertKnownKeys(request, ['issueId', 'reason']);
+  assertString(request.issueId, 'issueId', ID_MAX_LENGTH);
+  assertString(request.reason, 'reason', INFRASTRUCTURE_TEXT_MAX);
+  if ((request.reason as string).trim().length === 0) throw new IPCError('Expected a non-blank "reason".');
+}
+
 /** County Generate Reports: no districtId = county-wide. */
 export function assertCountyEnrollmentReportQueryArgs(args: readonly unknown[]): void {
   assertCountyReportScope(args, []);

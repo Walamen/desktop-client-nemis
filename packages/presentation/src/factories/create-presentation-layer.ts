@@ -22,6 +22,7 @@ import { SchoolsViewModel } from '../view-models/institution/schools-view-model'
 import { CountyDashboardViewModel } from '../view-models/county/county-dashboard-view-model';
 import { DeoDashboardViewModel } from '../view-models/deo/deo-dashboard-view-model';
 import { DeoAlertsViewModel } from '../view-models/deo/deo-alerts-view-model';
+import { DeoInfrastructureViewModel } from '../view-models/deo/deo-infrastructure-view-model';
 import { DeoSchoolsViewModel } from '../view-models/deo/deo-schools-view-model';
 import { DeoReportsComplianceViewModel } from '../view-models/deo/deo-reports-compliance-view-model';
 import { DeoSchoolDetailViewModel } from '../view-models/deo/deo-school-detail-view-model';
@@ -91,6 +92,7 @@ export interface PresentationViewModels {
   readonly countyDashboard: CountyDashboardViewModel;
   readonly deoDashboard: DeoDashboardViewModel;
   readonly deoAlerts: DeoAlertsViewModel;
+  readonly deoInfrastructure: DeoInfrastructureViewModel;
   readonly deoSchools: DeoSchoolsViewModel;
   readonly deoReportsCompliance: DeoReportsComplianceViewModel;
   readonly deoSchoolDetail: DeoSchoolDetailViewModel;
@@ -201,6 +203,7 @@ export function createPresentationLayer(
     countyDashboard: new CountyDashboardViewModel({ county: app.county }),
     deoDashboard: new DeoDashboardViewModel({ deo: app.deo }),
     deoAlerts: new DeoAlertsViewModel({ deo: app.deo }),
+    deoInfrastructure: new DeoInfrastructureViewModel({ deo: app.deo }),
     deoSchools: new DeoSchoolsViewModel({ deo: app.deo }),
     deoReportsCompliance: new DeoReportsComplianceViewModel({ deo: app.deo }),
     deoSchoolDetail: new DeoSchoolDetailViewModel({ deo: app.deo }),

@@ -173,6 +173,10 @@ describe('authorizeChannel', () => {
       IpcChannels.DEO_SETTINGS,
       IpcChannels.DEO_SETTINGS_REMOTE,
       IpcChannels.DEO_SETTINGS_SAVE,
+      IpcChannels.DEO_INFRASTRUCTURE,
+      IpcChannels.DEO_INFRASTRUCTURE_REVIEW,
+      IpcChannels.DEO_INFRASTRUCTURE_RESOLVE,
+      IpcChannels.DEO_INFRASTRUCTURE_ESCALATE,
     ];
     expect(new Set(channels)).toEqual(new Set(DEO_CHANNELS));
     for (const channel of channels) {

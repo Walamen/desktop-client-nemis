@@ -1,6 +1,9 @@
 import type {
   DeoAlertsQuery,
   DeoAlertsResult,
+  DeoInfrastructureResult,
+  DeoInfrastructureActionRequest,
+  DeoInfrastructureEscalateRequest,
   DeoDashboardResult,
   DeoSchoolAdminsResult,
   DeoSchoolDetailResult,
@@ -34,6 +37,13 @@ export const dashboardBridge = {
   getDashboard: (): Promise<DeoDashboardResult> => api().deo.getDashboard(),
   resolveAlert: (alertId: string): Promise<boolean> => api().deo.resolveAlert(alertId),
   listAlerts: (query: DeoAlertsQuery): Promise<DeoAlertsResult> => api().deo.listAlerts(query),
+  getInfrastructure: (): Promise<DeoInfrastructureResult> => api().deo.getInfrastructure(),
+  reviewInfrastructure: (request: DeoInfrastructureActionRequest): Promise<boolean> =>
+    api().deo.reviewInfrastructure(request),
+  resolveInfrastructure: (request: DeoInfrastructureActionRequest): Promise<boolean> =>
+    api().deo.resolveInfrastructure(request),
+  escalateInfrastructure: (request: DeoInfrastructureEscalateRequest): Promise<boolean> =>
+    api().deo.escalateInfrastructure(request),
   listSchools: (): Promise<DeoSchoolsResult> => api().deo.listSchools(),
   getSchool: (schoolId: string): Promise<DeoSchoolDetailResult> => api().deo.getSchool(schoolId),
   listSchoolAdmins: (): Promise<DeoSchoolAdminsResult> => api().deo.listSchoolAdmins(),

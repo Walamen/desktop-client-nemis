@@ -94,6 +94,9 @@ import type {
   DeoSettingsSaveRequest,
   DeoAlertsQuery,
   DeoAlertsResult,
+  DeoInfrastructureResult,
+  DeoInfrastructureActionRequest,
+  DeoInfrastructureEscalateRequest,
   DeoAttendanceReportQuery,
   DeoReportQuery,
   DeoReportScope,
@@ -269,6 +272,10 @@ export interface IpcContract {
   'deo:get-dashboard': { args: []; result: DeoDashboardResult };
   'deo:resolve-alert': { args: [alertId: string]; result: boolean };
   'deo:list-alerts': { args: [query: DeoAlertsQuery]; result: DeoAlertsResult };
+  'deo:infrastructure': { args: []; result: DeoInfrastructureResult };
+  'deo:infrastructure-review': { args: [request: DeoInfrastructureActionRequest]; result: boolean };
+  'deo:infrastructure-resolve': { args: [request: DeoInfrastructureActionRequest]; result: boolean };
+  'deo:infrastructure-escalate': { args: [request: DeoInfrastructureEscalateRequest]; result: boolean };
   'deo:list-schools': { args: []; result: DeoSchoolsResult };
   'deo:get-school': { args: [schoolId: string]; result: DeoSchoolDetailResult };
   'deo:list-school-admins': { args: []; result: DeoSchoolAdminsResult };
@@ -561,6 +568,10 @@ export const IpcChannels = {
   DEO_GET_DASHBOARD: 'deo:get-dashboard',
   DEO_RESOLVE_ALERT: 'deo:resolve-alert',
   DEO_LIST_ALERTS: 'deo:list-alerts',
+  DEO_INFRASTRUCTURE: 'deo:infrastructure',
+  DEO_INFRASTRUCTURE_REVIEW: 'deo:infrastructure-review',
+  DEO_INFRASTRUCTURE_RESOLVE: 'deo:infrastructure-resolve',
+  DEO_INFRASTRUCTURE_ESCALATE: 'deo:infrastructure-escalate',
   DEO_LIST_SCHOOLS: 'deo:list-schools',
   DEO_GET_SCHOOL: 'deo:get-school',
   DEO_LIST_SCHOOL_ADMINS: 'deo:list-school-admins',

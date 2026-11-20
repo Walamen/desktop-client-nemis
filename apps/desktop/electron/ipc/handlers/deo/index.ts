@@ -10,3 +10,4 @@ export { registerDeoMessagingHandlers } from './messaging';
 export { registerDeoSettingsHandlers } from './settings';
 export { registerDeoReportHandlers } from './reports';
 export { registerDeoTeacherHandlers } from './teachers';
+export { registerDeoInfrastructureHandlers } from './infrastructure';

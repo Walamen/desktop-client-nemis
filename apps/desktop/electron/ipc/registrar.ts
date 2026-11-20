@@ -61,6 +61,7 @@ import {
   registerDeoSettingsHandlers,
   registerDeoReportHandlers,
   registerDeoTeacherHandlers,
+  registerDeoInfrastructureHandlers,
   registerDeoSchoolHandlers,
 } from '@app/ipc/handlers/deo';
 // County (CEO) portal — see electron/ipc/handlers/county/.
@@ -128,6 +129,7 @@ export function registerIpcHandlers(
   registerDeoFinanceHandlers(securedHandle, app);
   registerDeoReportHandlers(securedHandle, app);
   registerDeoTeacherHandlers(securedHandle, app);
+  registerDeoInfrastructureHandlers(securedHandle, app);
   registerCountyDistrictHandlers(securedHandle, app);
   registerCountySchoolHandlers(securedHandle, app);
   registerCountyGuardianHandlers(securedHandle, app);

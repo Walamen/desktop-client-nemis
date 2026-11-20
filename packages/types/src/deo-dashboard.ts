@@ -517,4 +517,8 @@ export interface DeoApi {
   resolveAlert(alertId: string): Promise<boolean>;
   /** One page of the district's alerts, open / resolved / all. */
   listAlerts(query: DeoAlertsQuery): Promise<DeoAlertsResult>;
+  getInfrastructure(): Promise<DeoInfrastructureResult>;
+  reviewInfrastructure(request: DeoInfrastructureActionRequest): Promise<boolean>;
+  resolveInfrastructure(request: DeoInfrastructureActionRequest): Promise<boolean>;
+  escalateInfrastructure(request: DeoInfrastructureEscalateRequest): Promise<boolean>;
 }
