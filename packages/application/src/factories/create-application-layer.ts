@@ -66,6 +66,12 @@ import type { IDistrictAlertStore } from '../interfaces/deo/district-alert-store
 import { GetDeoDashboardUseCase } from '../use-cases/deo/get-deo-dashboard';
 import { ResolveDistrictAlertUseCase } from '../use-cases/deo/resolve-district-alert';
 import { GetDeoAlertsUseCase } from '../use-cases/deo/get-deo-alerts';
+import { GetDeoInfrastructureUseCase } from '../use-cases/deo/get-deo-infrastructure';
+import {
+  EscalateInfrastructureIssueUseCase,
+  ResolveInfrastructureIssueUseCase,
+  ReviewInfrastructureIssueUseCase,
+} from '../use-cases/deo/infrastructure-actions';
 import { GetDeoSchoolsUseCase } from '../use-cases/deo/get-deo-schools';
 import { GetDeoReportsComplianceUseCase } from '../use-cases/deo/get-deo-reports-compliance';
 import { GetDeoSchoolDetailUseCase } from '../use-cases/deo/get-deo-school-detail';
@@ -751,6 +757,14 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
     currentUserId: ports.currentUserId,
     logger,
   };
+  const infrastructureActionDeps = {
+    store: ports.districtAlerts,
+    readModel: ports.districtOverview,
+    currentDistrictId: ports.currentDistrictId,
+    currentUserId: ports.currentUserId,
+    clock,
+    logger,
+  };
   const deo = new DeoApplicationService({
     getDashboard: new GetDeoDashboardUseCase({
       readModel: ports.districtOverview,
@@ -867,6 +881,14 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
       currentDistrictId: ports.currentDistrictId,
       logger,
     }),
+    getInfrastructure: new GetDeoInfrastructureUseCase({
+      readModel: ports.districtOverview,
+      currentDistrictId: ports.currentDistrictId,
+      logger,
+    }),
+    reviewInfrastructure: new ReviewInfrastructureIssueUseCase(infrastructureActionDeps),
+    resolveInfrastructure: new ResolveInfrastructureIssueUseCase(infrastructureActionDeps),
+    escalateInfrastructure: new EscalateInfrastructureIssueUseCase(infrastructureActionDeps),
     resolveAlert: new ResolveDistrictAlertUseCase({
       store: ports.districtAlerts,
       readModel: ports.districtOverview,

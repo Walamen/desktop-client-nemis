@@ -176,6 +176,46 @@ export interface DeoAlertsResult {
   meta: { page: number; limit: number; total: number; totalPages: number };
 }
 
+export type DeoInfrastructureStatus = 'OPEN' | 'UNDER_REVIEW' | 'ESCALATED';
+
+/** One open infrastructure issue of the district, as the Infrastructure page lists it. */
+export interface DeoInfrastructureIssue {
+  id: string;
+  schoolId: string | null;
+  schoolName: string;
+  category: string;
+  title: string;
+  note: string;
+  severity: string;
+  status: DeoInfrastructureStatus;
+  reportedAt: string;
+}
+
+export interface DeoInfrastructureSummary {
+  totalIssues: number;
+  critical: number;
+  open: number;
+  escalated: number;
+}
+
+export interface DeoInfrastructureResult {
+  districtId: string | null;
+  district: { id: string; name: string } | null;
+  county: { id: string; name: string } | null;
+  summary: DeoInfrastructureSummary;
+  issues: DeoInfrastructureIssue[];
+}
+
+export interface DeoInfrastructureActionRequest {
+  issueId: string;
+  comments?: string;
+}
+
+export interface DeoInfrastructureEscalateRequest {
+  issueId: string;
+  reason: string;
+}
+
 /** One School Admin account, as the School Admin Directory shows it. */
 export interface DeoSchoolAdmin {
   userId: string;

@@ -5,6 +5,7 @@ import type { IDistrictOverviewReadModel } from '../../interfaces/deo/district-o
 import type { IClock } from '../../interfaces/clock';
 import type { IAppLogger } from '../../interfaces/app-logger';
 import { invokeUseCase } from '../../pipeline/use-case-invoker';
+import { resolveOfficer } from './deo-officer';
 
 export interface ResolveDistrictAlertDeps {
   store: IDistrictAlertStore;
@@ -29,9 +30,7 @@ export class ResolveDistrictAlertUseCase implements CommandHandler<
     return invokeUseCase('ResolveDistrictAlert', this.deps.logger, async () => {
       const districtId = this.deps.currentDistrictId;
       if (!districtId) return ok(false);
-      const profile = this.deps.readModel.getUserProfile(this.deps.currentUserId);
-      const name = [profile?.firstName, profile?.lastName].filter(Boolean).join(' ').trim() || 'DEO';
-      const by = { id: this.deps.currentUserId, name };
+      const by = resolveOfficer(this.deps.readModel, this.deps.currentUserId);
       return ok(this.deps.store.resolve(districtId, command.alertId, by, this.deps.clock.now()));
     });
   }

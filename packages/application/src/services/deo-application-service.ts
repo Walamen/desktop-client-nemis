@@ -6,6 +6,9 @@ import type {
   DeoReportsComplianceResult,
   DeoAlertsQuery,
   DeoAlertsResult,
+  DeoInfrastructureActionRequest,
+  DeoInfrastructureEscalateRequest,
+  DeoInfrastructureResult,
   DeoStudentsResult,
   DeoTeachersResult,
   DeoTransfersResult,
@@ -27,6 +30,12 @@ import type { ApplicationResponse } from '../core/response';
 import type { GetDeoDashboardUseCase } from '../use-cases/deo/get-deo-dashboard';
 import type { ResolveDistrictAlertUseCase } from '../use-cases/deo/resolve-district-alert';
 import type { GetDeoAlertsUseCase } from '../use-cases/deo/get-deo-alerts';
+import type { GetDeoInfrastructureUseCase } from '../use-cases/deo/get-deo-infrastructure';
+import type {
+  EscalateInfrastructureIssueUseCase,
+  ResolveInfrastructureIssueUseCase,
+  ReviewInfrastructureIssueUseCase,
+} from '../use-cases/deo/infrastructure-actions';
 import type { GetDeoSchoolsUseCase } from '../use-cases/deo/get-deo-schools';
 import type { GetDeoReportsComplianceUseCase } from '../use-cases/deo/get-deo-reports-compliance';
 import type { GetDeoSchoolDetailUseCase } from '../use-cases/deo/get-deo-school-detail';
@@ -50,6 +59,10 @@ export interface DeoApplicationServiceDeps {
   resolveAlert: ResolveDistrictAlertUseCase;
   listSchools: GetDeoSchoolsUseCase;
   listAlerts: GetDeoAlertsUseCase;
+  getInfrastructure: GetDeoInfrastructureUseCase;
+  reviewInfrastructure: ReviewInfrastructureIssueUseCase;
+  resolveInfrastructure: ResolveInfrastructureIssueUseCase;
+  escalateInfrastructure: EscalateInfrastructureIssueUseCase;
   getSchool: GetDeoSchoolDetailUseCase;
   getReportsCompliance: GetDeoReportsComplianceUseCase;
   listSchoolAdmins: GetDeoSchoolAdminsUseCase;
@@ -165,5 +178,21 @@ export class DeoApplicationService {
 
   resolveAlert(alertId: string): Promise<ApplicationResponse<boolean>> {
     return this.deps.resolveAlert.execute({ alertId });
+  }
+
+  getInfrastructure(): Promise<ApplicationResponse<DeoInfrastructureResult>> {
+    return this.deps.getInfrastructure.execute({});
+  }
+
+  reviewInfrastructure(request: DeoInfrastructureActionRequest): Promise<ApplicationResponse<boolean>> {
+    return this.deps.reviewInfrastructure.execute(request);
+  }
+
+  resolveInfrastructure(request: DeoInfrastructureActionRequest): Promise<ApplicationResponse<boolean>> {
+    return this.deps.resolveInfrastructure.execute(request);
+  }
+
+  escalateInfrastructure(request: DeoInfrastructureEscalateRequest): Promise<ApplicationResponse<boolean>> {
+    return this.deps.escalateInfrastructure.execute(request);
   }
 }
