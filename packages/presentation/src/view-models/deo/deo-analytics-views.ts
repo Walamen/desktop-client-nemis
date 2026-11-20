@@ -279,7 +279,8 @@ export function teacherAnalytics(schools: AnalyticsSchool[]): {
     schoolsWithTeachers,
     avgPerSchool:
       schoolsWithTeachers === 0 ? 0 : Math.round(total / schoolsWithTeachers),
-    bySchool: [...schools]
+    bySchool: schools
+      .filter((s) => s.teachers > 0)
       .sort(byNameThen((s) => s.teachers, -1))
       .slice(0, 10)
       .map((s) => ({ schoolId: s.id, name: s.name, teachers: s.teachers })),

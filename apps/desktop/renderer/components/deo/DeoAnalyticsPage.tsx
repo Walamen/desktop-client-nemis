@@ -441,7 +441,7 @@ export function DeoAnalyticsPage() {
               <ChartSkeleton />
             ) : enrollmentRows.length > 0 ? (
               <EnrollmentBySchoolChart data={enrollmentRows} />
-            ) : (
+            ) : input ? (
               <div className="h-[300px] flex items-center justify-center">
                 <div className="text-center">
                   <BarChart3 className="w-10 h-10 text-gray-300 mx-auto mb-2" />
@@ -450,7 +450,7 @@ export function DeoAnalyticsPage() {
                   </p>
                 </div>
               </div>
-            )}
+            ) : null}
           </div>
         </div>
 
@@ -464,8 +464,7 @@ export function DeoAnalyticsPage() {
             </h3>
             {loading ? (
               <ChartSkeleton />
-            ) : chartData?.attendanceTrend &&
-              chartData.attendanceTrend.length > 0 ? (
+            ) : attendanceTrendData.some((p) => p.rate !== null) ? (
               <AttendanceTrendChart data={attendanceTrendData} />
             ) : (
               <div className="h-[300px] flex items-center justify-center">
@@ -494,7 +493,7 @@ export function DeoAnalyticsPage() {
                   </p>
                 )}
               </>
-            ) : (
+            ) : input ? (
               <div className="h-[300px] flex items-center justify-center">
                 <div className="text-center">
                   <BarChart3 className="w-10 h-10 text-gray-300 mx-auto mb-2" />
@@ -503,7 +502,7 @@ export function DeoAnalyticsPage() {
                   </p>
                 </div>
               </div>
-            )}
+            ) : null}
           </div>
         </div>
 
@@ -545,7 +544,7 @@ export function DeoAnalyticsPage() {
                     <div key={i} className="h-14 bg-gray-100 rounded-lg" />
                   ))}
                 </div>
-              ) : chartData?.genderDistribution ? (
+              ) : chartData?.genderDistribution && kpis ? (
                 <div className="space-y-4">
                   {(() => {
                     const { male, female } = chartData.genderDistribution;
@@ -557,8 +556,8 @@ export function DeoAnalyticsPage() {
                         </p>
                       );
                     }
-                    const malePct = kpis?.malePct ?? 0;
-                    const femalePct = kpis?.femalePct ?? 0;
+                    const malePct = kpis.malePct ?? 0;
+                    const femalePct = kpis.femalePct ?? 0;
 
                     return (
                       <>
@@ -673,7 +672,7 @@ export function DeoAnalyticsPage() {
               </div>
               <div className="h-48 bg-gray-100 rounded-lg" />
             </div>
-          ) : (
+          ) : input ? (
             <div className="space-y-5">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="bg-violet-50 rounded-lg p-4 text-center">
@@ -767,7 +766,7 @@ export function DeoAnalyticsPage() {
                 </div>
               )}
             </div>
-          )}
+          ) : null}
         </div>
 
         {/* SECTION 8 — SCHOOL COMPARISON */}
@@ -786,9 +785,9 @@ export function DeoAnalyticsPage() {
             <div className="h-[400px] flex items-center justify-center animate-pulse">
               <div className="h-full w-full bg-gray-100 rounded-lg" />
             </div>
-          ) : (
+          ) : input ? (
             <SchoolComparisonChart data={schoolComparisonData} />
-          )}
+          ) : null}
         </div>
       </div>
     </div>

@@ -160,6 +160,21 @@ describe('DEO Analytics page', () => {
     fireEvent.click(screen.getByText('Retry'));
     await waitFor(() => expect(getDashboard.mock.calls.length).toBeGreaterThanOrEqual(2));
   });
+
+  it('shows no false zeros in the error state', async () => {
+    mockNemis(new Error('boom'));
+    renderPage();
+    expect(await screen.findByText('Failed to load analytics.')).toBeInTheDocument();
+    expect(screen.queryByText('Total Teachers')).toBeNull();
+    expect(screen.queryByText(/(0%)/)).toBeNull();
+    expect(screen.queryByText('No school enrollment data available')).toBeNull();
+  });
+
+  it('shows the empty state when every month has no attendance records', async () => {
+    mockNemis(dashboard({ rates: [0, 0, 0, 0, 0, 0] }));
+    renderPage();
+    expect(await screen.findByText('No attendance data')).toBeInTheDocument();
+  });
 });
 
 describe('DEO sidebar', () => {

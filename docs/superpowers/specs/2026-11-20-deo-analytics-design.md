@@ -123,7 +123,7 @@ The "Active" and "Inactive" figures are removed.
 
 - **Header place:** district · county, as on the other DEO pages (web: `useGetDistrictSettingsQuery`; desktop: dashboard `district`/`county`, or the source the Schools page uses).
 - **Dropdowns:** the academic-year and term dropdowns are removed.
-- **Refresh:** the "Refresh" button and the "Updated …" time stay, wired to the page's sources.
+- **Refresh:** the "Refresh" button and the "Updated …" time stay, wired to the page's sources.  **Amended during the build (2026-11-20, ruling):** the desktop page leaves the "Updated …" time out, because the dashboard result carries no load time and the desktop status bar already shows the last sync. The web page keeps it.
 
 ### Sidebar (Claude's call)
 

@@ -163,6 +163,13 @@ describe("analyticsInsights", () => {
       text: "District-wide attendance rate (75%) is below 80%.",
       type: "warning",
     });
+    expect(r(60)[0]).toEqual({
+      id: "insight-0",
+      text: "District-wide attendance rate (60%) is below 80%.",
+      type: "warning",
+    });
+    expect(r(80)[0]!.type).toBe("success");
+    expect(r(80)[0]!.text).toContain("normal ranges");
     expect(r(85)[0]!.type).toBe("success");
     expect(r(0)[0]!.type).toBe("success");
   });
@@ -328,6 +335,13 @@ describe("by-school series", () => {
       school({ id: "a", name: "Alpha", students: 5 }),
     ];
     expect(enrollmentBySchool(t).map((r) => r.name)).toEqual(["Alpha", "Zed"]);
+  });
+  it("teacherAnalytics bySchool excludes schools with no teachers", () => {
+    const r = teacherAnalytics([
+      school({ id: "a", teachers: 3 }),
+      school({ id: "b", teachers: 0 }),
+    ]);
+    expect(r.bySchool.map((x) => x.schoolId)).toEqual(["a"]);
   });
   it("teacherAnalytics totals and empty", () => {
     expect(teacherAnalytics([])).toEqual({
