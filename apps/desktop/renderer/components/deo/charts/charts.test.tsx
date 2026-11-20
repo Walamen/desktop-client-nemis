@@ -62,6 +62,11 @@ describe('SchoolComparisonChart', () => {
       />,
     );
     expect(container.querySelector('.recharts-wrapper')).not.toBeNull();
+    // Series order: enrollment, attendance, teachers. The null row draws no attendance bar.
+    const counts = [...container.querySelectorAll('.recharts-bar')].map(
+      (bar) => bar.querySelectorAll('.recharts-bar-rectangle').length,
+    );
+    expect(counts).toEqual([2, 1, 2]);
   });
   it('renders an empty state with no data', () => {
     const { getByText } = render(<SchoolComparisonChart data={[]} />);
@@ -81,6 +86,12 @@ describe('AttendanceTrendChart', () => {
       />,
     );
     expect(container.querySelector('.recharts-wrapper')).not.toBeNull();
+    // jsdom has no layout, so the strongest observable proxy: the null month draws
+    // no dot (2 of 3) and the curve is two disconnected moves with no joining line.
+    expect(container.querySelectorAll('.recharts-line-dot')).toHaveLength(2);
+    const d = container.querySelector('.recharts-line-curve')?.getAttribute('d') ?? '';
+    expect(d.match(/M/g)).toHaveLength(2);
+    expect(d).not.toMatch(/[LCQ]/);
   });
   it('renders an empty state with no data', () => {
     const { getByText } = render(<AttendanceTrendChart data={[]} />);
