@@ -3,7 +3,7 @@ import {
   Building2, CreditCard, Bell, MessageCircle,
   MessageSquare, DollarSign, ClipboardCheck, ShieldCheck, Settings, UserCog,
   GraduationCap, ArrowRightLeft, UserCircle2, AlertTriangle, FileBarChart,
-  SlidersHorizontal, Clock, Receipt, Layers, Archive, Wrench,
+  SlidersHorizontal, Clock, Receipt, Layers, Archive, Wrench, BarChart3,
 } from 'lucide-react';
 // Use react-icons for icons 
 import { SiGoogleclassroom } from "react-icons/si";
@@ -215,6 +215,7 @@ export const sidebarConfigs: Record<DesktopPortalRole, SidebarConfig> = {
         label: 'REPORTS',
         items: [
           { name: 'Generate Reports', href: '/government/deo/reports/automated', icon: FileBarChart },
+          { name: 'Analytics', href: '/government/deo/analytics', icon: BarChart3 },
           { name: 'Finance', href: '/government/deo/finance', icon: DollarSign },
         ],
       },
