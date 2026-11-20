@@ -201,7 +201,7 @@ Alvin approved approach 1 on 2026-11-20.
   - its change, and insight 2, compare only two consecutive months that both have rate > 0;
   - insight 3 already requires rate > 0.
 
-  The cost: a month in which every recorded pupil was absent (a true 0%) reads as "No data". That is vanishingly rare, and it avoids a server change. The trend chart itself still plots 0 for those months, the same as the dashboard does today.
+  The cost: a month in which every recorded pupil was absent (a true 0%) reads as "No data". That is vanishingly rare, and it avoids a server change. **Amended during the build (2026-11-20, ruling):** on the Analytics page, the attendance trend chart draws those months as **gaps** (the page maps a rate of 0 to null; the chart sets `connectNulls={false}`), so the chart agrees with the "No data" KPI. The dashboard chart is unchanged and still plots 0. The desktop Analytics page does the same as the web.
 - **The web standings rows** carry `performanceStatus: "No Data"` when `attendanceRate` is null, using the same `schoolStanding` rule the Schools page uses. The desktop `DeoSchoolRow` uses the same rule.
 - **The desktop `alertSummary.total`** counts every unresolved alert by the Alerts rule (`listOpenAlerts`), not only the 50 listed, so it equals the desktop Alerts page's Open total. The web incidents `summary.total` is uncapped since the Incidents piece.
 - **Header place:** `useGetDistrictSettingsQuery`, as every other DEO page does. On the desktop it comes from the source the Schools page uses (`getDistrict`/`getCounty`), surfaced through the dashboard data or the Schools view model, whichever already carries it.
