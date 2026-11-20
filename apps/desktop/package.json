@@ -1,7 +1,7 @@
 {
   "name": "@nemis-desktop/app",
   "productName": "NEMIS Desktop",
-  "version": "2.0.9",
+  "version": "3.0.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/Walamen/desktop-client-nemis.git"
