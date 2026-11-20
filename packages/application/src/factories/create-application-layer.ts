@@ -869,6 +869,7 @@ export function createApplicationLayer(ports: ApplicationPorts): ApplicationLaye
     }),
     resolveAlert: new ResolveDistrictAlertUseCase({
       store: ports.districtAlerts,
+      readModel: ports.districtOverview,
       currentDistrictId: ports.currentDistrictId,
       currentUserId: ports.currentUserId,
       clock,

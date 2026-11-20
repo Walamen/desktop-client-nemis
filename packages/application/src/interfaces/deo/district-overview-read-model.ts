@@ -32,6 +32,12 @@ export interface DistrictAlertListRow {
   readonly isResolved: boolean; readonly resolvedAt: string | null; readonly createdAt: string;
 }
 
+export interface DistrictInfrastructureRow {
+  readonly id: string; readonly title: string; readonly description: string; readonly severity: string;
+  readonly institutionId: string | null; readonly schoolName: string | null;
+  readonly metadata: Record<string, unknown>; readonly createdAt: string;
+}
+
 /** One School Admin account at one school, before the school's issues are joined in. */
 export interface DistrictSchoolAdminRow {
   readonly userId: string;
@@ -121,6 +127,8 @@ export interface IDistrictOverviewReadModel {
   listOpenAlerts(districtId: string): DistrictAlertRow[];
   /** The district's alerts by the dashboard rule (district-tagged or an active school's; no staff requests; no county-level), in page order. */
   listDistrictAlerts(districtId: string, filter: 'open' | 'resolved' | 'all'): DistrictAlertListRow[];
+  /** Unresolved INFRASTRUCTURE_ISSUE alerts by the listDistrictAlerts rule; metadata parsed (object else {}). */
+  listInfrastructureIssues(districtId: string): DistrictInfrastructureRow[];
   /** The first active School Admin of each school (by id), full name. */
   schoolAdminNameBySchool(districtId: string): { institutionId: string; name: string }[];
   /** Every School Admin of an active school of the district. Unordered. */

@@ -1,5 +1,6 @@
 import type {
   DistrictAlertListRow,
+  DistrictInfrastructureRow,
   DistrictAlertRow,
   DistrictOverviewRef,
   DistrictSchoolAdminRow,
@@ -335,6 +336,36 @@ export class SqliteDistrictOverviewReadModel implements IDistrictOverviewReadMod
         )
         .all(districtId, districtId) as (Omit<DistrictAlertListRow, 'isResolved'> & { isResolved: number })[];
       return rows.map((row) => ({ ...row, isResolved: row.isResolved === 1 }));
+    });
+  }
+
+  listInfrastructureIssues(districtId: string): DistrictInfrastructureRow[] {
+    return guarded('SqliteDistrictOverviewReadModel.listInfrastructureIssues', () => {
+      const rows = this.#statements
+        .get(
+          `SELECT a.id, a.title, a.description, a.severity, a.institutionId,
+                  s.name AS schoolName, a.metadata, a.createdAt
+           FROM ${alerts} a
+           LEFT JOIN ${institutions} s ON s.id = a.institutionId
+           WHERE a.type = 'INFRASTRUCTURE_ISSUE' AND a.isResolved = 0
+             AND ${notSchoolStaffRequest('a.metadata')}
+             AND (a.districtId = ?
+                  OR a.institutionId IN (SELECT i.id FROM ${institutions} i WHERE i.districtId = ? AND i.isActive = 1))
+           ORDER BY a.createdAt DESC, a.id ASC`,
+        )
+        .all(districtId, districtId) as (Omit<DistrictInfrastructureRow, 'metadata'> & { metadata: string | null })[];
+      return rows.map((row) => {
+        let metadata: Record<string, unknown> = {};
+        try {
+          const parsed: unknown = row.metadata ? JSON.parse(row.metadata) : null;
+          if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            metadata = parsed as Record<string, unknown>;
+          }
+        } catch {
+          // Unreadable metadata reads as none.
+        }
+        return { ...row, metadata };
+      });
     });
   }
 

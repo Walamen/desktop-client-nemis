@@ -1,6 +1,7 @@
 import type {
   DistrictAlertListRow,
   DistrictAlertRow,
+  DistrictInfrastructureRow,
   DistrictSchoolAdminRow,
   DistrictTeacherRow,
   DistrictTransferRow,
@@ -9,7 +10,7 @@ import type {
   DistrictSchoolRef,
   IDistrictOverviewReadModel,
 } from '../../interfaces/deo/district-overview-read-model';
-import type { IDistrictAlertStore } from '../../interfaces/deo/district-alert-store';
+import type { AlertOfficer, IDistrictAlertStore } from '../../interfaces/deo/district-alert-store';
 import type { CountyMessageRecipient, DeoFinanceAuditEntry } from '@nemis-desktop/types';
 
 /** Settable canned rows. `calls` records every method name with its
@@ -28,6 +29,7 @@ export class InMemoryDistrictOverviewReadModel implements IDistrictOverviewReadM
   termSchools: string[] = [];
   alerts: DistrictAlertRow[] = [];
   districtAlerts: DistrictAlertListRow[] = [];
+  infrastructureRows: DistrictInfrastructureRow[] = [];
   schoolAdmins: { institutionId: string; name: string }[] = [];
   schoolAdminRows: DistrictSchoolAdminRow[] = [];
   infrastructureIssues: { institutionId: string; count: number }[] = [];
@@ -106,6 +108,10 @@ export class InMemoryDistrictOverviewReadModel implements IDistrictOverviewReadM
     this.#record('listDistrictAlerts', districtId, filter);
     return this.districtAlerts;
   }
+  listInfrastructureIssues(districtId: string): DistrictInfrastructureRow[] {
+    this.#record('listInfrastructureIssues', districtId);
+    return this.infrastructureRows;
+  }
   schoolAdminNameBySchool(districtId: string) {
     this.#record('schoolAdminNameBySchool', districtId);
     return this.schoolAdmins;
@@ -176,13 +182,26 @@ export class InMemoryDistrictOverviewReadModel implements IDistrictOverviewReadM
   }
 }
 
-/** Records each resolve call and returns `result`. */
+/** Records each write call and returns `result`. */
 export class InMemoryDistrictAlertStore implements IDistrictAlertStore {
   result = true;
-  readonly calls: { districtId: string; alertId: string; resolvedBy: string; at: string }[] = [];
+  readonly calls: { districtId: string; alertId: string; by: AlertOfficer; at: string }[] = [];
+  readonly actions: { action: string; districtId: string; alertId: string; by: AlertOfficer; text: string | null; at: string }[] = [];
 
-  resolve(districtId: string, alertId: string, resolvedBy: string, at: string): boolean {
-    this.calls.push({ districtId, alertId, resolvedBy, at });
+  resolve(districtId: string, alertId: string, by: AlertOfficer, at: string): boolean {
+    this.calls.push({ districtId, alertId, by, at });
+    return this.result;
+  }
+  review(districtId: string, alertId: string, by: AlertOfficer, comments: string | null, at: string): boolean {
+    this.actions.push({ action: 'review', districtId, alertId, by, text: comments, at });
+    return this.result;
+  }
+  resolveInfrastructure(districtId: string, alertId: string, by: AlertOfficer, comments: string | null, at: string): boolean {
+    this.actions.push({ action: 'resolveInfrastructure', districtId, alertId, by, text: comments, at });
+    return this.result;
+  }
+  escalate(districtId: string, alertId: string, by: AlertOfficer, reason: string, at: string): boolean {
+    this.actions.push({ action: 'escalate', districtId, alertId, by, text: reason, at });
     return this.result;
   }
 }

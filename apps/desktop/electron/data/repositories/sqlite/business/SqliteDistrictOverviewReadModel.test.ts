@@ -464,6 +464,57 @@ describe('SqliteDistrictOverviewReadModel', () => {
     expect(readModel.listOpenAlerts('d-1').map((row) => row.id).sort()).toEqual(['a-garbled', 'a-roof']);
   });
 
+  describe('listInfrastructureIssues', () => {
+    const issue = (id: string, opts: { districtId?: string | null; institutionId?: string | null; countyId?: string | null; type?: string; isResolved?: number; metadata?: string | null }) =>
+      run(
+        `INSERT INTO alerts (id,countyId,districtId,institutionId,type,severity,title,description,isResolved,metadata,createdAt,updatedAt)
+         VALUES (?,?,?,?,?,'HIGH',?,'Desc',?,?,?,?)`,
+        id,
+        opts.countyId ?? null,
+        opts.districtId ?? null,
+        opts.institutionId ?? null,
+        opts.type ?? 'INFRASTRUCTURE_ISSUE',
+        `Issue ${id}`,
+        opts.isResolved ?? 0,
+        opts.metadata === undefined ? JSON.stringify({ status: 'OPEN', category: 'Roof' }) : opts.metadata,
+        NOW,
+        NOW,
+      );
+
+    it('lists only unresolved infrastructure issues of the district or an active school', () => {
+      seedDistrict();
+      issue('i-district', { districtId: 'd-1' });
+      issue('i-school', { institutionId: 's-a' });
+      issue('i-attendance', { districtId: 'd-1', type: 'ATTENDANCE_CONCERN' });
+      issue('i-request', { institutionId: 's-a', metadata: JSON.stringify({ staffId: 'stf-1' }) });
+      issue('i-off', { institutionId: 's-off' });
+      issue('i-other', { districtId: 'd-2' });
+      issue('i-county', { countyId: 'county-1' });
+      issue('i-done', { districtId: 'd-1', isResolved: 1 });
+      expect(readModel.listInfrastructureIssues('d-1').map((row) => row.id).sort()).toEqual(['i-district', 'i-school']);
+    });
+
+    it('parses metadata (garbled gives {}) and fills schoolName for school rows', () => {
+      seedDistrict();
+      issue('i-school', { institutionId: 's-a' });
+      issue('i-garbled', { districtId: 'd-1', metadata: 'not json' });
+      issue('i-null', { districtId: 'd-1', metadata: null });
+      const rows = readModel.listInfrastructureIssues('d-1');
+      expect(rows.find((row) => row.id === 'i-school')).toEqual({
+        id: 'i-school',
+        title: 'Issue i-school',
+        description: 'Desc',
+        severity: 'HIGH',
+        institutionId: 's-a',
+        schoolName: 'Alpha',
+        metadata: { status: 'OPEN', category: 'Roof' },
+        createdAt: NOW,
+      });
+      expect(rows.find((row) => row.id === 'i-garbled')).toMatchObject({ metadata: {}, schoolName: null });
+      expect(rows.find((row) => row.id === 'i-null')?.metadata).toEqual({});
+    });
+  });
+
   describe('school admin directory', () => {
     function account(id: string, opts: { isActive?: number; photoUrl?: string | null; createdAt?: string | null; lastLoginAt?: string | null } = {}) {
       run(

@@ -1,12 +1,15 @@
 import type { CommandHandler } from '../../core/command';
 import { ok, type ApplicationResponse } from '../../core/response';
 import type { IDistrictAlertStore } from '../../interfaces/deo/district-alert-store';
+import type { IDistrictOverviewReadModel } from '../../interfaces/deo/district-overview-read-model';
 import type { IClock } from '../../interfaces/clock';
 import type { IAppLogger } from '../../interfaces/app-logger';
 import { invokeUseCase } from '../../pipeline/use-case-invoker';
 
 export interface ResolveDistrictAlertDeps {
   store: IDistrictAlertStore;
+  /** Source of the officer's name. */
+  readModel: IDistrictOverviewReadModel;
   /** The signed-in officer's district; null when none is assigned. */
   currentDistrictId: string | null;
   currentUserId: string;
@@ -26,9 +29,10 @@ export class ResolveDistrictAlertUseCase implements CommandHandler<
     return invokeUseCase('ResolveDistrictAlert', this.deps.logger, async () => {
       const districtId = this.deps.currentDistrictId;
       if (!districtId) return ok(false);
-      return ok(
-        this.deps.store.resolve(districtId, command.alertId, this.deps.currentUserId, this.deps.clock.now()),
-      );
+      const profile = this.deps.readModel.getUserProfile(this.deps.currentUserId);
+      const name = [profile?.firstName, profile?.lastName].filter(Boolean).join(' ').trim() || 'DEO';
+      const by = { id: this.deps.currentUserId, name };
+      return ok(this.deps.store.resolve(districtId, command.alertId, by, this.deps.clock.now()));
     });
   }
 }
